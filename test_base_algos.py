@@ -15,7 +15,7 @@ represent_ex.observers.append(FileStorageObserver('test_observer'))
 
 def is_representation_learner(el):
     try:
-        return issubclass(el, RepresentationLearner) and el not in (RepresentationLearner, DynamicsPrediction, InverseDynamicsPrediction)
+        return issubclass(el, RepresentationLearner) and el != RepresentationLearner and el not in WIP_ALGOS
     except TypeError:
         return False
 

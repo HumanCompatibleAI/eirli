@@ -8,6 +8,8 @@ from .batch_extenders import QueueBatchExtender
 from .optimizers import LARS
 
 
+
+
 class SimCLR(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(SimCLR, self).__init__(env=env,
@@ -99,3 +101,7 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                                         target_pair_constructor=TemporalOffsetPairConstructor,
                                                         target_pair_constructor_kwargs={'mode': 'inverse_dynamics'},
                                                         **kwargs)
+
+
+## Algos that should not be run in all-algo test because they are not yet finished
+WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
