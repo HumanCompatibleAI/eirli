@@ -1,0 +1,7 @@
+gym
+torch
+stable-baselines3
+opencv-python
+torchvision
+pyyaml
+tensorflow==1.14.0

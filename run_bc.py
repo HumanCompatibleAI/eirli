@@ -1,0 +1,85 @@
+import sys, os
+import gym
+sys.path.append(os.path.abspath('../'))
+
+from stable_baselines3.common.cmd_util import make_atari_env
+from stable_baselines3.common.vec_env import VecFrameStack
+from algos import *
+from sacred import Experiment
+from sacred.observers import FileStorageObserver
+from rl_baselines_zoo.utils import create_test_env
+import numpy as np
+
+
+represent_ex = Experiment('representation_learning')
+
+
+@represent_ex.config
+def default_config():
+    env_id = 'BreakoutNoFrameskip-v4'
+    seed = 0
+    algo = SimCLR
+    n_envs = 1
+    train_from_expert = True
+    timesteps = 640
+    pretrain_only = False
+    pretrain_epochs = 50
+    _ = locals()
+    del _
+
+
+def get_random_traj(env, timesteps):
+    # Currently not designed for VecEnvs with n>1
+    trajectory = {'states': [], 'actions': [], 'dones': []}
+    obs = env.reset()
+    for i in range(timesteps):
+        trajectory['states'].append(obs.squeeze())
+        action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
+        obs, rew, dones, info = env.step(action)
+        trajectory['actions'].append(action[0])
+        trajectory['dones'].append(dones[0])
+    return trajectory
+
+
+@represent_ex.main
+def run_bc(env_id, seed, bc_model, algo, n_envs, timesteps, train_from_expert,
+           pretrain_only, pretrain_epochs):
+    # get_expert_traj
+    print(f"Train from expert: {train_from_expert}")
+
+    # TODO fix this hacky nonsense
+    log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
+    os.mkdir(log_dir)
+    #with TemporaryDirectory() as tmp_dir:
+    if isinstance(bc_model, str):
+        bc_model = globals()[bc_model]
+
+    env = create_test_env(env_id, n_envs=n_envs, is_atari='NoFrameskip' in env_id,
+                          stats_path=os.path.join(log_dir, 'stats'), seed=seed, log_dir=log_dir,
+                          should_render=False)
+    data = get_random_traj(env=env, timesteps=timesteps)
+
+    # setup enviornment
+    atari = 'NoFrameskip' in env_id
+    if atari:
+        env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
+    else:
+        env = gym.make(env_id)
+    assert issubclass(bc_model, RepresentationLearner)
+    ## TODO allow passing in of kwargs here
+
+    model = bc_model(env, log_dir=log_dir)
+
+    # setup model
+    model.learn(data)
+
+    env.close()
+
+    # Free memory
+    del model
+
+
+if __name__ == '__main__':
+    represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
+    represent_ex.run_commandline()
+
