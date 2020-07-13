@@ -42,17 +42,16 @@ def get_random_traj(env, timesteps):
 
 
 @represent_ex.main
-def run_bc(env_id, seed, bc_model, algo, n_envs, timesteps, train_from_expert,
+def run_bc(env_id, seed, algo, n_envs, timesteps, train_from_expert,
            pretrain_only, pretrain_epochs):
     # get_expert_traj
-    print(f"Train from expert: {train_from_expert}")
 
     # TODO fix this hacky nonsense
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
     #with TemporaryDirectory() as tmp_dir:
-    if isinstance(bc_model, str):
-        bc_model = globals()[bc_model]
+    if isinstance(algo, str):
+        algo = globals()[algo]
 
     env = create_test_env(env_id, n_envs=n_envs, is_atari='NoFrameskip' in env_id,
                           stats_path=os.path.join(log_dir, 'stats'), seed=seed, log_dir=log_dir,
@@ -65,10 +64,10 @@ def run_bc(env_id, seed, bc_model, algo, n_envs, timesteps, train_from_expert,
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:
         env = gym.make(env_id)
-    assert issubclass(bc_model, RepresentationLearner)
+    assert issubclass(algo, RepresentationLearner)
     ## TODO allow passing in of kwargs here
 
-    model = bc_model(env, log_dir=log_dir)
+    model = algo(env, log_dir=log_dir)
 
     # setup model
     model.learn(data)
