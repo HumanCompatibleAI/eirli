@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import copy
-
+from torch.distributions import Normal
 
 """
 Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
@@ -25,7 +25,7 @@ DEFAULT_CNN_ARCHITECTURE = {
 
 
 class CNNEncoder(nn.Module):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE):
+    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE, learn_stddev=False):
         super(CNNEncoder, self).__init__()
 
         self.input_channel = obs_shape[2]
@@ -39,13 +39,15 @@ class CNNEncoder(nn.Module):
         # to be visible as part of the module .parameters() return
         self.conv_layers = nn.ModuleList(self.conv_layers)
 
-        for ind, layer_spec in enumerate(architecture['DENSE']):
+        for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
             in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            if out_dim is None:
-                # For the final layer, we don't have an out_dim because it is specified by representation_dim
-                assert ind == len(architecture['DENSE']) - 1, "Non-final dense layers require an out_dim"
-                out_dim = representation_dim
             self.dense_layers.append(nn.Linear(in_dim, out_dim))
+        self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], representation_dim)
+        if learn_stddev:
+            self.stddev_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], representation_dim)
+        else:
+            self.stddev_layer = None
+
         self.dense_layers = nn.ModuleList(self.dense_layers)
         self.relu = nn.ReLU()
 
@@ -57,14 +59,22 @@ class CNNEncoder(nn.Module):
         x = torch.flatten(x, 1)
         for dense_layer in self.dense_layers:
             x = self.relu(dense_layer(x))
-        return x
+
+        # TODO should there be a ReLU here?
+        mean = self.relu(self.mean_layer(x))
+        if self.stddev_layer is not None:
+            stddev = self.relu(self.stddev_layer(x))
+            # TODO are scale and stdev the same thing?
+            return Normal(loc=mean, scale=stddev)
+        else:
+            return Normal(loc=mean, scale=1)
 
 
 class DynamicsEncoder(CNNEncoder):
     def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE):
         super(DynamicsEncoder, self).__init__(obs_shape, representation_dim, architecture)
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
-        self.encode_target = lambda x: x
+        self.encode_target = lambda x: Normal(loc=x, scale=0)
 
 
 class InverseDynamicsEncoder(CNNEncoder):

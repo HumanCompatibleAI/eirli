@@ -5,11 +5,18 @@ import torch.nn.functional as F
 
 
 class RepresentationLoss(ABC):
-    def __init__(self, device):
+    def __init__(self, device, sample=False):
         self.device = device
+        self.sample = sample
 
-    def __call__(self, decoded_context, target, encoded_context):
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
         pass
+
+    def get_vector_forms(self, decoded_context_dist, target_dist, encoded_context_dist):
+        decoded_contexts = decoded_context_dist.sample() if self.sample else decoded_context_dist.loc
+        targets = target_dist.sample() if self.sample else target_dist.loc
+        encoded_contexts = encoded_context_dist.sample() if self.sample else encoded_context_dist.loc
+        return decoded_contexts, targets, encoded_contexts
 
 
 class AsymmetricContrastiveLoss(RepresentationLoss):
@@ -18,17 +25,19 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
     only calculating a softmax of IJ similarity against all similarities with I. Represents InfoNCE
     used in original CPC paper
     """
-    def __init__(self, device, temp=0.1):
-        super(AsymmetricContrastiveLoss, self).__init__(device)
+    def __init__(self, device, sample=False, temp=0.1):
+        super(AsymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
-    def __call__(self, decoded_context, target, encoded_context=None):
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
-        z_i = decoded_context
-        z_j = target
+        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+
+        z_i = decoded_contexts
+        z_j = targets
 
         z_i = F.normalize(z_i, dim=1)
         z_j = F.normalize(z_j, dim=1)
@@ -63,17 +72,19 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
-    def __init__(self, device, temp=0.1):
+    def __init__(self, device, sample=False, temp=0.1):
+        super(SymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
         self.device = device
 
-    def __call__(self, decoded_context, target, encoded_context=None):
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
-        z_i = decoded_context
-        z_j = target
+        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        z_i = decoded_contexts
+        z_j = targets
 
         batch_size = z_i.shape[0]
 
@@ -100,9 +111,10 @@ class SymmetricContrastiveLoss(RepresentationLoss):
 
 
 class MSELoss(RepresentationLoss):
-    def __init__(self, device):
-        super(MSELoss, self).__init__(device)
+    def __init__(self, device, sample=False):
+        super(MSELoss, self).__init__(device, sample)
         self.criterion = torch.nn.MSELoss()
 
-    def __call__(self, decoded_context, target, encoded_context=None):
-        return self.criterion(decoded_context, target)
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        return self.criterion(decoded_contexts, targets)
