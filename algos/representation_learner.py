@@ -89,7 +89,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        # TODO have target_pair_constructor pass back trajectory ID to allow for more complex batch construction
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False if self.recurrent else True)
 
         # Set encoder and decoder to be in training mode
