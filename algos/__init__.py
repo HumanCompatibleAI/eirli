@@ -122,4 +122,3 @@ class BYOL(RepresentationLearner):
 
 ## Algos that should not be run in all-algo test because they are not yet finished
 WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
-
