@@ -31,6 +31,12 @@ class LossDecoder(nn.Module):
     def forward(self, z, traj_info, extra_context=None):
         pass
 
+    def decode_target(self, z, traj_info, extra_context=None):
+        return self.forward(z, traj_info, extra_context=extra_context)
+
+    def decode_context(self, z):
+        return self.forward(z, traj_info, extra_context=extra_context)
+
 
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):

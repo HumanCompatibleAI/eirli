@@ -120,12 +120,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
-                decoded_contexts = (self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
-                                    if hasattr(self.decoder, 'decode_context')
-                                    else self.decoder(encoded_contexts, traj_ts_info, extra_context))
-                decoded_targets = (self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
-                                   if hasattr(self.decoder, 'decode_target')
-                                   else self.decoder(encoded_targets, traj_ts_info, extra_context))
+                # As with encode, these will typically just use forward()
+                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
+                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic
