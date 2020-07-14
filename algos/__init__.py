@@ -8,8 +8,6 @@ from .batch_extenders import QueueBatchExtender
 from .optimizers import LARS
 
 
-
-
 class SimCLR(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(SimCLR, self).__init__(env=env,
