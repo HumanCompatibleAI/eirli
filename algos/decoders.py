@@ -18,10 +18,6 @@ from a representation vector, the LossDecoder will handle that representation ->
 both the representation of the current state, and also information about the next state. This occasional
 need for extra information beyond the central context state is why we have `extra_context` as an optional 
 bit of data that pair constructors can return, to be passed forward for use here 
-
-Note that current the LSTMHead breaks this model a bit, since the encoder learns the per-frame representation, 
-but the recurrent/aggregated representation is captured in the decoder, meaning you'd need to use the decoder 
-to use that representation in a downstream task. 
 """
 
 class LossDecoder(nn.Module):
@@ -123,58 +119,6 @@ class BYOLProjectionHead(MomentumProjectionHead):
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
 
-
-class LSTMHead(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False):
-        super(LSTMHead, self).__init__(representation_dim, projection_shape, sample)
-        self.hidden_dim = projection_shape
-        self.n_layers = 2
-        self.rnn = nn.LSTM(representation_dim, self.hidden_dim, self.n_layers, batch_first=True)
-
-    def _reshape_and_stack(self, z, traj_info):
-        batch_size = z.shape[0]
-        input_shape = z.shape[1:]
-        trajectory_id, timesteps = traj_info
-        # We should have trajectory_id values for every element in the batch z
-        assert len(z) == len(trajectory_id), "Every element in z must have a trajectory ID in a RNNHead decoder"
-        trajectory_id_arr = trajectory_id.numpy()
-        # A set of all distinct trajectory IDs
-        trajectories = set(trajectory_id_arr)
-        padded_trajectories = []
-        mask_lengths = []
-        for trajectory in trajectories:
-            traj_timesteps = timesteps[trajectory_id_arr == trajectory]
-            assert list(traj_timesteps) == sorted(list(traj_timesteps)), "Batches must be sorted to use a RNNHead decoder"
-            # Get all Z vectors associated with a trajectory, which have now been confirmed to be sorted timestep-wise
-            traj_z = z[trajectory_id_arr == trajectory]
-            # Keep track of how many actual unpadded values were in the trajectory
-            mask_lengths.append(traj_z.shape[0])
-            pad_size = batch_size - traj_z.shape[0]
-            padding = torch.zeros((pad_size,) + input_shape)
-            padded_z = torch.cat([traj_z, padding])
-            padded_trajectories.append(padded_z)
-        stacked_trajectories = torch.stack(padded_trajectories, dim=0)
-        return stacked_trajectories, mask_lengths
-
-    def decode_target(self, z_dist, traj_info, extra_context=None):
-        return z_dist
-
-    def decode_context(self, z_dist, traj_info, extra_context=None):
-        # TODO Add logic to reshape/handle extra_context
-        # Reshape the input z to be (some number of) batch_size-length trajectories
-        z = self.get_vector(z_dist)
-        stacked_trajectories, mask_lengths = self._reshape_and_stack(z, traj_info)
-        # TODO figure out if I indeed need to do device-moving here
-        hiddens, final = self.rnn(stacked_trajectories)
-        # Pull out only the hidden states corresponding to actual non-padding inputs, and concat together
-        masked_hiddens = []
-        for i, trajectory_length in enumerate(mask_lengths):
-            masked_hiddens.append(hiddens[i][:trajectory_length])
-        flattened_hiddens = torch.cat(masked_hiddens, dim=0)
-
-        # TODO update the RNN to be able to learn standard deviations
-
-        return Normal(loc=flattened_hiddens, scale=1)
 
 # Currently WIP: Implement more of this once I figure out the details of how a VAE works
 class VAEDecoder(LossDecoder):

@@ -1,6 +1,6 @@
 from .representation_learner import RepresentationLearner
-from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder
-from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, LSTMHead
+from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder
+from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -68,8 +68,8 @@ class RNNTest(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(RNNTest, self).__init__(env=env,
                                       log_dir=log_dir,
-                                      encoder=CNNEncoder,
-                                      decoder=LSTMHead,
+                                      encoder=RecurrentEncoder,
+                                      decoder=NoOp,
                                       loss_calculator=AsymmetricContrastiveLoss,
                                       augmenter=AugmentContextAndTarget,
                                       target_pair_constructor=IdentityPairConstructor,
