@@ -111,6 +111,10 @@ class BYOLProjectionHead(MomentumProjectionHead):
         self.context_predictor = ProjectionHead(projection_shape, projection_shape)
 
     def parameters(self, recurse=True):
+        # In BYOL, the loss is given by MSE(predict(project(z_context)), stop_gradient(project(z_target)))
+        # So, for the parameters, we want to include everything in predict and project for the context,
+        # regardless of whether recurse is True
+        # The projection is handled by the superclass, so we use its parameters method
         return self.context_predictor.parameters(recurse=recurse) + super().parameters(recurse=recurse)
 
     def forward(self, z_dist, traj_info, extra_context=None):
