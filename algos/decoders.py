@@ -67,7 +67,7 @@ class MomentumProjectionHead(LossDecoder):
         self.momentum_weight = momentum_weight
 
     def parameters(self, recurse=True):
-        return self.context_decoder.parameters(recurse=True)
+        return self.context_decoder.parameters(recurse=recurse)
 
     def forward(self, z, traj_info, extra_context=None):
         return self.context_decoder(z, traj_info, extra_context=extra_context)
@@ -93,6 +93,9 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def __init__(self, representation_dim, projection_shape, momentum_weight=0.99):
         super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape, momentum_weight=momentum_weight)
         self.context_predictor = ProjectionHead(projection_shape, projection_shape)
+
+    def parameters(self, recurse=True):
+        return self.context_predictor.parameters(recurse=recurse) + super().parameters(recurse=recurse)
 
     def forward(self, z, traj_info, extra_context=None):
         z = super().forward(z, traj_info, extra_context=extra_context)
