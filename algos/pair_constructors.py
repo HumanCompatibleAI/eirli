@@ -8,7 +8,7 @@ is the ground truth or "positive" we're trying to predict from the context, thou
 admittedly a somewhat fuzzy match to the actual variety of techniques.
 
 - In temporal contrastive loss settings, context is generally the element at position (t), and target the element at
-position (t+1) 
+position (t+k) 
 - In pure-augmentation contrastive loss settings, context and target are the same element (which will be augmented 
 in different ways) 
 - In a VAE, context and target are also the same element. Context will be mapped into a representation and then decoded
