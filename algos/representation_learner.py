@@ -53,11 +53,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.scheduler = LinearWarmupCosine(self.optimizer, self.warmup_epochs, self.pretrain_epochs)
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
-    def log_info(self, loss, step, epoch):
+    def log_info(self, loss, step, epoch_ind):
         self.writer.add_scalar('loss', loss, step)
         lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar('learning_rate', lr, step)
-        self.logger.log(f"Pretrain Epoch [{epoch}/{self.pretrain_epochs}], step {step}, "
+        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {step}, "
                         f"lr {lr}, "
                         f"loss {loss}")
 
@@ -89,7 +89,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        # TODO have target_pair_constructor pass back trajectory ID to allow for more complex batch construction
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False if self.recurrent else True)
 
         # Set encoder and decoder to be in training mode
@@ -124,6 +123,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
                 decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
 
+
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic
                 decoded_contexts, decoded_targets = self.batch_extender(decoded_contexts, decoded_targets)
@@ -140,8 +140,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             self.scheduler.step()
             loss_record.append(loss_meter.avg.cpu().item())
-            plot_single(loss_record, 'loss', 'Representation')
             self.encoder.train(False)
             self.decoder.train(False)
-            save_model(self.encoder, 'representation_encoder_network')
-            save_model(self.decoder, 'representation_decoder_network')
+            save_model(self.encoder, 'representation_encoder_network', os.path.join(self.log_dir, 'checkpoints'))
+            save_model(self.decoder, 'representation_decoder_network', os.path.join(self.log_dir, 'checkpoints'))

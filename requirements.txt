@@ -5,4 +5,5 @@ stable-baselines3
 opencv-python
 torchvision
 pyyaml
+sacred
 tensorflow==1.14.0

@@ -65,8 +65,10 @@ def plot_single(arr, label, msg):
     plt.close(fig)
 
 
-def save_model(model, env_id):
-    torch.save(model.state_dict(), os.path.abspath('../') + f'/output/[{time_now(now)}]{env_id}.ckpt')
+def save_model(model, env_id, save_path):
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    torch.save(model.state_dict(), os.path.join(save_path, f'[{time_now(now)}]{env_id}.ckpt'))
 
 
 def time_now(n):

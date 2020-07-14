@@ -5,6 +5,7 @@ sys.path.append(os.path.abspath('../'))
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from algos import *
+from algos.representation_learner import DEFAULT_HYPERPARAMS as rep_learner_params
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from rl_baselines_zoo.utils import create_test_env
@@ -43,8 +44,7 @@ def get_random_traj(env, timesteps):
 
 @represent_ex.main
 def run_bc(env_id, seed, algo, n_envs, timesteps, train_from_expert,
-           pretrain_only, pretrain_epochs):
-    # get_expert_traj
+           pretrain_only, pretrain_epochs, _config):
 
     # TODO fix this hacky nonsense
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
@@ -67,7 +67,9 @@ def run_bc(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     assert issubclass(algo, RepresentationLearner)
     ## TODO allow passing in of kwargs here
 
-    model = algo(env, log_dir=log_dir, pretrain_epochs=pretrain_epochs)
+
+    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
+    model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
     model.learn(data)

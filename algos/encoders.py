@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import copy
-
+from torch.distributions import Normal
 
 """
 Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
@@ -34,11 +34,13 @@ class Encoder(nn.Module):
         return x
 
 
+
 class CNNEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE):
+    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE, learn_scale=False):
         super(CNNEncoder, self).__init__()
 
         self.input_channel = obs_shape[2]
+        self.representation_dim = representation_dim
         self.conv_layers = []
         self.dense_layers = []
         for layer_spec in architecture['CONV']:
@@ -49,13 +51,15 @@ class CNNEncoder(Encoder):
         # to be visible as part of the module .parameters() return
         self.conv_layers = nn.ModuleList(self.conv_layers)
 
-        for ind, layer_spec in enumerate(architecture['DENSE']):
+        for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
             in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            if out_dim is None:
-                # For the final layer, we don't have an out_dim because it is specified by representation_dim
-                assert ind == len(architecture['DENSE']) - 1, "Non-final dense layers require an out_dim"
-                out_dim = representation_dim
             self.dense_layers.append(nn.Linear(in_dim, out_dim))
+        self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+        if learn_scale:
+            self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+        else:
+            self.scale_layer = lambda x: torch.ones(self.representation_dim)
+
         self.dense_layers = nn.ModuleList(self.dense_layers)
         self.relu = nn.ReLU()
 
@@ -67,14 +71,16 @@ class CNNEncoder(Encoder):
         x = torch.flatten(x, 1)
         for dense_layer in self.dense_layers:
             x = self.relu(dense_layer(x))
-        return x
+
+        mean = self.mean_layer(x)
+        scale = torch.exp(self.scale_layer(x))
+        return Normal(loc=mean, scale=scale)
 
 
 class DynamicsEncoder(CNNEncoder):
     # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
     def encode_target(self, x):
-        return x
-
+        return Normal(loc=x, scale=0)
 
 class InverseDynamicsEncoder(CNNEncoder):
     def encode_extra_context(self, x):
@@ -83,9 +89,10 @@ class InverseDynamicsEncoder(CNNEncoder):
 
 class MomentumEncoder(Encoder):
     # TODO have some way to pass in optional momentum_weight param
-    def __init__(self, obs_shape, representation_dim, momentum_weight=0.999):
+    def __init__(self, obs_shape, representation_dim, learn_scale=False,
+                 momentum_weight=0.999, architecture=DEFAULT_CNN_ARCHITECTURE):
         super(MomentumEncoder, self).__init__()
-        self.query_encoder = CNNEncoder(obs_shape, representation_dim)
+        self.query_encoder = CNNEncoder(obs_shape, representation_dim, architecture, learn_scale)
         self.key_encoder = copy.deepcopy(self.query_encoder)
         self.momentum_weight = momentum_weight
 
