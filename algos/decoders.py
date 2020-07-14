@@ -1,6 +1,7 @@
 import torch.nn as nn
 import copy
 import torch
+import torch.nn.functional as F
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -34,7 +35,7 @@ class LossDecoder(nn.Module):
     def decode_target(self, z, traj_info, extra_context=None):
         return self.forward(z, traj_info, extra_context=extra_context)
 
-    def decode_context(self, z):
+    def decode_context(self, z, traj_info, extra_context=None):
         return self.forward(z, traj_info, extra_context=extra_context)
 
 
@@ -66,10 +67,10 @@ class MomentumProjectionHead(LossDecoder):
         self.momentum_weight = momentum_weight
 
     def parameters(self, recurse=True):
-        return self.context_decoder.parameters()
+        return self.context_decoder.parameters(recurse=True)
 
     def forward(self, z, traj_info, extra_context=None):
-        return self.context_decoder(z)
+        return self.context_decoder(z, traj_info, extra_context=extra_context)
 
     def decode_target(self, z, traj_info, extra_context=None):
         """
@@ -80,12 +81,28 @@ class MomentumProjectionHead(LossDecoder):
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
-            return self.target_decoder(z)
+            return self.target_decoder(z, traj_info, extra_context=extra_context)
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
         for param_q, param_k in zip(self.context_decoder.parameters(), self.target_decoder.parameters()):
             param_k.data = param_k.data * self.momentum_weight + param_q.data * (1. - self.momentum_weight)
+
+
+class BYOLProjectionHead(MomentumProjectionHead):
+    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99):
+        super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape, momentum_weight=momentum_weight)
+        self.context_predictor = ProjectionHead(projection_shape, projection_shape)
+
+    def forward(self, z, traj_info, extra_context=None):
+        z = super().forward(z, traj_info, extra_context=extra_context)
+        z = self.context_predictor(z, traj_info, extra_context=None)
+        return F.normalize(z, dim=1)
+
+    def decode_target(self, z, traj_info, extra_context=None):
+        with torch.no_grad():
+            z = super().decode_target(z, traj_info, extra_context=extra_context)
+            return F.normalize(z, dim=1)
 
 
 class LSTMHead(LossDecoder):

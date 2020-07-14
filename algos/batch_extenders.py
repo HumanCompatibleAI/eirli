@@ -37,6 +37,7 @@ class QueueBatchExtender(BatchExtender):
         # potentially overriding old information in the process. Return targets concatenated to contents of queue
         batch_size = targets.shape[0]
         queue_targets = self.queue.clone().detach()
+        # TODO: Currently requires the queue size to be a multiple of the batch size. Don't require that.
         self.queue[self.queue_ptr:self.queue_ptr + batch_size] = targets
         self.queue_ptr = (self.queue_ptr + batch_size) % self.queue_size
         merged_targets = torch.cat([targets, queue_targets], dim=0)
