@@ -43,6 +43,7 @@ class QueueBatchExtender(BatchExtender):
         batch_size = targets_loc.shape[0]
         queue_targets_scale = self.queue_scale.clone().detach()
         queue_targets_loc = self.queue_loc.clone().detach()
+        # TODO: Currently requires the queue size to be a multiple of the batch size. Don't require that.
         self.queue_loc[self.queue_ptr:self.queue_ptr + batch_size] = targets_loc
         self.queue_scale[self.queue_ptr:self.queue_ptr + batch_size] = targets_scale
         self.queue_ptr = (self.queue_ptr + batch_size) % self.queue_size

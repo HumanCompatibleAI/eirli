@@ -1,6 +1,6 @@
 from .representation_learner import RepresentationLearner
 from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder
-from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, LSTMHead
+from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, LSTMHead
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -102,6 +102,23 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                                         target_pair_constructor_kwargs={'mode': 'inverse_dynamics'},
                                                         **kwargs)
 
+
+class BYOL(RepresentationLearner):
+    """Implementation of Bootstrap Your Own Latent: https://arxiv.org/pdf/2006.07733.pdf
+
+    The hyperparameters do _not_ match those in the paper (see Section 3.2).
+    Most notably, the momentum weight is set to a constant, instead of annealed
+    from 0.996 to 1 via cosine scheduling.
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        super(BYOL, self).__init__(env=env,
+                                   log_dir=log_dir,
+                                   encoder=MomentumEncoder,
+                                   decoder=BYOLProjectionHead,
+                                   loss_calculator=MSELoss,
+                                   augmenter=AugmentContextAndTarget,
+                                   target_pair_constructor=IdentityPairConstructor,
+                                   **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
 WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]

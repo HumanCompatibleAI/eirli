@@ -112,20 +112,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
-                encoded_contexts = self.encoder.encode_context(contexts) if hasattr(self.encoder, 'encode_context') else self.encoder(contexts)
-                encoded_targets = self.encoder.encode_target(targets) if hasattr(self.encoder, 'encode_target') else self.encoder(targets)
-
-                if hasattr(self.encoder, 'encode_extra_context'):
-                    extra_context = self.encoder.encode_extra_context(extra_context)
+                encoded_contexts = self.encoder.encode_context(contexts)
+                encoded_targets = self.encoder.encode_target(targets)
+                # Typically the identity function
+                extra_context = self.encoder.encode_extra_context(extra_context)
 
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
-                decoded_contexts = (self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
-                                    if hasattr(self.decoder, 'decode_context')
-                                    else self.decoder(encoded_contexts, traj_ts_info, extra_context))
-                decoded_targets = (self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
-                                   if hasattr(self.decoder, 'decode_target')
-                                   else self.decoder(encoded_targets, traj_ts_info, extra_context))
+                # As with encode, these will typically just use forward()
+                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
+                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
 
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but

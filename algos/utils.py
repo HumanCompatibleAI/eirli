@@ -38,6 +38,7 @@ def show_plt_image(img):
     plt.show()
 
 
+# TODO: Have the calls to savefig below save to the log directory (or at least make the output directory in case it doesn't exist)
 def plot(arr, env_id, gap=1):
     fig = plt.figure()
     x = np.array(list(range(len(arr[0])))) * gap
