@@ -82,6 +82,7 @@ class DynamicsEncoder(CNNEncoder):
     def encode_target(self, x, traj_info):
         return Normal(loc=x, scale=0)
 
+
 class InverseDynamicsEncoder(CNNEncoder):
     def encode_extra_context(self, x, traj_info):
         return self.forward(x)
@@ -117,6 +118,7 @@ class MomentumEncoder(Encoder):
     def _momentum_update_key_encoder(self):
         for param_q, param_k in zip(self.query_encoder.parameters(), self.key_encoder.parameters()):
             param_k.data = param_k.data * self.momentum_weight + param_q.data * (1. - self.momentum_weight)
+
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
