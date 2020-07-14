@@ -38,6 +38,7 @@ class LossDecoder(nn.Module):
         else:
             return z_dist.loc
 
+
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
@@ -53,7 +54,7 @@ class ProjectionHead(LossDecoder):
         if learn_scale:
             self.scale = nn.Linear(256, self.projection_dim)
         else:
-            self.scale = lambda x: 1
+            self.scale = lambda x: torch.ones(self.projection_dim)
         self.relu = nn.ReLU()
 
     def forward(self, z_dist, traj_info, extra_context=None):
@@ -61,13 +62,13 @@ class ProjectionHead(LossDecoder):
         z = self.relu(self.g1(z))
         z = self.relu(self.g2(z))
         mean = self.mean(z)
-        scale = self.scale(z)
+        scale = torch.exp(self.scale(z))
         return Normal(loc=mean, scale=scale)
 
 
 class MomentumProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, momentum_weight=0.99, learn_scale=False):
-        super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=False)
+        super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=sample)
         self.context_decoder = ProjectionHead(representation_dim, projection_shape,
                                               sample=sample, learn_scale=learn_scale)
         self.target_decoder = copy.deepcopy(self.context_decoder)

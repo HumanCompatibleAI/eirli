@@ -25,10 +25,11 @@ DEFAULT_CNN_ARCHITECTURE = {
 
 
 class CNNEncoder(nn.Module):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE, learn_stddev=False):
+    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE, learn_scale=False):
         super(CNNEncoder, self).__init__()
 
         self.input_channel = obs_shape[2]
+        self.representation_dim = representation_dim
         self.conv_layers = []
         self.dense_layers = []
         for layer_spec in architecture['CONV']:
@@ -42,11 +43,11 @@ class CNNEncoder(nn.Module):
         for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
             in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
             self.dense_layers.append(nn.Linear(in_dim, out_dim))
-        self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], representation_dim)
-        if learn_stddev:
-            self.stddev_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], representation_dim)
+        self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+        if learn_scale:
+            self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
         else:
-            self.stddev_layer = None
+            self.scale_layer = lambda x: torch.ones(self.representation_dim)
 
         self.dense_layers = nn.ModuleList(self.dense_layers)
         self.relu = nn.ReLU()
@@ -60,14 +61,9 @@ class CNNEncoder(nn.Module):
         for dense_layer in self.dense_layers:
             x = self.relu(dense_layer(x))
 
-        # TODO should there be a ReLU here?
-        mean = self.relu(self.mean_layer(x))
-        if self.stddev_layer is not None:
-            stddev = self.relu(self.stddev_layer(x))
-            # TODO are scale and stdev the same thing?
-            return Normal(loc=mean, scale=stddev)
-        else:
-            return Normal(loc=mean, scale=1)
+        mean = self.mean_layer(x)
+        scale = torch.exp(self.scale_layer(x))
+        return Normal(loc=mean, scale=scale)
 
 
 class DynamicsEncoder(CNNEncoder):
@@ -85,9 +81,10 @@ class InverseDynamicsEncoder(CNNEncoder):
 
 class MomentumEncoder(nn.Module):
     # TODO have some way to pass in optional momentum_weight param
-    def __init__(self, obs_shape, representation_dim, momentum_weight=0.999):
+    def __init__(self, obs_shape, representation_dim, learn_scale=False,
+                 momentum_weight=0.999, architecture=DEFAULT_CNN_ARCHITECTURE):
         super(MomentumEncoder, self).__init__()
-        self.query_encoder = CNNEncoder(obs_shape, representation_dim)
+        self.query_encoder = CNNEncoder(obs_shape, representation_dim, architecture, learn_scale)
         self.key_encoder = copy.deepcopy(self.query_encoder)
         self.momentum_weight = momentum_weight
 
