@@ -123,35 +123,3 @@ class BYOLProjectionHead(MomentumProjectionHead):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
-
-
-# Currently WIP: Implement more of this once I figure out the details of how a VAE works
-class VAEDecoder(LossDecoder):
-    # https://github.com/ldeecke/vae-torch/blob/master/architecture/nn.py
-    def __init__(self, representation_dim, projection_shape, sample=False):
-        super(VAEDecoder, self).__init__(representation_dim, projection_shape, sample)
-        self.relu = nn.ReLU()
-        self.dense1 = nn.Linear(self.representation_dim, 64)
-        self.dense2 = nn.Linear(64, 64)
-        self.deconv1
-
-    def forward(self, z, traj_info, extra_context=None):
-        batch_size = z.shape[0]
-        z = self.relu(self.dense1(z))
-        z = self.relu(self.dense2(z))
-        z = z.resize(batch_size, 8, 8)
-
-
-#
-# # Maybe shouldn't ultimately live in decoders, but stuck it here for now
-# class PolicyHead(nn.Module):
-#     # Goes from a representation to a policy
-#     def __init__(self, action_size, representation_dim, sample=False):
-#         super(PolicyHead, self).__init__()
-#         self.action_size = action_size
-#         self.representation_dim = representation_dim
-#         self.fc_pi = nn.Linear(representation_dim, action_size)
-#         self.softmax = nn.Softmax(dim=-1)
-#
-#     def forward(self, z):
-#         return self.softmax(self.fc_pi(z))
