@@ -3,6 +3,7 @@ import copy
 import torch
 import torch.nn.functional as F
 from torch.distributions import Normal
+import itertools
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -111,7 +112,7 @@ class BYOLProjectionHead(MomentumProjectionHead):
         # So, for the parameters, we want to include everything in predict and project for the context,
         # regardless of whether recurse is True
         # The projection is handled by the superclass, so we use its parameters method
-        return self.context_predictor.parameters(recurse=recurse) + super().parameters(recurse=recurse)
+        return itertools.chain(self.context_predictor.parameters(recurse=recurse), super().parameters(recurse=recurse))
 
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)

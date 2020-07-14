@@ -19,8 +19,12 @@ DEFAULT_HYPERPARAMS = {
             'seed': 0,
             'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
             'recurrent': False,
-            'queue_size': None,
-            'target_pair_constructor_kwargs': {}
+            'target_pair_constructor_kwargs': {},
+            'augmenter_kwargs': {},
+            'encoder_kwargs': {},
+            'decoder_kwargs': {},
+            'batch_extender_kwargs': {},
+            'loss_calculator_kwargs': {},
         }
 
 class RepresentationLearner(BaseEnvironmentLearner):
@@ -38,14 +42,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
             # This doesn't have any meaningful effect unless you specify a projection head.
             self.projection_dim = self.representation_dim
-        self.augmenter = augmenter()
+        self.augmenter = augmenter(**self.augmenter_kwargs)
         self.target_pair_constructor = target_pair_constructor(**self.target_pair_constructor_kwargs)
 
-        self.encoder = encoder(self.observation_shape, self.representation_dim).to(self.device)
-        self.decoder = decoder(self.representation_dim, self.projection_dim).to(self.device)
+        self.encoder = encoder(self.observation_shape, self.representation_dim, **self.encoder_kwargs).to(self.device)
+        self.decoder = decoder(self.representation_dim, self.projection_dim, **self.decoder_kwargs).to(self.device)
 
-        self.batch_extender = batch_extender(queue_size=self.queue_size, queue_dim=self.projection_dim)
-        self.loss_calculator = loss_calculator(device=self.device)
+        self.batch_extender = batch_extender(queue_dim=self.projection_dim, **self.batch_extender_kwargs)
+        self.loss_calculator = loss_calculator(device=self.device, **self.loss_calculator_kwargs)
 
         self.optimizer = self.optimizer(list(self.encoder.parameters()) + list(self.decoder.parameters()), **self.optimizer_kwargs)
 

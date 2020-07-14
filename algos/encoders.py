@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import copy
 from torch.distributions import Normal
+import numpy as np
 
 """
 Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
@@ -63,7 +64,7 @@ class CNNEncoder(Encoder):
         self.dense_layers = nn.ModuleList(self.dense_layers)
         self.relu = nn.ReLU()
 
-    def forward(self, x, traj_info):
+    def forward(self, x, traj_info=None):
         x = x.permute(0, 3, 1, 2)
         x /= 255
         for conv_layer in self.conv_layers:
@@ -85,7 +86,7 @@ class DynamicsEncoder(CNNEncoder):
 
 class InverseDynamicsEncoder(CNNEncoder):
     def encode_extra_context(self, x, traj_info):
-        return self.forward(x)
+        return self.forward(x, traj_info)
 
 
 class MomentumEncoder(Encoder):
@@ -100,8 +101,8 @@ class MomentumEncoder(Encoder):
     def parameters(self, recurse=True):
         return self.query_encoder.parameters()
 
-    def forward(self, x):
-        return self.query_encoder(x)
+    def forward(self, x, traj_info):
+        return self.query_encoder(x, traj_info)
 
     def encode_target(self, x, traj_info):
         """
@@ -112,7 +113,7 @@ class MomentumEncoder(Encoder):
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
-            return self.key_encoder(x)
+            return self.key_encoder(x, traj_info)
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -146,10 +147,7 @@ class RecurrentEncoder(Encoder):
         mask_lengths = []
         for trajectory in trajectories:
             traj_timesteps = timesteps[trajectory_id_arr == trajectory]
-            assert len(traj_timesteps) > self.min_traj_size, "Batches must contain at least 5 sequential " \
-                                                             "transitions from each trajectory"
             assert list(traj_timesteps) == sorted(list(traj_timesteps)), "Batches must be sorted to use a RecurrentEncoder"
-
             # Get all Z vectors associated with a trajectory, which have now been confirmed to be sorted timestep-wise
             traj_z = z[trajectory_id_arr == trajectory]
             # Keep track of how many actual unpadded values were in the trajectory
@@ -158,6 +156,8 @@ class RecurrentEncoder(Encoder):
             padding = torch.zeros((pad_size,) + input_shape)
             padded_z = torch.cat([traj_z, padding])
             padded_trajectories.append(padded_z)
+        assert np.mean(mask_lengths) > self.min_traj_size, f"Batches must contain trajectories with an average " \
+                                                           f"length above {self.min_traj_size}. Trajectories found: {traj_info}"
         stacked_trajectories = torch.stack(padded_trajectories, dim=0)
         return stacked_trajectories, mask_lengths
 
