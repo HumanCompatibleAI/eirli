@@ -44,7 +44,7 @@ class MoCo(RepresentationLearner):
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=TemporalOffsetPairConstructor,
                                    batch_extender=QueueBatchExtender,
-                                   queue_size=queue_size,
+                                   batch_extender_kwargs={'queue_size': queue_size},
                                    **kwargs)
 
 
@@ -58,7 +58,7 @@ class MoCoWithProjection(RepresentationLearner):
                                                  augmenter=AugmentContextAndTarget,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
                                                  batch_extender=QueueBatchExtender,
-                                                 queue_size=queue_size,
+                                                 batch_extender_kwargs={'queue_size': queue_size},
                                                  **kwargs)
 
 

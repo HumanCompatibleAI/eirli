@@ -6,7 +6,7 @@ from tensorflow.python.util import deprecation
 deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 from algos import *
-from run_bc import represent_ex
+from run_rep_learner import represent_ex
 from sacred.observers import FileStorageObserver
 import pytest
 
