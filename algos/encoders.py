@@ -23,8 +23,18 @@ DEFAULT_CNN_ARCHITECTURE = {
              ]
 }
 
+class Encoder(nn.Module):
+    def encode_target(self, x):
+        return self.forward(x)
 
-class CNNEncoder(nn.Module):
+    def encode_context(self, x):
+        return self.forward(x)
+
+    def encode_extra_context(self, x):
+        return x
+
+
+class CNNEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE):
         super(CNNEncoder, self).__init__()
 
@@ -61,19 +71,17 @@ class CNNEncoder(nn.Module):
 
 
 class DynamicsEncoder(CNNEncoder):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE):
-        super(DynamicsEncoder, self).__init__(obs_shape, representation_dim, architecture)
-        # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
-        self.encode_target = lambda x: x
+    # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
+    def encode_target(self, x):
+        return x
 
 
 class InverseDynamicsEncoder(CNNEncoder):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE):
-        super(InverseDynamicsEncoder, self).__init__(obs_shape, representation_dim, architecture)
-        self.encode_extra_context = self.forward
+    def encode_extra_context(self, x):
+        return self.forward(x)
 
 
-class MomentumEncoder(nn.Module):
+class MomentumEncoder(Encoder):
     # TODO have some way to pass in optional momentum_weight param
     def __init__(self, obs_shape, representation_dim, momentum_weight=0.999):
         super(MomentumEncoder, self).__init__()

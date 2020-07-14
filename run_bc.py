@@ -53,21 +53,21 @@ def run_bc(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     if isinstance(algo, str):
         algo = globals()[algo]
 
-    env = create_test_env(env_id, n_envs=n_envs, is_atari='NoFrameskip' in env_id,
+    is_atari = 'NoFrameskip' in env_id
+    env = create_test_env(env_id, n_envs=n_envs, is_atari=is_atari,
                           stats_path=os.path.join(log_dir, 'stats'), seed=seed, log_dir=log_dir,
                           should_render=False)
     data = get_random_traj(env=env, timesteps=timesteps)
 
     # setup enviornment
-    atari = 'NoFrameskip' in env_id
-    if atari:
+    if is_atari:
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:
         env = gym.make(env_id)
     assert issubclass(algo, RepresentationLearner)
     ## TODO allow passing in of kwargs here
 
-    model = algo(env, log_dir=log_dir)
+    model = algo(env, log_dir=log_dir, pretrain_epochs=pretrain_epochs)
 
     # setup model
     model.learn(data)

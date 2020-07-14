@@ -113,11 +113,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
-                encoded_contexts = self.encoder.encode_context(contexts) if hasattr(self.encoder, 'encode_context') else self.encoder(contexts)
-                encoded_targets = self.encoder.encode_target(targets) if hasattr(self.encoder, 'encode_target') else self.encoder(targets)
-
-                if hasattr(self.encoder, 'encode_extra_context'):
-                    extra_context = self.encoder.encode_extra_context(extra_context)
+                encoded_contexts = self.encoder.encode_context(contexts)
+                encoded_targets = self.encoder.encode_target(targets)
+                # Typically the identity function
+                extra_context = self.encoder.encode_extra_context(extra_context)
 
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor

@@ -1,4 +1,5 @@
-gym
+gym>=0.17
+sacred
 torch
 stable-baselines3
 opencv-python
