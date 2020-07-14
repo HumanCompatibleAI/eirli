@@ -7,3 +7,5 @@ torchvision
 pyyaml
 sacred
 tensorflow==1.14.0
+pytest
+stable-baselines
