@@ -10,7 +10,9 @@ jobs:
       tag: '3.7'
     steps:
       - checkout
+      - python/load-cache
       - python/install-deps
+      - python/save-cache
       - run:
           command: pytest test_base_algos.py
           name: Run Tests
