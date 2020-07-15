@@ -1,21 +1,23 @@
-version: 2 # use CircleCI 2.0
-jobs: # A basic unit of work in a run
-  build: # runs not using Workflows must have a `build` job as entry point
-    # directory where steps are run
-    working_directory: ~/circleci-tests
-    docker: # run the steps with Docker
-      # CircleCI Python images available at: https://hub.docker.com/r/circleci/python/
-      - image: circleci/python:3.7
-        environment: # environment variables for primary container
-          PIPENV_VENV_IN_PROJECT: false
-    steps: # steps that comprise the `build` job
-      - checkout # check out source code to working directory
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
+version: 2.1
+
+orbs:
+  python: circleci/python@0.2.1
+
+jobs:
+  build-and-test:
+    executor:
+      name: python/default
+      tag: '3.7'
+    steps:
+      - checkout
+      - python/load-cache
+      - python/install-deps
+      - python/save-cache
       - run:
-          command: |
-            pip install --upgrade pip
-            sudo pip install -r requirements.txt
-      - run:
-          command: |
-            pytest test_base_algos.py
+          command: pytest test_base_algos.py
+          name: Run Tests
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
