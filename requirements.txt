@@ -1,4 +1,5 @@
-gym[all]>=0.17
+numpy
+gym[atari]>=0.17
 sacred
 torch
 stable-baselines3
