@@ -5,13 +5,13 @@ jobs: # A basic unit of work in a run
     working_directory: ~/circleci-tests
     docker: # run the steps with Docker
       # CircleCI Python images available at: https://hub.docker.com/r/circleci/python/
-      - image: circleci/python:3.8
+      - image: circleci/python:3.7
         environment: # environment variables for primary container
           PIPENV_VENV_IN_PROJECT: false
     steps: # steps that comprise the `build` job
       - checkout # check out source code to working directory
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.8/site-packages
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
       - run:
           command: |
             sudo pip install -r requirements.txt
