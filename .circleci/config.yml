@@ -17,4 +17,4 @@ jobs: # A basic unit of work in a run
             sudo pip install -r requirements.txt
       - run:
           command: |
-            pytest test_base_algos
+            pytest test_base_algos.py
