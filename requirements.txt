@@ -1,4 +1,4 @@
-gym>=0.17
+gym[all]>=0.17
 sacred
 torch
 stable-baselines3
