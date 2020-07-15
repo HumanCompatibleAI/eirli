@@ -43,7 +43,7 @@ def get_random_traj(env, timesteps):
 
 
 @represent_ex.main
-def run_bc(env_id, seed, algo, n_envs, timesteps, train_from_expert,
+def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
            pretrain_only, pretrain_epochs, _config):
 
     # TODO fix this hacky nonsense
@@ -83,4 +83,3 @@ def run_bc(env_id, seed, algo, n_envs, timesteps, train_from_expert,
 if __name__ == '__main__':
     represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
     represent_ex.run_commandline()
-
