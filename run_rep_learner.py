@@ -72,7 +72,7 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
-    model.learn(data)
+    model.learn(data, pretrain_epochs)
 
     env.close()
 
