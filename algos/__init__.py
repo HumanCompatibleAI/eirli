@@ -21,18 +21,18 @@ class SimCLR(RepresentationLearner):
 
 
 class TemporalCPC(RepresentationLearner):
-    def __init__(self, env, log_dir, **kwargs):
+    def __init__(self, env, log_dir, temporal_offset=1, **kwargs):
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
                                           encoder=CNNEncoder,
                                           decoder=NoOp,
                                           loss_calculator=AsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
+                                          target_pair_constructor_kwargs={"temporal_offset": temporal_offset},
                                           **kwargs)
 
 
-# NB these optimizer_kwargs are copy-pasted, and thus may not be sensible for MoCo
-# Currently breaks due to batch sizes not being the same each run (sometimes < 256)
+
 class MoCo(RepresentationLearner):
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         super(MoCo, self).__init__(env=env,
@@ -118,7 +118,15 @@ class BYOL(RepresentationLearner):
 
 
 class ActionConditionedTemporalCPC(RepresentationLearner):
-    def __init__(self, env, log_dir, temporal_offset=3, **kwargs):
+    """
+    Implementation of reinforcement-learning-specific variant of Temporal CPC which adds a projection layer on top
+    of the learned representation which integrates an encoding of the actions taken between time (t) and whatever
+    time (t+k) is specified in temporal_offset and used for pulling out the target frame. This, notionally, allows
+    the algorithm to construct frame representations that are action-independent, rather than marginalizing over an
+    expected policy, as might need to happen if the algorithm needed to predict the frame at time (t+k) over any
+    possible action distribution.
+    """
+    def __init__(self, env, log_dir, temporal_offset=1, **kwargs):
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
