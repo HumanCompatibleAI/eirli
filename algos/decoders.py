@@ -136,6 +136,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
         super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
         self.learn_scale = learn_scale
 
+        # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
+        # If actions are continuous/box, this is done via a simple flattening.
         if isinstance(action_space, spaces.Discrete):
             self.action_processer= nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
             processed_action_dim = action_embedding_dim
@@ -144,12 +146,19 @@ class ActionConditionedVectorDecoder(LossDecoder):
             processed_action_dim = np.prod(action_space.shape)
         else:
             raise NotImplementedError("Action conditioning is only currently implemented for Discrete and Box action spaces")
+
+        # Machinery for aggregating information from an arbitrary number of actions into a single vector,
+        # either through a LSTM, or by simply averaging the vector representations of the k states together
         if use_lstm:
             self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
         else:
             self.action_encoder = lambda x: (None, (torch.mean(x, dim=1), None))
             action_encoding_dim = processed_action_dim
+
+        # Machinery for mapping a concatenated (context representation, action representation) into a projection
         self.action_conditioned_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+
+        # If learning scale/std deviation parameter, declare a layer for that, otherwise, return a unit-constant vector
         if self.learn_scale:
             self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
         else:
@@ -160,12 +169,19 @@ class ActionConditionedVectorDecoder(LossDecoder):
         return z_dist
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
-
+        # Get a single vector out of the the distribution object passed in by the
+        # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         actions = extra_context
+        # Process each batch-vectorized set of actions of actions, and then stack
+        # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
         processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
+
+        # Encode multiple actions into a single action vector (format based on LSTM)
         output, (hidden, cell) = self.action_encoder(processed_actions)
         action_encoding_vector = torch.squeeze(hidden)
+
+        # Concatenate context representation and action representation and map to a merged representation
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
