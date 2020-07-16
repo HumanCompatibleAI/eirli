@@ -4,16 +4,16 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
 from .base_learner import BaseEnvironmentLearner
-from .utils import AverageMeter, LinearWarmupCosine, plot_single, save_model, Logger
-
+from .utils import AverageMeter, save_model, Logger
+from .augmenters import AugmentContextOnly
 
 DEFAULT_HYPERPARAMS = {
-            'optimizer': torch.optim.SGD,
-            'optimizer_kwargs': {'lr': 0.03, 'momentum': 0.9, 'weight_decay': 1e-4},
-            'pretrain_epochs': 200,
+            'optimizer': torch.optim.Adam,
+            'optimizer_kwargs': {},
+            'scheduler': None,
+            'scheduler_kwargs': {},
             'max_grad_norm': 0.5,
             'batch_size': 256,
-            'warmup_epochs': 10,
             'representation_dim': 512,
             'projection_dim': None,
             'seed': 0,
@@ -27,8 +27,9 @@ DEFAULT_HYPERPARAMS = {
             'loss_calculator_kwargs': {},
         }
 
+
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, augmenter, target_pair_constructor,
+    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor, augmenter=AugmentContextOnly,
                  batch_extender=IdentityBatchExtender, **kwargs):
         super(RepresentationLearner, self).__init__(env)
         self.env = env
@@ -53,15 +54,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.optimizer = self.optimizer(list(self.encoder.parameters()) + list(self.decoder.parameters()), **self.optimizer_kwargs)
 
-        # TODO make the scheduler parameterizable
-        self.scheduler = LinearWarmupCosine(self.optimizer, self.warmup_epochs, self.pretrain_epochs)
+        if self.scheduler is not None:
+            self.scheduler = self.scheduler(self.optimizer, **self.scheduler_kwargs)
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
-    def log_info(self, loss, step, epoch_ind):
+    def log_info(self, loss, step, epoch_ind, training_epochs):
         self.writer.add_scalar('loss', loss, step)
         lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar('learning_rate', lr, step)
-        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {step}, "
+        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{training_epochs}], step {step}, "
                         f"lr {lr}, "
                         f"loss {loss}")
 
@@ -85,7 +86,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context'].data.numpy()
 
-    def learn(self, dataset):
+    def learn(self, dataset, training_epochs):
         """
 
         :param dataset:
@@ -100,7 +101,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder.train(True)
 
         loss_record = []
-        for epoch in range(self.pretrain_epochs):
+        for epoch in range(training_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             for step in range(1, len(dataloader) + 1):
@@ -140,9 +141,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.log_info(loss, step, epoch)
+                self.log_info(loss, step, epoch, training_epochs)
 
-            self.scheduler.step()
+            if self.scheduler is not None:
+                self.scheduler.step()
             loss_record.append(loss_meter.avg.cpu().item())
             self.encoder.train(False)
             self.decoder.train(False)
