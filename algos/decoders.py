@@ -154,7 +154,6 @@ class ActionConditionedVectorDecoder(LossDecoder):
             self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
         else:
             self.scale_projection = lambda x: torch.ones(projection_shape)
-        self.relu = nn.ReLU
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -169,4 +168,3 @@ class ActionConditionedVectorDecoder(LossDecoder):
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
         return Normal(loc=mean_projection, scale=scale)
-
