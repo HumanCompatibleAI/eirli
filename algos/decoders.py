@@ -160,7 +160,6 @@ class ActionConditionedVectorDecoder(LossDecoder):
         return z_dist
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
-
         z = self.get_vector(z_dist)
         actions = extra_context
         processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
@@ -170,5 +169,4 @@ class ActionConditionedVectorDecoder(LossDecoder):
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
         return Normal(loc=mean_projection, scale=scale)
-
 
