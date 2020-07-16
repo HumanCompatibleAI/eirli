@@ -59,7 +59,7 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
                           should_render=False)
     data = get_random_traj(env=env, timesteps=timesteps)
 
-    # setup enviornment
+    # setup environment
     if is_atari:
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:
@@ -67,8 +67,9 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     assert issubclass(algo, RepresentationLearner)
     ## TODO allow passing in of kwargs here
 
-
-    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
+    # TODO figure out clean way to pass in action space
+    algo_params = {}
+    algo_params.update({k: v for k, v in _config.items() if k in rep_learner_params.keys()})
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model

@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
 from .base_learner import BaseEnvironmentLearner
 from .utils import AverageMeter, LinearWarmupCosine, plot_single, save_model, Logger
-
+from .augmenters import AugmentContextOnly
 
 DEFAULT_HYPERPARAMS = {
             'optimizer': torch.optim.SGD,
@@ -28,7 +28,7 @@ DEFAULT_HYPERPARAMS = {
         }
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, augmenter, target_pair_constructor,
+    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor, augmenter=AugmentContextOnly,
                  batch_extender=IdentityBatchExtender, **kwargs):
         super(RepresentationLearner, self).__init__(env)
         self.env = env
@@ -83,8 +83,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         if len(batch['extra_context']) == 0:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], None
         else:
-            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context'].data.numpy()
-
+            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
     def learn(self, dataset):
         """
 

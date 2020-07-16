@@ -40,7 +40,6 @@ class IdentityPairConstructor(TargetPairConstructor):
 
 
 class TemporalOffsetPairConstructor(TargetPairConstructor):
-    #TODO generalize this to offsets of arbitrary k rather than 1
     def __init__(self, mode=None, temporal_offset=1):
         self.mode = mode
         self.k = temporal_offset
@@ -58,18 +57,16 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 trajectory_ind += 1
                 timestep = 0
                 continue
-            try:
-                if self.mode is None:
-                    dataset.append({'context': obs[i], 'target': obs[i + self.k],
-                                    'extra_context': [], 'traj_ts_ids': [trajectory_ind, timestep]})
-                elif self.mode == 'dynamics':
-                    dataset.append({'context': obs[i], 'target': obs[i + self.k],
-                                    'extra_context': actions[i:i+self.k], 'traj_ts_ids': [trajectory_ind, timestep]})
-                elif self.mode == 'inverse_dynamics':
-                    dataset.append({'context': obs[i], 'target': actions[i:i+self.k],
-                                    'extra_context': obs[i + self.k], 'traj_ts_ids': [trajectory_ind, timestep]})
-            except IndexError:
-                import pdb; pdb.set_trace()
+            if self.mode is None:
+                dataset.append({'context': obs[i], 'target': obs[i + self.k],
+                                'extra_context': [], 'traj_ts_ids': [trajectory_ind, timestep]})
+            elif self.mode == 'dynamics':
+                dataset.append({'context': obs[i], 'target': obs[i + self.k],
+                                'extra_context': actions[i:i+self.k], 'traj_ts_ids': [trajectory_ind, timestep]})
+            elif self.mode == 'inverse_dynamics':
+                dataset.append({'context': obs[i], 'target': actions[i:i+self.k],
+                                'extra_context': obs[i + self.k], 'traj_ts_ids': [trajectory_ind, timestep]})
+
             timestep += 1
             i += 1
         return dataset
