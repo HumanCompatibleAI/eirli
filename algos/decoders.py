@@ -142,7 +142,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
             self.action_processer= nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
             processed_action_dim = action_embedding_dim
         elif isinstance(action_space, spaces.Box):
-            self.action_processer = lambda x: torch.flatten(x)
+            self.action_processer = torch.flatten
             processed_action_dim = np.prod(action_space.shape)
         else:
             raise NotImplementedError("Action conditioning is only currently implemented for Discrete and Box action spaces")
@@ -163,7 +163,6 @@ class ActionConditionedVectorDecoder(LossDecoder):
             self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
         else:
             self.scale_projection = lambda x: torch.ones(projection_shape)
-        self.relu = nn.ReLU
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -186,6 +185,3 @@ class ActionConditionedVectorDecoder(LossDecoder):
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
         return Normal(loc=mean_projection, scale=scale)
-
-
-

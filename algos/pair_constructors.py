@@ -41,6 +41,7 @@ class IdentityPairConstructor(TargetPairConstructor):
 
 class TemporalOffsetPairConstructor(TargetPairConstructor):
     def __init__(self, mode=None, temporal_offset=1):
+        assert mode in (None, 'dynamics', 'inverse_dynamics')
         self.mode = mode
         self.k = temporal_offset
 
@@ -70,5 +71,4 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
             timestep += 1
             i += 1
         return dataset
-
 
