@@ -6,9 +6,9 @@ from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from algos import *
 from algos.representation_learner import DEFAULT_HYPERPARAMS as rep_learner_params
+from algos.utils import create_test_env
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from rl_baselines_zoo.utils import create_test_env
 import numpy as np
 
 
