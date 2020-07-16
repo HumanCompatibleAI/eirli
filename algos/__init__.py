@@ -46,6 +46,7 @@ class TemporalCPC(RepresentationLearner):
                                           target_pair_constructor_kwargs={"temporal_offset": temporal_offset},
                                           **kwargs)
 
+
 class RecurrentCPC(RepresentationLearner):
     """
     Implementation of a recurrent version of CPC: Contrastive Predictive Coding
@@ -63,7 +64,7 @@ class RecurrentCPC(RepresentationLearner):
                                            decoder=NoOp,
                                            loss_calculator=AsymmetricContrastiveLoss,
                                            target_pair_constructor=IdentityPairConstructor,
-                                           recurrent=True,
+                                           shuffle_dataset=False,
                                            **kwargs)
 
 
@@ -104,18 +105,6 @@ class MoCoWithProjection(RepresentationLearner):
                                                  batch_extender=QueueBatchExtender,
                                                  batch_extender_kwargs={'queue_size': queue_size},
                                                  **kwargs)
-
-
-class RNNTest(RepresentationLearner):
-    def __init__(self, env, log_dir, **kwargs):
-        super(RNNTest, self).__init__(env=env,
-                                      log_dir=log_dir,
-                                      encoder=RecurrentEncoder,
-                                      decoder=NoOp,
-                                      loss_calculator=AsymmetricContrastiveLoss,
-                                      target_pair_constructor=IdentityPairConstructor,
-                                      shuffle_dataset=False,
-                                      **kwargs)
 
 
 class DynamicsPrediction(RepresentationLearner):
