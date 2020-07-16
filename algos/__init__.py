@@ -69,7 +69,7 @@ class RNNTest(RepresentationLearner):
                                       decoder=NoOp,
                                       loss_calculator=AsymmetricContrastiveLoss,
                                       target_pair_constructor=IdentityPairConstructor,
-                                      recurrent=True,
+                                      shuffle_dataset=False,
                                       **kwargs)
 
 
@@ -126,7 +126,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     expected policy, as might need to happen if the algorithm needed to predict the frame at time (t+k) over any
     possible action distribution.
     """
-    def __init__(self, env, log_dir, temporal_offset=1, **kwargs):
+    def __init__(self, env, log_dir, temporal_offset=1, shuffle_dataset=False, **kwargs):
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
@@ -136,6 +136,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                                            decoder=ActionConditionedVectorDecoder,
                                                            decoder_kwargs={'action_space': env.action_space},
                                                            loss_calculator=AsymmetricContrastiveLoss,
+                                                           shuffle_dataset=shuffle_dataset,
                                                            **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished

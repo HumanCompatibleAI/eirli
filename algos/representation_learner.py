@@ -18,7 +18,7 @@ DEFAULT_HYPERPARAMS = {
             'projection_dim': None,
             'seed': 0,
             'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-            'recurrent': False,
+            'shuffle_dataset': True,
             'target_pair_constructor_kwargs': {},
             'augmenter_kwargs': {},
             'encoder_kwargs': {},
@@ -92,7 +92,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False if self.recurrent else True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_dataset)
 
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
