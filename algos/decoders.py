@@ -4,6 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Normal
 import itertools
+import gym.spaces as spaces
+import numpy as np
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -20,6 +22,8 @@ both the representation of the current state, and also information about the nex
 need for extra information beyond the central context state is why we have `extra_context` as an optional 
 bit of data that pair constructors can return, to be passed forward for use here 
 """
+
+#TODO change shape to dim throughout this file and the code
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -103,8 +107,9 @@ class MomentumProjectionHead(LossDecoder):
 
 
 class BYOLProjectionHead(MomentumProjectionHead):
-    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99):
-        super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape, momentum_weight=momentum_weight)
+    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99, sample=False):
+        super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape,
+                                                 sample=sample, momentum_weight=momentum_weight)
         self.context_predictor = ProjectionHead(projection_shape, projection_shape)
 
     def parameters(self, recurse=True):
@@ -123,3 +128,44 @@ class BYOLProjectionHead(MomentumProjectionHead):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
+
+
+class ActionConditionedVectorDecoder(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, action_space, sample=False, action_encoding_dim=128,
+                 action_encoder_layers=1, learn_scale=False, action_embedding_dim=5):
+        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
+        self.learn_scale = learn_scale
+
+        if isinstance(action_space, spaces.Discrete):
+            self.action_processer= nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
+            processed_action_dim = action_embedding_dim
+        elif isinstance(action_space, spaces.Box):
+            self.action_processer = lambda x: torch.flatten(x)
+            processed_action_dim = np.prod(action_space.shape)
+        else:
+            raise NotImplementedError("Action conditioning is only implemented for Discrete and Box action spaces right now!")
+        self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
+        self.action_conditioned_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+        if self.learn_scale:
+            self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+        else:
+            self.scale_projection = lambda x: torch.ones(projection_shape)
+        self.relu = nn.ReLU
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+
+        z = self.get_vector(z_dist)
+        actions = extra_context
+        processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
+        output, (hidden, cell) = self.action_encoder(processed_actions)
+        action_encoding_vector = torch.squeeze(hidden)
+        merged_vector = torch.cat([z, action_encoding_vector], dim=1)
+        mean_projection = self.action_conditioned_projection(merged_vector)
+        scale = self.scale_projection(merged_vector)
+        return Normal(loc=mean_projection, scale=scale)
+
+
+

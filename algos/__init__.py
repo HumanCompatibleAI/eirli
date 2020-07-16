@@ -1,6 +1,6 @@
 from .representation_learner import RepresentationLearner
 from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder
-from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead
+from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -27,7 +27,6 @@ class TemporalCPC(RepresentationLearner):
                                           encoder=CNNEncoder,
                                           decoder=NoOp,
                                           loss_calculator=AsymmetricContrastiveLoss,
-                                          augmenter=AugmentContextOnly,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
                                           **kwargs)
 
@@ -69,7 +68,6 @@ class RNNTest(RepresentationLearner):
                                       encoder=RecurrentEncoder,
                                       decoder=NoOp,
                                       loss_calculator=AsymmetricContrastiveLoss,
-                                      augmenter=AugmentContextAndTarget,
                                       target_pair_constructor=IdentityPairConstructor,
                                       recurrent=True,
                                       **kwargs)
@@ -82,7 +80,7 @@ class DynamicsPrediction(RepresentationLearner):
                                                  encoder=DynamicsEncoder,
                                                  decoder=NoOp, # Should be a pixel decoder that takes in action, currently errors
                                                  loss_calculator=MSELoss,
-                                                 augmenter=AugmentContextAndTarget,
+                                                 augmenter=AugmentContextOnly,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
                                                  target_pair_constructor_kwargs={'mode': 'dynamics'},
                                                  **kwargs)
@@ -95,7 +93,7 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                                         encoder=InverseDynamicsEncoder,
                                                         decoder=NoOp, # Should be a action decoder that takes in next obs representation
                                                         loss_calculator=MSELoss,
-                                                        augmenter=AugmentContextAndTarget,
+                                                        augmenter=AugmentContextOnly,
                                                         target_pair_constructor=TemporalOffsetPairConstructor,
                                                         target_pair_constructor_kwargs={'mode': 'inverse_dynamics'},
                                                         **kwargs)
@@ -117,6 +115,20 @@ class BYOL(RepresentationLearner):
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=IdentityPairConstructor,
                                    **kwargs)
+
+
+class ActionConditionedTemporalCPC(RepresentationLearner):
+    def __init__(self, env, log_dir, temporal_offset=3, **kwargs):
+        super(ActionConditionedTemporalCPC, self).__init__(env=env,
+                                                           log_dir=log_dir,
+                                                           target_pair_constructor=TemporalOffsetPairConstructor,
+                                                           target_pair_constructor_kwargs={"temporal_offset": temporal_offset,
+                                                                                           "mode": "dynamics"},
+                                                           encoder=CNNEncoder,
+                                                           decoder=ActionConditionedVectorDecoder,
+                                                           decoder_kwargs={'action_space': env.action_space},
+                                                           loss_calculator=AsymmetricContrastiveLoss,
+                                                           **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
 WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
