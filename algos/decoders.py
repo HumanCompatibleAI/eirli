@@ -132,7 +132,7 @@ class BYOLProjectionHead(MomentumProjectionHead):
 
 class ActionConditionedVectorDecoder(LossDecoder):
     def __init__(self, representation_dim, projection_shape, action_space, sample=False, action_encoding_dim=128,
-                 action_encoder_layers=1, learn_scale=False, action_embedding_dim=5):
+                 action_encoder_layers=1, learn_scale=False, action_embedding_dim=5, use_lstm=False):
         super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
         self.learn_scale = learn_scale
 
@@ -143,8 +143,12 @@ class ActionConditionedVectorDecoder(LossDecoder):
             self.action_processer = lambda x: torch.flatten(x)
             processed_action_dim = np.prod(action_space.shape)
         else:
-            raise NotImplementedError("Action conditioning is only implemented for Discrete and Box action spaces right now!")
-        self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
+            raise NotImplementedError("Action conditioning is only currently implemented for Discrete and Box action spaces")
+        if use_lstm:
+            self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
+        else:
+            self.action_encoder = lambda x: (None, (torch.mean(x, dim=1), None))
+            action_encoding_dim = processed_action_dim
         self.action_conditioned_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
         if self.learn_scale:
             self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
@@ -161,6 +165,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         actions = extra_context
         processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
         output, (hidden, cell) = self.action_encoder(processed_actions)
+        import pdb; pdb.set_trace()
         action_encoding_vector = torch.squeeze(hidden)
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
