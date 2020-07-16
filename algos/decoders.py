@@ -165,7 +165,6 @@ class ActionConditionedVectorDecoder(LossDecoder):
         actions = extra_context
         processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
         output, (hidden, cell) = self.action_encoder(processed_actions)
-        import pdb; pdb.set_trace()
         action_encoding_vector = torch.squeeze(hidden)
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
