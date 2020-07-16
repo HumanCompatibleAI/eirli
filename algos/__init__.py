@@ -9,6 +9,15 @@ from .optimizers import LARS
 
 
 class SimCLR(RepresentationLearner):
+    """
+    Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
+    https://arxiv.org/abs/2002.05709
+
+    This method works by using a contrastive loss to push together representations of two differently-augmented
+    versions of the same image. In particular, it uses a symmetric contrastive loss, which compares the
+    (target, context) similarity against similarity of context with all other targets, and also similarity
+     of target with all other contexts.
+    """
     def __init__(self, env, log_dir, **kwargs):
         super(SimCLR, self).__init__(env=env,
                                      log_dir=log_dir,
@@ -21,20 +30,48 @@ class SimCLR(RepresentationLearner):
 
 
 class TemporalCPC(RepresentationLearner):
+    """
+    Implementation of a non-recurrent version of CPC: Contrastive Predictive Coding
+    https://arxiv.org/abs/1807.03748
+
+    By default, augments only the context, but can be modified to augment both context and target.
+    """
     def __init__(self, env, log_dir, **kwargs):
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
                                           encoder=CNNEncoder,
                                           decoder=NoOp,
                                           loss_calculator=AsymmetricContrastiveLoss,
-                                          augmenter=AugmentContextOnly,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
                                           **kwargs)
 
 
-# NB these optimizer_kwargs are copy-pasted, and thus may not be sensible for MoCo
-# Currently breaks due to batch sizes not being the same each run (sometimes < 256)
+class RecurrentCPC(RepresentationLearner):
+    """
+    Implementation of a recurrent version of CPC: Contrastive Predictive Coding
+    https://arxiv.org/abs/1807.03748
+
+    The encoder first encodes individual frames for both context and target, and then, for the context,
+    builds up a recurrent representation of all prior frames in the same trajectory, to use to predict the target.
+
+    By default, augments only the context, but can be modified to augment both context and target.
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        super(RecurrentCPC, self).__init__(env=env,
+                                           log_dir=log_dir,
+                                           encoder=RecurrentEncoder,
+                                           decoder=NoOp,
+                                           loss_calculator=AsymmetricContrastiveLoss,
+                                           target_pair_constructor=IdentityPairConstructor,
+                                           recurrent=True,
+                                           **kwargs)
+
+
 class MoCo(RepresentationLearner):
+    """
+    Implementation of MoCo: Momentum Contrast for Unsupervised Visual Representation Learning
+    https://arxiv.org/abs/1911.05722
+    """
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         super(MoCo, self).__init__(env=env,
                                    log_dir=log_dir,
@@ -49,6 +86,13 @@ class MoCo(RepresentationLearner):
 
 
 class MoCoWithProjection(RepresentationLearner):
+    """
+    Implementation of MoCo: Momentum Contrast for Unsupervised Visual Representation Learning
+    https://arxiv.org/abs/1911.05722
+
+    Includes an additional projection head atop the representation and before the prediction
+    """
+
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         super(MoCoWithProjection, self).__init__(env=env,
                                                  log_dir=log_dir,
@@ -60,19 +104,6 @@ class MoCoWithProjection(RepresentationLearner):
                                                  batch_extender=QueueBatchExtender,
                                                  batch_extender_kwargs={'queue_size': queue_size},
                                                  **kwargs)
-
-
-class RNNTest(RepresentationLearner):
-    def __init__(self, env, log_dir, **kwargs):
-        super(RNNTest, self).__init__(env=env,
-                                      log_dir=log_dir,
-                                      encoder=RecurrentEncoder,
-                                      decoder=NoOp,
-                                      loss_calculator=AsymmetricContrastiveLoss,
-                                      augmenter=AugmentContextAndTarget,
-                                      target_pair_constructor=IdentityPairConstructor,
-                                      recurrent=True,
-                                      **kwargs)
 
 
 class DynamicsPrediction(RepresentationLearner):
