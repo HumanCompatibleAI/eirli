@@ -6,17 +6,18 @@ from .batch_extenders import IdentityBatchExtender
 from .base_learner import BaseEnvironmentLearner
 from .utils import AverageMeter, LinearWarmupCosine, plot_single, save_model, Logger
 from .augmenters import AugmentContextOnly
+import itertools
 
+# Note: all values in this dictionary
 DEFAULT_HYPERPARAMS = {
-            'optimizer': torch.optim.SGD,
-            'optimizer_kwargs': {'lr': 0.03, 'momentum': 0.9, 'weight_decay': 1e-4},
+            'optimizer': torch.optim.Adam,
+            'optimizer_kwargs': None,
             'pretrain_epochs': 200,
             'max_grad_norm': 0.5,
             'batch_size': 256,
             'warmup_epochs': 10,
             'representation_dim': 512,
             'projection_dim': None,
-            'seed': 0,
             'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
             'shuffle_batch': True,
             'target_pair_constructor_kwargs': {},
@@ -27,38 +28,66 @@ DEFAULT_HYPERPARAMS = {
             'loss_calculator_kwargs': {},
         }
 
+
+def to_dict(kwargs_element):
+    # To get around not being able to have empty dicts as default values
+    if kwargs_element is None:
+        return {}
+    else:
+        return kwargs_element
+
+
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
-                 augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, **kwargs):
+                 augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
+                 representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
+                 batch_size=256, warmup_epochs=10, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
+                 augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
+                 loss_calculator_kwargs=None):
+
         super(RepresentationLearner, self).__init__(env)
-        self.env = env
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
         self.logger = Logger(log_dir)
-        for hyperparam, default in DEFAULT_HYPERPARAMS.items():
-            setattr(self, hyperparam, kwargs.get(hyperparam, default))
 
-        if self.projection_dim is None:
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = device
+
+        self.shuffle_batches = shuffle_batches
+        self.batch_size = batch_size
+        self.pretrain_epochs = pretrain_epochs
+
+        if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
             # This doesn't have any meaningful effect unless you specify a projection head.
-            self.projection_dim = self.representation_dim
-        self.augmenter = augmenter(**self.augmenter_kwargs)
-        self.target_pair_constructor = target_pair_constructor(**self.target_pair_constructor_kwargs)
+            projection_dim = representation_dim
 
-        self.encoder = encoder(self.observation_shape, self.representation_dim, **self.encoder_kwargs).to(self.device)
-        self.decoder = decoder(self.representation_dim, self.projection_dim, **self.decoder_kwargs).to(self.device)
+        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
+        self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
-        if self.batch_extender_kwargs.get('queue_size') is not None:
-            # Doing this slightly awkward updating of kwargs to avoid having
-            # the superclass of BatchExtender accept queue_dim as an argument
-            self.batch_extender_kwargs['queue_dim'] = self.projection_dim
-        self.batch_extender = batch_extender(**self.batch_extender_kwargs)
-        self.loss_calculator = loss_calculator(device=self.device, **self.loss_calculator_kwargs)
+        self.encoder = encoder(self.observation_shape, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
+        self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
 
-        self.optimizer = self.optimizer(list(self.encoder.parameters()) + list(self.decoder.parameters()), **self.optimizer_kwargs)
+        if batch_extender_kwargs is None:
+            # Doing this to avoid having batch_extender() take an optional kwargs dict
+            self.batch_extender = batch_extender()
+        else:
+            if batch_extender_kwargs.get('queue_size') is not None:
+                # Doing this slightly awkward updating of kwargs to avoid having
+                # the superclass of BatchExtender accept queue_dim as an argument
+                batch_extender_kwargs['queue_dim'] = projection_dim
+
+            self.batch_extender = batch_extender(**batch_extender_kwargs)
+
+        self.loss_calculator = loss_calculator(device=self.device, **to_dict(loss_calculator_kwargs))
+
+        self.optimizer = optimizer(itertools.chain(self.encoder.parameters(), self.decoder.parameters()),
+                                   **to_dict(optimizer_kwargs))
 
         # TODO make the scheduler parameterizable
-        self.scheduler = LinearWarmupCosine(self.optimizer, self.warmup_epochs, self.pretrain_epochs)
+        self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
     def log_info(self, loss, step, epoch_ind):
