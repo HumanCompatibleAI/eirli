@@ -36,7 +36,6 @@ class Encoder(nn.Module):
         return x
 
 
-
 class CNNEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, architecture=None, learn_scale=False):
         super(CNNEncoder, self).__init__()
@@ -44,39 +43,37 @@ class CNNEncoder(Encoder):
             architecture = DEFAULT_CNN_ARCHITECTURE
         self.input_channel = obs_shape[2]
         self.representation_dim = representation_dim
-        self.conv_layers = []
-        self.dense_layers = []
-        for layer_spec in architecture['CONV']:
-            self.conv_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
-                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
-            self.input_channel = layer_spec['out_dim']
-        # Needs to be a ModuleList rather than just a list for the parameters of the listed layers
-        # to be visible as part of the module .parameters() return
-        self.conv_layers = nn.ModuleList(self.conv_layers)
+        shared_network_layers = []
 
+        for layer_spec in architecture['CONV']:
+            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
+                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+            shared_network_layers.append(nn.ReLU())
+            self.input_channel = layer_spec['out_dim']
+
+        shared_network_layers.append(nn.Flatten())
         for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
             in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            self.dense_layers.append(nn.Linear(in_dim, out_dim))
+            shared_network_layers.append(nn.Linear(in_dim, out_dim))
+            shared_network_layers.append(nn.ReLU())
+
+        self.shared_network = nn.Sequential(*shared_network_layers)
+
         self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+
+
         if learn_scale:
             self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
         else:
             self.scale_layer = lambda x: torch.ones(self.representation_dim)
 
-        self.dense_layers = nn.ModuleList(self.dense_layers)
-        self.relu = nn.ReLU()
 
     def forward(self, x, traj_info=None):
         x = x.permute(0, 3, 1, 2)
         x /= 255
-        for conv_layer in self.conv_layers:
-            x = self.relu(conv_layer(x))
-        x = torch.flatten(x, 1)
-        for dense_layer in self.dense_layers:
-            x = self.relu(dense_layer(x))
-
-        mean = self.mean_layer(x)
-        scale = torch.exp(self.scale_layer(x))
+        shared_repr = self.shared_network(x)
+        mean = self.mean_layer(shared_repr)
+        scale = torch.exp(self.scale_layer(shared_repr))
         return Normal(loc=mean, scale=scale)
 
 

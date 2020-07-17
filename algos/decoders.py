@@ -21,6 +21,7 @@ need for extra information beyond the central context state is why we have `extr
 bit of data that pair constructors can return, to be passed forward for use here 
 """
 
+
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
         super().__init__()
@@ -54,22 +55,21 @@ class ProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
         super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
-        self.g1 = nn.Linear(self.representation_dim, 256)
-        self.g2 = nn.Linear(256, 256)
-        self.mean = nn.Linear(256, self.projection_dim)
+        self.shared_mlp = nn.Sequential(nn.Linear(self.representation_dim, 256),
+                                      nn.ReLU(),
+                                      nn.Linear(256, 256),
+                                      nn.ReLU())
+        self.mean_layer = nn.Linear(256, self.projection_dim)
+
         if learn_scale:
-            self.scale = nn.Linear(256, self.projection_dim)
+            self.scale_layer = nn.Linear(256, self.projection_dim)
         else:
-            self.scale = lambda x: torch.ones(self.projection_dim)
-        self.relu = nn.ReLU()
+            self.scale_layer = lambda x: torch.ones(self.projection_dim)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
-        z = self.relu(self.g1(z))
-        z = self.relu(self.g2(z))
-        mean = self.mean(z)
-        scale = torch.exp(self.scale(z))
-        return Normal(loc=mean, scale=scale)
+        shared_repr = self.shared_mlp(z)
+        return Normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
 
 
 class MomentumProjectionHead(LossDecoder):
