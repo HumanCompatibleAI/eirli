@@ -8,26 +8,6 @@ from .utils import AverageMeter, LinearWarmupCosine, plot_single, save_model, Lo
 from .augmenters import AugmentContextOnly
 import itertools
 
-# Note: all values in this dictionary
-DEFAULT_HYPERPARAMS = {
-            'optimizer': torch.optim.Adam,
-            'optimizer_kwargs': None,
-            'pretrain_epochs': 200,
-            'max_grad_norm': 0.5,
-            'batch_size': 256,
-            'warmup_epochs': 10,
-            'representation_dim': 512,
-            'projection_dim': None,
-            'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-            'shuffle_batch': True,
-            'target_pair_constructor_kwargs': {},
-            'augmenter_kwargs': {},
-            'encoder_kwargs': {},
-            'decoder_kwargs': {},
-            'batch_extender_kwargs': {},
-            'loss_calculator_kwargs': {},
-        }
-
 
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
@@ -85,7 +65,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
         trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
-        import pdb; pdb.set_trace()
         self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
                                    **to_dict(optimizer_kwargs))
 
