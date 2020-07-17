@@ -4,7 +4,6 @@ import gym
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 import algos
-from algos.representation_learner import DEFAULT_HYPERPARAMS as rep_learner_params
 from algos.representation_learner import RepresentationLearner
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -69,10 +68,9 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     else:
         env = gym.make(env_id)
     assert issubclass(algo, RepresentationLearner)
-    ## TODO allow passing in of kwargs here
 
-
-    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
+    rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
+    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
