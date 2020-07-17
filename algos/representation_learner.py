@@ -83,7 +83,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.loss_calculator = loss_calculator(device=self.device, **to_dict(loss_calculator_kwargs))
 
-        self.optimizer = optimizer(itertools.chain(self.encoder.parameters(), self.decoder.parameters()),
+        trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
+        trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
+        import pdb; pdb.set_trace()
+        self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
                                    **to_dict(optimizer_kwargs))
 
         # TODO make the scheduler parameterizable

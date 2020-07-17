@@ -78,10 +78,9 @@ class MomentumProjectionHead(LossDecoder):
         self.context_decoder = ProjectionHead(representation_dim, projection_shape,
                                               sample=sample, learn_scale=learn_scale)
         self.target_decoder = copy.deepcopy(self.context_decoder)
+        for param in self.target_decoder.parameters():
+            param.requires_grad = False
         self.momentum_weight = momentum_weight
-
-    def parameters(self, recurse=True):
-        return self.context_decoder.parameters(recurse=recurse)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return self.context_decoder(z_dist, traj_info, extra_context=extra_context)
@@ -95,7 +94,8 @@ class MomentumProjectionHead(LossDecoder):
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
-            return self.target_decoder(z_dist, traj_info, extra_context=extra_context)
+            decoded_z_dist = self.target_decoder(z_dist, traj_info, extra_context=extra_context)
+            return Normal(loc=decoded_z_dist.loc.detach(), scale=decoded_z_dist.scale.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):

@@ -89,16 +89,14 @@ class InverseDynamicsEncoder(CNNEncoder):
 
 
 class MomentumEncoder(Encoder):
-    # TODO have some way to pass in optional momentum_weight param
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
                  momentum_weight=0.999, architecture=None):
         super(MomentumEncoder, self).__init__()
         self.query_encoder = CNNEncoder(obs_shape, representation_dim, architecture, learn_scale)
-        self.key_encoder = copy.deepcopy(self.query_encoder)
         self.momentum_weight = momentum_weight
-
-    def parameters(self, recurse=True):
-        return self.query_encoder.parameters()
+        self.key_encoder = copy.deepcopy(self.query_encoder)
+        for param in self.key_encoder.parameters():
+            param.requires_grad = False
 
     def forward(self, x, traj_info):
         return self.query_encoder(x, traj_info)
@@ -106,13 +104,14 @@ class MomentumEncoder(Encoder):
     def encode_target(self, x, traj_info):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-        a backwards hook, but seemed overly complex for an initial POC
+        a backwards hook, but seemed overly complex for an initial proof of concept
         :param x:
         :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
-            return self.key_encoder(x, traj_info)
+            z_dist = self.key_encoder(x, traj_info)
+            return Normal(loc=z_dist.loc.detach(), scale=z_dist.scale.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):

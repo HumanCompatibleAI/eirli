@@ -10,7 +10,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from rl_baselines_zoo.utils import create_test_env
 import numpy as np
-
+import inspect
 
 represent_ex = Experiment('representation_learning')
 
@@ -50,7 +50,12 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     os.mkdir(log_dir)
     #with TemporaryDirectory() as tmp_dir:
     if isinstance(algo, str):
-        algo = dir(algos)[algo]
+        correct_algo_cls = None
+        for algo_name, algo_cls in inspect.getmembers(algos):
+            if algo == algo_name:
+                correct_algo_cls = algo_cls
+                break
+        algo = correct_algo_cls
 
     is_atari = 'NoFrameskip' in env_id
     env = create_test_env(env_id, n_envs=n_envs, is_atari=is_atari,
