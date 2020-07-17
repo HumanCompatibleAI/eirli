@@ -25,11 +25,12 @@ DEFAULT_CNN_ARCHITECTURE = {
 }
 
 class Encoder(nn.Module):
+    # Calls to self() will call self.forward()
     def encode_target(self, x, traj_info):
-        return self.forward(x, traj_info)
+        return self(x, traj_info)
 
     def encode_context(self, x, traj_info):
-        return self.forward(x, traj_info)
+        return self(x, traj_info)
 
     def encode_extra_context(self, x, traj_info):
         return x
@@ -37,9 +38,10 @@ class Encoder(nn.Module):
 
 
 class CNNEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE, learn_scale=False):
+    def __init__(self, obs_shape, representation_dim, architecture=None, learn_scale=False):
         super(CNNEncoder, self).__init__()
-
+        if architecture is None:
+            architecture = DEFAULT_CNN_ARCHITECTURE
         self.input_channel = obs_shape[2]
         self.representation_dim = representation_dim
         self.conv_layers = []
@@ -92,7 +94,7 @@ class InverseDynamicsEncoder(CNNEncoder):
 class MomentumEncoder(Encoder):
     # TODO have some way to pass in optional momentum_weight param
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, architecture=DEFAULT_CNN_ARCHITECTURE):
+                 momentum_weight=0.999, architecture=None):
         super(MomentumEncoder, self).__init__()
         self.query_encoder = CNNEncoder(obs_shape, representation_dim, architecture, learn_scale)
         self.key_encoder = copy.deepcopy(self.query_encoder)
@@ -123,7 +125,7 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 single_frame_architecture=DEFAULT_CNN_ARCHITECTURE, num_recurrent_layers=2,
+                 single_frame_architecture=None, num_recurrent_layers=2,
                  single_frame_repr_dim=None, min_traj_size=5):
         super(RecurrentEncoder, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
@@ -140,9 +142,9 @@ class RecurrentEncoder(Encoder):
         trajectory_id, timesteps = traj_info
         # We should have trajectory_id values for every element in the batch z
         assert len(z) == len(trajectory_id), "Every element in z must have a trajectory ID in a RecurrentEncoder"
-        trajectory_id_arr = trajectory_id.numpy()
+        trajectory_id_arr = trajectory_id
         # A set of all distinct trajectory IDs
-        trajectories = set(trajectory_id_arr)
+        trajectories = torch.unique(trajectory_id_arr)
         padded_trajectories = []
         mask_lengths = []
         for trajectory in trajectories:

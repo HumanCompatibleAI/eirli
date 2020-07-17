@@ -1,11 +1,11 @@
 import sys, os
 import gym
-sys.path.append(os.path.abspath('../'))
 
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
-from algos import *
+import algos
 from algos.representation_learner import DEFAULT_HYPERPARAMS as rep_learner_params
+from algos.representation_learner import RepresentationLearner
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from rl_baselines_zoo.utils import create_test_env
@@ -19,7 +19,7 @@ represent_ex = Experiment('representation_learning')
 def default_config():
     env_id = 'BreakoutNoFrameskip-v4'
     seed = 0
-    algo = SimCLR
+    algo = "SimCLR"
     n_envs = 1
     train_from_expert = True
     timesteps = 640
@@ -51,7 +51,7 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     os.mkdir(log_dir)
     #with TemporaryDirectory() as tmp_dir:
     if isinstance(algo, str):
-        algo = globals()[algo]
+        algo = dir(algos)[algo]
 
     is_atari = 'NoFrameskip' in env_id
     env = create_test_env(env_id, n_envs=n_envs, is_atari=is_atari,
@@ -59,7 +59,7 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
                           should_render=False)
     data = get_random_traj(env=env, timesteps=timesteps)
 
-    # setup enviornment
+    # setup environment
     if is_atari:
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:

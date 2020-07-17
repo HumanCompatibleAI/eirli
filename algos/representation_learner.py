@@ -18,7 +18,7 @@ DEFAULT_HYPERPARAMS = {
             'projection_dim': None,
             'seed': 0,
             'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-            'recurrent': False,
+            'shuffle_batch': True,
             'target_pair_constructor_kwargs': {},
             'augmenter_kwargs': {},
             'encoder_kwargs': {},
@@ -48,7 +48,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.encoder = encoder(self.observation_shape, self.representation_dim, **self.encoder_kwargs).to(self.device)
         self.decoder = decoder(self.representation_dim, self.projection_dim, **self.decoder_kwargs).to(self.device)
 
-        self.batch_extender = batch_extender(queue_dim=self.projection_dim, **self.batch_extender_kwargs)
+        if self.batch_extender_kwargs.get('queue_size') is not None:
+            # Doing this slightly awkward updating of kwargs to avoid having
+            # the superclass of BatchExtender accept queue_dim as an argument
+            self.batch_extender_kwargs['queue_dim'] = self.projection_dim
+        self.batch_extender = batch_extender(**self.batch_extender_kwargs)
         self.loss_calculator = loss_calculator(device=self.device, **self.loss_calculator_kwargs)
 
         self.optimizer = self.optimizer(list(self.encoder.parameters()) + list(self.decoder.parameters()), **self.optimizer_kwargs)
@@ -93,7 +97,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False if self.recurrent else True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
 
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
@@ -103,7 +107,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         for epoch in range(self.pretrain_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
-            for step in range(1, len(dataloader) + 1):
+            for step, batch in enumerate(dataloader, start=1):
 
                 # Construct batch (currently just using Torch's default batch-creator)
                 batch = next(dataiter)

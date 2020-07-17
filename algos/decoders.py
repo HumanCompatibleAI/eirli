@@ -23,7 +23,7 @@ bit of data that pair constructors can return, to be passed forward for use here
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
-        super(LossDecoder, self).__init__()
+        super().__init__()
         self.representation_dim = representation_dim
         self.projection_dim = projection_shape
         self.sample = sample
@@ -31,11 +31,12 @@ class LossDecoder(nn.Module):
     def forward(self, z, traj_info, extra_context=None):
         pass
 
+    # Calls to self() will call self.forward()
     def decode_target(self, z, traj_info, extra_context=None):
-        return self.forward(z, traj_info, extra_context=extra_context)
+        return self(z, traj_info, extra_context=extra_context)
 
     def decode_context(self, z, traj_info, extra_context=None):
-        return self.forward(z, traj_info, extra_context=extra_context)
+        return self(z, traj_info, extra_context=extra_context)
 
     def get_vector(self, z_dist):
         if self.sample:
@@ -82,7 +83,7 @@ class MomentumProjectionHead(LossDecoder):
     def parameters(self, recurse=True):
         return self.context_decoder.parameters(recurse=recurse)
 
-    def forward(self, z_dist, traj_info, extra_context=None):
+    def decode_context(self, z_dist, traj_info, extra_context=None):
         return self.context_decoder(z_dist, traj_info, extra_context=extra_context)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
