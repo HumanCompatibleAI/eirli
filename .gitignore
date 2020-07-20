@@ -1,2 +1,11 @@
 rep_learning_runs/*
+imitation_runs
 *.pyc
+*.egg-info
+
+# editor and devlopment tool cruft
+.pytype
+*.swp
+.#*
+*~
+.idea
