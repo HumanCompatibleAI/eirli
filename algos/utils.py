@@ -12,11 +12,8 @@ from datetime import datetime
 from PIL import Image
 import cv2
 
-now = datetime.now()
-
-
-def add_noise(state, noise_var):
-    noise = np.random.normal(0, noise_var, state.shape[0])
+def add_noise(state, noise_std_dev):
+    noise = np.random.normal(0, noise_std_dev, state.shape[0])
     noise_state = state + noise
     return noise_state
 
@@ -41,7 +38,7 @@ def show_plt_image(img):
 # TODO: Have the calls to savefig below save to the log directory (or at least make the output directory in case it doesn't exist)
 def plot(arr, env_id, gap=1):
     fig = plt.figure()
-    x = np.array(list(range(len(arr[0])))) * gap
+    x = np.arange(len(arr.shape[1])) * gap
     plt.plot(x, arr[0], marker='', color='steelblue', linewidth=0.8, alpha=0.9, label='Reward')
     plt.plot(x, arr[1], marker='', color='Green', linewidth=0.8, alpha=0.9, label='Lossx40')
 
@@ -50,7 +47,7 @@ def plot(arr, env_id, gap=1):
     plt.xlabel("episode", fontsize=12)
     plt.ylabel("score", fontsize=12)
 
-    plt.savefig(os.path.abspath('../') + f'/output/[{time_now(now)}]{env_id}.png')
+    plt.savefig(os.path.abspath('../') + f'/output/[{time_now(datetime.now())}]{env_id}.png')
     plt.close(fig)
 
 
@@ -61,14 +58,13 @@ def plot_single(arr, label, msg):
     plt.legend(loc='upper right')
     plt.xlabel("episode", fontsize=12)
 
-    plt.savefig(os.path.abspath('../') + f'/output/[{time_now(now)}]{msg}.png')
+    plt.savefig(os.path.abspath('../') + f'/output/[{time_now(datetime.now())}]{msg}.png')
     plt.close(fig)
 
 
 def save_model(model, env_id, save_path):
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    torch.save(model.state_dict(), os.path.join(save_path, f'[{time_now(now)}]{env_id}.ckpt'))
+    os.makedirs(save_path, exist_ok=True)
+    torch.save(model.state_dict(), os.path.join(save_path, f'[{time_now(datetime.now())}]{env_id}.ckpt'))
 
 
 def time_now(n):
