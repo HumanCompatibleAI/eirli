@@ -1,9 +1,6 @@
 import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# numpy warnings because of tensorflow
-warnings.filterwarnings("ignore", category=FutureWarning)
-from tensorflow.python.util import deprecation
-deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 from algos import *
 from run_rep_learner import represent_ex
