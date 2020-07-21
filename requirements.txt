@@ -1,14 +1,17 @@
-numpy
-gym[atari]>=0.17
-sacred
-torch
-stable-baselines3
-opencv-python
-torchvision
-pyyaml
-sacred
-pytest
+numpy~=1.19.0
+gym[atari]~=0.17
+sacred~=0.8.1
+torch~=1.5.1
+opencv-python~=4.3.0.36
+torchvision~=0.6.1
+pyyaml~=5.3.1
+sacred~=0.8.1
+tensorboard~=2.2.0
+pytest~=5.4.3
+
+# imitation needs SB3 master as of 2020-07-21
 git+git://github.com/HumanCompatibleAI/imitation@sb3#egg=imitation
+git+https://github.com/DLR-RM/stable-baselines3.git@master@egg=stable-baselines3
 
 # environments
 git+ssh://git@github.com/qxcv/magical@master#egg=magical
