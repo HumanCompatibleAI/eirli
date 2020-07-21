@@ -9,8 +9,9 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import numpy as np
 import inspect
-
+from algos.utils import LinearWarmupCosine
 represent_ex = Experiment('representation_learning')
+
 
 
 @represent_ex.config
@@ -22,6 +23,16 @@ def default_config():
     timesteps = 640
     pretrain_only = False
     pretrain_epochs = 50
+    scheduler = None
+    scheduler_kwargs = dict()
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def cosine_warmup_scheduler():
+    scheduler = LinearWarmupCosine
+    scheduler_kwargs = {'warmup_epoch': 2, 'T_max': 10}
     _ = locals()
     del _
 
@@ -40,8 +51,7 @@ def get_random_traj(env, timesteps):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
-           pretrain_only, pretrain_epochs, _config):
+def run(env_id, seed, algo, n_envs, timesteps, pretrain_epochs, _config):
 
     # TODO fix this hacky nonsense
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
@@ -66,7 +76,7 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
 
     data = get_random_traj(env=env, timesteps=timesteps)
     assert issubclass(algo, RepresentationLearner)
-
+    import pdb; pdb.set_trace()
     rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
     model = algo(env, log_dir=log_dir, **algo_params)
