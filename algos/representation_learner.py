@@ -4,58 +4,74 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
 from .base_learner import BaseEnvironmentLearner
-from .utils import AverageMeter, save_model, Logger
+from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from .augmenters import AugmentContextOnly
+import itertools
 
-DEFAULT_HYPERPARAMS = {
-            'optimizer': torch.optim.Adam,
-            'optimizer_kwargs': {},
-            'scheduler': None,
-            'scheduler_kwargs': {},
-            'max_grad_norm': 0.5,
-            'batch_size': 256,
-            'representation_dim': 512,
-            'projection_dim': None,
-            'seed': 0,
-            'device': torch.device("cuda" if torch.cuda.is_available() else "cpu"),
-            'recurrent': False,
-            'target_pair_constructor_kwargs': {},
-            'augmenter_kwargs': {},
-            'encoder_kwargs': {},
-            'decoder_kwargs': {},
-            'batch_extender_kwargs': {},
-            'loss_calculator_kwargs': {},
-        }
+
+def to_dict(kwargs_element):
+    # To get around not being able to have empty dicts as default values
+    if kwargs_element is None:
+        return {}
+    else:
+        return kwargs_element
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor, augmenter=AugmentContextOnly,
-                 batch_extender=IdentityBatchExtender, **kwargs):
+    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
+                 augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
+                 representation_dim=512, scheduler=None, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
+                 batch_size=256, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
+                 augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
+                 loss_calculator_kwargs=None, scheduler_kwargs=None):
+
         super(RepresentationLearner, self).__init__(env)
-        self.env = env
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
         self.logger = Logger(log_dir)
-        for hyperparam, default in DEFAULT_HYPERPARAMS.items():
-            setattr(self, hyperparam, kwargs.get(hyperparam, default))
 
-        if self.projection_dim is None:
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = device
+
+        self.shuffle_batches = shuffle_batches
+        self.batch_size = batch_size
+        self.pretrain_epochs = pretrain_epochs
+
+        if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
             # This doesn't have any meaningful effect unless you specify a projection head.
-            self.projection_dim = self.representation_dim
-        self.augmenter = augmenter(**self.augmenter_kwargs)
-        self.target_pair_constructor = target_pair_constructor(**self.target_pair_constructor_kwargs)
+            projection_dim = representation_dim
 
-        self.encoder = encoder(self.observation_shape, self.representation_dim, **self.encoder_kwargs).to(self.device)
-        self.decoder = decoder(self.representation_dim, self.projection_dim, **self.decoder_kwargs).to(self.device)
+        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
+        self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
-        self.batch_extender = batch_extender(queue_dim=self.projection_dim, **self.batch_extender_kwargs)
-        self.loss_calculator = loss_calculator(device=self.device, **self.loss_calculator_kwargs)
+        self.encoder = encoder(self.observation_shape, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
+        self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
 
-        self.optimizer = self.optimizer(list(self.encoder.parameters()) + list(self.decoder.parameters()), **self.optimizer_kwargs)
+        if batch_extender_kwargs is None:
+            # Doing this to avoid having batch_extender() take an optional kwargs dict
+            self.batch_extender = batch_extender()
+        else:
+            if batch_extender_kwargs.get('queue_size') is not None:
+                # Doing this slightly awkward updating of kwargs to avoid having
+                # the superclass of BatchExtender accept queue_dim as an argument
+                batch_extender_kwargs['queue_dim'] = projection_dim
 
-        if self.scheduler is not None:
-            self.scheduler = self.scheduler(self.optimizer, **self.scheduler_kwargs)
+            self.batch_extender = batch_extender(**batch_extender_kwargs)
+
+        self.loss_calculator = loss_calculator(device=self.device, **to_dict(loss_calculator_kwargs))
+
+        trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
+        trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
+        self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
+                                   **to_dict(optimizer_kwargs))
+
+        if scheduler is not None:
+            self.scheduler = scheduler(self.optimizer, **to_dict(scheduler_kwargs))
+        else:
+            self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
     def log_info(self, loss, step, epoch_ind, training_epochs):
@@ -94,7 +110,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False if self.recurrent else True)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
 
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
@@ -104,7 +120,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         for epoch in range(training_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
-            for step in range(1, len(dataloader) + 1):
+            for step, batch in enumerate(dataloader, start=1):
 
                 # Construct batch (currently just using Torch's default batch-creator)
                 batch = next(dataiter)
