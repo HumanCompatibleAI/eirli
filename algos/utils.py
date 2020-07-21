@@ -12,6 +12,7 @@ from datetime import datetime
 from PIL import Image
 import cv2
 
+
 def add_noise(state, noise_std_dev):
     noise = np.random.normal(0, noise_std_dev, state.shape[0])
     noise_state = state + noise

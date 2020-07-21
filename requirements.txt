@@ -7,6 +7,5 @@ opencv-python~=4.3.0.36
 torchvision~=0.6.1
 pyyaml~=5.3.1
 sacred~=0.8.1
-tensorflow==1.14.0
+tensorboard~=2.2.0
 pytest~=5.4.3
-stable-baselines~=2.10.0
