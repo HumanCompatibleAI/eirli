@@ -13,7 +13,8 @@ register_envs()
 
 def load_data(
     pickle_paths: List[str],
-    preprocessor_name: Optional[str] = 'LoResCHW4E'
+    preprocessor_name: Optional[str] = 'LoRes4E',
+    transpose_observations=False,
 ) -> Tuple[str, il_dataset.Dataset]:
     """Load MAGICAL data from pickle files."""
 
@@ -54,6 +55,9 @@ def load_data(
 
     # Finally we build a DictDatset for actions and observations.
     dataset_dict = collections.defaultdict(list)
+    # we will use obs_keys to decide which arrays we have to transpose, if
+    # transpose_observations=True
+    obs_keys = set()
     for trajectory in demo_trajectories:
         if isinstance(trajectory.obs, dict):
             # Without any preprocessing, MAGICAL observations are dicts
@@ -62,16 +66,27 @@ def load_data(
             for key, value in trajectory.obs.items():
                 # we clip off the last (terminal) time step, which doesn't
                 # correspond to any action
-                dataset_dict['obs_' + key].append(value[:-1])
+                full_key = 'obs_' + key
+                dataset_dict[full_key].append(value[:-1])
+                obs_keys.add(full_key)
         else:
             # Otherwise, observations should just be a flat ndarray
             assert isinstance(trajectory.obs, np.ndarray)
             # again clip off the terminal observation
             dataset_dict['obs'].append(trajectory.obs[:-1])
+            obs_keys.add('obs')
         dataset_dict['acts'].append(trajectory.acts)
-    dataset = il_dataset.RandomDictDataset({
-        key: np.concatenate(values, axis=0)
-        for key, values in dataset_dict.items()
-    })
+
+    # join together all the lists of ndarrays
+    dataset_dict = {
+        item_name: np.concatenate(array_list, axis=0)
+        for item_name, array_list in dataset_dict.items()
+    }
+
+    if transpose_observations:
+        for obs_key in obs_keys:
+            dataset_dict[obs_key] = np.moveaxis(dataset_dict[obs_key], -1, 1)
+
+    dataset = il_dataset.RandomDictDataset(dataset_dict)
 
     return env_name, dataset

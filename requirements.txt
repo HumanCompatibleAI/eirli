@@ -11,6 +11,6 @@ pytest
 git+git://github.com/HumanCompatibleAI/imitation@sb3#egg=imitation
 
 # environments
-git+ssh://git@github.com/qxcv/magical@419f7353adf3666d5fd2689b5304b64c9368f682#egg=magical
+git+ssh://git@github.com/qxcv/magical@master#egg=magical
 dm_control~=0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym

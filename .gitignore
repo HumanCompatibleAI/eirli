@@ -2,6 +2,8 @@ rep_learning_runs/*
 imitation_runs
 *.pyc
 *.egg-info
+# data/ is used to set up symlinks to datasets
+data
 
 # editor and devlopment tool cruft
 .pytype
