@@ -138,16 +138,15 @@ class RecurrentEncoder(Encoder):
         trajectory_id, timesteps = traj_info
         # We should have trajectory_id values for every element in the batch z
         assert len(z) == len(trajectory_id), "Every element in z must have a trajectory ID in a RecurrentEncoder"
-        trajectory_id_arr = trajectory_id
         # A set of all distinct trajectory IDs
-        trajectories = torch.unique(trajectory_id_arr)
+        trajectories = torch.unique(trajectory_id)
         padded_trajectories = []
         mask_lengths = []
         for trajectory in trajectories:
-            traj_timesteps = timesteps[trajectory_id_arr == trajectory]
+            traj_timesteps = timesteps[trajectory_id == trajectory]
             assert list(traj_timesteps) == sorted(list(traj_timesteps)), "Batches must be sorted to use a RecurrentEncoder"
             # Get all Z vectors associated with a trajectory, which have now been confirmed to be sorted timestep-wise
-            traj_z = z[trajectory_id_arr == trajectory]
+            traj_z = z[trajectory_id == trajectory]
             # Keep track of how many actual unpadded values were in the trajectory
             mask_lengths.append(traj_z.shape[0])
             pad_size = batch_size - traj_z.shape[0]
