@@ -1,0 +1,21 @@
+version: 2.1
+
+orbs:
+  python: circleci/python@0.2.1
+
+jobs:
+  build-and-test:
+    executor:
+      name: python/default
+      tag: '3.7'
+    steps:
+      - checkout
+      - python/install-deps
+      - run:
+          command: pytest test_base_algos.py
+          name: Run Tests
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
