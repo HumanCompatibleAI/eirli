@@ -63,7 +63,7 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
         logits = torch.cat((sim_ij, sim_ik), 1)
         logits /= self.temp
 
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(self.device)
+        labels = torch.zeros(logits.shape[0], dtype=torch.long, device=self.device)
         return self.criterion(logits, labels)
 
 
@@ -76,7 +76,6 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         super(SymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
-        self.device = device
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
