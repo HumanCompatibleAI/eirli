@@ -1,10 +1,6 @@
 import warnings
-
-# ignore cases of numpy warning because of tensorflow
 for category in [FutureWarning, DeprecationWarning, PendingDeprecationWarning]:
     warnings.filterwarnings("ignore", category=category)
-
-
 import inspect
 import algos
 from run_rep_learner import represent_ex
