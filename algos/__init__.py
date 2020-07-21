@@ -181,18 +181,23 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     """
     def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
         target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
+        decoder_kwargs = kwargs.get('decoder_kwargs', {})
         assert 'temporal_offset' not in target_pair_constructor_kwargs, "To control temporal_offset, pass parameter directly into constructor"
+
+        assert 'action_space' not in decoder_kwargs, "Decoder action_space must be governed by env"
         if 'mode' in target_pair_constructor_kwargs:
             raise Warning(
                 f"target_pair_constructor `mode` param must be set to `inverse_dynamics`, overwriting current value {target_pair_constructor_kwargs.get('mode')}")
         target_pair_constructor_kwargs.update({"temporal_offset": temporal_offset, "mode": "dynamics"})
+        decoder_kwargs.update({'action_space': env.action_space})
+
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
                                                            target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                                            encoder=CNNEncoder,
                                                            decoder=ActionConditionedVectorDecoder,
-                                                           decoder_kwargs={'action_space': env.action_space},
+                                                           decoder_kwargs=decoder_kwargs,
                                                            loss_calculator=AsymmetricContrastiveLoss,
                                                            shuffle_batches=shuffle_batches,
                                                            **kwargs)
