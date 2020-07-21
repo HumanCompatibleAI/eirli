@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
 from .base_learner import BaseEnvironmentLearner
-from .utils import AverageMeter, LinearWarmupCosine, plot_single, save_model, Logger
+from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from .augmenters import AugmentContextOnly
 
 DEFAULT_HYPERPARAMS = {
