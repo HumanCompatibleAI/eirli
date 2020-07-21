@@ -64,7 +64,7 @@ class ProjectionHead(LossDecoder):
         if learn_scale:
             self.scale_layer = nn.Linear(256, self.projection_dim)
         else:
-            self.scale_layer = lambda x: torch.ones(self.projection_dim)
+            self.scale_layer = lambda x: torch.ones(self.projection_dim, device=x.device)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
@@ -107,13 +107,6 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def __init__(self, representation_dim, projection_shape, momentum_weight=0.99):
         super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape, momentum_weight=momentum_weight)
         self.context_predictor = ProjectionHead(projection_shape, projection_shape)
-
-    def parameters(self, recurse=True):
-        # In BYOL, the loss is given by MSE(predict(project(z_context)), stop_gradient(project(z_target)))
-        # So, for the parameters, we want to include everything in predict and project for the context,
-        # regardless of whether recurse is True
-        # The projection is handled by the superclass, so we use its parameters method
-        return itertools.chain(self.context_predictor.parameters(recurse=recurse), super().parameters(recurse=recurse))
 
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
