@@ -8,4 +8,4 @@ torchvision
 pyyaml
 sacred
 pytest
-tensorboard
+tensorboard~=2.2.0
