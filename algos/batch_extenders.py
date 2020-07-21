@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import torch
 from torch.distributions import Normal
 
@@ -12,10 +12,7 @@ to be all from a small number of trajectories, but this isn't yet implemented.
 
 
 class BatchExtender(ABC):
-    # TODO Is there a better way to optionally allow for more arguments ignored by the children?
-    def __init__(self, **kwargs):
-        pass
-
+    @abstractmethod
     def __call__(self, context_dist, target_dist):
         pass
 
@@ -26,7 +23,7 @@ class IdentityBatchExtender(BatchExtender):
 
 
 class QueueBatchExtender(BatchExtender):
-    def __init__(self, queue_size, queue_dim, sample=False):
+    def __init__(self, queue_dim, queue_size, sample=False):
         super(QueueBatchExtender, self).__init__()
         self.queue_size = queue_size
         self.representation_dim = queue_dim

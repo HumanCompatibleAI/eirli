@@ -1,6 +1,5 @@
-from abc import ABC
 import numpy as np
-
+from abc import ABC, abstractmethod
 
 """
 Pair Constructors turn a basic trajectory dataset into a dataset of `context`, `target`, and `extra_context` data 
@@ -21,6 +20,8 @@ is the action taken at time (t)
 
 
 class TargetPairConstructor(ABC):
+
+    @abstractmethod
     def __call__(self, data_dict):
         pass
 

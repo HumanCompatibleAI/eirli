@@ -1,7 +1,7 @@
 from torchvision import transforms
 from .utils import gaussian_blur
 import numpy as np
-from abc import ABC
+from abc import ABC, abstractmethod
 
 """
 These are pretty basic: when constructed, they take in a list of augmentations, and 
@@ -17,6 +17,7 @@ class Augmenter(ABC):
         # TODO at some point check if I need to convert this to list or if it can stay a tuple
         self.augment_op = transforms.Compose(list(augmentations))
 
+    @abstractmethod
     def __call__(self, contexts, targets):
         pass
 
