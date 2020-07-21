@@ -25,56 +25,55 @@ DEFAULT_CNN_ARCHITECTURE = {
 }
 
 class Encoder(nn.Module):
+    # Calls to self() will call self.forward()
     def encode_target(self, x, traj_info):
-        return self.forward(x, traj_info)
+        return self(x, traj_info)
 
     def encode_context(self, x, traj_info):
-        return self.forward(x, traj_info)
+        return self(x, traj_info)
 
     def encode_extra_context(self, x, traj_info):
         return x
 
 
-
 class CNNEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, architecture=DEFAULT_CNN_ARCHITECTURE, learn_scale=False):
+    def __init__(self, obs_shape, representation_dim, architecture=None, learn_scale=False):
         super(CNNEncoder, self).__init__()
-
+        if architecture is None:
+            architecture = DEFAULT_CNN_ARCHITECTURE
         self.input_channel = obs_shape[2]
         self.representation_dim = representation_dim
-        self.conv_layers = []
-        self.dense_layers = []
-        for layer_spec in architecture['CONV']:
-            self.conv_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
-                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
-            self.input_channel = layer_spec['out_dim']
-        # Needs to be a ModuleList rather than just a list for the parameters of the listed layers
-        # to be visible as part of the module .parameters() return
-        self.conv_layers = nn.ModuleList(self.conv_layers)
+        shared_network_layers = []
 
+        for layer_spec in architecture['CONV']:
+            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
+                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+            shared_network_layers.append(nn.ReLU())
+            self.input_channel = layer_spec['out_dim']
+
+        shared_network_layers.append(nn.Flatten())
         for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
             in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            self.dense_layers.append(nn.Linear(in_dim, out_dim))
+            shared_network_layers.append(nn.Linear(in_dim, out_dim))
+            shared_network_layers.append(nn.ReLU())
+
+        self.shared_network = nn.Sequential(*shared_network_layers)
+
         self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+
+
         if learn_scale:
             self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
         else:
             self.scale_layer = lambda x: torch.ones(self.representation_dim)
 
-        self.dense_layers = nn.ModuleList(self.dense_layers)
-        self.relu = nn.ReLU()
 
     def forward(self, x, traj_info=None):
         x = x.permute(0, 3, 1, 2)
         x /= 255
-        for conv_layer in self.conv_layers:
-            x = self.relu(conv_layer(x))
-        x = torch.flatten(x, 1)
-        for dense_layer in self.dense_layers:
-            x = self.relu(dense_layer(x))
-
-        mean = self.mean_layer(x)
-        scale = torch.exp(self.scale_layer(x))
+        shared_repr = self.shared_network(x)
+        mean = self.mean_layer(shared_repr)
+        scale = torch.exp(self.scale_layer(shared_repr))
         return Normal(loc=mean, scale=scale)
 
 
@@ -90,16 +89,14 @@ class InverseDynamicsEncoder(CNNEncoder):
 
 
 class MomentumEncoder(Encoder):
-    # TODO have some way to pass in optional momentum_weight param
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, architecture=DEFAULT_CNN_ARCHITECTURE):
+                 momentum_weight=0.999, architecture=None):
         super(MomentumEncoder, self).__init__()
         self.query_encoder = CNNEncoder(obs_shape, representation_dim, architecture, learn_scale)
-        self.key_encoder = copy.deepcopy(self.query_encoder)
         self.momentum_weight = momentum_weight
-
-    def parameters(self, recurse=True):
-        return self.query_encoder.parameters()
+        self.key_encoder = copy.deepcopy(self.query_encoder)
+        for param in self.key_encoder.parameters():
+            param.requires_grad = False
 
     def forward(self, x, traj_info):
         return self.query_encoder(x, traj_info)
@@ -107,13 +104,14 @@ class MomentumEncoder(Encoder):
     def encode_target(self, x, traj_info):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-        a backwards hook, but seemed overly complex for an initial POC
+        a backwards hook, but seemed overly complex for an initial proof of concept
         :param x:
         :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
-            return self.key_encoder(x, traj_info)
+            z_dist = self.key_encoder(x, traj_info)
+            return Normal(loc=z_dist.loc.detach(), scale=z_dist.scale.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -123,7 +121,7 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 single_frame_architecture=DEFAULT_CNN_ARCHITECTURE, num_recurrent_layers=2,
+                 single_frame_architecture=None, num_recurrent_layers=2,
                  single_frame_repr_dim=None, min_traj_size=5):
         super(RecurrentEncoder, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
@@ -140,9 +138,9 @@ class RecurrentEncoder(Encoder):
         trajectory_id, timesteps = traj_info
         # We should have trajectory_id values for every element in the batch z
         assert len(z) == len(trajectory_id), "Every element in z must have a trajectory ID in a RecurrentEncoder"
-        trajectory_id_arr = trajectory_id.numpy()
+        trajectory_id_arr = trajectory_id
         # A set of all distinct trajectory IDs
-        trajectories = set(trajectory_id_arr)
+        trajectories = torch.unique(trajectory_id_arr)
         padded_trajectories = []
         mask_lengths = []
         for trajectory in trajectories:

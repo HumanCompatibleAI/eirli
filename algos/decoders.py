@@ -21,9 +21,10 @@ need for extra information beyond the central context state is why we have `extr
 bit of data that pair constructors can return, to be passed forward for use here 
 """
 
+
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
-        super(LossDecoder, self).__init__()
+        super().__init__()
         self.representation_dim = representation_dim
         self.projection_dim = projection_shape
         self.sample = sample
@@ -31,11 +32,12 @@ class LossDecoder(nn.Module):
     def forward(self, z, traj_info, extra_context=None):
         pass
 
+    # Calls to self() will call self.forward()
     def decode_target(self, z, traj_info, extra_context=None):
-        return self.forward(z, traj_info, extra_context=extra_context)
+        return self(z, traj_info, extra_context=extra_context)
 
     def decode_context(self, z, traj_info, extra_context=None):
-        return self.forward(z, traj_info, extra_context=extra_context)
+        return self(z, traj_info, extra_context=extra_context)
 
     def get_vector(self, z_dist):
         if self.sample:
@@ -53,22 +55,21 @@ class ProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
         super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
-        self.g1 = nn.Linear(self.representation_dim, 256)
-        self.g2 = nn.Linear(256, 256)
-        self.mean = nn.Linear(256, self.projection_dim)
+        self.shared_mlp = nn.Sequential(nn.Linear(self.representation_dim, 256),
+                                      nn.ReLU(),
+                                      nn.Linear(256, 256),
+                                      nn.ReLU())
+        self.mean_layer = nn.Linear(256, self.projection_dim)
+
         if learn_scale:
-            self.scale = nn.Linear(256, self.projection_dim)
+            self.scale_layer = nn.Linear(256, self.projection_dim)
         else:
-            self.scale = lambda x: torch.ones(self.projection_dim)
-        self.relu = nn.ReLU()
+            self.scale_layer = lambda x: torch.ones(self.projection_dim)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
-        z = self.relu(self.g1(z))
-        z = self.relu(self.g2(z))
-        mean = self.mean(z)
-        scale = torch.exp(self.scale(z))
-        return Normal(loc=mean, scale=scale)
+        shared_repr = self.shared_mlp(z)
+        return Normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
 
 
 class MomentumProjectionHead(LossDecoder):
@@ -77,12 +78,11 @@ class MomentumProjectionHead(LossDecoder):
         self.context_decoder = ProjectionHead(representation_dim, projection_shape,
                                               sample=sample, learn_scale=learn_scale)
         self.target_decoder = copy.deepcopy(self.context_decoder)
+        for param in self.target_decoder.parameters():
+            param.requires_grad = False
         self.momentum_weight = momentum_weight
 
-    def parameters(self, recurse=True):
-        return self.context_decoder.parameters(recurse=recurse)
-
-    def forward(self, z_dist, traj_info, extra_context=None):
+    def decode_context(self, z_dist, traj_info, extra_context=None):
         return self.context_decoder(z_dist, traj_info, extra_context=extra_context)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
@@ -94,7 +94,8 @@ class MomentumProjectionHead(LossDecoder):
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
-            return self.target_decoder(z_dist, traj_info, extra_context=extra_context)
+            decoded_z_dist = self.target_decoder(z_dist, traj_info, extra_context=extra_context)
+            return Normal(loc=decoded_z_dist.loc.detach(), scale=decoded_z_dist.scale.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):

@@ -1,8 +1,9 @@
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-
-from algos import *
+for category in [FutureWarning, DeprecationWarning, PendingDeprecationWarning]:
+    warnings.filterwarnings("ignore", category=category)
+import inspect
+import algos
 from run_rep_learner import represent_ex
 from sacred.observers import FileStorageObserver
 import pytest
@@ -12,12 +13,12 @@ represent_ex.observers.append(FileStorageObserver('test_observer'))
 
 def is_representation_learner(el):
     try:
-        return issubclass(el, RepresentationLearner) and el != RepresentationLearner and el not in WIP_ALGOS
+        return issubclass(el, algos.RepresentationLearner) and el != algos.RepresentationLearner and el not in algos.WIP_ALGOS
     except TypeError:
         return False
 
 
-@pytest.mark.parametrize("algo", [el for el in globals().values() if is_representation_learner(el)])
+@pytest.mark.parametrize("algo", [el[1] for el in inspect.getmembers(algos) if is_representation_learner(el[1])])
 def test_algo(algo):
     print()
     print()
