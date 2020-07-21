@@ -1,15 +1,14 @@
-import sys, os
+import os
 import gym
-sys.path.append(os.path.abspath('../'))
 
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
-from algos import *
-from algos.representation_learner import DEFAULT_HYPERPARAMS as rep_learner_params
+import algos
+from algos.representation_learner import RepresentationLearner
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import numpy as np
-
+import inspect
 
 represent_ex = Experiment('representation_learning')
 
@@ -17,8 +16,7 @@ represent_ex = Experiment('representation_learning')
 @represent_ex.config
 def default_config():
     env_id = 'BreakoutNoFrameskip-v4'
-    seed = 0
-    algo = SimCLR
+    algo = "SimCLR"
     n_envs = 1
     train_from_expert = True
     timesteps = 640
@@ -50,12 +48,17 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     os.mkdir(log_dir)
     #with TemporaryDirectory() as tmp_dir:
     if isinstance(algo, str):
-        algo = globals()[algo]
+        correct_algo_cls = None
+        for algo_name, algo_cls in inspect.getmembers(algos):
+            if algo == algo_name:
+                correct_algo_cls = algo_cls
+                break
+        algo = correct_algo_cls
 
     is_atari = 'NoFrameskip' in env_id
 
 
-    # setup enviornment
+    # setup environment
     if is_atari:
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:
@@ -64,8 +67,8 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     data = get_random_traj(env=env, timesteps=timesteps)
     assert issubclass(algo, RepresentationLearner)
 
-
-    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
+    rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
+    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
