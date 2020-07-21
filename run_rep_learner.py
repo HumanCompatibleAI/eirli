@@ -6,7 +6,6 @@ from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from algos import *
 from algos.representation_learner import DEFAULT_HYPERPARAMS as rep_learner_params
-from algos.utils import create_test_env
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import numpy as np
@@ -54,18 +53,16 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
         algo = globals()[algo]
 
     is_atari = 'NoFrameskip' in env_id
-    env = create_test_env(env_id, n_envs=n_envs, is_atari=is_atari,
-                          stats_path=os.path.join(log_dir, 'stats'), seed=seed, log_dir=log_dir,
-                          should_render=False)
-    data = get_random_traj(env=env, timesteps=timesteps)
+
 
     # setup enviornment
     if is_atari:
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:
         env = gym.make(env_id)
+
+    data = get_random_traj(env=env, timesteps=timesteps)
     assert issubclass(algo, RepresentationLearner)
-    ## TODO allow passing in of kwargs here
 
 
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
