@@ -1,5 +1,4 @@
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 for category in [FutureWarning, DeprecationWarning, PendingDeprecationWarning]:
     warnings.filterwarnings("ignore", category=category)
 import inspect
