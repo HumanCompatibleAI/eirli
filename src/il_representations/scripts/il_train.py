@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
-import glob
 import logging
 import os
 
@@ -13,7 +12,6 @@ import imitation.util.logger as imitation_logger
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
-from stable_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 from stable_baselines3.ppo import PPO
 
 from il_representations.envs import magical_envs
@@ -25,26 +23,109 @@ imitation_ex = Experiment('imitation', ingredients=[benchmark_ingredient])
 
 @imitation_ex.config
 def default_config():
-    # FIXME(sam): come up with a more portable way of storing demonstration
-    # paths. Maybe a per-user YAML file mapping {env name: data dir}?
-    demo_pattern = '~/repos/magical/demos-ea/move-to-corner-2020-03-01/demo-*.pkl.gz'  # noqa: E501, F841
-    algo = 'bc'  # noqa: F841
+    # choose between 'bc'/'gail'
+    algo = 'bc'
+
+    # bc config variables
+    bc_n_epochs = 100
+
+
+@benchmark_ingredient.capture
+def load_dataset_magical(magical_demo_dirs, magical_env_prefix):
+    demo_dir = magical_demo_dirs[magical_env_prefix]
+    logging.info(
+        f"Loading trajectory data for '{magical_env_prefix}' from '{demo_dir}'"
+    )
+    demo_paths = [
+        os.path.join(demo_dir, f) for f in os.listdir(demo_dir)
+        if f.endswith('.pkl.gz')
+    ]
+    if not demo_paths:
+        raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
+    gym_env_name_chans_last, dataset = magical_envs.load_data(
+        demo_paths, transpose_observations=True)
+    assert gym_env_name_chans_last.startswith(magical_env_prefix)
+    return gym_env_name_chans_last, dataset
+
+
+@imitation_ex.capture
+def do_training_bc(env_chans_first, dataset, out_dir, bc_n_epochs):
+    trainer = BC(observation_space=env_chans_first.observation_space,
+                 action_space=env_chans_first.action_space,
+                 policy_class=sb3_pols.ActorCriticCnnPolicy,
+                 expert_data=dataset)
+
+    logging.info("Beginning BC training")
+    trainer.train(n_epochs=bc_n_epochs)
+
+    final_path = os.path.join(out_dir, 'policy_final.pt')
+    logging.info(f"Saving final policy to {final_path}")
+    trainer.save_policy(final_path)
+
+
+@imitation_ex.capture
+def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset):
+    # Annoyingly, SB3 always adds a VecTransposeWrapper to the vec_env
+    # that we pass in, so we have to build an un-transposed env first.
+    vec_env_chans_last = make_vec_env(gym_env_name_chans_last,
+                                      n_envs=2,
+                                      seed=0,
+                                      parallel=False)
+    # vec_env_chans_first = VecTransposeImage(vec_env_chans_last)
+    discrim_net = ImageDiscrimNet(
+        observation_space=env_chans_first.observation_space,
+        action_space=env_chans_first.action_space)
+    ppo_algo = PPO(
+        policy=sb3_pols.ActorCriticCnnPolicy,
+        env=vec_env_chans_last,
+        # verbose=1 and tensorboard_log=False is a hack to work around SB3
+        # issue #109.
+        verbose=1,
+        tensorboard_log=None,
+    )
+    trainer = GAIL(
+        vec_env_chans_last,
+        dataset,
+        ppo_algo,
+        discrim_kwargs=dict(discrim_net=discrim_net),
+    )
+
+    # trainer.train() doesn't work because SB3 tries to be clever about
+    # automatically adding image transpose wrappers to vecenvs, but
+    # `imitation` overwrites the vecenv later on without updating SB3's
+    # internal data structures.
+    #
+    # Specifically, PPO notices that the given environment is not wrapped
+    # in a `VecTransposeImage` wrapper, so it wraps it in one. Later on,
+    # GAIL overwrites the wrapped env inside PPO with a new wrapped
+    # environment that does _not_ apply VecTransposeImage. Hacky solution
+    # is to make GAIL apply VecTranposeImage after wrapping the
+    # environment. Non-hacky solution is to make SB3 algorithms not wrap
+    # environments by default, or at least add a flag to `PPO` that
+    # disables auto-wrapping of environments..
+
+    # trainer.train(total_timesteps=2048)
+
+    raise NotImplementedError(
+        "GAIL doesn't work due to image transpose issues in imitation/SB3")
 
 
 @imitation_ex.main
-def run(algo, demo_pattern, _config):
+def train(algo, bc_n_epochs, benchmark, _config):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
     # actually know the right way to write continuous logs in sacred.
-    imitation_logger.configure(imitation_ex.observers[0].dir,
-                               ["stdout", "tensorboard"])
+    out_dir = imitation_ex.observers[0].dir
+    imitation_logger.configure(out_dir, ["stdout", "tensorboard"])
 
-    logging.info(f"Loading trajectory data from '{demo_pattern}'")
-    pickle_paths = glob.glob(os.path.expanduser(demo_pattern))
-    gym_env_name_chans_last, dataset = magical_envs.load_data(
-        pickle_paths, transpose_observations=True)
+    if benchmark['benchmark_name'] == 'magical':
+        gym_env_name_chans_last, dataset = load_dataset_magical()
+    else:
+        raise NotImplementedError(
+            f"only MAGICAL is supported right now; no support for "
+            f"benchmark_name={benchmark['benchmark_name']!r}")
 
     logging.info(
         f"Loaded data for '{gym_env_name_chans_last}', setting up env")
@@ -54,51 +135,14 @@ def run(algo, demo_pattern, _config):
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        trainer = BC(observation_space=env_chans_first.observation_space,
-                     action_space=env_chans_first.action_space,
-                     policy_class=sb3_pols.ActorCriticCnnPolicy,
-                     expert_data=dataset)
-
-        logging.info("Beginning BC training")
-        trainer.train(n_epochs=1)
+        do_training_bc(dataset=dataset,
+                       env_chans_first=env_chans_first,
+                       out_dir=out_dir)
 
     elif algo == 'gail':
-        # Annoyingly, SB3 always adds a VecTransposeWrapper to the vec_env
-        # that we pass in, so we have to build an un-transposed env first.
-        vec_env_chans_last = make_vec_env(gym_env_name_chans_last,
-                                          n_envs=2,
-                                          seed=0,
-                                          parallel=False)
-        # vec_env_chans_first = VecTransposeImage(vec_env_chans_last)
-        discrim_net = ImageDiscrimNet(
-            observation_space=env_chans_first.observation_space,
-            action_space=env_chans_first.action_space)
-        ppo_algo = PPO(
-            policy=sb3_pols.ActorCriticCnnPolicy,
-            env=vec_env_chans_last,
-            # verbose=1 and tensorboard_log=False is a hack to work around SB3
-            # issue #109.
-            verbose=1,
-            tensorboard_log=None,
-        )
-        trainer = GAIL(
-            vec_env_chans_last,
-            dataset,
-            ppo_algo,
-            discrim_kwargs=dict(discrim_net=discrim_net),
-        )
-        # 2020-07-20: this doesn't work because SB3 tries to be clever about
-        # automatically transposing images, but inadvertently causes images to
-        # be transposed _twice_. The problematic line is "self._last_obs =
-        # self.env.reset()" in BaseAlgorithm._setup_learn().
-
-        # UPDATE: it happens b/c GAIL is overwriting the env inside PPO with a
-        # wrapped environment that does _not_ apply VecTransposeImage. Hacky
-        # solution is to make GAIL apply VecTranposeImage after wrapping the
-        # environment. Non-hacky solution is to make SB3 algorithms *not wrap
-        # environments by default*---that just seems like a brittle
-        # anti-solution to the problem they're trying to solve.
-        trainer.train(total_timesteps=2048)
+        do_training_gail(dataset=dataset,
+                         env_chans_first=env_chans_first,
+                         gym_env_name_chans_last=gym_env_name_chans_last)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")

@@ -4,18 +4,40 @@ environments."""
 import collections
 from typing import List, Optional, Tuple
 
-import imitation.data.dataset as il_dataset
+import imitation.data.datasets as il_datasets
+import imitation.data.types as il_types
 from magical import register_envs, saved_trajectories
 import numpy as np
 
 register_envs()
 
 
+class TransitionsMinimalDataset(il_datasets.Dataset):
+    """Exposes a dict {'obs': <observations ndarray>, 'acts'} as a dataset that
+    enumerates `TransitionsMinimal` instances. Useful for interfacing with
+    BC."""
+    def __init__(self, data_map):
+        assert data_map.keys() == {'obs', 'acts'}
+        self.dict_dataset = il_datasets.RandomDictDataset(data_map)
+
+    def sample(self, n_samples):
+        dict_samples = self.dict_dataset.sample(n_samples)
+        # we don't have infos dicts, so we insert some fake ones to make
+        # TransitionsMinimal happy
+        dummy_infos = np.asarray([{}] * n_samples, dtype='object')
+        result = il_types.TransitionsMinimal(infos=dummy_infos, **dict_samples)
+        assert len(result) == n_samples
+        return result
+
+    def size(self):
+        return self.dict_dataset.size()
+
+
 def load_data(
     pickle_paths: List[str],
     preprocessor_name: Optional[str] = 'LoRes4E',
     transpose_observations=False,
-) -> Tuple[str, il_dataset.Dataset]:
+) -> Tuple[str, il_datasets.Dataset]:
     """Load MAGICAL data from pickle files."""
 
     # First we load pickles off disk and infer the env name from their content.
@@ -87,6 +109,6 @@ def load_data(
         for obs_key in obs_keys:
             dataset_dict[obs_key] = np.moveaxis(dataset_dict[obs_key], -1, 1)
 
-    dataset = il_dataset.RandomDictDataset(dataset_dict)
+    dataset = TransitionsMinimalDataset(dataset_dict)
 
     return env_name, dataset
