@@ -1,5 +1,5 @@
 from .representation_learner import RepresentationLearner
-from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder
+from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, NatureCNNEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
@@ -39,7 +39,7 @@ class TemporalCPC(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
-                                          encoder=CNNEncoder,
+                                          encoder=NatureCNNEncoder,
                                           decoder=NoOp,
                                           loss_calculator=AsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,

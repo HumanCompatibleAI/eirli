@@ -3,6 +3,9 @@ import torch.nn as nn
 import copy
 from torch.distributions import Normal
 import numpy as np
+from stable_baselines3.common.policies import NatureCNN
+from gym.spaces import Box
+
 
 """
 Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
@@ -34,6 +37,19 @@ class Encoder(nn.Module):
 
     def encode_extra_context(self, x, traj_info):
         return x
+
+
+class NatureCNNEncoder(Encoder):
+    def __init__(self, obs_shape, representation_dim):
+        super(NatureCNNEncoder, self).__init__()
+        reshaped_obs_shape = (obs_shape[2], obs_shape[0], obs_shape[1])
+        new_obs_space = Box(shape=reshaped_obs_shape, low=0, high=255, dtype=np.uint8)
+        self.feature_network = NatureCNN(observation_space=new_obs_space, features_dim=representation_dim)
+
+    def forward(self, x, traj_info):
+        reshaped_x = x.permute(0, 3, 1, 2)
+        features = self.feature_network(reshaped_x)
+        return Normal(loc=features, scale=1)
 
 
 class CNNEncoder(Encoder):
@@ -77,6 +93,7 @@ class CNNEncoder(Encoder):
         return Normal(loc=mean, scale=scale)
 
 
+# TODO make these able to take in either CNNEncoder or NatureCNNEncoder
 class DynamicsEncoder(CNNEncoder):
     # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
     def encode_target(self, x, traj_info):
@@ -90,9 +107,9 @@ class InverseDynamicsEncoder(CNNEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, architecture=None):
+                 momentum_weight=0.999, architecture=None, inner_encoder_cls=CNNEncoder):
         super(MomentumEncoder, self).__init__()
-        self.query_encoder = CNNEncoder(obs_shape, representation_dim, architecture, learn_scale)
+        self.query_encoder = inner_encoder_cls(obs_shape, representation_dim, architecture, learn_scale)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
@@ -122,12 +139,12 @@ class MomentumEncoder(Encoder):
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
                  single_frame_architecture=None, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5):
+                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_cls=CNNEncoder):
         super(RecurrentEncoder, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
-        self.single_frame_encoder = CNNEncoder(obs_shape, self.single_frame_repr_dim,
+        self.single_frame_encoder = inner_encoder_cls(obs_shape, self.single_frame_repr_dim,
                                                single_frame_architecture, learn_scale)
         self.context_rnn = nn.LSTM(self.single_frame_repr_dim, representation_dim,
                                    self.num_recurrent_layers, batch_first=True)
