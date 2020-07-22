@@ -38,39 +38,46 @@ class Encoder(nn.Module):
 
 class CNNEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, architecture=None, learn_scale=False):
+        # obs_shape is assumed to be of form (H, W, C)
+        # Note in TorchVision PILImages and Numpy arrays are (H, W, C) by default but tensors are (C, H, W)
         super(CNNEncoder, self).__init__()
         if architecture is None:
             architecture = DEFAULT_CNN_ARCHITECTURE
         self.input_channel = obs_shape[2]
         self.representation_dim = representation_dim
-        shared_network_layers = []
 
-        for layer_spec in architecture['CONV']:
-            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
-                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
-            shared_network_layers.append(nn.ReLU())
-            self.input_channel = layer_spec['out_dim']
-
-        shared_network_layers.append(nn.Flatten())
-        for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
-            in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            shared_network_layers.append(nn.Linear(in_dim, out_dim))
-            shared_network_layers.append(nn.ReLU())
-
-        self.shared_network = nn.Sequential(*shared_network_layers)
-
-        self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
-
-
-        if learn_scale:
-            self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
-        else:
+        if isinstance(architecture, nn.Module):
+            assert not learn_scale
+            self.shared_network = architecture
+            self.mean_layer = lambda x: x
             self.scale_layer = lambda x: torch.ones(self.representation_dim)
+        else:
+            shared_network_layers = []
+            for layer_spec in architecture['CONV']:
+                shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
+                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+                shared_network_layers.append(nn.ReLU())
+                self.input_channel = layer_spec['out_dim']
+
+            shared_network_layers.append(nn.Flatten())
+            for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
+                in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
+                shared_network_layers.append(nn.Linear(in_dim, out_dim))
+                shared_network_layers.append(nn.ReLU())
+
+            self.shared_network = nn.Sequential(*shared_network_layers)
+
+            self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+
+
+            if learn_scale:
+                self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
+            else:
+                self.scale_layer = lambda x: torch.ones(self.representation_dim)
 
 
     def forward(self, x, traj_info=None):
         x = x.permute(0, 3, 1, 2)
-        x /= 255
         shared_repr = self.shared_network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
