@@ -23,7 +23,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
                  augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
                  representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
-                 batch_size=256, warmup_epochs=10, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
+                 batch_size=256, warmup_epochs=10, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
                  augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
                  loss_calculator_kwargs=None):
 
@@ -40,6 +40,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.pretrain_epochs = pretrain_epochs
+        self.save_interval = save_interval
 
         self._make_channels_first()
 
@@ -75,6 +76,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # TODO make the scheduler parameterizable
         self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
+        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
+        os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
+        self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
+        os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
     def log_info(self, loss, step, epoch_ind):
         self.writer.add_scalar('loss', loss, step)
@@ -190,5 +195,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg.cpu().item())
             self.encoder.train(False)
             self.decoder.train(False)
-            save_model(self.encoder, 'representation_encoder_network', os.path.join(self.log_dir, 'checkpoints'))
-            save_model(self.decoder, 'representation_decoder_network', os.path.join(self.log_dir, 'checkpoints'))
+            if epoch % self.save_interval == 0:
+                torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+
