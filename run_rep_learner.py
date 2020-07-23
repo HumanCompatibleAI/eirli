@@ -1,6 +1,7 @@
 import os
 import gym
-
+import torch
+from glob import glob
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.policies import ActorCriticPolicy
@@ -78,7 +79,10 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, train_from_ex
     # setup model
     model.learn(data)
 
-    encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder': model.encoder}
+    encoder_checkpoint = model.encoder_checkpoints_path
+    all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
+    latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
+    encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
     policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
                      'features_extractor_kwargs': encoder_feature_extractor_kwargs }
     # encoder_policy = ActorCriticPolicy(observation_space=env.observation_space, action_space=env.action_space,
@@ -88,10 +92,6 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, train_from_ex
     ppo_model = PPO(policy=ActorCriticPolicy, env=env, verbose=1, policy_kwargs=policy_kwargs)
     ppo_model.learn(total_timesteps=1000)
     env.close()
-
-    # Free memory
-    del model
-
 
 if __name__ == '__main__':
     represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
