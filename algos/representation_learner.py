@@ -1,5 +1,7 @@
 import os
 import torch
+import numpy as np
+from collections import Counter
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
@@ -38,6 +40,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.pretrain_epochs = pretrain_epochs
+
+        self._make_channels_first()
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -80,12 +84,34 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"lr {lr}, "
                         f"loss {loss}")
 
-    def tensorize(self, arr):
+    def _make_channels_first(self):
+        # Assumes a square image
+
+        dim_counts = Counter(self.observation_shape)
+        spatial_dimension = dim_counts.most_common()[0][0]
+        assert dim_counts[spatial_dimension] == 2, "This code assumes a square image, implying at least one dimension size repeated"
+        channel_dimension = dim_counts.most_common()[-1][0]
+        assert dim_counts[channel_dimension] == 1, "This code assumes two spatial dimensions and one channels dimension"
+        spatial_indicies = np.arange(len(self.observation_shape))[np.array(self.observation_shape) == spatial_dimension]
+        channel_index = np.arange(len(self.observation_shape))[np.array(self.observation_shape) == channel_dimension].item()
+
+        new_shape = (channel_dimension, spatial_dimension, spatial_dimension)
+        required_permutation = (0, channel_index+1, spatial_indicies[0]+1, spatial_indicies[1]+1) # +1 to account for batch
+        self.observation_shape = new_shape
+        self.permutation_tuple = required_permutation
+
+    def _tensorize(self, arr):
         """
         :param arr: A numpy array
         :return: A torch tensor moved to the device associated with this learner
         """
         return torch.FloatTensor(arr).to(self.device)
+
+    def _preprocess_if_image(self, tensor):
+        if len(tensor.shape) == 4:
+            tensor = tensor.permute(self.permutation_tuple)
+            tensor = tensor / 255
+        return tensor
 
     # TODO maybe make static?
     def unpack_batch(self, batch):
@@ -127,7 +153,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self.augmenter(contexts, targets)
-                contexts, targets = self.tensorize(contexts), self.tensorize(targets)
+                contexts, targets = self._tensorize(contexts), self._tensorize(targets)
+                contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
+                if extra_context is not None:
+                    extra_context = self._preprocess_if_image(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented

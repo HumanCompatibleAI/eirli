@@ -3,8 +3,11 @@ import gym
 
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.ppo import PPO
 import algos
 from algos.representation_learner import RepresentationLearner
+from policy_interfacing import EncoderFeatureExtractor
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import numpy as np
@@ -22,6 +25,7 @@ def default_config():
     timesteps = 640
     pretrain_only = False
     pretrain_epochs = 50
+    representation_dim = 128
     _ = locals()
     del _
 
@@ -40,7 +44,7 @@ def get_random_traj(env, timesteps):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
+def run(env_id, seed, algo, n_envs, timesteps, representation_dim, train_from_expert,
            pretrain_only, pretrain_epochs, _config):
 
     # TODO fix this hacky nonsense
@@ -74,6 +78,15 @@ def run(env_id, seed, algo, n_envs, timesteps, train_from_expert,
     # setup model
     model.learn(data)
 
+    encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder': model.encoder}
+    policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
+                     'features_extractor_kwargs': encoder_feature_extractor_kwargs }
+    # encoder_policy = ActorCriticPolicy(observation_space=env.observation_space, action_space=env.action_space,
+    #                                    lr_schedule=lambda x: 0.01, features_extractor_class=EncoderFeatureExtractor,
+    #                                    features_extractor_kwargs=encoder_feature_extractor_kwargs)
+
+    ppo_model = PPO(policy=ActorCriticPolicy, env=env, verbose=1, policy_kwargs=policy_kwargs)
+    ppo_model.learn(total_timesteps=1000)
     env.close()
 
     # Free memory
