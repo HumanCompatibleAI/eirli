@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Normal
 import itertools
+from functools import partial
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -50,7 +51,6 @@ class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
 
-
 class ProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
         super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
@@ -64,7 +64,10 @@ class ProjectionHead(LossDecoder):
         if learn_scale:
             self.scale_layer = nn.Linear(256, self.projection_dim)
         else:
-            self.scale_layer = lambda x: torch.ones(self.projection_dim, device=x.device)
+            self.scale_layer = self.ones_like_projection_dim
+
+    def ones_like_projection_dim(self, x):
+        return torch.ones(size=(self.projection_dim,), device=x.device)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
