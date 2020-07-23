@@ -42,13 +42,11 @@ class Encoder(nn.Module):
 class NatureCNNEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim):
         super(NatureCNNEncoder, self).__init__()
-        reshaped_obs_shape = (obs_shape[2], obs_shape[0], obs_shape[1])
-        new_obs_space = Box(shape=reshaped_obs_shape, low=0, high=255, dtype=np.uint8)
+        new_obs_space = Box(shape=obs_shape, low=0, high=255, dtype=np.uint8)
         self.feature_network = NatureCNN(observation_space=new_obs_space, features_dim=representation_dim)
 
     def forward(self, x, traj_info):
-        reshaped_x = x.permute(0, 3, 1, 2)
-        features = self.feature_network(reshaped_x)
+        features = self.feature_network(x)
         return Normal(loc=features, scale=1)
 
 
@@ -57,7 +55,7 @@ class CNNEncoder(Encoder):
         super(CNNEncoder, self).__init__()
         if architecture is None:
             architecture = DEFAULT_CNN_ARCHITECTURE
-        self.input_channel = obs_shape[2]
+        self.input_channel = obs_shape[0]
         self.representation_dim = representation_dim
         shared_network_layers = []
 
@@ -77,16 +75,12 @@ class CNNEncoder(Encoder):
 
         self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
 
-
         if learn_scale:
             self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
         else:
             self.scale_layer = lambda x: torch.ones(self.representation_dim)
 
-
     def forward(self, x, traj_info=None):
-        x = x.permute(0, 3, 1, 2)
-        x /= 255
         shared_repr = self.shared_network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
