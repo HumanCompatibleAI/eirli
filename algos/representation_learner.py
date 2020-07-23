@@ -9,7 +9,7 @@ from .base_learner import BaseEnvironmentLearner
 from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from .augmenters import AugmentContextOnly
 import itertools
-
+from gym.spaces import Box
 
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
@@ -52,7 +52,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.augmenter = augmenter(**to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
-        self.encoder = encoder(self.observation_shape, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
+        self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
 
         if batch_extender_kwargs is None:
@@ -103,6 +103,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         new_shape = (channel_dimension, spatial_dimension, spatial_dimension)
         required_permutation = (0, channel_index+1, spatial_indicies[0]+1, spatial_indicies[1]+1) # +1 to account for batch
         self.observation_shape = new_shape
+        self.observation_space = Box(shape=self.observation_shape, low=0, high=255, dtype=np.uint8)
         self.permutation_tuple = required_permutation
 
     def _tensorize(self, arr):

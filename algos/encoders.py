@@ -27,6 +27,37 @@ DEFAULT_CNN_ARCHITECTURE = {
              ]
 }
 
+class DefaultStochasticCNN(nn.Module):
+    def __init__(self, obs_space, representation_dim):
+        super().__init__()
+        self.input_channel = obs_space.shape[0]
+        self.representation_dim = representation_dim
+        shared_network_layers = []
+
+        for layer_spec in DEFAULT_CNN_ARCHITECTURE['CONV']:
+            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
+                                                   kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+            shared_network_layers.append(nn.ReLU())
+            self.input_channel = layer_spec['out_dim']
+
+        shared_network_layers.append(nn.Flatten())
+        for ind, layer_spec in enumerate(DEFAULT_CNN_ARCHITECTURE['DENSE'][:-1]):
+            in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
+            shared_network_layers.append(nn.Linear(in_dim, out_dim))
+            shared_network_layers.append(nn.ReLU())
+
+        self.shared_network = nn.Sequential(*shared_network_layers)
+
+        self.mean_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
+        self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
+
+
+    def forward(self, x, traj_info):
+        shared_repr = self.shared_network(x)
+        mean = self.mean_layer(shared_repr)
+        scale = torch.exp(self.scale_layer(shared_repr))
+        return mean, scale
+
 class Encoder(nn.Module):
     # Calls to self() will call self.forward()
     def encode_target(self, x, traj_info):
@@ -39,71 +70,65 @@ class Encoder(nn.Module):
         return x
 
 
-class NatureCNNEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim):
-        super(NatureCNNEncoder, self).__init__()
-        new_obs_space = Box(shape=obs_shape, low=0, high=255, dtype=np.uint8)
-        self.feature_network = NatureCNN(observation_space=new_obs_space, features_dim=representation_dim)
+
+
+class DeterministicEncoder(Encoder):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
+        """
+        :param obs_space: The observation space that this Encoder will be used on
+        :param representation_dim: The number of dimensions of the representation that will be learned
+        :param architecture_module_cls: An internal architecture implementing `forward` to return a single vector
+        representing the mean representation z of a fixed-variance representation distribution
+        """
+        super(DeterministicEncoder, self).__init__()
+        if architecture_module_cls is None:
+            architecture_module_cls = NatureCNN
+        self.network = architecture_module_cls(obs_space, representation_dim)
+        self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
-        features = self.feature_network(x)
-        return Normal(loc=features, scale=1)
+        features = self.network(x)
+        return Normal(loc=features, scale=self.scale_constant)
 
 
-class CNNEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, architecture=None, learn_scale=False):
-        super(CNNEncoder, self).__init__()
-        if architecture is None:
-            architecture = DEFAULT_CNN_ARCHITECTURE
-        self.input_channel = obs_shape[0]
-        self.representation_dim = representation_dim
-        shared_network_layers = []
+class StochasticEncoder(Encoder):
+    def __init__(self, obs_space, representation_dim, architecture_model_cls=None):
+        """
+        :param obs_space: The observation space that this Encoder will be used on
+        :param representation_dim: The number of dimensions of the representation that will be learned
+        :param architecture_module_cls: An internal architecture implementing `forward` to return
+        two vectors, representing the mean AND learned standard deviation of a representation distribution
+        """
+        super(StochasticEncoder, self).__init__()
+        if architecture_model_cls is None:
+            architecture_model_cls = DefaultStochasticCNN
+        self.network = architecture_model_cls(obs_space, representation_dim)
 
-        for layer_spec in architecture['CONV']:
-            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
-                                              kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
-            shared_network_layers.append(nn.ReLU())
-            self.input_channel = layer_spec['out_dim']
-
-        shared_network_layers.append(nn.Flatten())
-        for ind, layer_spec in enumerate(architecture['DENSE'][:-1]):
-            in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            shared_network_layers.append(nn.Linear(in_dim, out_dim))
-            shared_network_layers.append(nn.ReLU())
-
-        self.shared_network = nn.Sequential(*shared_network_layers)
-
-        self.mean_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
-
-        if learn_scale:
-            self.scale_layer = nn.Linear(architecture['DENSE'][-1]['in_dim'], self.representation_dim)
-        else:
-            self.scale_layer = lambda x: torch.ones(self.representation_dim)
-
-    def forward(self, x, traj_info=None):
-        shared_repr = self.shared_network(x)
-        mean = self.mean_layer(shared_repr)
-        scale = torch.exp(self.scale_layer(shared_repr))
-        return Normal(loc=mean, scale=scale)
+    def forward(self, x, traj_info):
+        features, scale = self.network(x)
+        return Normal(loc=features, scale=scale)
 
 
-# TODO make these able to take in either CNNEncoder or NatureCNNEncoder
-class DynamicsEncoder(CNNEncoder):
+class DynamicsEncoder(DeterministicEncoder):
     # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
     def encode_target(self, x, traj_info):
         return Normal(loc=x, scale=0)
 
 
-class InverseDynamicsEncoder(CNNEncoder):
+class InverseDynamicsEncoder(DeterministicEncoder):
     def encode_extra_context(self, x, traj_info):
         return self.forward(x, traj_info)
 
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, architecture=None, inner_encoder_cls=CNNEncoder):
+                 momentum_weight=0.999, inner_encoder_architecture_cls=None):
         super(MomentumEncoder, self).__init__()
-        self.query_encoder = inner_encoder_cls(obs_shape, representation_dim, architecture, learn_scale)
+        if learn_scale:
+            inner_encoder_cls = StochasticEncoder
+        else:
+            inner_encoder_cls = DeterministicEncoder
+        self.query_encoder = inner_encoder_cls(obs_shape, representation_dim, inner_encoder_architecture_cls)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
@@ -131,15 +156,17 @@ class MomentumEncoder(Encoder):
 
 
 class RecurrentEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 single_frame_architecture=None, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_cls=CNNEncoder):
+    def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
+                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None):
         super(RecurrentEncoder, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
+        if learn_scale:
+            inner_encoder_cls = StochasticEncoder
+        else:
+            inner_encoder_cls = DeterministicEncoder
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
-        self.single_frame_encoder = inner_encoder_cls(obs_shape, self.single_frame_repr_dim,
-                                               single_frame_architecture, learn_scale)
+        self.single_frame_encoder = inner_encoder_cls(obs_shape, self.single_frame_repr_dim, inner_encoder_architecture_cls)
         self.context_rnn = nn.LSTM(self.single_frame_repr_dim, representation_dim,
                                    self.num_recurrent_layers, batch_first=True)
 
@@ -172,7 +199,7 @@ class RecurrentEncoder(Encoder):
     def encode_target(self, x, traj_info):
         return self.single_frame_encoder(x, traj_info)
 
-    def encode_context(self, x, traj_info):
+    def forward(self, x, traj_info):
         # Reshape the input z to be (some number of) batch_size-length trajectories
         z = self.single_frame_encoder(x, traj_info).loc
         stacked_trajectories, mask_lengths = self._reshape_and_stack(z, traj_info)

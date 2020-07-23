@@ -1,5 +1,5 @@
 from .representation_learner import RepresentationLearner
-from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, NatureCNNEncoder
+from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
@@ -21,7 +21,7 @@ class SimCLR(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(SimCLR, self).__init__(env=env,
                                      log_dir=log_dir,
-                                     encoder=CNNEncoder,
+                                     encoder=DeterministicEncoder,
                                      decoder=ProjectionHead,
                                      loss_calculator=SymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
@@ -39,7 +39,7 @@ class TemporalCPC(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
-                                          encoder=NatureCNNEncoder,
+                                          encoder=DeterministicEncoder,
                                           decoder=NoOp,
                                           loss_calculator=AsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,

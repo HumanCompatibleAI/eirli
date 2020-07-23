@@ -27,6 +27,7 @@ def default_config():
     pretrain_only = False
     pretrain_epochs = 50
     representation_dim = 128
+    ppo_finetune = True
     _ = locals()
     del _
 
@@ -45,13 +46,12 @@ def get_random_traj(env, timesteps):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, timesteps, representation_dim, train_from_expert,
-           pretrain_only, pretrain_epochs, _config):
+def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, _config):
 
-    # TODO fix this hacky nonsense
+    # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
-    #with TemporaryDirectory() as tmp_dir:
+
     if isinstance(algo, str):
         correct_algo_cls = None
         for algo_name, algo_cls in inspect.getmembers(algos):
@@ -79,19 +79,20 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, train_from_ex
     # setup model
     model.learn(data)
 
-    encoder_checkpoint = model.encoder_checkpoints_path
-    all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
-    latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-    encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
-    policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
-                     'features_extractor_kwargs': encoder_feature_extractor_kwargs }
-    # encoder_policy = ActorCriticPolicy(observation_space=env.observation_space, action_space=env.action_space,
-    #                                    lr_schedule=lambda x: 0.01, features_extractor_class=EncoderFeatureExtractor,
-    #                                    features_extractor_kwargs=encoder_feature_extractor_kwargs)
+    if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
+        encoder_checkpoint = model.encoder_checkpoints_path
+        all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
+        latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
+        encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
 
-    ppo_model = PPO(policy=ActorCriticPolicy, env=env, verbose=1, policy_kwargs=policy_kwargs)
-    ppo_model.learn(total_timesteps=1000)
-    env.close()
+        #TODO figure out how to not have to set `ortho_init` to False for the whole policy
+        policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
+                         'features_extractor_kwargs': encoder_feature_extractor_kwargs,
+                         'ortho_init': False}
+        ppo_model = PPO(policy=ActorCriticPolicy, env=env, verbose=1, policy_kwargs=policy_kwargs)
+        ppo_model.learn(total_timesteps=1000)
+        env.close()
+
 
 if __name__ == '__main__':
     represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
