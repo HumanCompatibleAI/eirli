@@ -1,7 +1,7 @@
 from .representation_learner import RepresentationLearner
 from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead
-from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
+from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
@@ -148,6 +148,20 @@ class BYOL(RepresentationLearner):
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=IdentityPairConstructor,
                                    **kwargs)
+
+class CEB(RepresentationLearner):
+    """
+    """
+    def __init__(self, env, log_dir, beta=0.1, **kwargs):
+        super(CEB, self).__init__(env=env,
+                                  log_dir=log_dir,
+                                  encoder=StochasticEncoder,
+                                  decoder=NoOp,
+                                  loss_calculator=CEBLoss,
+                                  loss_calculator_kwargs={'beta': beta},
+                                  augmenter=AugmentContextAndTarget,
+                                  target_pair_constructor=TemporalOffsetPairConstructor,
+                                  **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
 WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
