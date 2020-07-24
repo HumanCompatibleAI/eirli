@@ -147,19 +147,11 @@ class CEBLoss(RepresentationLoss):
         # TODO allow for beta functions
         self.beta = beta
 
-    def _cross_proba_log(self, z, dist):
-        #Assuming a dist made up of z distributions, take the log_prob of each z under each distribution
-        batch_size = dist.loc.shape[0]
-        proba_matrix_values = []
-        for i in range(batch_size):
-            sub_mvn = torch.distributions.MultivariateNormal(loc=dist.loc[i], covariance_matrix=torch.diag(dist.scale[i]))
-            log_probas = sub_mvn.log_prob(z)
-            proba_matrix_values.append(log_probas)
-
-        # In this matrix, each row is a different target in the batch, and each each column corresponds to the log
-        # proba of a different context under the distribution of that target
-        proba_matrix = torch.stack(proba_matrix_values, dim=1)
-        return proba_matrix
+    @staticmethod
+    def _make_multivariate(dist):
+        batch_dim = dist.loc.shape[0]
+        merged_covariance_matrix = torch.stack([torch.diag(dist.scale[i]) for i in range(batch_dim)])
+        return torch.distributions.MultivariateNormal(loc=dist.loc, covariance_matrix=merged_covariance_matrix)
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
 
@@ -167,9 +159,9 @@ class CEBLoss(RepresentationLoss):
         log_ezx = Independent(decoded_context_dist, 1).log_prob(z) # B -> The "Independent" indicates the first dimension is batch
         log_bzy = Independent(target_dist, 1).log_prob(z) # B -> " "
 
-        cross_proba = self._cross_proba_log(z, target_dist)
-
-        catgen = torch.distributions.Categorical(logits=cross_proba)
+        batch_multivariate = CEBLoss._make_multivariate(target_dist)
+        cross_probas = torch.stack([batch_multivariate.log_prob(z[i]) for i in range(z.shape[0])], dim=0)
+        catgen = torch.distributions.Categorical(logits=cross_probas)
         inds = torch.arange(start=0, end=len(z))
         i_yz = catgen.log_prob(inds)
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
