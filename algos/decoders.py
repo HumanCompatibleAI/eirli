@@ -2,9 +2,10 @@ import torch.nn as nn
 import copy
 import torch
 import torch.nn.functional as F
-from torch.distributions import Normal
+from torch.distributions import MultivariateNormal
 import itertools
 from functools import partial
+from .utils import independent_multivariate_normal
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -67,12 +68,12 @@ class ProjectionHead(LossDecoder):
             self.scale_layer = self.ones_like_projection_dim
 
     def ones_like_projection_dim(self, x):
-        return torch.ones(size=(self.projection_dim,), device=x.device)
+        return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
         shared_repr = self.shared_mlp(z)
-        return Normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
+        return independent_multivariate_normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
 
 
 class MomentumProjectionHead(LossDecoder):
@@ -98,7 +99,7 @@ class MomentumProjectionHead(LossDecoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             decoded_z_dist = self.target_decoder(z_dist, traj_info, extra_context=extra_context)
-            return Normal(loc=decoded_z_dist.loc.detach(), scale=decoded_z_dist.scale.detach())
+            return MultivariateNormal(loc=decoded_z_dist.loc.detach(), covariance_matrix=decoded_z_dist.covariance_matrix.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -114,9 +115,10 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
         prediction_dist = self.context_predictor(internal_dist, traj_info, extra_context=None)
-        return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
+        return independent_multivariate_normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
-            return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
+            return MultivariateNormal(loc=F.normalize(prediction_dist.loc, dim=1),
+                                      covariance_matrix=prediction_dist.covariance_matrix)
