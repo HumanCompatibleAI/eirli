@@ -23,4 +23,5 @@ def test_algo(algo):
     print()
     print(f"Testing: {algo}")
     represent_ex.run(config_updates={'pretrain_epochs': 1, 'timesteps': 500,
-                                     'train_from_expert': False, 'algo': algo})
+                                     'train_from_expert': False, 'algo': algo,
+                                     'ppo_finetune': False})

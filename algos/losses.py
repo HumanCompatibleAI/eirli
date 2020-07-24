@@ -156,11 +156,12 @@ class CEBLoss(RepresentationLoss):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
 
         z = decoded_context_dist.sample() # B x Z
-        log_ezx = Independent(decoded_context_dist, 1).log_prob(z) # B -> The "Independent" indicates the first dimension is batch
-        log_bzy = Independent(target_dist, 1).log_prob(z) # B -> " "
 
-        batch_multivariate = CEBLoss._make_multivariate(target_dist)
-        cross_probas = torch.stack([batch_multivariate.log_prob(z[i]) for i in range(z.shape[0])], dim=0)
+        log_ezx = decoded_context_dist.log_prob(z) # B -> The "Independent" indicates the first dimension is batch
+        log_bzy = target_dist.log_prob(z) # B -> " "
+
+        #batch_multivariate = CEBLoss._make_multivariate(target_dist)
+        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0)
         catgen = torch.distributions.Categorical(logits=cross_probas)
         inds = torch.arange(start=0, end=len(z))
         i_yz = catgen.log_prob(inds)

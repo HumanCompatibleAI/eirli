@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 import copy
-from torch.distributions import Normal
+from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.policies import NatureCNN
 from gym.spaces import Box
+from .utils import independent_multivariate_normal
 
 
 """
@@ -86,7 +87,7 @@ class DeterministicEncoder(Encoder):
 
     def forward(self, x, traj_info):
         features = self.network(x)
-        return Normal(loc=features, scale=self.scale_constant)
+        return independent_multivariate_normal(loc=features, scale=self.scale_constant)
 
 
 class StochasticEncoder(Encoder):
@@ -104,13 +105,13 @@ class StochasticEncoder(Encoder):
 
     def forward(self, x, traj_info):
         features, scale = self.network(x)
-        return Normal(loc=features, scale=scale)
+        return independent_multivariate_normal(loc=features, scale=scale)
 
 
 class DynamicsEncoder(DeterministicEncoder):
     # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
     def encode_target(self, x, traj_info):
-        return Normal(loc=x, scale=0)
+        return independent_multivariate_normal(loc=x, scale=0)
 
 
 class InverseDynamicsEncoder(DeterministicEncoder):
@@ -145,7 +146,7 @@ class MomentumEncoder(Encoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             z_dist = self.key_encoder(x, traj_info)
-            return Normal(loc=z_dist.loc.detach(), scale=z_dist.scale.detach())
+            return MultivariateNormal(loc=z_dist.loc.detach(), covariance_matrix=z_dist.covariance_matrix.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -209,5 +210,5 @@ class RecurrentEncoder(Encoder):
         flattened_hiddens = torch.cat(masked_hiddens, dim=0)
 
         # TODO update the RNN to be able to actually learn standard deviations
-        return Normal(loc=flattened_hiddens, scale=1)
+        return independent_multivariate_normal(loc=flattened_hiddens, scale=1)
 
