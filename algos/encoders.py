@@ -52,7 +52,7 @@ class DefaultStochasticCNN(nn.Module):
         self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
 
 
-    def forward(self, x, traj_info):
+    def forward(self, x):
         shared_repr = self.shared_network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
@@ -68,8 +68,6 @@ class Encoder(nn.Module):
 
     def encode_extra_context(self, x, traj_info):
         return x
-
-
 
 
 class DeterministicEncoder(Encoder):
