@@ -29,7 +29,7 @@ class QueueBatchExtender(BatchExtender):
         self.representation_dim = queue_dim
         self.sample = sample
         self.queue_loc = torch.randn(self.queue_size, self.representation_dim)
-        self.queue_scale = torch.randn(self.queue_size, self.representation_dim)
+        self.queue_scale = torch.ones(self.queue_size, self.representation_dim)
         self.queue_ptr = 0
 
     def __call__(self, context_dist, target_dist):
