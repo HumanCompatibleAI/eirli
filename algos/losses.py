@@ -120,51 +120,27 @@ class MSELoss(RepresentationLoss):
 
 
 class CEBLoss(RepresentationLoss):
-    # In original code: `decoder_catgen_dist` -> A proper Categorical distribution constructed by doing
-    # the normal contrastive loss thing of calculating the similarity/probability between a given context and all possible targets,
-    # and normalizing that distribution for each context over all of those targets. You then end up with (n-contexts)
-    # different categorical distributions, each of which is a distribution over the (n-targets) negatives
-
-    # z -> A sample from the distribution given context
-    # e_zx -> Just the original learned distribution of z given context
-    # log_ezx -> the log probability of the samples conditional on context
-
-    # b_zy -> The learned distribution of z given target
-    # log_bzy -> the log probability of the samples conditional on target
-
-    # loss = beta * (log_ezx - log_bzy) - i_yz_smooth
-
-
-    # How is CatGen implemented? (Without smoothing, to start)
-    ## Takes in all the backwards distributions and the sampled z from each forward distribution
-    ## Evaluates each sample z's log proba under each backwards distribution
-    ## Pass those logits into a Categorical distribution
-    ## Pass range() into the Categorical distribution (i.e. get the log proba of the 1st element under the 1st dist,
-    ## the second element under the 2nd, etc
-    # These are the unsmoothed log probs  (i_yz)
+    """
+    A variational contrastive loss that implements information bottlenecking, but in a less conservative form
+    than done by traditional VIB techniques
+    """
     def __init__(self, device, beta=.1):
         super().__init__(device, sample=True)
         # TODO allow for beta functions
         self.beta = beta
 
-    @staticmethod
-    def _make_multivariate(dist):
-        batch_dim = dist.loc.shape[0]
-        merged_covariance_matrix = torch.stack([torch.diag(dist.scale[i]) for i in range(batch_dim)])
-        return torch.distributions.MultivariateNormal(loc=dist.loc, covariance_matrix=merged_covariance_matrix)
-
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
 
         z = decoded_context_dist.sample() # B x Z
 
-        log_ezx = decoded_context_dist.log_prob(z) # B -> The "Independent" indicates the first dimension is batch
-        log_bzy = target_dist.log_prob(z) # B -> " "
+        log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
+        log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
 
-        #batch_multivariate = CEBLoss._make_multivariate(target_dist)
-        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0)
-        catgen = torch.distributions.Categorical(logits=cross_probas)
+        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z under _all_ target distributions
+        catgen = torch.distributions.Categorical(logits=cross_probas) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
+                                                                      # targets/y values
         inds = torch.arange(start=0, end=len(z))
-        i_yz = catgen.log_prob(inds)
+        i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
         return loss
 
