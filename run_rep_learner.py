@@ -44,6 +44,15 @@ def get_random_traj(env, timesteps):
         trajectory['dones'].append(dones[0])
     return trajectory
 
+def initialize_non_features_extractor(sb3_model):
+    # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
+    # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other
+    # components.
+    sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
+    sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)
+    sb3_model.policy.init_weights(sb3_model.policy.value_net, 1)
+    return sb3_model
+
 
 @represent_ex.main
 def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, _config):
@@ -78,7 +87,6 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
 
     # setup model
     model.learn(data)
-
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
@@ -90,6 +98,7 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
                          'features_extractor_kwargs': encoder_feature_extractor_kwargs,
                          'ortho_init': False}
         ppo_model = PPO(policy=ActorCriticPolicy, env=env, verbose=1, policy_kwargs=policy_kwargs)
+        ppo_model = initialize_non_features_extractor(ppo_model)
         ppo_model.learn(total_timesteps=1000)
         env.close()
 
