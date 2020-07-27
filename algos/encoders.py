@@ -156,18 +156,24 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None):
+                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None, rnn_output_dim=64):
         super(RecurrentEncoder, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
-        if learn_scale:
-            inner_encoder_cls = StochasticEncoder
-        else:
-            inner_encoder_cls = DeterministicEncoder
+        self.representation_dim = representation_dim
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
-        self.single_frame_encoder = inner_encoder_cls(obs_shape, self.single_frame_repr_dim, inner_encoder_architecture_cls)
-        self.context_rnn = nn.LSTM(self.single_frame_repr_dim, representation_dim,
+        self.single_frame_encoder = DeterministicEncoder(obs_shape, self.single_frame_repr_dim,
+                                                         inner_encoder_architecture_cls)
+        self.context_rnn = nn.LSTM(self.single_frame_repr_dim, rnn_output_dim,
                                    self.num_recurrent_layers, batch_first=True)
+        self.mean_layer = nn.Linear(rnn_output_dim, self.representation_dim)
+        if learn_scale:
+            self.scale_layer = nn.Linear(rnn_output_dim, self.representation_dim)
+        else:
+            self.scale_layer = self.ones_like_representation_dim
+
+    def ones_like_representation_dim(self, x):
+        return torch.ones(size=(x.shape[0], self.representation_dim,), device=x.device)
 
     def _reshape_and_stack(self, z, traj_info):
         batch_size = z.shape[0]
@@ -209,6 +215,8 @@ class RecurrentEncoder(Encoder):
             masked_hiddens.append(hiddens[i][:trajectory_length])
         flattened_hiddens = torch.cat(masked_hiddens, dim=0)
 
+        mean = self.mean_layer(flattened_hiddens)
+        scale = self.scale_layer(flattened_hiddens)
         # TODO update the RNN to be able to actually learn standard deviations
-        return independent_multivariate_normal(loc=flattened_hiddens, scale=1)
+        return independent_multivariate_normal(loc=mean, scale=scale)
 

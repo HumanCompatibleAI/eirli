@@ -149,6 +149,7 @@ class BYOL(RepresentationLearner):
                                    target_pair_constructor=IdentityPairConstructor,
                                    **kwargs)
 
+
 class CEB(RepresentationLearner):
     """
     """
