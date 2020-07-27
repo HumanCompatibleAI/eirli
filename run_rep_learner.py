@@ -44,6 +44,7 @@ def get_random_traj(env, timesteps):
         trajectory['dones'].append(dones[0])
     return trajectory
 
+
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
     # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other

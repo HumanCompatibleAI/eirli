@@ -154,6 +154,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # just context, or both context and targets
                 contexts, targets = self.augmenter(contexts, targets)
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
+                # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
                 contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
                 if extra_context is not None:
                     extra_context = self._preprocess_if_image(extra_context)
