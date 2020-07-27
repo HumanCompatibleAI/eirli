@@ -108,7 +108,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         return torch.FloatTensor(arr).to(self.device)
 
     def _preprocess_if_image(self, tensor):
-        if len(tensor.shape) == 4:
+        if len(tensor.shape) == 4 and self.permutation_tuple is not None:
             tensor = tensor.permute(self.permutation_tuple)
             tensor = tensor / 255
         return tensor
