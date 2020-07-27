@@ -90,21 +90,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"loss {loss}")
 
     def _make_channels_first(self):
-        # Assumes a square image
-
-        dim_counts = Counter(self.observation_shape)
-        spatial_dimension = dim_counts.most_common()[0][0]
-        assert dim_counts[spatial_dimension] == 2, "This code assumes a square image, implying at least one dimension size repeated"
-        channel_dimension = dim_counts.most_common()[-1][0]
-        assert dim_counts[channel_dimension] == 1, "This code assumes two spatial dimensions and one channels dimension"
-        spatial_indicies = np.arange(len(self.observation_shape))[np.array(self.observation_shape) == spatial_dimension]
-        channel_index = np.arange(len(self.observation_shape))[np.array(self.observation_shape) == channel_dimension].item()
-
-        new_shape = (channel_dimension, spatial_dimension, spatial_dimension)
-        required_permutation = (0, channel_index+1, spatial_indicies[0]+1, spatial_indicies[1]+1) # +1 to account for batch
-        self.observation_shape = new_shape
-        self.observation_space = Box(shape=self.observation_shape, low=0, high=255, dtype=np.uint8)
-        self.permutation_tuple = required_permutation
+        # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
+        x, y, z = self.observation_shape
+        if x != y and y == z:
+            self.permutation_tuple = None
+        else:
+            assert x == y and x != z, "Can only handle square images in format (C, H, W) or (H, W, C)"
+            self.observation_shape = (z, x, y)
+            self.observation_space = Box(shape=self.observation_shape, low=0, high=255, dtype=np.uint8)
+            self.permutation_tuple = (0, 3, 1, 2)
 
     def _tensorize(self, arr):
         """
@@ -114,7 +108,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         return torch.FloatTensor(arr).to(self.device)
 
     def _preprocess_if_image(self, tensor):
-        if len(tensor.shape) == 4:
+        if len(tensor.shape) == 4 and self.permutation_tuple is not None:
             tensor = tensor.permute(self.permutation_tuple)
             tensor = tensor / 255
         return tensor
@@ -199,4 +193,3 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if epoch % self.save_interval == 0:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
-
