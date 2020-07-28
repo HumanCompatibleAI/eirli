@@ -8,6 +8,14 @@ from .batch_extenders import QueueBatchExtender
 from .optimizers import LARS
 
 
+def update_kwarg_dict(kwargs, update_dict, cls):
+    for key, value in update_dict.items():
+        if key in kwargs:
+            assert kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
+            raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
+        kwargs[key] = value
+    return kwargs
+
 class SimCLR(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
@@ -38,8 +46,7 @@ class TemporalCPC(RepresentationLearner):
         By default, augments only the context, but can be modified to augment both context and target.
         """
         target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        assert 'temporal_offset' not in target_pair_constructor_kwargs, "To control temporal_offset, pass parameter directly into constructor"
-        target_pair_constructor_kwargs.update({'temporal_offset': temporal_offset})
+        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs, {'temporal_offset': temporal_offset}, TemporalCPC)
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
                                           encoder=CNNEncoder,
@@ -78,8 +85,8 @@ class MoCo(RepresentationLearner):
     """
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         batch_extender_kwargs = kwargs.get('batch_extender_kwargs', {})
-        assert 'queue_size' not in batch_extender_kwargs, "To control queue_size, pass parameter directly into constructor"
-        batch_extender_kwargs.update({'queue_size': queue_size})
+        batch_extender_kwargs = update_kwarg_dict(batch_extender_kwargs,
+                                                           {'queue_size': queue_size}, MoCo)
         super(MoCo, self).__init__(env=env,
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
@@ -102,8 +109,8 @@ class MoCoWithProjection(RepresentationLearner):
 
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         batch_extender_kwargs = kwargs.get('batch_extender_kwargs', {})
-        assert 'queue_size' not in batch_extender_kwargs, "To control queue_size, pass parameter directly into constructor"
-        batch_extender_kwargs.update({'queue_size': queue_size})
+        batch_extender_kwargs = update_kwarg_dict(batch_extender_kwargs,
+                                                  {'queue_size': queue_size}, MoCoWithProjection)
         super(MoCoWithProjection, self).__init__(env=env,
                                                  log_dir=log_dir,
                                                  encoder=MomentumEncoder,
@@ -119,10 +126,8 @@ class MoCoWithProjection(RepresentationLearner):
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        if 'mode' in target_pair_constructor_kwargs:
-            raise Warning(
-                f"target_pair_constructor `mode` param must be set to `dynamics`, overwriting current value {target_pair_constructor_kwargs.get('mode')}")
-        target_pair_constructor_kwargs.update({'mode': 'dynamics'})
+        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs,
+                                                           {'mode': 'dynamics'}, DynamicsPrediction)
         super(DynamicsPrediction, self).__init__(env=env,
                                                  log_dir=log_dir,
                                                  encoder=DynamicsEncoder,
@@ -182,14 +187,11 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
         target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
         decoder_kwargs = kwargs.get('decoder_kwargs', {})
-        assert 'temporal_offset' not in target_pair_constructor_kwargs, "To control temporal_offset, pass parameter directly into constructor"
 
-        assert 'action_space' not in decoder_kwargs, "Decoder action_space must be governed by env"
-        if 'mode' in target_pair_constructor_kwargs:
-            raise Warning(
-                f"target_pair_constructor `mode` param must be set to `inverse_dynamics`, overwriting current value {target_pair_constructor_kwargs.get('mode')}")
-        target_pair_constructor_kwargs.update({"temporal_offset": temporal_offset, "mode": "dynamics"})
-        decoder_kwargs.update({'action_space': env.action_space})
+        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs,
+                                                           {"temporal_offset": temporal_offset, "mode": "dynamics"},
+                                                           ActionConditionedTemporalCPC)
+        decoder_kwargs = update_kwarg_dict(decoder_kwargs, {'action_space': env.action_space}, ActionConditionedTemporalCPC)
 
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
