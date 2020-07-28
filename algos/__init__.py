@@ -73,7 +73,7 @@ class RecurrentCPC(RepresentationLearner):
                                            encoder=RecurrentEncoder,
                                            decoder=NoOp,
                                            loss_calculator=AsymmetricContrastiveLoss,
-                                           target_pair_constructor=IdentityPairConstructor,
+                                           target_pair_constructor=TemporalOffsetPairConstructor,
                                            shuffle_batches=False,
                                            **kwargs)
 
