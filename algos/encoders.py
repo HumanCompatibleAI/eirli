@@ -28,6 +28,7 @@ DEFAULT_CNN_ARCHITECTURE = {
              ]
 }
 
+
 class DefaultStochasticCNN(nn.Module):
     def __init__(self, obs_space, representation_dim):
         super().__init__()
@@ -52,12 +53,12 @@ class DefaultStochasticCNN(nn.Module):
         self.mean_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
         self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
 
-
     def forward(self, x):
         shared_repr = self.shared_network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
         return mean, scale
+
 
 class Encoder(nn.Module):
     # Calls to self() will call self.forward()
