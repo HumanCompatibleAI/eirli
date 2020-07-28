@@ -1,7 +1,7 @@
 from .representation_learner import RepresentationLearner
-from .encoders import CNNEncoder, MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder
+from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
-from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss
+from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
@@ -29,7 +29,7 @@ class SimCLR(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         super(SimCLR, self).__init__(env=env,
                                      log_dir=log_dir,
-                                     encoder=CNNEncoder,
+                                     encoder=DeterministicEncoder,
                                      decoder=ProjectionHead,
                                      loss_calculator=SymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
@@ -49,7 +49,7 @@ class TemporalCPC(RepresentationLearner):
         target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs, {'temporal_offset': temporal_offset}, TemporalCPC)
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
-                                          encoder=CNNEncoder,
+                                          encoder=DeterministicEncoder,
                                           decoder=NoOp,
                                           loss_calculator=AsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
@@ -175,6 +175,21 @@ class BYOL(RepresentationLearner):
                                    **kwargs)
 
 
+
+class CEB(RepresentationLearner):
+    """
+    """
+    def __init__(self, env, log_dir, beta=0.1, **kwargs):
+        super(CEB, self).__init__(env=env,
+                                  log_dir=log_dir,
+                                  encoder=StochasticEncoder,
+                                  decoder=NoOp,
+                                  loss_calculator=CEBLoss,
+                                  loss_calculator_kwargs={'beta': beta},
+                                  augmenter=AugmentContextAndTarget,
+                                  target_pair_constructor=TemporalOffsetPairConstructor,
+                                  **kwargs)
+
 class ActionConditionedTemporalCPC(RepresentationLearner):
     """
     Implementation of reinforcement-learning-specific variant of Temporal CPC which adds a projection layer on top
@@ -197,7 +212,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                                            log_dir=log_dir,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
                                                            target_pair_constructor_kwargs=target_pair_constructor_kwargs,
-                                                           encoder=CNNEncoder,
+                                                           encoder=DeterministicEncoder,
                                                            decoder=ActionConditionedVectorDecoder,
                                                            decoder_kwargs=decoder_kwargs,
                                                            loss_calculator=AsymmetricContrastiveLoss,

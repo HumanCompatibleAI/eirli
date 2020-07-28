@@ -2,9 +2,11 @@ import torch.nn as nn
 import copy
 import torch
 import torch.nn.functional as F
-from torch.distributions import Normal
+from torch.distributions import MultivariateNormal
+from .utils import independent_multivariate_normal
 import gym.spaces as spaces
 import numpy as np
+
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -47,11 +49,12 @@ class LossDecoder(nn.Module):
         else:
             return z_dist.loc
 
+    def ones_like_projection_dim(self, x):
+        return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
-
 
 class ProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
@@ -66,12 +69,12 @@ class ProjectionHead(LossDecoder):
         if learn_scale:
             self.scale_layer = nn.Linear(256, self.projection_dim)
         else:
-            self.scale_layer = lambda x: torch.ones(self.projection_dim, device=x.device)
+            self.scale_layer = self.ones_like_projection_dim
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
         shared_repr = self.shared_mlp(z)
-        return Normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
+        return independent_multivariate_normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
 
 
 class MomentumProjectionHead(LossDecoder):
@@ -97,7 +100,7 @@ class MomentumProjectionHead(LossDecoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             decoded_z_dist = self.target_decoder(z_dist, traj_info, extra_context=extra_context)
-            return Normal(loc=decoded_z_dist.loc.detach(), scale=decoded_z_dist.scale.detach())
+            return MultivariateNormal(loc=decoded_z_dist.loc.detach(), covariance_matrix=decoded_z_dist.covariance_matrix.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -114,12 +117,14 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
         prediction_dist = self.context_predictor(internal_dist, traj_info, extra_context=None)
-        return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
+        return independent_multivariate_normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
-            return Normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
+            return MultivariateNormal(loc=F.normalize(prediction_dist.loc, dim=1),
+                                      covariance_matrix=prediction_dist.covariance_matrix)
+
 
 
 class ActionConditionedVectorDecoder(LossDecoder):
@@ -144,7 +149,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         if use_lstm:
             self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
         else:
-            self.action_encoder = lambda x: (None, (torch.mean(x, dim=1), None))
+            self.action_encoder = None
             action_encoding_dim = processed_action_dim
 
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
@@ -154,7 +159,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         if self.learn_scale:
             self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
         else:
-            self.scale_projection = lambda x: torch.ones(projection_shape)
+            self.scale_projection = self.ones_like_projection_dim
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -169,11 +174,16 @@ class ActionConditionedVectorDecoder(LossDecoder):
         processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
 
         # Encode multiple actions into a single action vector (format based on LSTM)
-        output, (hidden, cell) = self.action_encoder(processed_actions)
+        if self.action_encoder is not None:
+            output, (hidden, cell) = self.action_encoder(processed_actions)
+        else:
+            hidden = torch.mean(processed_actions, dim=1)
+
         action_encoding_vector = torch.squeeze(hidden)
 
         # Concatenate context representation and action representation and map to a merged representation
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
-        return Normal(loc=mean_projection, scale=scale)
+        return independent_multivariate_normal(loc=mean_projection, scale=scale)
+

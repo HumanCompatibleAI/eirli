@@ -1,5 +1,7 @@
 import os
 import torch
+import numpy as np
+from collections import Counter
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
@@ -7,7 +9,7 @@ from .base_learner import BaseEnvironmentLearner
 from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from .augmenters import AugmentContextOnly
 import itertools
-
+from gym.spaces import Box
 
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
@@ -21,7 +23,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
                  augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
                  representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
-                 batch_size=256, warmup_epochs=10, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
+                 batch_size=256, warmup_epochs=10, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
                  augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
                  loss_calculator_kwargs=None):
 
@@ -38,6 +40,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.pretrain_epochs = pretrain_epochs
+        self.save_interval = save_interval
+
+        self._make_channels_first()
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -47,7 +52,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.augmenter = augmenter(**to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
-        self.encoder = encoder(self.observation_shape, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
+        self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
 
         if batch_extender_kwargs is None:
@@ -71,6 +76,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # TODO make the scheduler parameterizable
         self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
+        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
+        os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
+        self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
+        os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
     def log_info(self, loss, step, epoch_ind):
         self.writer.add_scalar('loss', loss, step)
@@ -80,12 +89,29 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"lr {lr}, "
                         f"loss {loss}")
 
-    def tensorize(self, arr):
+    def _make_channels_first(self):
+        # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
+        x, y, z = self.observation_shape
+        if x != y and y == z:
+            self.permutation_tuple = None
+        else:
+            assert x == y and x != z, "Can only handle square images in format (C, H, W) or (H, W, C)"
+            self.observation_shape = (z, x, y)
+            self.observation_space = Box(shape=self.observation_shape, low=0, high=255, dtype=np.uint8)
+            self.permutation_tuple = (0, 3, 1, 2)
+
+    def _tensorize(self, arr):
         """
         :param arr: A numpy array
         :return: A torch tensor moved to the device associated with this learner
         """
         return torch.FloatTensor(arr).to(self.device)
+
+    def _preprocess_if_image(self, input_data):
+        if isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4 and self.permutation_tuple is not None:
+            input_data = input_data.permute(self.permutation_tuple)
+            input_data = input_data / 255
+        return input_data
 
     # TODO maybe make static?
     def unpack_batch(self, batch):
@@ -125,7 +151,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self.augmenter(contexts, targets)
-                contexts, targets = self.tensorize(contexts), self.tensorize(targets)
+                contexts, targets = self._tensorize(contexts), self._tensorize(targets)
+                # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
+                contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
+                if extra_context is not None:
+                    extra_context = self._preprocess_if_image(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
@@ -159,5 +189,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg.cpu().item())
             self.encoder.train(False)
             self.decoder.train(False)
-            save_model(self.encoder, 'representation_encoder_network', os.path.join(self.log_dir, 'checkpoints'))
-            save_model(self.decoder, 'representation_decoder_network', os.path.join(self.log_dir, 'checkpoints'))
+            if epoch % self.save_interval == 0:
+                torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
