@@ -217,6 +217,5 @@ class RecurrentEncoder(Encoder):
 
         mean = self.mean_layer(flattened_hiddens)
         scale = self.scale_layer(flattened_hiddens)
-        # TODO update the RNN to be able to actually learn standard deviations
         return independent_multivariate_normal(loc=mean, scale=scale)
 
