@@ -164,7 +164,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         actions = extra_context
-        # Process each batch-vectorized set of actions of actions, and then stack
+        # Process each batch-vectorized set of actions, and then stack
         # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
         processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
 
