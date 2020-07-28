@@ -107,11 +107,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         return torch.FloatTensor(arr).to(self.device)
 
-    def _preprocess_if_image(self, tensor):
-        if len(tensor.shape) == 4 and self.permutation_tuple is not None:
-            tensor = tensor.permute(self.permutation_tuple)
-            tensor = tensor / 255
-        return tensor
+    def _preprocess_if_image(self, input_data):
+        if isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4 and self.permutation_tuple is not None:
+            input_data = input_data.permute(self.permutation_tuple)
+            input_data = input_data / 255
+        return input_data
 
     # TODO maybe make static?
     def unpack_batch(self, batch):
@@ -124,8 +124,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         if len(batch['extra_context']) == 0:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], None
         else:
-            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context'].data.numpy()
-
+            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
     def learn(self, dataset):
         """
 
@@ -135,7 +134,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
-
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
         self.decoder.train(True)

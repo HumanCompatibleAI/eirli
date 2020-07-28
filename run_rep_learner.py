@@ -72,7 +72,6 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
 
     is_atari = 'NoFrameskip' in env_id
 
-
     # setup environment
     if is_atari:
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)

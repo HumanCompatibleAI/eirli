@@ -3,9 +3,10 @@ import copy
 import torch
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
-import itertools
-from functools import partial
 from .utils import independent_multivariate_normal
+import gym.spaces as spaces
+import numpy as np
+
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -23,6 +24,7 @@ need for extra information beyond the central context state is why we have `extr
 bit of data that pair constructors can return, to be passed forward for use here 
 """
 
+#TODO change shape to dim throughout this file and the code
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -47,6 +49,8 @@ class LossDecoder(nn.Module):
         else:
             return z_dist.loc
 
+    def ones_like_projection_dim(self, x):
+        return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
@@ -66,9 +70,6 @@ class ProjectionHead(LossDecoder):
             self.scale_layer = nn.Linear(256, self.projection_dim)
         else:
             self.scale_layer = self.ones_like_projection_dim
-
-    def ones_like_projection_dim(self, x):
-        return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
@@ -108,8 +109,9 @@ class MomentumProjectionHead(LossDecoder):
 
 
 class BYOLProjectionHead(MomentumProjectionHead):
-    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99):
-        super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape, momentum_weight=momentum_weight)
+    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99, sample=False):
+        super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape,
+                                                 sample=sample, momentum_weight=momentum_weight)
         self.context_predictor = ProjectionHead(projection_shape, projection_shape)
 
     def forward(self, z_dist, traj_info, extra_context=None):
@@ -122,3 +124,66 @@ class BYOLProjectionHead(MomentumProjectionHead):
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return MultivariateNormal(loc=F.normalize(prediction_dist.loc, dim=1),
                                       covariance_matrix=prediction_dist.covariance_matrix)
+
+
+
+class ActionConditionedVectorDecoder(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, action_space, sample=False, action_encoding_dim=128,
+                 action_encoder_layers=1, learn_scale=False, action_embedding_dim=5, use_lstm=False):
+        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
+        self.learn_scale = learn_scale
+
+        # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
+        # If actions are continuous/box, this is done via a simple flattening.
+        if isinstance(action_space, spaces.Discrete):
+            self.action_processer= nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
+            processed_action_dim = action_embedding_dim
+        elif isinstance(action_space, spaces.Box):
+            self.action_processer = torch.flatten
+            processed_action_dim = np.prod(action_space.shape)
+        else:
+            raise NotImplementedError("Action conditioning is only currently implemented for Discrete and Box action spaces")
+
+        # Machinery for aggregating information from an arbitrary number of actions into a single vector,
+        # either through a LSTM, or by simply averaging the vector representations of the k states together
+        if use_lstm:
+            self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
+        else:
+            self.action_encoder = None
+            action_encoding_dim = processed_action_dim
+
+        # Machinery for mapping a concatenated (context representation, action representation) into a projection
+        self.action_conditioned_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+
+        # If learning scale/std deviation parameter, declare a layer for that, otherwise, return a unit-constant vector
+        if self.learn_scale:
+            self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+        else:
+            self.scale_projection = self.ones_like_projection_dim
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+        # Get a single vector out of the the distribution object passed in by the
+        # encoder (either via sampling or taking the mean)
+        z = self.get_vector(z_dist)
+        actions = extra_context
+        # Process each batch-vectorized set of actions, and then stack
+        # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
+        processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
+
+        # Encode multiple actions into a single action vector (format based on LSTM)
+        if self.action_encoder is not None:
+            output, (hidden, cell) = self.action_encoder(processed_actions)
+        else:
+            hidden = torch.mean(processed_actions, dim=1)
+
+        action_encoding_vector = torch.squeeze(hidden)
+
+        # Concatenate context representation and action representation and map to a merged representation
+        merged_vector = torch.cat([z, action_encoding_vector], dim=1)
+        mean_projection = self.action_conditioned_projection(merged_vector)
+        scale = self.scale_projection(merged_vector)
+        return independent_multivariate_normal(loc=mean_projection, scale=scale)
+
