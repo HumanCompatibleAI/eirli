@@ -98,8 +98,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         if len(batch['extra_context']) == 0:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], None
         else:
-            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context'].data.numpy()
-
+            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
     def learn(self, dataset):
         """
 
@@ -109,7 +108,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
-
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
         self.decoder.train(True)

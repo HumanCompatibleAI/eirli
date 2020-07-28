@@ -1,3 +1,4 @@
+import numpy as np
 from abc import ABC, abstractmethod
 
 """
@@ -16,7 +17,6 @@ back out, whereas the target will "tag along" as ground truth pixels needed to c
 - In Dynamics modeling, context is the current state at time (t), target is the state at time (t+1) and extra context
 is the action taken at time (t) 
 """
-
 
 
 class TargetPairConstructor(ABC):
@@ -41,31 +41,35 @@ class IdentityPairConstructor(TargetPairConstructor):
 
 
 class TemporalOffsetPairConstructor(TargetPairConstructor):
-    #TODO generalize this to offsets of arbitrary k rather than 1
-    def __init__(self, mode=None):
+    def __init__(self, mode=None, temporal_offset=1):
+        assert mode in (None, 'dynamics', 'inverse_dynamics')
         self.mode = mode
+        self.k = temporal_offset
 
     def __call__(self, data_dict):
         obs, actions, dones = data_dict['states'], data_dict['actions'], data_dict['dones']
         dataset = []
         trajectory_ind = timestep = 0
-        for i in range(len(dones)):
-            if dones[i] or len(dones) == i + 1:
-                # If dones[i] is true, next obs is from new trajectory, skip; a bit hacky, but fine for prototype
+        i = 0
+        while i < len(dones) - self.k:
+            if np.any(dones[i:i+self.k]):
+                # If dones[i] is true, next obs is from new trajectory, skip
+                # Also skip if we are
+                i += self.k
                 trajectory_ind += 1
                 timestep = 0
                 continue
-
             if self.mode is None:
-                dataset.append({'context': obs[i], 'target': obs[i + 1],
+                dataset.append({'context': obs[i], 'target': obs[i + self.k],
                                 'extra_context': [], 'traj_ts_ids': [trajectory_ind, timestep]})
             elif self.mode == 'dynamics':
-                dataset.append({'context': obs[i], 'target': obs[i + 1],
-                                'extra_context': actions[i], 'traj_ts_ids': [trajectory_ind, timestep]})
+                dataset.append({'context': obs[i], 'target': obs[i + self.k],
+                                'extra_context': actions[i:i+self.k], 'traj_ts_ids': [trajectory_ind, timestep]})
             elif self.mode == 'inverse_dynamics':
-                dataset.append({'context': obs[i], 'target': actions[i],
-                                'extra_context': obs[i+1], 'traj_ts_ids': [trajectory_ind, timestep]})
-            timestep += 1
-        return dataset
+                dataset.append({'context': obs[i], 'target': actions[i:i+self.k],
+                                'extra_context': obs[i + self.k], 'traj_ts_ids': [trajectory_ind, timestep]})
 
+            timestep += 1
+            i += 1
+        return dataset
 
