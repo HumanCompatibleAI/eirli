@@ -21,10 +21,10 @@ DEFAULT_CNN_ARCHITECTURE = {
     'CONV': [
                 {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
                 {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-                {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
+                {'out_dim': 32, 'kernel_size': 3, 'stride': 1},
             ],
     'DENSE': [
-                {'in_dim': 64*7*7}
+                {'in_dim': 32*7*7}
              ]
 }
 

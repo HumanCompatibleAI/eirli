@@ -2,7 +2,7 @@ from .representation_learner import RepresentationLearner
 from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss
-from .augmenters import AugmentContextAndTarget, AugmentContextOnly
+from .augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
 from .optimizers import LARS
@@ -182,13 +182,28 @@ class CEB(RepresentationLearner):
     def __init__(self, env, log_dir, beta=0.1, **kwargs):
         super(CEB, self).__init__(env=env,
                                   log_dir=log_dir,
+                                  encoder=StochasticEncoder,
+                                  decoder=NoOp,
+                                  loss_calculator=CEBLoss,
+                                  loss_calculator_kwargs={'beta': beta},
+                                  augmenter=NoAugmentation,
+                                  target_pair_constructor=TemporalOffsetPairConstructor,
+                                  **kwargs)
+
+class FixedVarianceCEB(RepresentationLearner):
+    """
+    """
+    def __init__(self, env, log_dir, beta=0.1, **kwargs):
+        super(FixedVarianceCEB, self).__init__(env=env,
+                                  log_dir=log_dir,
                                   encoder=DeterministicEncoder,
                                   decoder=NoOp,
                                   loss_calculator=CEBLoss,
                                   loss_calculator_kwargs={'beta': beta},
-                                  augmenter=AugmentContextAndTarget,
+                                  augmenter=NoAugmentation,
                                   target_pair_constructor=TemporalOffsetPairConstructor,
                                   **kwargs)
+
 
 class ActionConditionedTemporalCPC(RepresentationLearner):
     """

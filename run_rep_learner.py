@@ -38,8 +38,8 @@ def default_config():
 def ceb_long_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
-    algo = algos.CEB
-    #loss_constructor_kwargs = {'beta': 0.1}
+    algo = algos.FixedVarianceCEB
+    loss_constructor_kwargs = {'beta': 0.1}
     pretrain_epochs = 50
     demo_timesteps = None
     ppo_finetune=False
@@ -50,7 +50,7 @@ def ceb_long_breakout():
 def ceb_no_compression_long_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
-    algo = algos.CEB
+    algo = algos.FixedVarianceCEB
     loss_constructor_kwargs = {'beta': 0.0}
     pretrain_epochs = 50
     demo_timesteps = None
