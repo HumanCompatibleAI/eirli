@@ -77,7 +77,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                    **to_dict(optimizer_kwargs))
 
         # TODO make the scheduler parameterizable
-        self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
+        #self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
@@ -198,7 +198,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.step()
                 self.log_info(loss, step, epoch)
 
-            self.scheduler.step()
+            #self.scheduler.step()
             loss_record.append(loss_meter.avg.cpu().item())
             self.encoder.train(False)
             self.decoder.train(False)

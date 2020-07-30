@@ -40,7 +40,7 @@ def ceb_long_breakout():
     train_from_expert = True
     algo = algos.FixedVarianceCEB
     loss_constructor_kwargs = {'beta': 0.1}
-    pretrain_epochs = 50
+    pretrain_epochs = 15
     demo_timesteps = None
     ppo_finetune=False
     _ = locals()
