@@ -2,11 +2,14 @@ import os
 import torch
 import numpy as np
 from collections import Counter
+
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from .batch_extenders import IdentityBatchExtender
 from .base_learner import BaseEnvironmentLearner
-from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger
+from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger, time_now
+from datetime import datetime
+
 from .augmenters import AugmentContextOnly
 import itertools
 from gym.spaces import Box
@@ -146,19 +149,24 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Construct batch (currently just using Torch's default batch-creator)
                 batch = next(dataiter)
+                print(f"Unpacking: {datetime.now()}")
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
+                print(f"Augmenting: {datetime.now()}")
                 contexts, targets = self.augmenter(contexts, targets)
+
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
+                print(f"Preprocessing: {datetime.now()}")
                 contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
                 if extra_context is not None:
                     extra_context = self._preprocess_if_image(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
+                print(f"Encoding: {datetime.now()}")
                 encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
                 encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
                 # Typically the identity function
@@ -167,17 +175,21 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
+                print(f"Decoding: {datetime.now()}")
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
                 decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
 
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic
+
                 decoded_contexts, decoded_targets = self.batch_extender(decoded_contexts, decoded_targets)
 
                 # Use an algorithm-specific loss function. Typically this only requires decoded_contexts and
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
+                print(f"Before Loss: {datetime.now()}")
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
+                print(f"After Loss: {datetime.now()}")
                 loss_meter.update(loss)
 
                 self.optimizer.zero_grad()

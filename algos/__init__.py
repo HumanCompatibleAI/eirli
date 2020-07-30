@@ -182,7 +182,7 @@ class CEB(RepresentationLearner):
     def __init__(self, env, log_dir, beta=0.1, **kwargs):
         super(CEB, self).__init__(env=env,
                                   log_dir=log_dir,
-                                  encoder=StochasticEncoder,
+                                  encoder=DeterministicEncoder,
                                   decoder=NoOp,
                                   loss_calculator=CEBLoss,
                                   loss_calculator_kwargs={'beta': beta},
