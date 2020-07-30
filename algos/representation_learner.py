@@ -154,8 +154,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
-                print(f"Augmenting: {datetime.now()}")
-                contexts, targets = self.augmenter(contexts, targets)
 
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
@@ -163,6 +161,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
                 if extra_context is not None:
                     extra_context = self._preprocess_if_image(extra_context)
+
+                print(f"Augmenting: {datetime.now()}")
+                contexts, targets = self.augmenter(contexts, targets)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
