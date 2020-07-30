@@ -28,11 +28,13 @@ def default_config():
     pretrain_epochs = 50
     representation_dim = 128
     ppo_finetune = True
+    learn_from_expert = False
+    rollouts_path = f"{env_id}_rollouts_500_ts_100_traj.npy"
     _ = locals()
     del _
 
 
-def get_random_traj(env, timesteps):
+def get_random_trajectories(env, timesteps):
     # Currently not designed for VecEnvs with n>1
     trajectory = {'states': [], 'actions': [], 'dones': []}
     obs = env.reset()
@@ -43,6 +45,24 @@ def get_random_traj(env, timesteps):
         trajectory['actions'].append(action[0])
         trajectory['dones'].append(dones[0])
     return trajectory
+
+@represent_ex.capture
+def get_expert_trajectories(env_id, timesteps, rollouts_path):
+    expert_data_loc = "/Users/cody/Data/expert_rollouts/"
+    full_rollouts_path = os.path.join(expert_data_loc, rollouts_path)
+    trajectories = np.load(full_rollouts_path, allow_pickle=True)
+    merged_trajectories = {'states': [], 'actions': [], 'dones': []}
+
+    for ind, traj in enumerate(trajectories):
+        for k in merged_trajectories.keys():
+            merged_trajectories[k] += traj[k]
+        if len(merged_trajectories['states']) > timesteps:
+            for k in merged_trajectories.keys():
+                merged_trajectories[k] = merged_trajectories[k][0:timesteps]
+            break
+    if len(merged_trajectories['states']) < timesteps:
+        raise Warning("")
+    return merged_trajectories
 
 
 def initialize_non_features_extractor(sb3_model):
@@ -56,7 +76,7 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, _config):
+def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, learn_from_expert, _config):
 
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
@@ -77,8 +97,10 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
         env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
     else:
         env = gym.make(env_id)
-
-    data = get_random_traj(env=env, timesteps=timesteps)
+    if learn_from_expert:
+        data = get_expert_trajectories(env_id=env_id, timesteps=timesteps)
+    else:
+        data = get_random_trajectories(env=env, timesteps=timesteps)
     assert issubclass(algo, RepresentationLearner)
 
     rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
