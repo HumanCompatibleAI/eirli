@@ -1,2 +1,6 @@
 rep_learning_runs/*
+.idea/*
 *.pyc
+*.xml
+*.xml
+*.iml

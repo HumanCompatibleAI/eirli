@@ -145,3 +145,80 @@ class CEBLoss(RepresentationLoss):
         return loss
 
 
+class SimCLRSymmetricContrastiveLoss(RepresentationLoss):
+    """
+    A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
+    all similarities with J, and also all similarities with I, and calculates cross-entropy on both. Adopted from
+    SimCLR's implementation.
+    """
+    def __init__(self, device, sample=False, temp=0.1):
+        super(SimCLRSymmetricContrastiveLoss, self).__init__(device, sample)
+        self.criterion = torch.nn.CrossEntropyLoss()
+        self.temp = temp
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        # decoded_context -> representation of context + optional projection head
+        # target -> representation of target + optional projection head
+        # encoded_context -> not used by this loss
+        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        z_i = decoded_contexts
+        z_j = targets
+
+        batch_size = z_i.shape[0]
+
+        mask = torch.eye(batch_size).to(self.device)
+
+        # In the updated official implementation, matrix multiplication (vs. cosine similarity in the paper) is used.
+        logits_aa = torch.matmul(z_i, z_i.T) / self.temp
+        # The entry on the diagonal line is each image's similarity with itself, which is always 1 for normalized
+        # vectors.
+        logits_aa = logits_aa - mask
+        logits_bb = torch.matmul(z_j, z_j.T) / self.temp
+        logits_bb = logits_bb - mask
+        logits_ab = torch.matmul(z_i, z_j.T) / self.temp
+        logits_ba = torch.matmul(z_j, z_i.T) / self.temp
+
+        logits_i = torch.cat((logits_ab, logits_aa), 1)
+        logits_j = torch.cat((logits_ba, logits_bb), 1)
+
+        label = torch.arange(batch_size, dtype=torch.long).to(self.device)
+        logits = torch.cat((logits_i, logits_j), axis=0)
+        labels = torch.cat((label, label), axis=0)
+        return self.criterion(logits, labels)
+
+
+class MoCoAsymmetricContrastiveLoss(RepresentationLoss):
+    """
+    A contrastive loss that perform similarity comparison between IJ (original & augmented representations) and IQ
+    (original & queued representations). This is used in MoCo.
+    """
+    def __init__(self, device, sample=False, temp=0.1):
+        super(MoCoAsymmetricContrastiveLoss, self).__init__(device, sample)
+        self.criterion = torch.nn.CrossEntropyLoss()
+        self.temp = temp
+
+    def __call__(self, decoded_context_dist, target_dist, queue_dist, encoded_context_dist=None):
+        # decoded_context -> representation of context + optional projection head
+        # target -> representation of target + optional projection head
+        # encoded_context -> not used by this loss
+        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist,
+                                                             target_dist,
+                                                             encoded_context_dist)
+
+        z_i = decoded_contexts
+        z_j = targets
+
+        z_i = F.normalize(z_i, dim=1)
+        z_j = F.normalize(z_j, dim=1)
+
+        # zi and zj are both matrices of dim (n x c), since they are z vectors of dim c for every element in the batch
+        # This einsum is constructing a vector of size n, where the nth element is a sum over C of the NCth elements
+        # That is to say, the nth element is a dot product between the Nth C-dim vector of each matrix
+        l_pos = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
+        l_neg = torch.einsum('nc,ck->nk', [z_i, queue_dist])  # NxK
+
+        logits = torch.cat([l_pos, l_neg], dim=1)
+        logits /= self.temp
+
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(self.device)
+        return self.criterion(logits, labels)

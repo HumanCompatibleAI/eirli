@@ -1,7 +1,7 @@
 from .representation_learner import RepresentationLearner
 from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
-from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss
+from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, MoCoAsymmetricContrastiveLoss, SimCLRSymmetricContrastiveLoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
@@ -15,6 +15,7 @@ def update_kwarg_dict(kwargs, update_dict, cls):
             raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
         kwargs[key] = value
     return kwargs
+
 
 class SimCLR(RepresentationLearner):
     """
@@ -31,7 +32,7 @@ class SimCLR(RepresentationLearner):
                                      log_dir=log_dir,
                                      encoder=DeterministicEncoder,
                                      decoder=ProjectionHead,
-                                     loss_calculator=SymmetricContrastiveLoss,
+                                     loss_calculator=SimCLRSymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
                                      target_pair_constructor=IdentityPairConstructor,
                                      **kwargs)
@@ -91,7 +92,7 @@ class MoCo(RepresentationLearner):
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
                                    decoder=NoOp,
-                                   loss_calculator=AsymmetricContrastiveLoss,
+                                   loss_calculator=MoCoAsymmetricContrastiveLoss,
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=TemporalOffsetPairConstructor,
                                    batch_extender=QueueBatchExtender,
@@ -115,7 +116,7 @@ class MoCoWithProjection(RepresentationLearner):
                                                  log_dir=log_dir,
                                                  encoder=MomentumEncoder,
                                                  decoder=MomentumProjectionHead,
-                                                 loss_calculator=AsymmetricContrastiveLoss,
+                                                 loss_calculator=MoCoAsymmetricContrastiveLoss,
                                                  augmenter=AugmentContextAndTarget,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
                                                  batch_extender=QueueBatchExtender,
@@ -173,7 +174,6 @@ class BYOL(RepresentationLearner):
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=IdentityPairConstructor,
                                    **kwargs)
-
 
 
 class CEB(RepresentationLearner):
