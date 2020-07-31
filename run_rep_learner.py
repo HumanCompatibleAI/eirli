@@ -39,7 +39,7 @@ def ceb_long_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    loss_constructor_kwargs = {'beta': 0.1}
+    loss_calculator_kwargs = {'beta': 0.05, 'sample': False}
     pretrain_epochs = 15
     demo_timesteps = None
     ppo_finetune=False
@@ -51,8 +51,8 @@ def ceb_no_compression_long_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    loss_constructor_kwargs = {'beta': 0.0}
-    pretrain_epochs = 50
+    loss_calculator_kwargs = {'beta': 0.0, 'sample': False}
+    pretrain_epochs = 8
     demo_timesteps = None
     ppo_finetune=False
     _ = locals()
@@ -131,6 +131,7 @@ def run(env_id, seed, algo, n_envs, pretrain_epochs, rl_training_timesteps, repr
 
     rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
+
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
