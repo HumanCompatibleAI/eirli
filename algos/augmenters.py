@@ -1,6 +1,7 @@
 from torchvision import transforms
 from .utils import gaussian_blur
 import numpy as np
+import torch
 from abc import ABC, abstractmethod
 
 """
@@ -21,6 +22,9 @@ class Augmenter(ABC):
     def __call__(self, contexts, targets):
         pass
 
+class NoAugmentation(Augmenter):
+    def __call__(self, contexts, targets):
+        return contexts, targets
 
 class AugmentContextAndTarget(Augmenter):
     def __call__(self, contexts, targets):
