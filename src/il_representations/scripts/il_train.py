@@ -13,15 +13,16 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.ppo import PPO
+from stable_baselines3.common.utils import get_device
 
-from il_representations.envs import magical_envs
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.magical_envs import load_dataset_magical
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 
-imitation_ex = Experiment('imitation', ingredients=[benchmark_ingredient])
+il_train_ex = Experiment('il_train', ingredients=[benchmark_ingredient])
 
 
-@imitation_ex.config
+@il_train_ex.config
 def default_config():
     # choose between 'bc'/'gail'
     algo = 'bc'
@@ -29,31 +30,17 @@ def default_config():
     # bc config variables
     bc_n_epochs = 100
 
-
-@benchmark_ingredient.capture
-def load_dataset_magical(magical_demo_dirs, magical_env_prefix):
-    demo_dir = magical_demo_dirs[magical_env_prefix]
-    logging.info(
-        f"Loading trajectory data for '{magical_env_prefix}' from '{demo_dir}'"
-    )
-    demo_paths = [
-        os.path.join(demo_dir, f) for f in os.listdir(demo_dir)
-        if f.endswith('.pkl.gz')
-    ]
-    if not demo_paths:
-        raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
-    gym_env_name_chans_last, dataset = magical_envs.load_data(
-        demo_paths, transpose_observations=True)
-    assert gym_env_name_chans_last.startswith(magical_env_prefix)
-    return gym_env_name_chans_last, dataset
+    # device to place all computations on
+    dev_name = 'auto'
 
 
-@imitation_ex.capture
-def do_training_bc(env_chans_first, dataset, out_dir, bc_n_epochs):
+@il_train_ex.capture
+def do_training_bc(env_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
     trainer = BC(observation_space=env_chans_first.observation_space,
                  action_space=env_chans_first.action_space,
                  policy_class=sb3_pols.ActorCriticCnnPolicy,
-                 expert_data=dataset)
+                 expert_data=dataset,
+                 device=dev_name)
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=bc_n_epochs)
@@ -63,8 +50,10 @@ def do_training_bc(env_chans_first, dataset, out_dir, bc_n_epochs):
     trainer.save_policy(final_path)
 
 
-@imitation_ex.capture
-def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset):
+@il_train_ex.capture
+def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset,
+                     dev_name):
+    device = get_device(dev_name)
     # Annoyingly, SB3 always adds a VecTransposeWrapper to the vec_env
     # that we pass in, so we have to build an un-transposed env first.
     vec_env_chans_last = make_vec_env(gym_env_name_chans_last,
@@ -82,6 +71,7 @@ def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset):
         # issue #109.
         verbose=1,
         tensorboard_log=None,
+        device=device,
     )
     trainer = GAIL(
         vec_env_chans_last,
@@ -105,20 +95,19 @@ def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset):
     # disables auto-wrapping of environments..
 
     # trainer.train(total_timesteps=2048)
-
     raise NotImplementedError(
-        "GAIL doesn't work due to image transpose issues in imitation/SB3")
+        "GAIL doesn't yet work due to image transpose issues in imitation/SB3")
 
 
-@imitation_ex.main
+@il_train_ex.main
 def train(algo, bc_n_epochs, benchmark, _config):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
-    # actually know the right way to write continuous logs in sacred.
-    out_dir = imitation_ex.observers[0].dir
-    imitation_logger.configure(out_dir, ["stdout", "tensorboard"])
+    # actually know the right way to write log files continuously in Sacred.
+    log_dir = il_train_ex.observers[0].dir
+    imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
 
     if benchmark['benchmark_name'] == 'magical':
         gym_env_name_chans_last, dataset = load_dataset_magical()
@@ -137,7 +126,7 @@ def train(algo, bc_n_epochs, benchmark, _config):
     if algo == 'bc':
         do_training_bc(dataset=dataset,
                        env_chans_first=env_chans_first,
-                       out_dir=out_dir)
+                       out_dir=log_dir)
 
     elif algo == 'gail':
         do_training_gail(dataset=dataset,
@@ -149,5 +138,5 @@ def train(algo, bc_n_epochs, benchmark, _config):
 
 
 if __name__ == '__main__':
-    imitation_ex.observers.append(FileStorageObserver('imitation_runs'))
-    imitation_ex.run_commandline()
+    il_train_ex.observers.append(FileStorageObserver('il_train_runs'))
+    il_train_ex.run_commandline()

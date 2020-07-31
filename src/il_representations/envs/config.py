@@ -33,5 +33,6 @@ def bench_defaults():
 
     }
     magical_env_prefix = 'MoveToCorner'
+    magical_preproc = 'LoRes4E'
 
     # TODO(sam): add dm_control support as well
