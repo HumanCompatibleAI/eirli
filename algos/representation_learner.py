@@ -85,9 +85,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
     def log_info(self, loss, step, epoch_ind):
-        self.writer.add_scalar('loss', loss, step)
+        self.writer.add_scalar('loss', loss, step*(epoch_ind+1))
         lr = self.optimizer.param_groups[0]['lr']
-        self.writer.add_scalar('learning_rate', lr, step)
+        self.writer.add_scalar('learning_rate', lr, step*(epoch_ind+1))
         self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {step}, "
                         f"lr {lr}, "
                         f"loss {loss}")
@@ -154,6 +154,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
+                contexts, targets = self.augmenter(contexts, targets)
 
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
@@ -163,7 +164,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     extra_context = self._preprocess_if_image(extra_context)
 
                 #print(f"Augmenting: {datetime.now()}")
-                contexts, targets = self.augmenter(contexts, targets)
+
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented

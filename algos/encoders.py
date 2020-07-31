@@ -73,7 +73,7 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=0.01):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
