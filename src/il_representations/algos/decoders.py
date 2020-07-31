@@ -3,7 +3,7 @@ import copy
 import torch
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
-from .utils import independent_multivariate_normal
+from il_representations.algos.utils import independent_multivariate_normal
 import gym.spaces as spaces
 import numpy as np
 

@@ -62,7 +62,6 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
 
         logits = torch.cat((sim_ij, sim_ik), 1)
         logits /= self.temp
-        import pdb; pdb.set_trace()
         labels = torch.zeros(logits.shape[0], dtype=torch.long, device=self.device)
         return self.criterion(logits, labels)
 

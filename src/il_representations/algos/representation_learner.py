@@ -5,12 +5,12 @@ from collections import Counter
 
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from .batch_extenders import IdentityBatchExtender
-from .base_learner import BaseEnvironmentLearner
-from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger, time_now
+from il_representations.algos.batch_extenders import IdentityBatchExtender
+from il_representations.algos.base_learner import BaseEnvironmentLearner
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger, time_now
 from datetime import datetime
 
-from .augmenters import AugmentContextOnly
+from il_representations.algos.augmenters import AugmentContextOnly
 import itertools
 from gym.spaces import Box
 

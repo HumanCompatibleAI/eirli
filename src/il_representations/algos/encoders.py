@@ -5,7 +5,7 @@ from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.policies import NatureCNN
 from gym.spaces import Box
-from .utils import independent_multivariate_normal
+from il_representations.algos.utils import independent_multivariate_normal
 
 
 """
