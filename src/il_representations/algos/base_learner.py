@@ -1,4 +1,4 @@
-from .utils import set_global_seeds
+from il_representations.algos.utils import set_global_seeds
 
 
 class BaseEnvironmentLearner:

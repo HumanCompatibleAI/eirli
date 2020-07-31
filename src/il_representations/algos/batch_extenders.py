@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
 from torch.distributions import Normal
-from .utils import independent_multivariate_normal
+from il_representations.algos.utils import independent_multivariate_normal
 """
 BatchExtenders are used in situations where you want to pass a batch forward for loss that is different than the 
 batch seen by your encoder. The currently implemented situation where this is the case is Momentum, where you want 

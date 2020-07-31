@@ -1,5 +1,5 @@
 from torchvision import transforms
-from .utils import gaussian_blur
+from il_representations.algos.utils import gaussian_blur
 import numpy as np
 import torch
 from abc import ABC, abstractmethod
