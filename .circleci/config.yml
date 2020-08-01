@@ -12,7 +12,10 @@ jobs:
       - checkout
       - python/install-deps
       - run:
-          command: pytest test_base_algos.py
+          command: pip install -e .
+          name: Install in dev mode
+      - run:
+          command: pytest tests/
           name: Run Tests
 
 workflows:
