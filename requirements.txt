@@ -9,7 +9,7 @@ sacred~=0.8.1
 tensorboard~=2.2.0
 pytest~=5.4.3
 
-# imitation needs SB3 master as of 2020-07-21
+# imitation needs special branch as of 2020-07-31
 git+git://github.com/HumanCompatibleAI/imitation@port_clones_to_pytorch#egg=imitation
 git+https://github.com/DLR-RM/stable-baselines3.git@master#egg=stable-baselines3
 
