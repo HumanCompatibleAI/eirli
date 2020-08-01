@@ -136,6 +136,8 @@ def train(algo, bc_n_epochs, benchmark, _config):
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
 
+    return log_dir
+
 
 if __name__ == '__main__':
     il_train_ex.observers.append(FileStorageObserver('il_train_runs'))
