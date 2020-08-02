@@ -170,8 +170,8 @@ class SimCLRSymmetricContrastiveLoss(RepresentationLoss):
 
         # In the updated official implementation, matrix multiplication (vs. cosine similarity in the paper) is used.
         logits_aa = torch.matmul(z_i, z_i.T) / self.temp
-        # The entry on the diagonal line is each image's similarity with itself, which is always 1 for normalized
-        # vectors.
+        # The entry on the diagonal line is each image's similarity with itself, which is always 1 (the max value)
+        # for normalized vectors. We do not want to include this in our logits.
         logits_aa = logits_aa - mask
         logits_bb = torch.matmul(z_j, z_j.T) / self.temp
         logits_bb = logits_bb - mask
@@ -218,9 +218,8 @@ class MoCoAsymmetricContrastiveLoss(RepresentationLoss):
         # That is to say, the nth element is a dot product between the Nth C-dim vector of each matrix
         l_pos = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
 
-        # (Cynthia) In MoCo, the loss doesn't take the sum over the similarities. For each image, it takes the sim with
-        # its augmented image (the line above), then compute the image's similarity with everything else in the
-        # queue (the line below).
+        # (Cynthia) In Moco, for each image, it takes the sim with its augmented image (the line above), then compute
+        # the image's similarity with everything else in the queue (the line below).
         l_neg = torch.einsum('nc,ck->nk', [z_i, queue.T])  # NxK
 
         logits = torch.cat([l_pos, l_neg], dim=1)
