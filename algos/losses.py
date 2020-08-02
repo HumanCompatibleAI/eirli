@@ -197,7 +197,7 @@ class MoCoAsymmetricContrastiveLoss(RepresentationLoss):
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
-    def __call__(self, decoded_context_dist, target_dist, queue_dist, encoded_context_dist=None):
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
@@ -205,8 +205,10 @@ class MoCoAsymmetricContrastiveLoss(RepresentationLoss):
                                                              target_dist,
                                                              encoded_context_dist)
 
-        z_i = decoded_contexts
-        z_j = targets
+        z_i = decoded_contexts  # NxC
+        batch_size = z_i.shape[0]
+        z_j = targets[:batch_size]  # NxC
+        queue = targets[batch_size:]  # KxC
 
         z_i = F.normalize(z_i, dim=1)
         z_j = F.normalize(z_j, dim=1)
@@ -215,7 +217,11 @@ class MoCoAsymmetricContrastiveLoss(RepresentationLoss):
         # This einsum is constructing a vector of size n, where the nth element is a sum over C of the NCth elements
         # That is to say, the nth element is a dot product between the Nth C-dim vector of each matrix
         l_pos = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
-        l_neg = torch.einsum('nc,ck->nk', [z_i, queue_dist])  # NxK
+
+        # (Cynthia) In MoCo, the loss doesn't take the sum over the similarities. For each image, it takes the sim with
+        # its augmented image (the line above), then compute the image's similarity with everything else in the
+        # queue (the line below).
+        l_neg = torch.einsum('nc,ck->nk', [z_i, queue.T])  # NxK
 
         logits = torch.cat([l_pos, l_neg], dim=1)
         logits /= self.temp
