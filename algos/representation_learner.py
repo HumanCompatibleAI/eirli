@@ -126,6 +126,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], None
         else:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
+
     def learn(self, dataset):
         """
         :param dataset:
