@@ -35,6 +35,18 @@ def default_config():
 
 
 @represent_ex.named_config
+def ceb_long_breakout_sample():
+    env_id = 'BreakoutNoFrameskip-v4'
+    train_from_expert = True
+    algo = algos.FixedVarianceCEB
+    loss_calculator_kwargs = {'beta': 0.00, 'sample': True}
+    pretrain_epochs = 15
+    demo_timesteps = None
+    ppo_finetune=False
+    _ = locals()
+    del _
+
+@represent_ex.named_config
 def ceb_long_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
