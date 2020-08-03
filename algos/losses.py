@@ -131,18 +131,23 @@ class CEBLoss(RepresentationLoss):
         self.sample = sample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        normalized_context_loc = F.normalize(decoded_context_dist.loc, dim=1)
+        normalized_target_loc = F.normalize(target_dist.loc, dim=1)
+        normalized_context_dist = torch.distributions.MultivariateNormal(loc=normalized_context_loc,
+                                                                         covariance_matrix=decoded_context_dist.covariance_matrix)
+        normalized_target_dist = torch.distributions.MultivariateNormal(loc=normalized_target_loc,
+                                                                        covariance_matrix=target_dist.covariance_matrix)
 
         if self.sample:
-            z = decoded_context_dist.sample() # B x Z
+            z = normalized_context_dist.sample() # B x Z
         else:
-            z = decoded_context_dist.loc
+            z = normalized_context_dist.loc
 
-        single_distribution_samples = torch.stack([decoded_context_dist.sample()[0] for _ in range(10)])
 
-        log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
-        log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
+        log_ezx = normalized_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
+        log_bzy = normalized_target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
 
-        cross_probas_logits = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
+        cross_probas_logits = torch.stack([normalized_target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
         # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
         #import pdb; pdb.set_trace()
         catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
