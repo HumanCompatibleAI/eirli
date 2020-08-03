@@ -151,6 +151,9 @@ class SimCLRSymmetricContrastiveLoss(SymmetricContrastiveLoss):
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both. Adopted from
     SimCLR's implementation.
     """
+    def __init__(self, device, sample=False):
+        super(SimCLRSymmetricContrastiveLoss, self).__init__(device, sample)
+
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
@@ -187,6 +190,9 @@ class MoCoAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
     A contrastive loss that perform similarity comparison between IJ (original & augmented representations) and IQ
     (original & queued representations). This is used in MoCo.
     """
+    def __init__(self, device, sample=False):
+        super(MoCoAsymmetricContrastiveLoss, self).__init__(device, sample)
+
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
