@@ -48,7 +48,6 @@ ENV LANG C.UTF-8
 RUN mkdir -p /root/.mujoco \
     && wget https://www.roboti.us/download/mujoco200_linux.zip -O mujoco.zip \
     && unzip mujoco.zip -d /root/.mujoco \
-    && mv /root/.mujoco/mujoco200_linux /root/.mujoco/mujoco200 \
     && rm mujoco.zip
 # fake MuJoCo key; we'll add a real one at run time
 RUN touch /root/.mujoco/mjkey.txt
