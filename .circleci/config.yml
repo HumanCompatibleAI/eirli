@@ -13,8 +13,14 @@ jobs:
           command: pip install -e .
           name: Install in dev mode
       - run:
-          command: xvfb-run -a pytest tests/
+          command: |
+            mkdir -p test-results
+            xvfb-run -a pytest --junitxml=test-results/junit.xml tests/
           name: Run Tests
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
 
 workflows:
   main:

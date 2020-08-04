@@ -14,6 +14,8 @@ git+git://github.com/HumanCompatibleAI/imitation@master#egg=imitation
 git+https://github.com/DLR-RM/stable-baselines3.git@master#egg=stable-baselines3
 
 # environments
+# (MAGICAL currently requires an old version of Pyglet)
+pyglet==1.3.*
 git+https://github.com/qxcv/magical@master#egg=magical
 dm_control~=0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
