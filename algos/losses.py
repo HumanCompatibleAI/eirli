@@ -124,11 +124,12 @@ class CEBLoss(RepresentationLoss):
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form
     than done by traditional VIB techniques
     """
-    def __init__(self, device, beta=.1, sample=True):
+    def __init__(self, device, beta=.1, sample=True, rsample=False):
         super().__init__(device, sample=sample)
         # TODO allow for beta functions
         self.beta = beta
         self.sample = sample
+        self.rsample = rsample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         normalized_context_loc = F.normalize(decoded_context_dist.loc, dim=1)
@@ -138,10 +139,16 @@ class CEBLoss(RepresentationLoss):
         normalized_target_dist = torch.distributions.MultivariateNormal(loc=normalized_target_loc,
                                                                         covariance_matrix=target_dist.covariance_matrix)
 
+        z = normalized_context_dist.loc
         if self.sample:
-            z = normalized_context_dist.sample() # B x Z
-        else:
-            z = normalized_context_dist.loc
+            # Take the diagonal variance vector and stack batch-wise. Result: [B, Z]
+            covariance_diagonals = torch.stack([batch_cov.diag() for batch_cov in normalized_context_dist.covariance_matrix])
+            # Elementwise multiply each N(0, 1) sample by the covariance diagonal for that dimension
+            noise = torch.randn(z.shape) * covariance_diagonals
+            z += noise
+
+        if self.rsample:
+            z = normalized_context_dist.rsample()
 
 
         log_ezx = normalized_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
