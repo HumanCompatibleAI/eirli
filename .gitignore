@@ -5,7 +5,7 @@ test_observer
 *.pyc
 *.egg-info
 # data/ is used to set up symlinks to datasets
-data
+/data
 
 # editor and devlopment tool cruft
 .pytype
