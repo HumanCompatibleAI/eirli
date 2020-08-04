@@ -54,14 +54,14 @@ RUN mkdir -p /root/.mujoco \
 RUN touch /root/.mujoco/mjkey.txt
 ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
 
-WORKDIR /il-representations
-# Copy only files necessary for installing deps. That way, image stays the same
-# so long as deps stay the same.
-COPY ./requirements.txt ./
-COPY ./setup.py ./
-RUN mkdir -p ./src/il_representations
-RUN touch ./src/il_representations/__init__.py
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e .
-
-CMD ["xvfb-run", "-a", "pytest", "tests/"]
+# WORKDIR /il-representations
+# # Copy only files necessary for installing deps. That way, image stays the same
+# # so long as deps stay the same.
+# COPY ./requirements.txt ./
+# COPY ./setup.py ./
+# RUN mkdir -p ./src/il_representations
+# RUN touch ./src/il_representations/__init__.py
+# RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip install -e .
+# 
+# CMD ["xvfb-run", "-a", "pytest", "tests/"]
