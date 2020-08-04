@@ -13,6 +13,11 @@ from datetime import datetime
 from .augmenters import AugmentContextOnly
 import itertools
 from gym.spaces import Box
+from torch import autograd
+
+from graphviz import Digraph
+import torch
+from torch.autograd import Variable, Function
 
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
@@ -21,6 +26,9 @@ def to_dict(kwargs_element):
     else:
         return kwargs_element
 
+###
+
+###
 
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
@@ -84,13 +92,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
-    def log_info(self, loss, step, epoch_ind):
-        self.writer.add_scalar('loss', loss, step*(epoch_ind+1))
+    def log_info(self, loss, epoch_step, global_step, epoch_ind):
+        self.writer.add_scalar('loss', loss, global_step)
         lr = self.optimizer.param_groups[0]['lr']
-        self.writer.add_scalar('learning_rate', lr, step*(epoch_ind+1))
-        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {step}, "
+        self.writer.add_scalar('learning_rate', lr, global_step)
+        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {epoch_step}, "
                         f"lr {lr}, "
-                        f"loss {loss}")
+                        f"loss {loss}, "
+                        f"Overall step: {global_step}")
 
     def _make_channels_first(self):
         # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
@@ -142,6 +151,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder.train(True)
 
         loss_record = []
+        global_step = 0
         for epoch in range(self.pretrain_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
@@ -197,7 +207,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.log_info(loss, step, epoch)
+                global_step +=1
+                self.log_info(loss, step, global_step, epoch)
+
 
             #self.scheduler.step()
             loss_record.append(loss_meter.avg.cpu().item())

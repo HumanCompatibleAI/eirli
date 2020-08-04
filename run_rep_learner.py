@@ -28,48 +28,88 @@ def default_config():
     rl_training_timesteps = 1000
     pretrain_only = False
     pretrain_epochs = 50
-    representation_dim = 128
+    representation_dim = 64
     ppo_finetune = True
     _ = locals()
     del _
 
-
 @represent_ex.named_config
-def ceb_long_breakout_sample():
+def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
+    pretrain_epochs = 5
+    demo_timesteps = None
+    ppo_finetune = False
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def tiny_epoch():
+    demo_timesteps=5000
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def no_compress_rsample():
+    loss_calculator_kwargs = {'beta': 0.00, 'rsample': True}
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def no_compress_sample():
     loss_calculator_kwargs = {'beta': 0.00, 'sample': True}
-    pretrain_epochs = 15
-    demo_timesteps = None
-    ppo_finetune=False
     _ = locals()
     del _
 
 @represent_ex.named_config
-def ceb_long_breakout():
-    env_id = 'BreakoutNoFrameskip-v4'
-    train_from_expert = True
-    algo = algos.FixedVarianceCEB
+def compress_sample():
+    loss_calculator_kwargs = {'beta': 0.01, 'sample': True}
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def no_compress_no_sample():
+    loss_calculator_kwargs = {'beta': 0.00, 'sample': False}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def compress_no_sample():
+    loss_calculator_kwargs = {'beta': 0.01, 'sample': False}
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def more_compress_no_sample():
     loss_calculator_kwargs = {'beta': 0.05, 'sample': False}
-    pretrain_epochs = 15
-    demo_timesteps = None
-    ppo_finetune=False
     _ = locals()
     del _
 
 @represent_ex.named_config
-def ceb_no_compression_long_breakout():
-    env_id = 'BreakoutNoFrameskip-v4'
-    train_from_expert = True
-    algo = algos.FixedVarianceCEB
-    loss_calculator_kwargs = {'beta': 0.0, 'sample': False}
-    pretrain_epochs = 8
-    demo_timesteps = None
-    ppo_finetune=False
+def small_variance():
+    encoder_kwargs = {'scale_constant': 0.001}
     _ = locals()
     del _
 
+@represent_ex.named_config
+def large_variance():
+    encoder_kwargs = {'scale_constant': 0.1}
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def huge_variance():
+    encoder_kwargs = {'scale_constant': 1.0}
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def tiny_variance():
+    encoder_kwargs = {'scale_constant': 0.0001}
+    _ = locals()
+    del _
 @represent_ex.capture
 def get_random_trajectories(env, demo_timesteps):
     # Currently not designed for VecEnvs with n>1
