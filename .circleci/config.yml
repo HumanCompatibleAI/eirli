@@ -1,21 +1,19 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.2.1
-
 jobs:
   build-and-test:
-    executor:
-      name: python/default
-      tag: '3.7'
+    docker:
+      - image: qxcv/il-representations:2020.08.03-r1
     steps:
       - checkout
-      - python/install-deps
+      - run:
+          command: pip install -r requirements.txt
+          name: Install dependencies
       - run:
           command: pip install -e .
           name: Install in dev mode
       - run:
-          command: pytest tests/
+          command: xvfb-run -a pytest tests/
           name: Run Tests
 
 workflows:
