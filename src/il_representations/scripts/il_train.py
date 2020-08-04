@@ -16,6 +16,7 @@ from stable_baselines3.ppo import PPO
 from stable_baselines3.common.utils import get_device
 
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import load_dataset_magical
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 
@@ -111,6 +112,8 @@ def train(algo, bc_n_epochs, benchmark, _config):
 
     if benchmark['benchmark_name'] == 'magical':
         gym_env_name_chans_last, dataset = load_dataset_magical()
+    elif benchmark['benchmark_name'] == 'dm_control':
+        gym_env_name_chans_last, dataset = load_dataset_dm_control()
     else:
         raise NotImplementedError(
             f"only MAGICAL is supported right now; no support for "
