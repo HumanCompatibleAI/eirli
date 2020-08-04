@@ -10,6 +10,9 @@ jobs:
           command: pip install -r requirements.txt
           name: Install dependencies
       - run:
+          command: curl -so ~/.mujoco/mjkey.txt "${MUJOCO_KEY}"
+          name: Set up MuJoCo
+      - run:
           command: pip install -e .
           name: Install in dev mode
       - run:
@@ -25,4 +28,5 @@ jobs:
 workflows:
   main:
     jobs:
-      - build-and-test
+      - build-and-test:
+          context: MuJoCo
