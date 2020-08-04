@@ -68,6 +68,7 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size, dev_name,
             eval_data_frame.to_csv(fp)
             fp.flush()
             il_test_ex.add_artifact(fp.name, 'eval.csv')
+
     elif benchmark['benchmark_name'] == 'dm_control':
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
