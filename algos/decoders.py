@@ -56,6 +56,23 @@ class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
 
+
+class TargetProjection(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
+        super(TargetProjection, self).__init__(representation_dim, projection_shape, sample)
+
+        self.target_projection = nn.Sequential(nn.Linear(self.representation_dim, self.projection_dim),
+                                               nn.ReLU())
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        z_vector = self.get_vector(z_dist)
+        mean = self.target_projection(z_vector)
+        return torch.distributions.MultivariateNormal(loc=mean, covariance_matrix=z_dist.covariance_matrix)
+
+
 class ProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
         super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
