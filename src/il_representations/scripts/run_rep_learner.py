@@ -6,15 +6,15 @@ from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
-import algos
-from algos.representation_learner import RepresentationLearner
-from policy_interfacing import EncoderFeatureExtractor
+from il_representations import algos
+from il_representations.algos.representation_learner import RepresentationLearner
+from il_representations.policy_interfacing import EncoderFeatureExtractor
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import logging
 import numpy as np
 import inspect
-from algos.utils import LinearWarmupCosine
+from il_representations.algos.utils import LinearWarmupCosine
 represent_ex = Experiment('representation_learning')
 
 
