@@ -35,7 +35,7 @@ def transform_to_rl(dataset):
     adding dummy 'actions' (always 0) and 'dones' (always False), and pretending
     that everything is from the same 'trajectory'.
     """
-    states = [img for img, label in dataset][:10000]
+    states = [img for img, label in dataset]
     data_dict = {
         'states': states,
         'actions': [0.0] * len(states),
@@ -56,15 +56,15 @@ class LinearHead(nn.Module):
         return self.layer(encoding)
 
 
-def train_classifier(classifier, dataset, num_epochs):
+def train_classifier(classifier, dataset, num_epochs, device):
     trainloader = torch.utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(classifier.layer.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0)
 
     for epoch in range(num_epochs):
         running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
-            inputs, labels = data
+        for i, (inputs, labels) in enumerate(trainloader, 0):
+            inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = classifier(inputs)
             loss = criterion(outputs, labels)
@@ -79,13 +79,13 @@ def train_classifier(classifier, dataset, num_epochs):
                 running_loss = 0.0
 
 
-def evaluate_classifier(classifier, dataset):
+def evaluate_classifier(classifier, dataset, device):
     testloader = torch.utils.data.DataLoader(dataset, batch_size=100, shuffle=False)
     correct = 0
     total = 0
     with torch.no_grad():
-        for data in testloader:
-            images, labels = data
+        for images, labels in testloader:
+            images, labels = images.to(device), labels.to(device)
             outputs = classifier(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
@@ -99,17 +99,18 @@ cifar_ex = Experiment('cifar')
 
 @cifar_ex.config
 def default_config():
-    seed = 0
+    seed = 1
     algo = SimCLR
     data_dir = 'cifar10/'
     pretrain_epochs = 1000
     finetune_epochs = 100
+    rep_batch_size = 512
     _ = locals()
     del _
 
 
 @cifar_ex.main
-def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
+def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, _config):
 
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
@@ -126,7 +127,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
     os.makedirs(data_dir, exist_ok=True)
     transformations = [
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
     transform = transforms.Compose(transformations)
     trainset = torchvision.datasets.CIFAR10(
@@ -135,6 +136,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
         root=data_dir, train=False, download=True, transform=transform)
 
     print('Creating model for representation learning')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     env = MockGymEnv(Box(low=-1.0, high=1.0, shape=(32, 32, 3), dtype=np.float32))
     # algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
     rep_learning_augmentations = [
@@ -150,7 +152,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
     # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
     # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
     model = algo(
-        env, log_dir=log_dir, pretrain_epochs=pretrain_epochs, batch_size=512, representation_dim=1000,
+        env, log_dir=log_dir, pretrain_epochs=pretrain_epochs, batch_size=rep_batch_size, representation_dim=1000, device=device,
         encoder_kwargs={'architecture': resnet18()},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
         optimizer_kwargs={'lr': 1e-3, 'weight_decay': 1e-4},
@@ -162,11 +164,11 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
     del rep_learning_data
 
     print('Train linear head')
-    classifier = LinearHead(model.encoder, 10)
-    train_classifier(classifier, trainset, num_epochs=finetune_epochs)
+    classifier = LinearHead(model.encoder, 10).to(device)
+    train_classifier(classifier, trainset, num_epochs=finetune_epochs, device=device)
 
     print('Evaluate accuracy on test set')
-    evaluate_classifier(classifier, testset)
+    evaluate_classifier(classifier, testset, device=device)
 
     env.close()
 
