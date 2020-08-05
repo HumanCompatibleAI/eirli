@@ -51,6 +51,12 @@ def tiny_epoch():
     del _
 
 @represent_ex.named_config
+def target_projection():
+    algo = algos.FixedVarianceTargetProjectedCEB
+    _ = locals()
+    del _
+
+@represent_ex.named_config
 def no_compress_rsample():
     loss_calculator_kwargs = {'beta': 0.00, 'rsample': True}
     _ = locals()
