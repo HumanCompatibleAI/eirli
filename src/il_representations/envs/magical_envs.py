@@ -7,7 +7,6 @@ import os
 from typing import List, Tuple
 
 import imitation.data.datasets as il_datasets
-import imitation.data.types as il_types
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
 from magical import register_envs, saved_trajectories
@@ -17,28 +16,6 @@ import numpy as np
 from il_representations.envs.config import benchmark_ingredient
 
 register_envs()
-
-
-class TransitionsMinimalDataset(il_datasets.Dataset):
-    """Exposes a dict {'obs': <observations ndarray>, 'acts'} as a dataset that
-    enumerates `TransitionsMinimal` instances. Useful for interfacing with
-    BC."""
-
-    def __init__(self, data_map):
-        assert data_map.keys() == {'obs', 'acts'}
-        self.dict_dataset = il_datasets.RandomDictDataset(data_map)
-
-    def sample(self, n_samples):
-        dict_samples = self.dict_dataset.sample(n_samples)
-        # we don't have infos dicts, so we insert some fake ones to make
-        # TransitionsMinimal happy
-        dummy_infos = np.asarray([{}] * n_samples, dtype='object')
-        result = il_types.TransitionsMinimal(infos=dummy_infos, **dict_samples)
-        assert len(result) == n_samples
-        return result
-
-    def size(self):
-        return self.dict_dataset.size()
 
 
 def load_data(
@@ -106,6 +83,9 @@ def load_data(
             dataset_dict['obs'].append(trajectory.obs[:-1])
             obs_keys.add('obs')
         dataset_dict['acts'].append(trajectory.acts)
+        traj_t = len(trajectory.acts)
+        dones_array = np.array([False] * (traj_t - 1) + [True], dtype='bool')
+        dataset_dict['dones'].append(dones_array)
 
     # join together all the lists of ndarrays
     dataset_dict = {
@@ -117,9 +97,7 @@ def load_data(
         for obs_key in obs_keys:
             dataset_dict[obs_key] = np.moveaxis(dataset_dict[obs_key], -1, 1)
 
-    dataset = TransitionsMinimalDataset(dataset_dict)
-
-    return env_name, dataset
+    return env_name, dataset_dict
 
 
 @benchmark_ingredient.capture
@@ -135,12 +113,12 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
     ]
     if not demo_paths:
         raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
-    gym_env_name_chans_last, dataset = load_data(
+    gym_env_name_chans_last, dataset_dict = load_data(
         demo_paths,
         preprocessor_name=magical_preproc,
         transpose_observations=True)
     assert gym_env_name_chans_last.startswith(magical_env_prefix)
-    return gym_env_name_chans_last, dataset
+    return gym_env_name_chans_last, dataset_dict
 
 
 class SB3EvaluationProtocol(EvaluationProtocol):
@@ -170,8 +148,7 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         trajectories = il_rollout.generate_trajectories(
             self.policy,
             vec_env_chans_last,
-            sample_until=il_rollout.min_episodes(
-                self.n_rollouts),
+            sample_until=il_rollout.min_episodes(self.n_rollouts),
             rng=rng)
         scores = []
         for trajectory in trajectories[:self.n_rollouts]:

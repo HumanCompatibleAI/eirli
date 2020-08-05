@@ -7,8 +7,7 @@ import os
 import cloudpickle
 import dmc2gym
 import gym
-from imitation.data.rollout import flatten_trajectories
-from imitation.data.datasets import TransitionsDictDatasetAdaptor
+import numpy as np
 
 from il_representations.envs.config import benchmark_ingredient
 
@@ -83,18 +82,34 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
     data_paths = glob.glob(os.path.expanduser(data_pattern))
-    loaded_trajectories = []
+    loaded_trajs = []
     for data_path in data_paths:
         with gzip.GzipFile(data_path, 'rb') as fp:
             new_data = cloudpickle.load(fp)
-        loaded_trajectories.extend(new_data)
+        loaded_trajs.extend(new_data)
 
     # join together all trajectories into a single dataset
-    transitions = flatten_trajectories(loaded_trajectories)
-    del loaded_trajectories
-    dataset = TransitionsDictDatasetAdaptor(transitions)
+    dones_lists = [
+        # for each trajectory of length T (not including final observation), we
+        # create an array of `dones` consisting of T-1 False values and one
+        # terminal True value
+        np.array([False] * (len(t.acts) - 1) + [True], dtype='bool')
+        for t in loaded_trajs
+    ]
+    dataset_dict = {
+        'obs':
+        np.concatenate([t.obs[:-1] for t in loaded_trajs], axis=0),
+        'acts':
+        np.concatenate([t.acts for t in loaded_trajs], axis=0),
+        'infos':
+        np.concatenate([t.infos for t in loaded_trajs], axis=0),
+        'rews':
+        np.concatenate([t.rews for t in loaded_trajs], axis=0),
+        'dones':
+        np.concatenate(dones_lists, axis=0),
+    }
 
-    return gym_env_name_chans_last, dataset
+    return gym_env_name_chans_last, dataset_dict
 
 
 register_dmc_envs()

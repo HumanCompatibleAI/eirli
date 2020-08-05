@@ -11,7 +11,10 @@ from imitation.util.util import make_vec_env
 import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.utils import get_device
+from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
@@ -69,21 +72,26 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size, dev_name,
             fp.flush()
             il_test_ex.add_artifact(fp.name, 'eval.csv')
 
-    elif benchmark['benchmark_name'] == 'dm_control':
+    elif (benchmark['benchmark_name'] == 'dm_control'
+          or benchmark['benchmark_name'] == 'atari'):
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 
-        # get env name
-        short_env_name = benchmark['dm_control_env']
-        all_full_names = benchmark['dm_control_full_env_names']
-        full_env_name = all_full_names[short_env_name]
+        # make vec env
+        if benchmark['benchmark_name'] == 'dm_control':
+            short_env_name = benchmark['dm_control_env']
+            all_full_names = benchmark['dm_control_full_env_names']
+            full_env_name = all_full_names[short_env_name]
+            vec_env = make_vec_env(full_env_name,
+                                   n_envs=eval_batch_size,
+                                   parallel=False,
+                                   seed=seed)
+        else:
+            short_env_name = full_env_name = benchmark['atari_env_id']
+            vec_env = VecFrameStack(make_atari_env(full_env_name), 4)
 
         # sample some trajectories
         rng = np.random.RandomState(seed)
-        vec_env = make_vec_env(full_env_name,
-                               n_envs=eval_batch_size,
-                               parallel=False,
-                               seed=seed)
         trajectories = il_rollout.generate_trajectories(
             policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
 
