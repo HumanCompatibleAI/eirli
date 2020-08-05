@@ -22,7 +22,7 @@ def to_dict(kwargs_element):
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
                  augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
-                 scheduler=None, representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
+                 scheduler=None, representation_dim=512, projection_dim=None, device=None, shuffle_batches=True,
                  batch_size=256, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
                  augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
                  loss_calculator_kwargs=None, scheduler_kwargs=None):
@@ -39,7 +39,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
-        self.pretrain_epochs = pretrain_epochs
         self.save_interval = save_interval
 
         self._make_channels_first()
@@ -92,6 +91,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"loss {loss}")
 
     def _make_channels_first(self):
+        if not (isinstance(self.observation_space, Box) and len(self.observation_shape) == 3):
+            self.permutation_tuple = None
+            return
+
         # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
         x, y, z = self.observation_shape
         if x != y and y == z:
@@ -99,7 +102,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             assert x == y and x != z, "Can only handle square images in format (C, H, W) or (H, W, C)"
             self.observation_shape = (z, x, y)
-            self.observation_space = Box(shape=self.observation_shape, low=0, high=255, dtype=np.uint8)
+            low = self.observation_space.low.reshape(self.observation_shape)
+            high = self.observation_space.high.reshape(self.observation_shape)
+            self.observation_space = Box(shape=self.observation_shape, low=low, high=high)
             self.permutation_tuple = (0, 3, 1, 2)
 
     def _tensorize(self, arr):
@@ -109,10 +114,17 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         return torch.FloatTensor(arr).to(self.device)
 
-    def _preprocess_if_image(self, input_data):
+    def _preprocess(self, input_data):
+        # Make channels first for image inputs
         if isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4 and self.permutation_tuple is not None:
             input_data = input_data.permute(self.permutation_tuple)
-            input_data = input_data / 255
+
+        # Normalization to range [-1, 1]
+        if isinstance(self.observation_space, Box):
+            low, high = self.observation_space.low, self.observation_space.high
+            mid = (low + high) / 2
+            delta = high - mid
+            input_data = (input_data - mid) / delta
         return input_data
 
     # TODO maybe make static?
@@ -156,9 +168,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self.augmenter(contexts, targets)
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
-                contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
+                contexts, targets = self._preprocess(contexts), self._preprocess(targets)
                 if extra_context is not None:
-                    extra_context = self._preprocess_if_image(extra_context)
+                    extra_context = self._preprocess(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
