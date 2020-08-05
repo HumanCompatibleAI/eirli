@@ -1,6 +1,6 @@
 from .representation_learner import RepresentationLearner
 from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
-from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
+from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -201,6 +201,19 @@ class FixedVarianceCEB(RepresentationLearner):
                                   augmenter=AugmentContextAndTarget,
                                   target_pair_constructor=TemporalOffsetPairConstructor,
                                   **kwargs)
+
+class FixedVarianceTargetProjectedCEB(RepresentationLearner):
+    """
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        super(FixedVarianceTargetProjectedCEB, self).__init__(env=env,
+                                                              log_dir=log_dir,
+                                                              encoder=DeterministicEncoder,
+                                                              decoder=TargetProjection,
+                                                              loss_calculator=CEBLoss,
+                                                              augmenter=AugmentContextAndTarget,
+                                                              target_pair_constructor=TemporalOffsetPairConstructor,
+                                                              **kwargs)
 
 
 class ActionConditionedTemporalCPC(RepresentationLearner):
