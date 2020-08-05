@@ -94,6 +94,39 @@ def evaluate_classifier(classifier, dataset, device):
     print('Accuracy: %d %%' % (100 * correct / total))
 
 
+def representation_learning(algo, trainset, device, log_dir, config):
+    print('Creating model for representation learning')
+
+    if isinstance(algo, str):
+        algo = globals()[algo]
+
+    env = MockGymEnv(Box(low=-1.0, high=1.0, shape=(32, 32, 3), dtype=np.float32))
+    rep_learning_augmentations = [
+        transforms.Lambda(torch.tensor),
+        transforms.ToPILImage(),
+        transforms.Pad(4),
+        transforms.RandomCrop(16),
+        transforms.Pad(8),
+        # SimCLR doesn't use blur for CIFAR-10
+    ]
+    # Note that the resnet18 model used here has an architecture meant for
+    # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
+    # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
+    model = algo(
+        env, log_dir=log_dir, pretrain_epochs=config['pretrain_epochs'], batch_size=config['rep_batch_size'], representation_dim=1000, device=device, shuffle_batches=True,
+        encoder_kwargs={'architecture_module_cls': lambda *args: resnet18()},
+        augmenter_kwargs={'augmentations': rep_learning_augmentations},
+        optimizer_kwargs={'lr': 1e-3, 'weight_decay': 1e-4},
+        loss_calculator_kwargs={'temp': 0.5},
+    )
+
+    print('Train representation learner')
+    rep_learning_data = transform_to_rl(trainset)
+    model.learn(rep_learning_data)
+    env.close()
+    return model
+
+
 cifar_ex = Experiment('cifar')
 
 
@@ -111,13 +144,10 @@ def default_config():
 
 @cifar_ex.main
 def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, _config):
-
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
     #with TemporaryDirectory() as tmp_dir:
-    if isinstance(algo, str):
-        algo = globals()[algo]
     assert issubclass(algo, RepresentationLearner)
     ## TODO allow passing in of kwargs here
     #trainloader = torch.utils.data.DataLoader(
@@ -135,33 +165,8 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, 
     testset = torchvision.datasets.CIFAR10(
         root=data_dir, train=False, download=True, transform=transform)
 
-    print('Creating model for representation learning')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    env = MockGymEnv(Box(low=-1.0, high=1.0, shape=(32, 32, 3), dtype=np.float32))
-    # algo_params = {k: v for k, v in _config.items() if k in rep_learner_params.keys()}
-    rep_learning_augmentations = [
-        transforms.Lambda(torch.tensor),
-        transforms.ToPILImage(),
-        transforms.Pad(4),
-        transforms.RandomCrop(16),
-        transforms.Pad(8),
-        # transforms.Lambda(gaussian_blur), # SimCLR doesn't use blur for CIFAR-10
-        transforms.ToTensor(),
-    ]
-    # Note that the resnet18 model used here has an architecture meant for
-    # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
-    # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
-    model = algo(
-        env, log_dir=log_dir, pretrain_epochs=pretrain_epochs, batch_size=rep_batch_size, representation_dim=1000, device=device,
-        encoder_kwargs={'architecture': resnet18()},
-        augmenter_kwargs={'augmentations': rep_learning_augmentations},
-        optimizer_kwargs={'lr': 1e-3, 'weight_decay': 1e-4},
-    )
-
-    print('Train representation learner')
-    rep_learning_data = transform_to_rl(trainset)
-    model.learn(rep_learning_data)
-    del rep_learning_data
+    model = representation_learning(algo, trainset, device, log_dir, _config)
 
     print('Train linear head')
     classifier = LinearHead(model.encoder, 10).to(device)
@@ -169,8 +174,6 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, 
 
     print('Evaluate accuracy on test set')
     evaluate_classifier(classifier, testset, device=device)
-
-    env.close()
 
 
 if __name__ == '__main__':

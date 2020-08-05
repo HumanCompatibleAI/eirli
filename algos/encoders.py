@@ -80,6 +80,7 @@ class DeterministicEncoder(Encoder):
         representing the mean representation z of a fixed-variance representation distribution
         """
         super(DeterministicEncoder, self).__init__()
+        self.representation_dim = representation_dim
         if architecture_module_cls is None:
             architecture_module_cls = NatureCNN
         self.network = architecture_module_cls(obs_space, representation_dim)
