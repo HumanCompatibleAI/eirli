@@ -2,7 +2,7 @@ from abc import ABC
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch.distributions import Independent
 
 class RepresentationLoss(ABC):
     def __init__(self, device, sample=False):
@@ -117,3 +117,31 @@ class MSELoss(RepresentationLoss):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
         return self.criterion(decoded_contexts, targets)
+
+
+class CEBLoss(RepresentationLoss):
+    """
+    A variational contrastive loss that implements information bottlenecking, but in a less conservative form
+    than done by traditional VIB techniques
+    """
+    def __init__(self, device, beta=.1):
+        super().__init__(device, sample=True)
+        # TODO allow for beta functions
+        self.beta = beta
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+
+        z = decoded_context_dist.sample() # B x Z
+
+        log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
+        log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
+
+        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z under _all_ target distributions
+        catgen = torch.distributions.Categorical(logits=cross_probas) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
+                                                                      # targets/y values
+        inds = torch.arange(start=0, end=len(z))
+        i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
+        loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
+        return loss
+
+
