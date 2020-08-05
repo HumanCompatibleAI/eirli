@@ -14,7 +14,6 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
