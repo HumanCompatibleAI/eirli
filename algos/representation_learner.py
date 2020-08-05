@@ -21,11 +21,25 @@ def to_dict(kwargs_element):
 
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
-                 augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
-                 scheduler=None, representation_dim=512, projection_dim=None, device=None, shuffle_batches=True,
-                 batch_size=256, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
-                 augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
-                 loss_calculator_kwargs=None, scheduler_kwargs=None):
+                 augmenter=AugmentContextOnly,
+                 batch_extender=IdentityBatchExtender,
+                 optimizer=torch.optim.Adam,
+                 scheduler=None,
+                 representation_dim=512,
+                 projection_dim=None,
+                 device=None,
+                 shuffle_batches=True,
+                 batch_size=256,
+                 preprocess_extra_context=True,
+                 save_interval=1,
+                 optimizer_kwargs=None,
+                 target_pair_constructor_kwargs=None,
+                 augmenter_kwargs=None,
+                 encoder_kwargs=None,
+                 decoder_kwargs=None,
+                 batch_extender_kwargs=None,
+                 loss_calculator_kwargs=None,
+                 scheduler_kwargs=None):
 
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
@@ -39,6 +53,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
+        self.preprocess_extra_context = preprocess_extra_context
         self.save_interval = save_interval
 
         self._make_channels_first()
@@ -104,7 +119,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.observation_shape = (z, x, y)
             low = self.observation_space.low.reshape(self.observation_shape)
             high = self.observation_space.high.reshape(self.observation_shape)
-            self.observation_space = Box(shape=self.observation_shape, low=low, high=high)
+            self.observation_space = Box(shape=self.observation_shape, low=low, high=high, dtype=np.uint8)
             self.permutation_tuple = (0, 3, 1, 2)
 
     def _tensorize(self, arr):
@@ -122,10 +137,18 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Normalization to range [-1, 1]
         if isinstance(self.observation_space, Box):
             low, high = self.observation_space.low, self.observation_space.high
+            low_min, low_max, high_min, high_max = low.min(), low.max(), high.min(), high.max()
+            assert low_min == low_max and high_min == high_max
+            low, high = low_min, high_max
             mid = (low + high) / 2
             delta = high - mid
             input_data = (input_data - mid) / delta
         return input_data
+
+    def _preprocess_extra_context(self, extra_context):
+        if extra_context is None or not self.preprocess_extra_context:
+            return extra_context
+        return self._preprocess(extra_context)
 
     # TODO maybe make static?
     def unpack_batch(self, batch):
@@ -169,8 +192,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
                 contexts, targets = self._preprocess(contexts), self._preprocess(targets)
-                if extra_context is not None:
-                    extra_context = self._preprocess(extra_context)
+                extra_context = self._preprocess_extra_context(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
