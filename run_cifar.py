@@ -99,6 +99,7 @@ def representation_learning(algo, trainset, device, log_dir, config):
 
     if isinstance(algo, str):
         algo = globals()[algo]
+    assert issubclass(algo, RepresentationLearner)
 
     env = MockGymEnv(Box(low=-1.0, high=1.0, shape=(32, 32, 3), dtype=np.float32))
     rep_learning_augmentations = [
@@ -147,8 +148,6 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, 
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
-    #with TemporaryDirectory() as tmp_dir:
-    assert issubclass(algo, RepresentationLearner)
     ## TODO allow passing in of kwargs here
     #trainloader = torch.utils.data.DataLoader(
     #    trainset, batch_size=opt.batch_size_train, shuffle=True, num_workers=2)

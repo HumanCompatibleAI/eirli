@@ -33,7 +33,6 @@ class DefaultStochasticCNN(nn.Module):
         super().__init__()
         self.input_channel = obs_space.shape[0]
         self.representation_dim = representation_dim
-        shared_network_layers = []
 
         for layer_spec in DEFAULT_CNN_ARCHITECTURE['CONV']:
             shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
@@ -47,7 +46,7 @@ class DefaultStochasticCNN(nn.Module):
             shared_network_layers.append(nn.Linear(in_dim, out_dim))
             shared_network_layers.append(nn.ReLU())
 
-        self.shared_network = nn.Sequential(*shared_network_layers)
+            self.shared_network = nn.Sequential(*shared_network_layers)
 
         self.mean_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
         self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
