@@ -11,7 +11,7 @@ def bench_defaults():
     benchmark_name = 'magical'
 
     # ########################
-    # magical config variables
+    # MAGICAL config variables
     # ########################
 
     magical_demo_dirs = {
@@ -61,3 +61,15 @@ def bench_defaults():
         'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
     dm_control_env = 'reacher-easy'
+
+    # ###########################
+    # Atari config variables
+    # ###########################
+
+    atari_env_id = 'PongNoFrameskip-v4'
+    atari_demo_paths = {
+        'BreakoutNoFrameskip-v4':
+        "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+        'PongNoFrameskip-v4':
+        "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+    }

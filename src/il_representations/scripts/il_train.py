@@ -3,19 +3,22 @@
 import logging
 import os
 
-import gym
-from magical.benchmarks import ChannelsFirst
 from imitation.algorithms.bc import BC
 from imitation.algorithms.adversarial import GAIL
 from imitation.util.util import make_vec_env
 import imitation.util.logger as imitation_logger
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+from stable_baselines3.common.cmd_util import make_atari_env
 import stable_baselines3.common.policies as sb3_pols
+from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 from stable_baselines3.ppo import PPO
 from stable_baselines3.common.utils import get_device
 
+from il_representations.data import TransitionsMinimalDataset
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import load_dataset_magical
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
@@ -36,9 +39,9 @@ def default_config():
 
 
 @il_train_ex.capture
-def do_training_bc(env_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
-    trainer = BC(observation_space=env_chans_first.observation_space,
-                 action_space=env_chans_first.action_space,
+def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
+    trainer = BC(observation_space=venv_chans_first.observation_space,
+                 action_space=venv_chans_first.action_space,
                  policy_class=sb3_pols.ActorCriticCnnPolicy,
                  expert_data=dataset,
                  device=dev_name)
@@ -52,22 +55,16 @@ def do_training_bc(env_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
 
 
 @il_train_ex.capture
-def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset,
-                     dev_name):
+def do_training_gail(gym_env_name_chans_last, venv_chans_last,
+                     venv_chans_first, dataset, dev_name):
     device = get_device(dev_name)
-    # Annoyingly, SB3 always adds a VecTransposeWrapper to the vec_env
-    # that we pass in, so we have to build an un-transposed env first.
-    vec_env_chans_last = make_vec_env(gym_env_name_chans_last,
-                                      n_envs=2,
-                                      seed=0,
-                                      parallel=False)
     # vec_env_chans_first = VecTransposeImage(vec_env_chans_last)
     discrim_net = ImageDiscrimNet(
-        observation_space=env_chans_first.observation_space,
-        action_space=env_chans_first.action_space)
+        observation_space=venv_chans_first.observation_space,
+        action_space=venv_chans_first.action_space)
     ppo_algo = PPO(
         policy=sb3_pols.ActorCriticCnnPolicy,
-        env=vec_env_chans_last,
+        env=venv_chans_last,
         # verbose=1 and tensorboard_log=False is a hack to work around SB3
         # issue #109.
         verbose=1,
@@ -75,7 +72,7 @@ def do_training_gail(gym_env_name_chans_last, env_chans_first, dataset,
         device=device,
     )
     trainer = GAIL(
-        vec_env_chans_last,
+        venv_chans_last,
         dataset,
         ppo_algo,
         discrim_kwargs=dict(discrim_net=discrim_net),
@@ -111,29 +108,44 @@ def train(algo, bc_n_epochs, benchmark, _config):
     imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
 
     if benchmark['benchmark_name'] == 'magical':
-        gym_env_name_chans_last, dataset = load_dataset_magical()
+        gym_env_name_chans_last, dataset_dict = load_dataset_magical()
+        venv_chans_last = make_vec_env(gym_env_name_chans_last,
+                                       n_envs=1,
+                                       parallel=False)
+        venv_chans_first = VecTransposeImage(venv_chans_last)
     elif benchmark['benchmark_name'] == 'dm_control':
-        gym_env_name_chans_last, dataset = load_dataset_dm_control()
+        gym_env_name_chans_last, dataset_dict = load_dataset_dm_control()
+        venv_chans_last = make_vec_env(gym_env_name_chans_last,
+                                       n_envs=1,
+                                       parallel=False)
+        venv_chans_first = VecTransposeImage(venv_chans_last)
+    elif benchmark['benchmark_name'] == 'atari':
+        dataset_dict = load_dataset_atari()
+        gym_env_name_chans_last = benchmark['atari_env_id']
+        venv_chans_last = VecFrameStack(
+            make_atari_env(gym_env_name_chans_last), 4)
+        venv_chans_first = VecTransposeImage(venv_chans_last)
     else:
         raise NotImplementedError(
             f"only MAGICAL is supported right now; no support for "
             f"benchmark_name={benchmark['benchmark_name']!r}")
 
+    dataset = TransitionsMinimalDataset(dataset_dict)
+
     logging.info(
         f"Loaded data for '{gym_env_name_chans_last}', setting up env")
-    env_chans_last = gym.make(gym_env_name_chans_last)
-    env_chans_first = ChannelsFirst(env_chans_last)
 
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
         do_training_bc(dataset=dataset,
-                       env_chans_first=env_chans_first,
+                       venv_chans_first=venv_chans_first,
                        out_dir=log_dir)
 
     elif algo == 'gail':
         do_training_gail(dataset=dataset,
-                         env_chans_first=env_chans_first,
+                         venv_chans_last=venv_chans_last,
+                         venv_chans_first=venv_chans_first,
                          gym_env_name_chans_last=gym_env_name_chans_last)
 
     else:
