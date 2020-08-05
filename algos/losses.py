@@ -23,13 +23,15 @@ class RepresentationLoss(ABC):
 class AsymmetricContrastiveLoss(RepresentationLoss):
     """
     A basic contrastive loss that only does prediction/similarity comparison in one direction,
-    only calculating a softmax of IJ similarity against all similarities with I. Represents InfoNCE
-    used in original CPC paper
+    only calculating a softmax of IJ similarity against all similarities with I.
     """
     def __init__(self, device, sample=False, temp=0.1):
         super(AsymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
+
+    def calculate_logits_and_labels(self, z_i, z_j):
+        raise NotImplementedError
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
@@ -43,32 +45,71 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
         z_i = F.normalize(z_i, dim=1)
         z_j = F.normalize(z_j, dim=1)
 
-        num_contexts = z_i.shape[0]
-        num_targets = z_j.shape[0]
+        logits, labels = self.calculate_logits_and_labels(z_i, z_j)
+        return self.criterion(logits, labels)
 
-        # I think if we include z_i here, we should use a mask (as in SymmetricContrastiveLoss) to subtract the column
-        # on which the similarity is calculated with an image itself?
-        mask = torch.eye(num_contexts).to(self.device)
 
-        # Simplify the code
-        z_all = torch.cat([z_i, z_j], 0)
-        if num_targets > num_contexts:
-            z_j = z_j[:num_contexts]
+class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
+    """
+    This implements algorithms that use a queue to maintain all the negative examples. The contrastive loss is
+    calculated through the comparison of an image with its augmented version (positive example) and everything else
+    in the queue (negative examples). The method used in MoCo.
+    """
+    def __init__(self, device, sample=False, temp=0.1):
+        super(QueueAsymmetricContrastiveLoss, self).__init__(device, sample)
+        self.temp = temp
 
-        # zi and zj are both matrices of dim (n x c), since they are z vectors of dim c for every element in the batch
-        # This einsum is constructing a vector of size n, where the nth element is a sum over C of the NCth elements
-        # That is to say, the nth element is a dot product between the Nth C-dim vector of each matrix
-        sim_ij = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
+    def calculate_logits_and_labels(self, z_i, z_j):
+        """
+        z_i: dim (N, C). N - batch_size, C - representation dimension
+        z_j: dim (N+K, C). K - number of entries in the queue
+        """
+        batch_size = z_i.shape[0]
+        queue = z_j[batch_size:]
+        z_j = z_j[:batch_size]
 
-        # Calculate similarity of current batch's images and other images.
-        sim_ik = torch.einsum('nc,ck->nk', [z_i, z_all.T])
-        sim_ik = sim_ik - mask  # TODO: Check if the diagonal line are all 1s.
+        l_pos = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
+        l_neg = torch.einsum('nc,ck->nk', [z_i, queue.T])  # NxK
 
-        logits = torch.cat((sim_ij, sim_ik), 1)
+        logits = torch.cat([l_pos, l_neg], dim=1)  # Nx(1+K)
         logits /= self.temp
 
-        labels = torch.zeros(logits.shape[0], dtype=torch.long, device=self.device)
-        return self.criterion(logits, labels)
+        # All l_pos are at the 0-th position
+        labels = torch.zeros(batch_size, dtype=torch.long).to(self.device)
+        return logits, labels
+
+
+class BatchAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
+    """
+    This applies to algorithms that performs asymmetric contrast with samples in the same batch. i.e. Negative examples
+    come from all other images (and their augmented versions) in the same batch. Represents InfoNCE used in original
+    CPC paper.
+    """
+    def __init__(self, device, sample=False, temp=0.1):
+        super(BatchAsymmetricContrastiveLoss, self).__init__(device, sample)
+        self.temp = temp
+
+    def calculate_logits_and_labels(self, z_i, z_j):
+        """
+        z_i: dim (N, C). N - batch_size, C - representation dimension
+        z_j: dim (N, C). The augmented images' representations
+        """
+        batch_size = z_i.shape[0]
+        mask = torch.eye(batch_size)
+
+        # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
+        logits_aa = torch.matmul(z_i, z_i.T)  # NxN
+
+        # The entry on the diagonal line is each image's similarity with itself, which can be a large number (e.g. for
+        # normalized vectors, it is the max value 1). We want to exclude it in our calculation for cross entropy loss.
+        logits_aa = logits_aa - mask
+
+        # Similarity of original images and augmented images
+        logits_ab = torch.matmul(z_i, z_j.T)  # NxN
+
+        logits = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
+        label = torch.arange(batch_size, dtype=torch.long).to(self.device)
+        return logits, label
 
 
 class SymmetricContrastiveLoss(RepresentationLoss):
@@ -131,7 +172,6 @@ class MatMulSymmetricContrastiveLoss(RepresentationLoss):
     """
     def __init__(self, device, sample=False, temp=0.1):
         super(MatMulSymmetricContrastiveLoss, self).__init__(device, sample)
-        self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
         self.large_num = 1e9  # SimCLR's setting. TODO: Check if it's a reasonable number
 
@@ -148,7 +188,6 @@ class CosineSymmetricContrastiveLoss(RepresentationLoss):
     """
     def __init__(self, device, sample=False, temp=0.1):
         super(CosineSymmetricContrastiveLoss, self).__init__(device, sample)
-        self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
     def calculate_similarity(self, z_i, z_j):
