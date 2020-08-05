@@ -116,7 +116,6 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
         env.close()
 
 
-
 if __name__ == '__main__':
     represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
     represent_ex.run_commandline()
