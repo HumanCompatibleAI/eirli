@@ -22,10 +22,10 @@ def to_dict(kwargs_element):
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
                  augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
-                 representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
-                 batch_size=256, warmup_epochs=10, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
+                 scheduler=None, representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
+                 batch_size=256, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
                  augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
-                 loss_calculator_kwargs=None):
+                 loss_calculator_kwargs=None, scheduler_kwargs=None):
 
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
@@ -73,19 +73,21 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
                                    **to_dict(optimizer_kwargs))
 
-        # TODO make the scheduler parameterizable
-        self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
+        if scheduler is not None:
+            self.scheduler = scheduler(self.optimizer, **to_dict(scheduler_kwargs))
+        else:
+            self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
         self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
-    def log_info(self, loss, step, epoch_ind):
+    def log_info(self, loss, step, epoch_ind, training_epochs):
         self.writer.add_scalar('loss', loss, step)
         lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar('learning_rate', lr, step)
-        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {step}, "
+        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{training_epochs}], step {step}, "
                         f"lr {lr}, "
                         f"loss {loss}")
 
@@ -125,7 +127,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], None
         else:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
-    def learn(self, dataset):
+
+    def learn(self, dataset, training_epochs):
         """
 
         :param dataset:
@@ -139,7 +142,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder.train(True)
 
         loss_record = []
-        for epoch in range(self.pretrain_epochs):
+        for epoch in range(training_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             for step, batch in enumerate(dataloader, start=1):
@@ -183,9 +186,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.log_info(loss, step, epoch)
+                self.log_info(loss, step, epoch, training_epochs)
 
-            self.scheduler.step()
+            if self.scheduler is not None:
+                self.scheduler.step()
             loss_record.append(loss_meter.avg.cpu().item())
             self.encoder.train(False)
             self.decoder.train(False)
