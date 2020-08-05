@@ -113,7 +113,7 @@ def representation_learning(algo, trainset, device, log_dir, config):
     # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
     # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
     model = algo(
-        env, log_dir=log_dir, pretrain_epochs=config['pretrain_epochs'], batch_size=config['rep_batch_size'], representation_dim=1000, device=device, shuffle_batches=True,
+        env, log_dir=log_dir, batch_size=config['rep_batch_size'], representation_dim=1000, device=device, shuffle_batches=True,
         encoder_kwargs={'architecture_module_cls': lambda *args: resnet18()},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
         optimizer_kwargs={'lr': 1e-3, 'weight_decay': 1e-4},
@@ -122,7 +122,7 @@ def representation_learning(algo, trainset, device, log_dir, config):
 
     print('Train representation learner')
     rep_learning_data = transform_to_rl(trainset)
-    model.learn(rep_learning_data)
+    model.learn(rep_learning_data, config['pretrain_epochs'])
     env.close()
     return model
 
