@@ -4,8 +4,9 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from algos.utils import gaussian_blur
 
-import os
 import numpy as np
+import os
+import PIL
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -56,8 +57,18 @@ class LinearHead(nn.Module):
         return self.layer(encoding)
 
 
-def train_classifier(classifier, dataset, num_epochs, device):
-    trainloader = torch.utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
+def train_classifier(classifier, data_dir, num_epochs, device):
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
+        transforms.RandomHorizontalFlip(),
+        # No color jitter or grayscale for finetuning
+        # SimCLR doesn't use blur for CIFAR-10
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=512, shuffle=True)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(classifier.layer.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0)
 
@@ -79,8 +90,13 @@ def train_classifier(classifier, dataset, num_epochs, device):
                 running_loss = 0.0
 
 
-def evaluate_classifier(classifier, dataset, device):
-    testloader = torch.utils.data.DataLoader(dataset, batch_size=100, shuffle=False)
+def evaluate_classifier(classifier, data_dir, device):
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+    testset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True, transform=transform)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False)
     correct = 0
     total = 0
     with torch.no_grad():
@@ -94,27 +110,33 @@ def evaluate_classifier(classifier, dataset, device):
     print('Accuracy: %d %%' % (100 * correct / total))
 
 
-def representation_learning(algo, trainset, device, log_dir, config):
+def representation_learning(algo, data_dir, device, log_dir, config):
     print('Creating model for representation learning')
 
     if isinstance(algo, str):
         algo = globals()[algo]
     assert issubclass(algo, RepresentationLearner)
 
-    env = MockGymEnv(Box(low=-1.0, high=1.0, shape=(32, 32, 3), dtype=np.float32))
     rep_learning_augmentations = [
         transforms.Lambda(torch.tensor),
         transforms.ToPILImage(),
-        transforms.Pad(4),
-        transforms.RandomCrop(16),
-        transforms.Pad(8),
+        transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomApply([
+            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+        ], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         # SimCLR doesn't use blur for CIFAR-10
     ]
+    env = MockGymEnv(Box(low=0.0, high=1.0, shape=(3, 32, 32), dtype=np.float32))
     # Note that the resnet18 model used here has an architecture meant for
     # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
     # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
     model = algo(
-        env, log_dir=log_dir, batch_size=config['rep_batch_size'], representation_dim=1000, device=device, shuffle_batches=True,
+        env, log_dir=log_dir, batch_size=config['rep_batch_size'], representation_dim=1000, device=device,
+        normalize=False, shuffle_batches=True,
         encoder_kwargs={'architecture_module_cls': lambda *args: resnet18()},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
         optimizer_kwargs={'lr': 1e-3, 'weight_decay': 1e-4},
@@ -122,6 +144,8 @@ def representation_learning(algo, trainset, device, log_dir, config):
     )
 
     print('Train representation learner')
+    transform = transforms.ToTensor()
+    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
     rep_learning_data = transform_to_rl(trainset)
     model.learn(rep_learning_data, config['pretrain_epochs'])
     env.close()
@@ -148,31 +172,17 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, 
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
-    ## TODO allow passing in of kwargs here
-    #trainloader = torch.utils.data.DataLoader(
-    #    trainset, batch_size=opt.batch_size_train, shuffle=True, num_workers=2)
-
-    # Load in data
     os.makedirs(data_dir, exist_ok=True)
-    transformations = [
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ]
-    transform = transforms.Compose(transformations)
-    trainset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=True, download=True, transform=transform)
-    testset = torchvision.datasets.CIFAR10(
-        root=data_dir, train=False, download=True, transform=transform)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = representation_learning(algo, trainset, device, log_dir, _config)
+    model = representation_learning(algo, data_dir, device, log_dir, _config)
 
     print('Train linear head')
     classifier = LinearHead(model.encoder, 10).to(device)
-    train_classifier(classifier, trainset, num_epochs=finetune_epochs, device=device)
+    train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
     print('Evaluate accuracy on test set')
-    evaluate_classifier(classifier, testset, device=device)
+    evaluate_classifier(classifier, data_dir, device=device)
 
 
 if __name__ == '__main__':

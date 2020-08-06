@@ -28,6 +28,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  representation_dim=512,
                  projection_dim=None,
                  device=None,
+                 normalize=True,
                  shuffle_batches=True,
                  batch_size=256,
                  preprocess_extra_context=True,
@@ -51,6 +52,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             self.device = device
 
+        self.normalize = normalize
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
@@ -135,7 +137,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             input_data = input_data.permute(self.permutation_tuple)
 
         # Normalization to range [-1, 1]
-        if isinstance(self.observation_space, Box):
+        if self.normalize:
+            assert isinstance(self.observation_space, Box)
             low, high = self.observation_space.low, self.observation_space.high
             low_min, low_max, high_min, high_max = low.min(), low.max(), high.min(), high.max()
             assert low_min == low_max and high_min == high_max
@@ -143,6 +146,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             mid = (low + high) / 2
             delta = high - mid
             input_data = (input_data - mid) / delta
+
+        assert input_data.shape[1:] == self.observation_shape
         return input_data
 
     def _preprocess_extra_context(self, extra_context):
