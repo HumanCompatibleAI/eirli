@@ -1,7 +1,9 @@
 from .representation_learner import RepresentationLearner
 from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
-from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, MoCoAsymmetricContrastiveLoss, MatMulSymmetricContrastiveLoss
+from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, \
+    MatMulSymmetricContrastiveLoss, CosineSymmetricContrastiveLoss
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
@@ -92,7 +94,7 @@ class MoCo(RepresentationLearner):
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
                                    decoder=NoOp,
-                                   loss_calculator=AsymmetricContrastiveLoss,
+                                   loss_calculator=BatchAsymmetricContrastiveLoss,
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=TemporalOffsetPairConstructor,
                                    batch_extender=QueueBatchExtender,
