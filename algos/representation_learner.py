@@ -106,9 +106,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"loss {loss}")
 
     def _make_channels_first(self):
-        if not (isinstance(self.observation_space, Box) and len(self.observation_shape) == 3):
-            self.permutation_tuple = None
-            return
+        assert isinstance(self.observation_space, Box) and len(self.observation_shape) == 3, \
+            "Only image observations are supported (Box observation spaces with shapes of length 3)"
 
         # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
         x, y, z = self.observation_shape
@@ -131,7 +130,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def _preprocess(self, input_data):
         # Make channels first for image inputs
-        if isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4 and self.permutation_tuple is not None:
+        if self.permutation_tuple is not None:
+            assert isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4, "Expected 4D-tensor to permute"
             input_data = input_data.permute(self.permutation_tuple)
 
         # Normalization to range [-1, 1]
