@@ -140,19 +140,19 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         mask = self.calculate_mask(batch_size)
 
         # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
-        logits_aa = self.calculate_similarity(z_i, z_i.T)  # NxN
+        logits_aa = self.calculate_similarity(z_i, z_i)  # NxN
 
         # The entry on the diagonal line is each image's similarity with itself, which can be a large number (e.g. for
         # normalized vectors, it is the max value 1). We want to exclude it in our calculation for cross entropy loss.
         logits_aa = logits_aa - mask
 
         # Similarity of the augmented images with all other augmented images.
-        logits_bb = self.calculate_similarity(z_j, z_j.T)  # NxN
+        logits_bb = self.calculate_similarity(z_j, z_j)  # NxN
         logits_bb = logits_bb - mask
 
         # Similarity of original images and augmented images
-        logits_ab = self.calculate_similarity(z_i, z_j.T)  # NxN
-        logits_ba = self.calculate_similarity(z_j, z_i.T)  # NxN
+        logits_ab = self.calculate_similarity(z_i, z_j)  # NxN
+        logits_ba = self.calculate_similarity(z_j, z_i)  # NxN
 
         # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
         # to both original and augmented images (hence "symmetric").
@@ -166,7 +166,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         return self.criterion(logits, labels)
 
 
-class MatMulSymmetricContrastiveLoss(RepresentationLoss):
+class MatMulSymmetricContrastiveLoss(SymmetricContrastiveLoss):
     """
     A subclass of SymmetricContrastiveLoss that uses matrix multiplication as the similarity.
     """
@@ -182,7 +182,7 @@ class MatMulSymmetricContrastiveLoss(RepresentationLoss):
         return (torch.eye(batch_size) * self.large_num).to(self.device)
 
 
-class CosineSymmetricContrastiveLoss(RepresentationLoss):
+class CosineSymmetricContrastiveLoss(SymmetricContrastiveLoss):
     """
     A subclass of SymmetricContrastiveLoss that uses cosine similarity.
     """
@@ -191,7 +191,10 @@ class CosineSymmetricContrastiveLoss(RepresentationLoss):
         self.temp = temp
 
     def calculate_similarity(self, z_i, z_j):
-        return F.cosine_similarity(z_i, z_j) / self.temp
+        # Adjust dimensions so we can broadcast the tensors
+        z_i = z_i[:, None, :]
+        z_j = z_j[None, :, :]
+        return F.cosine_similarity(z_i, z_j, dim=2) / self.temp
 
     def calculate_mask(self, batch_size):
         return torch.eye(batch_size).to(self.device)

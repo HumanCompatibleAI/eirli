@@ -20,7 +20,7 @@ represent_ex = Experiment('representation_learning')
 @represent_ex.config
 def default_config():
     env_id = 'BreakoutNoFrameskip-v4'
-    algo = "SimCLR"
+    algo = "MoCo"
     n_envs = 1
     train_from_expert = True
     timesteps = 640
