@@ -54,7 +54,7 @@ class TemporalCPC(RepresentationLearner):
                                           log_dir=log_dir,
                                           encoder=DeterministicEncoder,
                                           decoder=NoOp,
-                                          loss_calculator=AsymmetricContrastiveLoss,
+                                          loss_calculator=BatchAsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
                                           target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                           **kwargs)
@@ -75,7 +75,7 @@ class RecurrentCPC(RepresentationLearner):
                                            log_dir=log_dir,
                                            encoder=RecurrentEncoder,
                                            decoder=NoOp,
-                                           loss_calculator=AsymmetricContrastiveLoss,
+                                           loss_calculator=BatchAsymmetricContrastiveLoss,
                                            target_pair_constructor=TemporalOffsetPairConstructor,
                                            shuffle_batches=False,
                                            **kwargs)
@@ -94,7 +94,7 @@ class MoCo(RepresentationLearner):
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
                                    decoder=NoOp,
-                                   loss_calculator=BatchAsymmetricContrastiveLoss,
+                                   loss_calculator=QueueAsymmetricContrastiveLoss,
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=TemporalOffsetPairConstructor,
                                    batch_extender=QueueBatchExtender,
@@ -118,7 +118,7 @@ class MoCoWithProjection(RepresentationLearner):
                                                  log_dir=log_dir,
                                                  encoder=MomentumEncoder,
                                                  decoder=MomentumProjectionHead,
-                                                 loss_calculator=MoCoAsymmetricContrastiveLoss,
+                                                 loss_calculator=QueueAsymmetricContrastiveLoss,
                                                  augmenter=AugmentContextAndTarget,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
                                                  batch_extender=QueueBatchExtender,
@@ -192,6 +192,7 @@ class CEB(RepresentationLearner):
                                   target_pair_constructor=TemporalOffsetPairConstructor,
                                   **kwargs)
 
+
 class ActionConditionedTemporalCPC(RepresentationLearner):
     """
     Implementation of reinforcement-learning-specific variant of Temporal CPC which adds a projection layer on top
@@ -217,7 +218,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                                            encoder=DeterministicEncoder,
                                                            decoder=ActionConditionedVectorDecoder,
                                                            decoder_kwargs=decoder_kwargs,
-                                                           loss_calculator=AsymmetricContrastiveLoss,
+                                                           loss_calculator=BatchAsymmetricContrastiveLoss,
                                                            shuffle_batches=shuffle_batches,
                                                            **kwargs)
 
