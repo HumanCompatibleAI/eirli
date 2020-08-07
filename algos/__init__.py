@@ -38,7 +38,25 @@ class SimCLR(RepresentationLearner):
                                      augmenter=AugmentContextAndTarget,
                                      target_pair_constructor=IdentityPairConstructor,
                                      **kwargs)
+class SimCLRCosine(RepresentationLearner):
+    """
+    Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
+    https://arxiv.org/abs/2002.05709
 
+    This method works by using a contrastive loss to push together representations of two differently-augmented
+    versions of the same image. In particular, it uses a symmetric contrastive loss, which compares the
+    (target, context) similarity against similarity of context with all other targets, and also similarity
+     of target with all other contexts.
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        super(SimCLRCosine, self).__init__(env=env,
+                                     log_dir=log_dir,
+                                     encoder=DeterministicEncoder,
+                                     decoder=ProjectionHead,
+                                     loss_calculator=CosineSymmetricContrastiveLoss,
+                                     augmenter=AugmentContextAndTarget,
+                                     target_pair_constructor=IdentityPairConstructor,
+                                     **kwargs)
 
 class TemporalCPC(RepresentationLearner):
     def __init__(self, env, log_dir, temporal_offset=1, **kwargs):

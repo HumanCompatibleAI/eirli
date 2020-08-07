@@ -155,6 +155,15 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         logits_ab = self.calculate_similarity(z_i, z_j)  # NxN
         logits_ba = self.calculate_similarity(z_j, z_i)  # NxN
 
+        avg_self_similarity = logits_ab.diag().mean().detach()
+        avg_other_similarity = logits_ab.masked_select(~torch.eye(batch_size, dtype=bool)).mean().detach()
+
+        self.multi_logger.add_scalar('average_self_similarity', avg_self_similarity)
+        self.multi_logger.add_scalar('average_other_similarity', avg_other_similarity)
+        self.multi_logger.add_scalar('self_other_similarity_delta', avg_self_similarity - avg_other_similarity)
+        self.multi_logger.log(
+            f"Avg similarity to target: {avg_self_similarity} Avg similarity to other: {avg_other_similarity}")
+
         # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
         # to both original and augmented images (hence "symmetric").
         logits_i = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
