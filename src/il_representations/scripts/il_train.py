@@ -31,8 +31,11 @@ def default_config():
     # choose between 'bc'/'gail'
     algo = 'bc'
 
-    # bc config variables
+    # BC config variables
     bc_n_epochs = 100
+
+    # GAIL config variables
+    gail_total_timesteps = 2048
 
     # device to place all computations on
     dev_name = 'auto'
@@ -55,7 +58,8 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
 
 
 @il_train_ex.capture
-def do_training_gail(venv_chans_first, dataset, dev_name):
+def do_training_gail(venv_chans_first, dataset, dev_name,
+                     gail_total_timesteps):
     device = get_device(dev_name)
     # vec_env_chans_first = VecTransposeImage(vec_env_chans_last)
     discrim_net = ImageDiscrimNet(
@@ -77,24 +81,9 @@ def do_training_gail(venv_chans_first, dataset, dev_name):
         discrim_kwargs=dict(discrim_net=discrim_net),
     )
 
-    # trainer.train() doesn't work because SB3 tries to be clever about
-    # automatically adding image transpose wrappers to vecenvs, but
-    # `imitation` overwrites the vecenv later on without updating SB3's
-    # internal data structures.
-    #
-    # Specifically, PPO notices that the given environment is not wrapped
-    # in a `VecTransposeImage` wrapper, so it wraps it in one. Later on,
-    # GAIL overwrites the wrapped env inside PPO with a new wrapped
-    # environment that does _not_ apply VecTransposeImage. Hacky solution
-    # is to make GAIL apply VecTranposeImage after wrapping the
-    # environment. Non-hacky solution is to make SB3 algorithms not wrap
-    # environments by default, or at least add a flag to `PPO` that
-    # disables auto-wrapping of environments..
+    trainer.train(total_timesteps=gail_total_timesteps)
 
-    # trainer.train(total_timesteps=2048)
-
-    raise NotImplementedError(
-        "GAIL doesn't yet work due to image transpose issues in imitation/SB3")
+    raise NotImplementedError("This (mostly) doesn't work yet")
 
 
 @il_train_ex.main
@@ -143,12 +132,7 @@ def train(algo, bc_n_epochs, benchmark, _config):
                        out_dir=log_dir)
 
     elif algo == 'gail':
-        do_training_gail(
-            dataset=dataset,
-            venv_chans_first=venv_chans_first,
-            # FIXME(sam): whatever this is doing, it won't work
-            # for Atari
-            gym_env_name_chans_first=gym_env_name_chans_first)
+        do_training_gail(dataset=dataset, venv_chans_first=venv_chans_first)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
