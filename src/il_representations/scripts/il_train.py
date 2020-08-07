@@ -15,6 +15,7 @@ from stable_baselines3.common.vec_env import VecFrameStack
 from stable_baselines3.common.vec_env.vec_transpose import VecTransposeImage
 from stable_baselines3.ppo import PPO
 from stable_baselines3.common.utils import get_device
+import torch as th
 
 from il_representations.data import TransitionsMinimalDataset
 from il_representations.envs.config import benchmark_ingredient
@@ -22,30 +23,80 @@ from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import load_dataset_magical
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
+from il_representations.policy_interfacing import EncoderFeatureExtractor
 
 il_train_ex = Experiment('il_train', ingredients=[benchmark_ingredient])
 
 
 @il_train_ex.config
 def default_config():
-    # choose between 'bc'/'gail'
-    algo = 'bc'
-
-    # BC config variables
-    bc_n_epochs = 100
-
-    # GAIL config variables
-    gail_total_timesteps = 2048
+    # ##################
+    # Common config vars
+    # ##################
 
     # device to place all computations on
     dev_name = 'auto'
+    # choose between 'bc'/'gail'
+    algo = 'bc'
+    # place to load pretrained encoder from (if not given, it will be
+    # re-intialised from scratch)
+    encoder_path = None
+
+    # ##############
+    # BC config vars
+    # ##############
+
+    # number of passes to make through dataset
+    bc_n_epochs = 100
+
+    # #####################
+    # GAIL config variables
+    # #####################
+
+    # number of env time steps to perform during RL
+    gail_total_timesteps = 2048
 
 
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
+def make_policy(venv, encoder_or_path):
+    # TODO(sam): this should be unified with the representation learning code
+    # so that it can be configured in the same way, with the same defaults,
+    # etc.
+    common_policy_kwargs = {
+        'observation_space': venv.observation_space,
+        'action_space': venv.action_space,
+        'lr_schedule': lambda _: 1e100,
+        'ortho_init': False,
+    }
+    if encoder_or_path is not None:
+        if isinstance(encoder_or_path, str):
+            encoder_key = 'encoder_path'
+        else:
+            encoder_key = 'encoder'
+        policy_kwargs = {
+            'features_extractor_class': EncoderFeatureExtractor,
+            'features_extractor_kwargs': {
+                encoder_key: encoder_or_path
+            },
+            **common_policy_kwargs,
+        }
+    else:
+        policy_kwargs = {
+            # don't pass a representation learner; we'll just use the default
+            **common_policy_kwargs,
+        }
+    policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
+    return policy
+
+
+@il_train_ex.capture
+def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
+                   dev_name):
+    policy = make_policy(venv_chans_first, encoder)
     trainer = BC(observation_space=venv_chans_first.observation_space,
                  action_space=venv_chans_first.action_space,
-                 policy_class=sb3_pols.ActorCriticCnnPolicy,
+                 policy_class=lambda **kwargs: policy,
+                 policy_kwargs=None,
                  expert_data=dataset,
                  device=dev_name)
 
@@ -58,10 +109,10 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
 
 
 @il_train_ex.capture
-def do_training_gail(venv_chans_first, dataset, dev_name,
+def do_training_gail(venv_chans_first, dataset, dev_name, encoder,
                      gail_total_timesteps):
+    assert encoder is None, "encoder not yet supported"
     device = get_device(dev_name)
-    # vec_env_chans_first = VecTransposeImage(vec_env_chans_last)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space)
@@ -87,7 +138,7 @@ def do_training_gail(venv_chans_first, dataset, dev_name,
 
 
 @il_train_ex.main
-def train(algo, bc_n_epochs, benchmark, _config):
+def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
@@ -98,20 +149,17 @@ def train(algo, bc_n_epochs, benchmark, _config):
 
     if benchmark['benchmark_name'] == 'magical':
         gym_env_name_chans_first, dataset_dict = load_dataset_magical()
-        human_readable_env_name = gym_env_name_chans_first
         venv_chans_first = make_vec_env(gym_env_name_chans_first,
                                         n_envs=1,
                                         parallel=False)
     elif benchmark['benchmark_name'] == 'dm_control':
         gym_env_name_chans_first, dataset_dict = load_dataset_dm_control()
-        human_readable_env_name = gym_env_name_chans_first
         venv_chans_first = make_vec_env(gym_env_name_chans_first,
                                         n_envs=1,
                                         parallel=False)
     elif benchmark['benchmark_name'] == 'atari':
         dataset_dict = load_dataset_atari()
-        human_readable_env_name = gym_env_name_chans_last \
-            = benchmark['atari_env_id']
+        gym_env_name_chans_last = benchmark['atari_env_id']
         venv_nhwc = VecFrameStack(make_atari_env(gym_env_name_chans_last), 4)
         venv_chans_first = VecTransposeImage(venv_nhwc)
     else:
@@ -121,18 +169,25 @@ def train(algo, bc_n_epochs, benchmark, _config):
 
     dataset = TransitionsMinimalDataset(dataset_dict)
 
-    logging.info(
-        f"Loaded data for '{human_readable_env_name}', setting up env")
+    if encoder_path:
+        logging.info(f"Loading pretrained encoder from '{encoder_path}'")
+        encoder = th.load(encoder_path)
+    else:
+        logging.info(f"No encoder provided, will init from scratch")
+        encoder = None
 
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
         do_training_bc(dataset=dataset,
                        venv_chans_first=venv_chans_first,
-                       out_dir=log_dir)
+                       out_dir=log_dir,
+                       encoder=encoder)
 
     elif algo == 'gail':
-        do_training_gail(dataset=dataset, venv_chans_first=venv_chans_first)
+        do_training_gail(dataset=dataset,
+                         venv_chans_first=venv_chans_first,
+                         encoder=encoder)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
