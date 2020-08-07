@@ -79,7 +79,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # This doesn't have any meaningful effect unless you specify a projection head.
             projection_dim = representation_dim
 
-        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
+        self.augmenter = augmenter(self.multi_logger, **to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
         self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
