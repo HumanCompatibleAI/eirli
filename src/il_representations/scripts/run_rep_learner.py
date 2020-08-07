@@ -1,30 +1,36 @@
-import os
-import gym
-import torch
 from glob import glob
-from stable_baselines3.common.cmd_util import make_atari_env
-from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.ppo import PPO
-from il_representations import algos
-from il_representations.algos.representation_learner import RepresentationLearner
-from il_representations.policy_interfacing import EncoderFeatureExtractor
+import inspect
+import logging
+import os
+
+from imitation.util.util import make_vec_env
+import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-import logging
-import numpy as np
-import inspect
-from il_representations.algos.utils import LinearWarmupCosine
-represent_ex = Experiment('representation_learning')
+from stable_baselines3.common.cmd_util import make_atari_env
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
+from stable_baselines3.ppo import PPO
 
+from il_representations import algos
+from il_representations.algos.representation_learner import \
+    RepresentationLearner
+from il_representations.algos.utils import LinearWarmupCosine
+from il_representations.envs.atari_envs import load_dataset_atari
+from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.dm_control_envs import load_dataset_dm_control
+from il_representations.envs.magical_envs import load_dataset_magical
+from il_representations.policy_interfacing import EncoderFeatureExtractor
+
+represent_ex = Experiment('representation_learning',
+                          ingredients=[benchmark_ingredient])
 
 
 @represent_ex.config
 def default_config():
-    env_id = 'BreakoutNoFrameskip-v4'
     algo = "SimCLR"
+    use_random_rollouts = False
     n_envs = 1
-    train_from_expert = True
     timesteps = 640
     pretrain_only = False
     pretrain_epochs = 50
@@ -46,13 +52,13 @@ def cosine_warmup_scheduler():
 
 def get_random_traj(env, timesteps):
     # Currently not designed for VecEnvs with n>1
-    trajectory = {'states': [], 'actions': [], 'dones': []}
+    trajectory = {'obs': [], 'acts': [], 'dones': []}
     obs = env.reset()
     for i in range(timesteps):
-        trajectory['states'].append(obs.squeeze())
+        trajectory['obs'].append(obs.squeeze())
         action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
         obs, rew, dones, info = env.step(action)
-        trajectory['actions'].append(action[0])
+        trajectory['acts'].append(action[0])
         trajectory['dones'].append(dones[0])
     return trajectory
 
@@ -68,52 +74,71 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, pretrain_epochs, _config):
-
+def run(benchmark, use_random_rollouts,
+        seed, algo, n_envs, timesteps, representation_dim,
+        ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
 
     if isinstance(algo, str):
-        correct_algo_cls = None
-        for algo_name, algo_cls in inspect.getmembers(algos):
-            if algo == algo_name:
-                correct_algo_cls = algo_cls
-                break
-        algo = correct_algo_cls
-
-    is_atari = 'NoFrameskip' in env_id
+        algo = getattr(algos, algo)
 
     # setup environment
-    if is_atari:
-        env = VecFrameStack(make_atari_env(env_id, n_envs, seed), 4)
+    if benchmark['benchmark_name'] == 'magical':
+        assert not use_random_rollouts, \
+            "use_random_rollouts not yet supported for MAGICAL"
+        gym_env_name, dataset_dict = load_dataset_magical()
+        venv = make_vec_env(gym_env_name, n_envs=1, parallel=False)
+        color_space = 'RGB'
+    elif benchmark['benchmark_name'] == 'dm_control':
+        assert not use_random_rollouts, \
+            "use_random_rollouts not yet supported for dm_control"
+        gym_env_name, dataset_dict = load_dataset_dm_control()
+        venv = make_vec_env(gym_env_name, n_envs=1, parallel=False)
+        color_space = 'RGB'
+    elif benchmark['benchmark_name'] == 'atari':
+        if not use_random_rollouts:
+            dataset_dict = load_dataset_atari()
+        gym_env_name_hwc = benchmark['atari_env_id']
+        venv = VecTransposeImage(VecFrameStack(
+            make_atari_env(gym_env_name_hwc), 4))
+        color_space = 'GRAY'
     else:
-        env = gym.make(env_id)
+        raise NotImplementedError(
+            f"no support for benchmark_name={benchmark['benchmark_name']!r}")
 
-    data = get_random_traj(env=env, timesteps=timesteps)
+    if use_random_rollouts:
+        dataset_dict = get_random_traj(env=venv,
+                                       timesteps=timesteps)
     assert issubclass(algo, RepresentationLearner)
 
     rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
+    if 'augmenter_kwargs' not in algo_params:
+        algo_params['augmenter_kwargs'] = {}
+    algo_params['augmenter_kwargs']['color_space'] = color_space
     logging.info(f"Running {algo} with parameters: {algo_params}")
-    model = algo(env, log_dir=log_dir, **algo_params)
+    model = algo(venv, log_dir=log_dir, **algo_params)
 
     # setup model
-    model.learn(data, pretrain_epochs)
+    model.learn(dataset_dict, pretrain_epochs)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
         encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
 
-        #TODO figure out how to not have to set `ortho_init` to False for the whole policy
+        # TODO figure out how to not have to set `ortho_init` to False for the whole policy
         policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
                          'features_extractor_kwargs': encoder_feature_extractor_kwargs,
                          'ortho_init': False}
-        ppo_model = PPO(policy=ActorCriticPolicy, env=env, verbose=1, policy_kwargs=policy_kwargs)
+        ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
+                        verbose=1, policy_kwargs=policy_kwargs)
         ppo_model = initialize_non_features_extractor(ppo_model)
         ppo_model.learn(total_timesteps=1000)
-        env.close()
+
+    venv.close()
 
 
 if __name__ == '__main__':
