@@ -31,7 +31,7 @@ class ImageDiscrimNet(nn.Module):
             nn.ReLU(),
             nn.Linear(features_dim, features_dim),
             nn.ReLU(),
-            nn.Linear(mlp_in, 1),
+            nn.Linear(features_dim, 1),
         )
 
     def forward(self, observation, action):
