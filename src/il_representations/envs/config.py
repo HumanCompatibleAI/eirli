@@ -36,7 +36,7 @@ def bench_defaults():
         'ClusterShape': 'data/magical/cluster-shape/',
     }
     magical_env_prefix = 'MoveToCorner'
-    magical_preproc = 'LoRes4E'
+    magical_preproc = 'LoResCHW4E'
 
     # ###########################
     # dm_control config variables

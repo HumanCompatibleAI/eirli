@@ -28,9 +28,7 @@ def register_dmc_envs():
         from_pixels=True,
         height=IMAGE_SIZE,
         width=IMAGE_SIZE,
-        # we set this to "false" because SB3 does not yet play nicely with
-        # channels-first observations
-        channels_first=False)
+        channels_first=True)
 
     def entry_point(**kwargs):
         # add in common kwargs

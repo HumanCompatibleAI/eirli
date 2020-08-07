@@ -21,7 +21,6 @@ register_envs()
 def load_data(
     pickle_paths: List[str],
     preprocessor_name: str,
-    transpose_observations=False,
 ) -> Tuple[str, il_datasets.Dataset]:
     """Load MAGICAL data from pickle files."""
 
@@ -62,9 +61,6 @@ def load_data(
 
     # Finally we build a DictDatset for actions and observations.
     dataset_dict = collections.defaultdict(list)
-    # we will use obs_keys to decide which arrays we have to transpose, if
-    # transpose_observations=True
-    obs_keys = set()
     for trajectory in demo_trajectories:
         if isinstance(trajectory.obs, dict):
             # Without any preprocessing, MAGICAL observations are dicts
@@ -75,13 +71,11 @@ def load_data(
                 # correspond to any action
                 full_key = 'obs_' + key
                 dataset_dict[full_key].append(value[:-1])
-                obs_keys.add(full_key)
         else:
             # Otherwise, observations should just be a flat ndarray
             assert isinstance(trajectory.obs, np.ndarray)
             # again clip off the terminal observation
             dataset_dict['obs'].append(trajectory.obs[:-1])
-            obs_keys.add('obs')
         dataset_dict['acts'].append(trajectory.acts)
         traj_t = len(trajectory.acts)
         dones_array = np.array([False] * (traj_t - 1) + [True], dtype='bool')
@@ -92,10 +86,6 @@ def load_data(
         item_name: np.concatenate(array_list, axis=0)
         for item_name, array_list in dataset_dict.items()
     }
-
-    if transpose_observations:
-        for obs_key in obs_keys:
-            dataset_dict[obs_key] = np.moveaxis(dataset_dict[obs_key], -1, 1)
 
     return env_name, dataset_dict
 
@@ -113,12 +103,11 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
     ]
     if not demo_paths:
         raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
-    gym_env_name_chans_last, dataset_dict = load_data(
+    gym_env_name_chans_first, dataset_dict = load_data(
         demo_paths,
-        preprocessor_name=magical_preproc,
-        transpose_observations=True)
-    assert gym_env_name_chans_last.startswith(magical_env_prefix)
-    return gym_env_name_chans_last, dataset_dict
+        preprocessor_name=magical_preproc)
+    assert gym_env_name_chans_first.startswith(magical_env_prefix)
+    return gym_env_name_chans_first, dataset_dict
 
 
 class SB3EvaluationProtocol(EvaluationProtocol):

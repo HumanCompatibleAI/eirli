@@ -13,7 +13,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.utils import get_device
-from stable_baselines3.common.vec_env import VecFrameStack
+from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
 import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
@@ -88,6 +88,7 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size, dev_name,
         else:
             short_env_name = full_env_name = benchmark['atari_env_id']
             vec_env = VecFrameStack(make_atari_env(full_env_name), 4)
+            vec_env = VecTransposeImage(vec_env)
 
         # sample some trajectories
         rng = np.random.RandomState(seed)
