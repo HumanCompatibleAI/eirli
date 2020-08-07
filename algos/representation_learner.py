@@ -12,6 +12,7 @@ from datetime import datetime
 
 from .augmenters import AugmentContextOnly
 import itertools
+from functools import partial
 from gym.spaces import Box
 from torch import autograd
 
@@ -26,9 +27,21 @@ def to_dict(kwargs_element):
     else:
         return kwargs_element
 
-###
+class MultiLogger():
+    def __init__(self, log_dir):
+        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
+        self.logger = Logger(log_dir)
+        self.global_step = 0
 
-###
+    def log(self, log_msg):
+        self.logger.log(log_msg)
+
+    def iterate_step(self):
+        self.global_step += 1
+
+    def add_scalar(self, tag, scalar):
+        self.writer.add_scalar(tag, scalar, self.global_step)
+
 
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
@@ -41,7 +54,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        self.logger = Logger(log_dir)
+        self.multi_logger = MultiLogger(log_dir)
 
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,6 +65,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.batch_size = batch_size
         self.pretrain_epochs = pretrain_epochs
         self.save_interval = save_interval
+
+        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
+        os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
+        self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
+        os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
         self._make_channels_first()
 
@@ -77,7 +95,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             self.batch_extender = batch_extender(**batch_extender_kwargs)
 
-        self.loss_calculator = loss_calculator(device=self.device, **to_dict(loss_calculator_kwargs))
+        self.loss_calculator = loss_calculator(self.device, self.multi_logger, **to_dict(loss_calculator_kwargs))
 
         trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
         trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
@@ -86,20 +104,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         # TODO make the scheduler parameterizable
         #self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
-        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
-        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
-        os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
-        self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
-        os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
-    def log_info(self, loss, epoch_step, global_step, epoch_ind):
-        self.writer.add_scalar('loss', loss, global_step)
+
+    def log_info(self, loss, epoch_step, epoch_ind):
+        self.multi_logger.add_scalar('loss', loss)
         lr = self.optimizer.param_groups[0]['lr']
-        self.writer.add_scalar('learning_rate', lr, global_step)
-        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {epoch_step}, "
+        self.multi_logger.add_scalar('learning_rate', lr)
+        self.multi_logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {epoch_step}, "
                         f"lr {lr}, "
                         f"loss {loss}, "
-                        f"Overall step: {global_step}")
+                        f"Overall step: {self.multi_logger.global_step}")
 
     def _make_channels_first(self):
         # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
@@ -207,8 +221,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                global_step +=1
-                self.log_info(loss, step, global_step, epoch)
+                self.multi_logger.iterate_step()
+                self.log_info(loss, step, epoch)
 
 
             #self.scheduler.step()

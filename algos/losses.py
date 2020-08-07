@@ -3,11 +3,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Independent
+from logging import getLogger
 
 class RepresentationLoss(ABC):
-    def __init__(self, device, sample=False):
+    def __init__(self, device, multi_logger, sample=False):
         self.device = device
         self.sample = sample
+        self.multi_logger = multi_logger
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
         pass
@@ -25,8 +27,8 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
     only calculating a softmax of IJ similarity against all similarities with I. Represents InfoNCE
     used in original CPC paper
     """
-    def __init__(self, device, sample=False, temp=0.1):
-        super(AsymmetricContrastiveLoss, self).__init__(device, sample)
+    def __init__(self, device, multi_logger, sample=False, temp=0.1):
+        super(AsymmetricContrastiveLoss, self).__init__(device, multi_logger, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
@@ -72,8 +74,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
-    def __init__(self, device, sample=False, temp=0.1):
-        super(SymmetricContrastiveLoss, self).__init__(device, sample)
+    def __init__(self, device, multi_logger, sample=False, temp=0.1):
+        super(SymmetricContrastiveLoss, self).__init__(device, multi_logger, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
@@ -99,6 +101,14 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         sim_ik = (torch.einsum('nc,mc->n', [z_i, z_all]).unsqueeze(-1) - 1) / (2 * batch_size - 1)  # Nx1
         sim_jk = (torch.einsum('nc,mc->n', [z_j, z_all]).unsqueeze(-1) - 1) / (2 * batch_size - 1)  # Nx1
 
+        avg_self_similarity = sim_ij.mean().detach()
+        avg_other_similarity = sim_ik.mean().detach()
+        self.multi_logger.add_scalar('average_self_similarity', avg_self_similarity)
+        self.multi_logger.add_scalar('average_other_similarity',avg_other_similarity)
+        self.multi_logger.add_scalar('self_other_similarity_delta', avg_self_similarity - avg_other_similarity)
+        self.multi_logger.log(f"Avg similarity to target: {avg_self_similarity} Avg similarity to other: {avg_other_similarity}")
+
+
         logit_i = torch.cat((sim_ij, sim_ik), 1)  # Nx2
         logit_j = torch.cat((sim_ij, sim_jk), 1)  # Nx2
         logits = torch.cat((logit_i, logit_j), 0)  # 2Nx2
@@ -110,8 +120,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
 
 
 class MSELoss(RepresentationLoss):
-    def __init__(self, device, sample=False):
-        super(MSELoss, self).__init__(device, sample)
+    def __init__(self, device, multi_logger, sample=False):
+        super(MSELoss, self).__init__(device, multi_logger, sample)
         self.criterion = torch.nn.MSELoss()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
@@ -124,8 +134,8 @@ class CEBLoss(RepresentationLoss):
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form
     than done by traditional VIB techniques
     """
-    def __init__(self, device, beta=.1, sample=True, rsample=False):
-        super().__init__(device, sample=sample)
+    def __init__(self, device, multi_logger, beta=.1, sample=True, rsample=False):
+        super().__init__(device, multi_logger, sample=sample)
         # TODO allow for beta functions
         self.beta = beta
         self.sample = sample
