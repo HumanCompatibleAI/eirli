@@ -14,9 +14,10 @@ DEFAULT_AUGMENTATIONS = (transforms.ToPILImage(),
                          transforms.RandomCrop(84),
                          transforms.Lambda(gaussian_blur),)
 class Augmenter(ABC):
-    def __init__(self, augmentations=DEFAULT_AUGMENTATIONS):
+    def __init__(self, multi_logger, augmentations=DEFAULT_AUGMENTATIONS):
         # TODO at some point check if I need to convert this to list or if it can stay a tuple
         self.augment_op = transforms.Compose(list(augmentations))
+        self.multi_logger = multi_logger
 
     @abstractmethod
     def __call__(self, contexts, targets):
@@ -34,3 +35,4 @@ class AugmentContextAndTarget(Augmenter):
 class AugmentContextOnly(Augmenter):
     def __call__(self, contexts, targets):
         return [np.array(self.augment_op(el)) for el in contexts], targets
+
