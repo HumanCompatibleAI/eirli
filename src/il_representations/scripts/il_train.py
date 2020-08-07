@@ -55,8 +55,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, dev_name):
 
 
 @il_train_ex.capture
-def do_training_gail(gym_env_name_chans_last, venv_chans_last,
-                     venv_chans_first, dataset, dev_name):
+def do_training_gail(venv_chans_first, dataset, dev_name):
     device = get_device(dev_name)
     # vec_env_chans_first = VecTransposeImage(vec_env_chans_last)
     discrim_net = ImageDiscrimNet(
@@ -64,7 +63,7 @@ def do_training_gail(gym_env_name_chans_last, venv_chans_last,
         action_space=venv_chans_first.action_space)
     ppo_algo = PPO(
         policy=sb3_pols.ActorCriticCnnPolicy,
-        env=venv_chans_last,
+        env=venv_chans_first,
         # verbose=1 and tensorboard_log=False is a hack to work around SB3
         # issue #109.
         verbose=1,
@@ -72,7 +71,7 @@ def do_training_gail(gym_env_name_chans_last, venv_chans_last,
         device=device,
     )
     trainer = GAIL(
-        venv_chans_last,
+        venv_chans_first,
         dataset,
         ppo_algo,
         discrim_kwargs=dict(discrim_net=discrim_net),
@@ -93,6 +92,7 @@ def do_training_gail(gym_env_name_chans_last, venv_chans_last,
     # disables auto-wrapping of environments..
 
     # trainer.train(total_timesteps=2048)
+
     raise NotImplementedError(
         "GAIL doesn't yet work due to image transpose issues in imitation/SB3")
 
@@ -108,32 +108,32 @@ def train(algo, bc_n_epochs, benchmark, _config):
     imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
 
     if benchmark['benchmark_name'] == 'magical':
-        gym_env_name_chans_last, dataset_dict = load_dataset_magical()
-        venv_chans_last = make_vec_env(gym_env_name_chans_last,
-                                       n_envs=1,
-                                       parallel=False)
-        venv_chans_first = VecTransposeImage(venv_chans_last)
+        gym_env_name_chans_first, dataset_dict = load_dataset_magical()
+        human_readable_env_name = gym_env_name_chans_first
+        venv_chans_first = make_vec_env(gym_env_name_chans_first,
+                                        n_envs=1,
+                                        parallel=False)
     elif benchmark['benchmark_name'] == 'dm_control':
-        gym_env_name_chans_last, dataset_dict = load_dataset_dm_control()
-        venv_chans_last = make_vec_env(gym_env_name_chans_last,
-                                       n_envs=1,
-                                       parallel=False)
-        venv_chans_first = VecTransposeImage(venv_chans_last)
+        gym_env_name_chans_first, dataset_dict = load_dataset_dm_control()
+        human_readable_env_name = gym_env_name_chans_first
+        venv_chans_first = make_vec_env(gym_env_name_chans_first,
+                                        n_envs=1,
+                                        parallel=False)
     elif benchmark['benchmark_name'] == 'atari':
         dataset_dict = load_dataset_atari()
-        gym_env_name_chans_last = benchmark['atari_env_id']
-        venv_chans_last = VecFrameStack(
-            make_atari_env(gym_env_name_chans_last), 4)
-        venv_chans_first = VecTransposeImage(venv_chans_last)
+        human_readable_env_name = gym_env_name_chans_last \
+            = benchmark['atari_env_id']
+        venv_nhwc = VecFrameStack(make_atari_env(gym_env_name_chans_last), 4)
+        venv_chans_first = VecTransposeImage(venv_nhwc)
     else:
         raise NotImplementedError(
-            f"only MAGICAL is supported right now; no support for "
+            f"this code does not yet support "
             f"benchmark_name={benchmark['benchmark_name']!r}")
 
     dataset = TransitionsMinimalDataset(dataset_dict)
 
     logging.info(
-        f"Loaded data for '{gym_env_name_chans_last}', setting up env")
+        f"Loaded data for '{human_readable_env_name}', setting up env")
 
     logging.info(f"Setting up '{algo}' IL algorithm")
 
@@ -143,13 +143,19 @@ def train(algo, bc_n_epochs, benchmark, _config):
                        out_dir=log_dir)
 
     elif algo == 'gail':
-        do_training_gail(dataset=dataset,
-                         venv_chans_last=venv_chans_last,
-                         venv_chans_first=venv_chans_first,
-                         gym_env_name_chans_last=gym_env_name_chans_last)
+        do_training_gail(
+            dataset=dataset,
+            venv_chans_first=venv_chans_first,
+            # FIXME(sam): whatever this is doing, it won't work
+            # for Atari
+            gym_env_name_chans_first=gym_env_name_chans_first)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
+
+    # FIXME(sam): make sure this always closes correctly, even when there's an
+    # exception after creating it (could use try/catch or a context manager)
+    venv_chans_first.close()
 
     return log_dir
 
