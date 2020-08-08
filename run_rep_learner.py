@@ -10,11 +10,14 @@ import algos
 from algos.representation_learner import RepresentationLearner
 from policy_interfacing import EncoderFeatureExtractor
 from sacred import Experiment
-from sacred.observers import FileStorageObserver
+from sacred.observers import FileStorageObserver, S3Observer
 import numpy as np
 import inspect
 
 represent_ex = Experiment('representation_learning')
+
+
+# pulled from: https://stackoverflow.com/a/12627202
 
 
 
@@ -28,7 +31,8 @@ def default_config():
     rl_training_timesteps = 1000
     pretrain_only = False
     pretrain_epochs = 50
-    representation_dim = 64
+    algo_params = algos.get_default_args(algos.RepresentationLearner)
+    algo_params["representation_dim"] = 64
     ppo_finetune = True
     _ = locals()
     del _
@@ -58,62 +62,62 @@ def target_projection():
 
 @represent_ex.named_config
 def no_compress_rsample():
-    loss_calculator_kwargs = {'beta': 0.00, 'rsample': True}
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.00, 'rsample': True}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def no_compress_sample():
-    loss_calculator_kwargs = {'beta': 0.00, 'sample': True}
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.00, 'sample': True}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def compress_sample():
-    loss_calculator_kwargs = {'beta': 0.01, 'sample': True}
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.01, 'sample': True}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def no_compress_no_sample():
-    loss_calculator_kwargs = {'beta': 0.00, 'sample': False}
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.00, 'sample': False}}  # Adding, not overwriting
     _ = locals()
     del _
 
 
 @represent_ex.named_config
 def compress_no_sample():
-    loss_calculator_kwargs = {'beta': 0.01, 'sample': False}
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.01, 'sample': False}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def more_compress_no_sample():
-    loss_calculator_kwargs = {'beta': 0.05, 'sample': False}
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.05, 'sample': False}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def small_variance():
-    encoder_kwargs = {'scale_constant': 0.001}
+    algo_params = {'encoder_kwargs': {'scale_constant': 0.001}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def large_variance():
-    encoder_kwargs = {'scale_constant': 0.1}
+    algo_params = {'encoder_kwargs': {'scale_constant': 0.1}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def huge_variance():
-    encoder_kwargs = {'scale_constant': 1.0}
+    algo_params = {'encoder_kwargs': {'scale_constant': 1.0}}  # Adding, not overwriting
     _ = locals()
     del _
 
 @represent_ex.named_config
 def tiny_variance():
-    encoder_kwargs = {'scale_constant': 0.0001}
+    algo_params = {'encoder_kwargs': {'scale_constant': 0.0001}}  # Adding, not overwriting
     _ = locals()
     del _
 @represent_ex.capture
@@ -160,7 +164,7 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, pretrain_epochs, rl_training_timesteps, representation_dim, ppo_finetune, train_from_expert, _config):
+def run(env_id, seed, algo, n_envs, algo_params, rl_training_timesteps, ppo_finetune, train_from_expert, _config):
 
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
@@ -185,10 +189,10 @@ def run(env_id, seed, algo, n_envs, pretrain_epochs, rl_training_timesteps, repr
     else:
         data = get_random_trajectories(env=env)
     assert issubclass(algo, RepresentationLearner)
-
-    rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
-    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
-
+    #
+    # rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
+    # algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
+    print(f"Running {algo.__class__} with {algo_params}")
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
@@ -197,7 +201,7 @@ def run(env_id, seed, algo, n_envs, pretrain_epochs, rl_training_timesteps, repr
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
+        encoder_feature_extractor_kwargs = {'features_dim': algo_params['representation_dim'], 'encoder_path': latest_checkpoint}
 
         #TODO figure out how to not have to set `ortho_init` to False for the whole policy
         policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
