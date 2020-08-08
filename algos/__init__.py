@@ -8,14 +8,42 @@ from .augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentat
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
 from .optimizers import LARS
+import inspect
+
+DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
 
 
-def update_kwarg_dict(kwargs, update_dict, cls):
-    for key, value in update_dict.items():
-        if key in kwargs:
-            assert kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
-            raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
-        kwargs[key] = value
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+
+
+def update_kwarg_dict(kwargs, kwargs_key, update_dict, cls):
+    # Add values within `update_dict` to kwargs['kwargs_key']
+    try:
+        internal_kwargs = kwargs.get(kwargs_key) or {} # why is Python default not working?
+        for key, value in update_dict.items():
+            if key in internal_kwargs:
+                assert internal_kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
+                raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
+            internal_kwargs[key] = value
+    except:
+        import pdb; pdb.set_trace()
+    kwargs[kwargs_key] = internal_kwargs
+
+def clean_kwargs(kwargs, cls, keys=None):
+    default_args = get_default_args(RepresentationLearner.__init__)
+    if keys is None:
+        keys = DEFAULT_HARDCODED_PARAMS
+    for k in keys:
+        if k not in kwargs:
+            continue
+        assert kwargs[k] == default_args[k], f"You passed in a non-default value for parameter {k} hardcoded by {cls.__name__}"
+        del kwargs[k]
     return kwargs
 
 
@@ -30,6 +58,8 @@ class SimCLR(RepresentationLearner):
      of target with all other contexts.
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
+
         super(SimCLR, self).__init__(env=env,
                                      log_dir=log_dir,
                                      encoder=DeterministicEncoder,
@@ -38,6 +68,7 @@ class SimCLR(RepresentationLearner):
                                      augmenter=AugmentContextAndTarget,
                                      target_pair_constructor=IdentityPairConstructor,
                                      **kwargs)
+
 class SimCLRCosine(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
@@ -49,14 +80,16 @@ class SimCLRCosine(RepresentationLearner):
      of target with all other contexts.
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
+
         super(SimCLRCosine, self).__init__(env=env,
-                                     log_dir=log_dir,
-                                     encoder=DeterministicEncoder,
-                                     decoder=ProjectionHead,
-                                     loss_calculator=CosineSymmetricContrastiveLoss,
-                                     augmenter=AugmentContextAndTarget,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     **kwargs)
+                                           log_dir=log_dir,
+                                           encoder=DeterministicEncoder,
+                                           decoder=ProjectionHead,
+                                           loss_calculator=CosineSymmetricContrastiveLoss,
+                                           augmenter=AugmentContextAndTarget,
+                                           target_pair_constructor=IdentityPairConstructor,
+                                           **kwargs)
 
 class TemporalCPC(RepresentationLearner):
     def __init__(self, env, log_dir, temporal_offset=1, **kwargs):
@@ -66,8 +99,10 @@ class TemporalCPC(RepresentationLearner):
 
         By default, augments only the context, but can be modified to augment both context and target.
         """
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs, {'temporal_offset': temporal_offset}, TemporalCPC)
+        kwargs = clean_kwargs(kwargs, self.__class__)
+
+        target_pair_constructor_kwargs = update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
+                                                           {'temporal_offset': temporal_offset}, self.__class__)
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
                                           encoder=DeterministicEncoder,
@@ -89,6 +124,7 @@ class RecurrentCPC(RepresentationLearner):
     By default, augments only the context, but can be modified to augment both context and target.
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
         super(RecurrentCPC, self).__init__(env=env,
                                            log_dir=log_dir,
                                            encoder=RecurrentEncoder,
@@ -105,9 +141,9 @@ class MoCo(RepresentationLearner):
     https://arxiv.org/abs/1911.05722
     """
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
-        batch_extender_kwargs = kwargs.get('batch_extender_kwargs', {})
-        batch_extender_kwargs = update_kwarg_dict(batch_extender_kwargs,
-                                                           {'queue_size': queue_size}, MoCo)
+        hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
+        kwargs = clean_kwargs(kwargs, self.__class__, hardcoded_params)
+        batch_extender_kwargs = update_kwarg_dict(kwargs, 'batch_extender_kwargs', {'queue_size': queue_size}, self.__class__)
         super(MoCo, self).__init__(env=env,
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
@@ -129,9 +165,11 @@ class MoCoWithProjection(RepresentationLearner):
     """
 
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
-        batch_extender_kwargs = kwargs.get('batch_extender_kwargs', {})
-        batch_extender_kwargs = update_kwarg_dict(batch_extender_kwargs,
-                                                  {'queue_size': queue_size}, MoCoWithProjection)
+        hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
+        kwargs = clean_kwargs(kwargs, self.__class__, hardcoded_params)
+
+        update_kwarg_dict(kwargs, 'batch_extender_kwargs', {'queue_size': queue_size},
+                                                  self.__class__)
         super(MoCoWithProjection, self).__init__(env=env,
                                                  log_dir=log_dir,
                                                  encoder=MomentumEncoder,
@@ -140,15 +178,15 @@ class MoCoWithProjection(RepresentationLearner):
                                                  augmenter=AugmentContextAndTarget,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
                                                  batch_extender=QueueBatchExtender,
-                                                 batch_extender_kwargs=batch_extender_kwargs,
                                                  **kwargs)
 
 
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs,
-                                                           {'mode': 'dynamics'}, DynamicsPrediction)
+        kwargs = clean_kwargs(kwargs, self.__class__)
+
+        update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
+                                                           {'mode': 'dynamics'}, self.__class__)
         super(DynamicsPrediction, self).__init__(env=env,
                                                  log_dir=log_dir,
                                                  encoder=DynamicsEncoder,
@@ -156,17 +194,14 @@ class DynamicsPrediction(RepresentationLearner):
                                                  loss_calculator=MSELoss,
                                                  augmenter=AugmentContextOnly,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
-                                                 target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                                  **kwargs)
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        if 'mode' in target_pair_constructor_kwargs:
-            raise Warning(
-                f"target_pair_constructor `mode` param must be set to `inverse_dynamics`, overwriting current value {target_pair_constructor_kwargs.get('mode')}")
-        target_pair_constructor_kwargs.update({'mode': 'inverse_dynamics'})
+        kwargs = clean_kwargs(kwargs, self.__class__)
+        update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
+                                                           {'mode': 'inverse_dynamics'}, self.__class__)
         super(InverseDynamicsPrediction, self).__init__(env=env,
                                                         log_dir=log_dir,
                                                         encoder=InverseDynamicsEncoder,
@@ -174,7 +209,6 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                                         loss_calculator=MSELoss,
                                                         augmenter=AugmentContextOnly,
                                                         target_pair_constructor=TemporalOffsetPairConstructor,
-                                                        target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                                         **kwargs)
 
 
@@ -186,6 +220,7 @@ class BYOL(RepresentationLearner):
     from 0.996 to 1 via cosine scheduling.
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
         super(BYOL, self).__init__(env=env,
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
@@ -200,6 +235,7 @@ class CEB(RepresentationLearner):
     """
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
         super(CEB, self).__init__(env=env,
                                   log_dir=log_dir,
                                   encoder=StochasticEncoder,
@@ -213,6 +249,7 @@ class FixedVarianceCEB(RepresentationLearner):
     """
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
         super(FixedVarianceCEB, self).__init__(env=env,
                                   log_dir=log_dir,
                                   encoder=DeterministicEncoder,
@@ -226,6 +263,7 @@ class FixedVarianceTargetProjectedCEB(RepresentationLearner):
     """
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs = clean_kwargs(kwargs, self.__class__)
         super(FixedVarianceTargetProjectedCEB, self).__init__(env=env,
                                                               log_dir=log_dir,
                                                               encoder=DeterministicEncoder,
@@ -247,21 +285,18 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     possible action distribution.
     """
     def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        decoder_kwargs = kwargs.get('decoder_kwargs', {})
+        kwargs = clean_kwargs(kwargs, self.__class__)
+        update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
+                                                           {"temporal_offset": temporal_offset, "mode": "dynamics"}, self.__class__)
 
-        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs,
-                                                           {"temporal_offset": temporal_offset, "mode": "dynamics"},
-                                                           ActionConditionedTemporalCPC)
-        decoder_kwargs = update_kwarg_dict(decoder_kwargs, {'action_space': env.action_space}, ActionConditionedTemporalCPC)
+        update_kwarg_dict(kwargs, 'decoder_kwargs',
+                                           {'action_space': env.action_space}, self.__class__)
 
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
-                                                           target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                                            encoder=DeterministicEncoder,
                                                            decoder=ActionConditionedVectorDecoder,
-                                                           decoder_kwargs=decoder_kwargs,
                                                            loss_calculator=BatchAsymmetricContrastiveLoss,
                                                            shuffle_batches=shuffle_batches,
                                                            **kwargs)
