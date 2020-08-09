@@ -182,7 +182,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         z_j = targets
         batch_size = z_i.shape[0]
 
-        if self.normalize:
+        if self.normalize:  # Use cosine similarity
             z_i = F.normalize(z_i, dim=1)
             z_j = F.normalize(z_j, dim=1)
 
@@ -209,6 +209,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         logits = torch.cat((logits_i, logits_j), axis=0)  # 2Nx2N
         logits /= self.temp
 
+        # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
+        # represent(image_i) and represent(augmented_image_i).
         label = torch.arange(batch_size, dtype=torch.long).to(self.device)
         labels = torch.cat((label, label), axis=0)
 
