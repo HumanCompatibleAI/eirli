@@ -22,11 +22,25 @@ def to_dict(kwargs_element):
 
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
-                 augmenter=AugmentContextOnly, batch_extender=IdentityBatchExtender, optimizer=torch.optim.Adam,
-                 representation_dim=512, projection_dim=None, device=None, shuffle_batches=True, pretrain_epochs=200,
-                 batch_size=256, warmup_epochs=10, save_interval=1, optimizer_kwargs=None, target_pair_constructor_kwargs=None,
-                 augmenter_kwargs=None, encoder_kwargs=None, decoder_kwargs=None, batch_extender_kwargs=None,
-                 loss_calculator_kwargs=None):
+                 augmenter=AugmentContextOnly,
+                 batch_extender=IdentityBatchExtender,
+                 optimizer=torch.optim.Adam,
+                 scheduler=None,
+                 representation_dim=512,
+                 projection_dim=None,
+                 device=None,
+                 shuffle_batches=True,
+                 batch_size=256,
+                 preprocess_extra_context=True,
+                 save_interval=1,
+                 optimizer_kwargs=None,
+                 target_pair_constructor_kwargs=None,
+                 augmenter_kwargs=None,
+                 encoder_kwargs=None,
+                 decoder_kwargs=None,
+                 batch_extender_kwargs=None,
+                 loss_calculator_kwargs=None,
+                 scheduler_kwargs=None):
 
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
@@ -40,7 +54,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
-        self.pretrain_epochs = pretrain_epochs
+        self.preprocess_extra_context = preprocess_extra_context
         self.save_interval = save_interval
 
         self._make_channels_first()
@@ -74,23 +88,28 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
                                    **to_dict(optimizer_kwargs))
 
-        # TODO make the scheduler parameterizable
-        self.scheduler = LinearWarmupCosine(self.optimizer, warmup_epochs, pretrain_epochs)
+        if scheduler is not None:
+            self.scheduler = scheduler(self.optimizer, **to_dict(scheduler_kwargs))
+        else:
+            self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
         self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
-    def log_info(self, loss, step, epoch_ind):
+    def log_info(self, loss, step, epoch_ind, training_epochs):
         self.writer.add_scalar('loss', loss, step)
         lr = self.optimizer.param_groups[0]['lr']
         self.writer.add_scalar('learning_rate', lr, step)
-        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{self.pretrain_epochs}], step {step}, "
+        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{training_epochs}], step {step}, "
                         f"lr {lr}, "
                         f"loss {loss}")
 
     def _make_channels_first(self):
+        assert isinstance(self.observation_space, Box) and len(self.observation_shape) == 3, \
+            "Only image observations are supported (Box observation spaces with shapes of length 3)"
+
         # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
         x, y, z = self.observation_shape
         if x != y and y == z:
@@ -98,7 +117,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             assert x == y and x != z, "Can only handle square images in format (C, H, W) or (H, W, C)"
             self.observation_shape = (z, x, y)
-            self.observation_space = Box(shape=self.observation_shape, low=0, high=255, dtype=np.uint8)
+            low = self.observation_space.low.reshape(self.observation_shape)
+            high = self.observation_space.high.reshape(self.observation_shape)
+            self.observation_space = Box(shape=self.observation_shape, low=low, high=high, dtype=np.uint8)
             self.permutation_tuple = (0, 3, 1, 2)
 
     def _tensorize(self, arr):
@@ -108,11 +129,27 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         return torch.FloatTensor(arr).to(self.device)
 
-    def _preprocess_if_image(self, input_data):
-        if isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4 and self.permutation_tuple is not None:
+    def _preprocess(self, input_data):
+        # Make channels first for image inputs
+        if self.permutation_tuple is not None:
+            assert isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4, "Expected 4D-tensor to permute"
             input_data = input_data.permute(self.permutation_tuple)
-            input_data = input_data / 255
+
+        # Normalization to range [-1, 1]
+        if isinstance(self.observation_space, Box):
+            low, high = self.observation_space.low, self.observation_space.high
+            low_min, low_max, high_min, high_max = low.min(), low.max(), high.min(), high.max()
+            assert low_min == low_max and high_min == high_max
+            low, high = low_min, high_max
+            mid = (low + high) / 2
+            delta = high - mid
+            input_data = (input_data - mid) / delta
         return input_data
+
+    def _preprocess_extra_context(self, extra_context):
+        if extra_context is None or not self.preprocess_extra_context:
+            return extra_context
+        return self._preprocess(extra_context)
 
     # TODO maybe make static?
     def unpack_batch(self, batch):
@@ -127,7 +164,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, dataset):
+
+    def learn(self, dataset, training_epochs):
         """
         :param dataset:
         :return:
@@ -140,7 +178,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder.train(True)
 
         loss_record = []
-        for epoch in range(self.pretrain_epochs):
+        for epoch in range(training_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             for step, batch in enumerate(dataloader, start=1):
@@ -154,9 +192,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self.augmenter(contexts, targets)
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
-                contexts, targets = self._preprocess_if_image(contexts), self._preprocess_if_image(targets)
-                if extra_context is not None:
-                    extra_context = self._preprocess_if_image(extra_context)
+                contexts, targets = self._preprocess(contexts), self._preprocess(targets)
+                extra_context = self._preprocess_extra_context(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
@@ -184,9 +221,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.log_info(loss, step, epoch)
+                self.log_info(loss, step, epoch, training_epochs)
 
-            self.scheduler.step()
+            if self.scheduler is not None:
+                self.scheduler.step()
             loss_record.append(loss_meter.avg.cpu().item())
             self.encoder.train(False)
             self.decoder.train(False)

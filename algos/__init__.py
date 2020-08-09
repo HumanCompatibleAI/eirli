@@ -212,6 +212,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
 
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
+                                                           preprocess_extra_context=False,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
                                                            target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                                            encoder=DeterministicEncoder,

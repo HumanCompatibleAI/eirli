@@ -11,10 +11,12 @@ from algos.representation_learner import RepresentationLearner
 from policy_interfacing import EncoderFeatureExtractor
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
+import logging
 import numpy as np
 import inspect
-
+from algos.utils import LinearWarmupCosine
 represent_ex = Experiment('representation_learning')
+
 
 
 @represent_ex.config
@@ -26,8 +28,18 @@ def default_config():
     timesteps = 640
     pretrain_only = False
     pretrain_epochs = 50
+    scheduler = None
     representation_dim = 128
     ppo_finetune = True
+    scheduler_kwargs = dict()
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def cosine_warmup_scheduler():
+    scheduler = LinearWarmupCosine
+    scheduler_kwargs = {'warmup_epoch': 2, 'T_max': 10}
     _ = locals()
     del _
 
@@ -56,7 +68,7 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, _config):
+def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune, pretrain_epochs, _config):
 
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
@@ -82,10 +94,11 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
 
     rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
+    logging.info(f"Running {algo} with parameters: {algo_params}")
     model = algo(env, log_dir=log_dir, **algo_params)
 
     # setup model
-    model.learn(data)
+    model.learn(data, pretrain_epochs)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
