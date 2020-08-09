@@ -13,6 +13,7 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet18
+from algos.utils import LinearWarmupCosine
 
 
 class MockGymEnv(object):
@@ -70,9 +71,11 @@ def train_classifier(classifier, data_dir, num_epochs, device):
     trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=512, shuffle=True)
     criterion = nn.CrossEntropyLoss().to(device)
-    optimizer = optim.SGD(classifier.layer.parameters(), lr=0.001, momentum=0.9, weight_decay=0.0)
+    optimizer = optim.SGD(classifier.layer.parameters(), lr=0.2, momentum=0.9, weight_decay=0.0, nesterov=True)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 
     for epoch in range(num_epochs):
+        print(f"Epoch {epoch}/{num_epochs} with lr {optimizer.param_groups[0]['lr']}")
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(trainloader, 0):
             inputs, labels = inputs.to(device), labels.to(device)
@@ -88,6 +91,8 @@ def train_classifier(classifier, data_dir, num_epochs, device):
                 print('[Epoch %d, Batch %3d] Average loss: %.3f' %
                       (epoch + 1, i + 1, running_loss / 20))
                 running_loss = 0.0
+
+        scheduler.step()
 
 
 def evaluate_classifier(classifier, data_dir, device):
@@ -110,7 +115,7 @@ def evaluate_classifier(classifier, data_dir, device):
     print('Accuracy: %d %%' % (100 * correct / total))
 
 
-def representation_learning(algo, data_dir, device, log_dir, config):
+def representation_learning(algo, data_dir, num_epochs, device, log_dir):
     print('Creating model for representation learning')
 
     if isinstance(algo, str):
@@ -134,12 +139,17 @@ def representation_learning(algo, data_dir, device, log_dir, config):
     # Note that the resnet18 model used here has an architecture meant for
     # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
     # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
+    # It seems that SimCLR does not include the final fully connected layer for ResNets, so we set it to the identity.
+    resnet_without_fc = resnet18()
+    resnet_without_fc.fc = torch.nn.Identity()
     model = algo(
-        env, log_dir=log_dir, batch_size=config['rep_batch_size'], representation_dim=1000, device=device,
-        normalize=False, shuffle_batches=True,
-        encoder_kwargs={'architecture_module_cls': lambda *args: resnet18()},
+        env, log_dir=log_dir, batch_size=512, representation_dim=512, projection_dim=128,
+        device=device, normalize=False, shuffle_batches=True,
+        encoder_kwargs={'architecture_module_cls': lambda *args: resnet_without_fc},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
-        optimizer_kwargs={'lr': 1e-3, 'weight_decay': 1e-4},
+        optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4},
+        scheduler=LinearWarmupCosine,
+        scheduler_kwargs={'warmup_epoch': 10, 'T_max': num_epochs},
         loss_calculator_kwargs={'temp': 0.5},
     )
 
@@ -147,7 +157,7 @@ def representation_learning(algo, data_dir, device, log_dir, config):
     transform = transforms.ToTensor()
     trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
     rep_learning_data = transform_to_rl(trainset)
-    model.learn(rep_learning_data, config['pretrain_epochs'])
+    model.learn(rep_learning_data, num_epochs)
     env.close()
     return model
 
@@ -162,20 +172,19 @@ def default_config():
     data_dir = 'cifar10/'
     pretrain_epochs = 1000
     finetune_epochs = 100
-    rep_batch_size = 512
     _ = locals()
     del _
 
 
 @cifar_ex.main
-def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, rep_batch_size, _config):
+def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
     os.makedirs(data_dir, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = representation_learning(algo, data_dir, device, log_dir, _config)
+    model = representation_learning(algo, data_dir, pretrain_epochs, device, log_dir)
 
     print('Train linear head')
     classifier = LinearHead(model.encoder, 10).to(device)

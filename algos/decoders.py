@@ -60,11 +60,12 @@ class ProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
         super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
-        self.shared_mlp = nn.Sequential(nn.Linear(self.representation_dim, 256),
-                                      nn.ReLU(),
-                                      nn.Linear(256, 256),
-                                      nn.ReLU())
-        self.mean_layer = nn.Linear(256, self.projection_dim)
+        dim = self.representation_dim
+        self.shared_mlp = nn.Sequential(nn.Linear(dim, dim),
+                                        nn.ReLU(),
+                                        nn.Linear(dim, dim),
+                                        nn.ReLU())
+        self.mean_layer = nn.Linear(dim, self.projection_dim, bias=False)
 
         if learn_scale:
             self.scale_layer = nn.Linear(256, self.projection_dim)

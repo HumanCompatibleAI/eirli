@@ -101,23 +101,23 @@ class Logger:
 
 class LinearWarmupCosine(_LRScheduler):
     def __init__(self, optimizer, warmup_epoch, T_max, eta_min=0, last_epoch=-1):
-        self.T_max = T_max
         self.eta_min = eta_min
         self.warmup_epoch = warmup_epoch
+        self.cosine_epochs = T_max - warmup_epoch
         super(LinearWarmupCosine, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
         if self.warmup_epoch > 0:
             if self.last_epoch <= self.warmup_epoch:
                 return [base_lr / self.warmup_epoch * self.last_epoch for base_lr in self.base_lrs]
-        if ((self.last_epoch - self.warmup_epoch) - 1 - (self.T_max - self.warmup_epoch)) % (2 * (self.T_max - self.warmup_epoch)) == 0:
+        if ((self.last_epoch - self.warmup_epoch) - 1 - self.cosine_epochs) % (2 * self.cosine_epochs) == 0:
             return [group['lr'] + (base_lr - self.eta_min) *
-                    (1 - math.cos(math.pi / (self.T_max - self.warmup_epoch))) / 2
+                    (1 - math.cos(math.pi / self.cosine_epochs)) / 2
                     for base_lr, group in
                     zip(self.base_lrs, self.optimizer.param_groups)]
         else:
-            return [(1 + math.cos(math.pi * (self.last_epoch - self.warmup_epoch) / (self.T_max - self.warmup_epoch))) /
-                    (1 + math.cos(math.pi * ((self.last_epoch - self.warmup_epoch) - 1) / (self.T_max - self.warmup_epoch))) *
+            return [(1 + math.cos(math.pi * (self.last_epoch - self.warmup_epoch) / self.cosine_epochs)) /
+                    (1 + math.cos(math.pi * ((self.last_epoch - self.warmup_epoch) - 1) / self.cosine_epochs)) *
                     (group['lr'] - self.eta_min) + self.eta_min
                     for group in self.optimizer.param_groups]
 
