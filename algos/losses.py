@@ -51,14 +51,15 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
         z_i = decoded_contexts
         z_j = targets
 
-        if self.normalize:
+        if self.normalize:  # Use cosine similarity
             z_i = F.normalize(z_i, dim=1)
             z_j = F.normalize(z_j, dim=1)
 
         batch_size = z_i.shape[0]
-        mask = torch.eye(batch_size)
+        mask = torch.eye(batch_size) * self.large_num
 
         logits, labels = self.calculate_logits_and_labels(z_i, z_j, mask)
+        logits /= self.temp
         return self.criterion(logits, labels)
 
 
@@ -94,7 +95,7 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
             logits_aa = torch.matmul(z_i, z_i.T)  # NxN
 
             # Values on the diagonal line are each image's similarity with itself
-            logits_aa = logits_aa - mask * self.large_num
+            logits_aa = logits_aa - mask
 
             # Dot product similarity with all other augmented images in the batch
             logits_ab = torch.matmul(z_i, z_j.T)
@@ -115,8 +116,6 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
 
             # The values we want to maximize lie on the 0-th index of each row.
             labels = torch.zeros(batch_size, dtype=torch.long).to(self.device)
-
-        logits /= self.temp
 
         return logits, labels
 
@@ -142,7 +141,7 @@ class BatchAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
         logits_aa = torch.matmul(z_i, z_i.T)  # NxN
 
         # Values on the diagonal line are each image's similarity with itself
-        logits_aa = logits_aa - mask * self.large_num
+        logits_aa = logits_aa - mask
 
         # Similarity of original images and augmented images
         logits_ab = torch.matmul(z_i, z_j.T)  # NxN
@@ -208,6 +207,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         logits_i = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
         logits_j = torch.cat((logits_ba, logits_bb), 1)  # Nx2N
         logits = torch.cat((logits_i, logits_j), axis=0)  # 2Nx2N
+        logits /= self.temp
 
         label = torch.arange(batch_size, dtype=torch.long).to(self.device)
         labels = torch.cat((label, label), axis=0)
