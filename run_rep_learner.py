@@ -203,7 +203,7 @@ def run(env_id, seed, algo, n_envs, algo_params, rl_training_timesteps, ppo_fine
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
         encoder_feature_extractor_kwargs = {'features_dim': algo_params['representation_dim'], 'encoder_path': latest_checkpoint}
 
-        #TODO figure out how to not have to set `ortho_init` to False for the whole policy
+        # TODO figure out how to not have to set `ortho_init` to False for the whole policy
         policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
                          'features_extractor_kwargs': encoder_feature_extractor_kwargs,
                          'ortho_init': False}
