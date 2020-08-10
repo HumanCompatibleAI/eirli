@@ -65,6 +65,12 @@ def make_policy(venv, encoder_or_path):
     common_policy_kwargs = {
         'observation_space': venv.observation_space,
         'action_space': venv.action_space,
+        # SB3 policies require a learning rate for the embedded optimiser. BC
+        # should not use that optimiser, though, so we set the LR to some
+        # insane value that is guaranteed to cause problems if the optimiser
+        # accidentally is used for something (using infinite or non-numeric
+        # values fails initial validation, so we need an insane-but-finite
+        # number).
         'lr_schedule': lambda _: 1e100,
         'ortho_init': False,
     }
@@ -111,7 +117,17 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
 @il_train_ex.capture
 def do_training_gail(venv_chans_first, dataset, dev_name, encoder,
                      gail_total_timesteps):
+    # Supporting encoder init requires:
+    # - Thinking more about how to handle LR of the optimiser stuffed inside
+    #   the policy (at the moment we just set an insane default LR because BC
+    #   doesn't use it, but PPO actually will use it).
+    # - Thinking about how to init the discriminator as well (GAIL
+    #   discriminators are incredibly finicky, so that's probably where most
+    #   of the value of representation learning will come from in GAIL).
     assert encoder is None, "encoder not yet supported"
+
+    raise NotImplementedError("This (mostly) doesn't work yet")
+
     device = get_device(dev_name)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
@@ -133,8 +149,6 @@ def do_training_gail(venv_chans_first, dataset, dev_name, encoder,
     )
 
     trainer.train(total_timesteps=gail_total_timesteps)
-
-    raise NotImplementedError("This (mostly) doesn't work yet")
 
 
 @il_train_ex.main
