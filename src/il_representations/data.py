@@ -20,7 +20,7 @@ class TransitionsMinimalDataset(il_datasets.Dataset):
         dict_samples = self.dict_dataset.sample(n_samples)
         # we don't have infos dicts, so we insert some fake ones to make
         # TransitionsMinimal happy
-        dummy_infos = np.asarray([{}] * n_samples, dtype='object')
+        dummy_infos = np.asarray([{} for _ in range(n_samples)], dtype='object')
         result = il_types.TransitionsMinimal(infos=dummy_infos, **dict_samples)
         assert len(result) == n_samples
         return result

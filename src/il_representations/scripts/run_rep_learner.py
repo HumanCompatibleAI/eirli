@@ -90,7 +90,7 @@ def run(benchmark, use_random_rollouts,
             "use_random_rollouts not yet supported for MAGICAL"
         gym_env_name, dataset_dict = load_dataset_magical()
         venv = make_vec_env(gym_env_name, n_envs=1, parallel=False)
-        color_space = 'RGB'
+        color_space = ColorSpace.RGB
     elif benchmark['benchmark_name'] == 'dm_control':
         assert not use_random_rollouts, \
             "use_random_rollouts not yet supported for dm_control"
