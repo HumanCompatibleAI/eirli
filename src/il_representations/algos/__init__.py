@@ -179,29 +179,16 @@ class BYOL(RepresentationLearner):
 class CEB(RepresentationLearner):
     """
     """
-    def __init__(self, env, log_dir, **kwargs):
+    def __init__(self, env, log_dir, beta=0.1, **kwargs):
         super(CEB, self).__init__(env=env,
                                   log_dir=log_dir,
                                   encoder=StochasticEncoder,
                                   decoder=NoOp,
                                   loss_calculator=CEBLoss,
-                                  augmenter=NoAugmentation,
-                                  target_pair_constructor=TemporalOffsetPairConstructor,
-                                  **kwargs)
-
-class FixedVarianceCEB(RepresentationLearner):
-    """
-    """
-    def __init__(self, env, log_dir, **kwargs):
-        super(FixedVarianceCEB, self).__init__(env=env,
-                                  log_dir=log_dir,
-                                  encoder=DeterministicEncoder,
-                                  decoder=NoOp,
-                                  loss_calculator=CEBLoss,
+                                  loss_calculator_kwargs={'beta': beta},
                                   augmenter=AugmentContextAndTarget,
                                   target_pair_constructor=TemporalOffsetPairConstructor,
                                   **kwargs)
-
 
 class ActionConditionedTemporalCPC(RepresentationLearner):
     """
