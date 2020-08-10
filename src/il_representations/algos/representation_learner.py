@@ -104,12 +104,24 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"lr {lr}, "
                         f"loss {loss}")
 
-    def _prep_tensors(self, tensors):
+    def _prep_tensors(self, tensors_or_arrays):
         """
-        :param tensors: A list of Torch tensors (or numpy arrays)
-        :return: A torch tensor moved to the device associated with this learner, and converted to float
+        :param tensors_or_arrays: A list of Torch tensors or numpy arrays
+        :return: A torch tensor moved to the device associated with this
+            learner, and converted to float
         """
-        tensor_list = [torch.as_tensor(tens) for tens in tensors]
+        if tensors_or_arrays.ndim == 4:
+            # if the tensors_or_arrays look like images, we check that they
+            # also seem like they're NCHW
+            is_nchw_heuristic = \
+                tensors_or_arrays.shape[1] < tensors_or_arrays.shape[2] \
+                and tensors_or_arrays.shape[1] < tensors_or_arrays.shape[3]
+            if not is_nchw_heuristic:
+                raise ValueError(
+                    f"Batch tensor axes {tensors_or_arrays.shape} do not look "
+                    "like they're in NCHW order. Did you accidentally pass in "
+                    "a channels-last tensor?")
+        tensor_list = [torch.as_tensor(tens) for tens in tensors_or_arrays]
         batch_tensor = torch.stack(tensor_list, dim=0)
         return batch_tensor.to(self.device, torch.float)
 

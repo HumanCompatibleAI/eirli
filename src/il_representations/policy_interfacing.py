@@ -18,8 +18,8 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
         if features_dim is None:
             # the [None] adds a batch dimension
             sample_obs = torch.FloatTensor(observation_space.sample()[None])
-            dev_encoder = encoder.to(sample_obs.device)
-            sample_dist = dev_encoder(sample_obs, traj_info=None)
+            device_encoder = encoder.to(sample_obs.device)
+            sample_dist = device_encoder(sample_obs, traj_info=None)
             sample_out, = sample_dist.sample()
             features_dim, = sample_out.shape
 

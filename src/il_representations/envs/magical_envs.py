@@ -59,7 +59,7 @@ def load_data(
         env_name = saved_trajectories.splice_in_preproc_name(
             env_name, preprocessor_name)
 
-    # Finally we build a DictDatset for actions and observations.
+    # Finally we build a DictDataset for actions and observations.
     dataset_dict = collections.defaultdict(list)
     for trajectory in demo_trajectories:
         if isinstance(trajectory.obs, dict):

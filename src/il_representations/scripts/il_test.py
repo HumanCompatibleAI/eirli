@@ -27,15 +27,15 @@ def default_config():
     seed = 42
     n_rollouts = 100
     eval_batch_size = 32
-    dev_name = 'auto'
+    device_name = 'auto'
     # run_id is written into the produced DataFrame to indicate what model is
     # being tested
     run_id = 'test'
 
 
 @il_test_ex.main
-def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size, dev_name,
-         run_id):
+def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size,
+         device_name, run_id):
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
     log_dir = il_test_ex.observers[0].dir
@@ -46,7 +46,7 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size, dev_name,
             "must pass a string-valued policy_path to this command")
     policy = th.load(policy_path)
 
-    device = get_device(dev_name)
+    device = get_device(device_name)
     policy = policy.to(device)
 
     if benchmark['benchmark_name'] == 'magical':

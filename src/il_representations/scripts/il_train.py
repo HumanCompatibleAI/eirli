@@ -35,7 +35,7 @@ def default_config():
     # ##################
 
     # device to place all computations on
-    dev_name = 'auto'
+    device_name = 'auto'
     # choose between 'bc'/'gail'
     algo = 'bc'
     # place to load pretrained encoder from (if not given, it will be
@@ -97,14 +97,14 @@ def make_policy(venv, encoder_or_path):
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
-                   dev_name):
+                   device_name):
     policy = make_policy(venv_chans_first, encoder)
     trainer = BC(observation_space=venv_chans_first.observation_space,
                  action_space=venv_chans_first.action_space,
                  policy_class=lambda **kwargs: policy,
                  policy_kwargs=None,
                  expert_data=dataset,
-                 device=dev_name)
+                 device=device_name)
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=bc_n_epochs)
@@ -115,7 +115,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
 
 
 @il_train_ex.capture
-def do_training_gail(venv_chans_first, dataset, dev_name, encoder,
+def do_training_gail(venv_chans_first, dataset, device_name, encoder,
                      gail_total_timesteps):
     # Supporting encoder init requires:
     # - Thinking more about how to handle LR of the optimiser stuffed inside
@@ -128,7 +128,7 @@ def do_training_gail(venv_chans_first, dataset, dev_name, encoder,
 
     raise NotImplementedError("This (mostly) doesn't work yet")
 
-    device = get_device(dev_name)
+    device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space)
