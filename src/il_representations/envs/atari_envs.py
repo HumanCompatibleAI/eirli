@@ -1,7 +1,6 @@
 """Utilities for working with Atari environments and demonstrations."""
 import numpy as np
 
-from stable_baselines3.common.vec_env import VecFrameStack
 from il_representations.envs.config import benchmark_ingredient
 
 
@@ -31,7 +30,9 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, chans_first=True):
     }
 
     if chans_first:
-        # by default, channels are last; chans_first transposes
+        # In Gym Atari envs, channels are last; chans_first will transpose data
+        # saved in that format so it's channels-first (making it compatible
+        # with, e.g., Atari envs wrapped in a VecTransposeImage wrapper).
         dataset_dict['obs'] = np.transpose(dataset_dict['obs'], (0, 3, 1, 2))
 
     return dataset_dict

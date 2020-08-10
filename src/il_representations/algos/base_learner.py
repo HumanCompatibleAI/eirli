@@ -8,6 +8,9 @@ class BaseEnvironmentLearner:
         self.observation_space = env.observation_space
         self.observation_shape = self.env.observation_space.shape
         self.action_space = env.action_space
+        # FIXME(sam): action_size is only needed for EncoderSimplePolicyHead,
+        # which (arguably) should infer action size from a vecenv. Remove this
+        # if EncoderSimplePolicyHead is refactored.
         if isinstance(self.action_space, gym.spaces.Discrete):
             self.action_size = env.action_space.n
         elif (isinstance(self.action_space, gym.spaces.Box)

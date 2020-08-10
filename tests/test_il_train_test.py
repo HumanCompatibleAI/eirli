@@ -12,7 +12,8 @@ observer = FileStorageObserver('test_observer')
 il_train_ex.observers.append(observer)
 il_test_ex.observers.append(observer)
 
-@pytest.mark.parametrize("benchmark_name", ["magical", "dm_control"])
+
+@pytest.mark.parametrize("benchmark_name", ["magical", "dm_control", "atari"])
 def test_il_train_test(benchmark_name):
     """Simple smoke test for training/testing IL code."""
     # experiment config
@@ -21,7 +22,7 @@ def test_il_train_test(benchmark_name):
     this_dir = os.path.dirname(os.path.abspath(__file__))
     if benchmark_name == 'magical':
         common_cfg = {
-            'dev_name': 'cpu',
+            'device_name': 'cpu',
             'benchmark': {
                 'benchmark_name': 'magical',
                 'magical_env_prefix': 'MoveToRegion',
@@ -34,7 +35,7 @@ def test_il_train_test(benchmark_name):
         }
     elif benchmark_name == 'dm_control':
         common_cfg = {
-            'dev_name': 'cpu',
+            'device_name': 'cpu',
             'benchmark': {
                 'benchmark_name': 'dm_control',
                 'dm_control_env': 'reacher-easy',
@@ -43,6 +44,18 @@ def test_il_train_test(benchmark_name):
                     os.path.join(this_dir, 'data', 'dm_control',
                                  'reacher-easy-*.pkl.gz'),
                 }
+            }
+        }
+    elif benchmark_name == 'atari':
+        common_cfg = {
+            'device_name': 'cpu',
+            'benchmark': {
+                'benchmark_name':
+                'atari',
+                'atari_env_id':
+                'PongNoFrameskip-v4',
+                'atari_demo_paths':
+                [os.path.join(this_dir, 'data', 'atari', 'pong.npz')],
             }
         }
     else:
