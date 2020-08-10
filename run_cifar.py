@@ -142,12 +142,13 @@ def representation_learning(algo, data_dir, num_epochs, device, log_dir):
     # It seems that SimCLR does not include the final fully connected layer for ResNets, so we set it to the identity.
     resnet_without_fc = resnet18()
     resnet_without_fc.fc = torch.nn.Identity()
+    # Note SimCLR uses LARSOptimizer, which we currently do not do
     model = algo(
         env, log_dir=log_dir, batch_size=512, representation_dim=512, projection_dim=128,
         device=device, normalize=False, shuffle_batches=True,
         encoder_kwargs={'architecture_module_cls': lambda *args: resnet_without_fc},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
-        optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4},
+        optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4, 'momentum': 0.9},
         scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 10, 'T_max': num_epochs},
         loss_calculator_kwargs={'temp': 0.5},
