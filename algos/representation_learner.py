@@ -171,6 +171,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
+        dataset = self.augmenter(dataset)
+        import pdb; pdb.set_trace()
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
@@ -188,7 +190,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
-                contexts, targets = self.augmenter(contexts, targets)
                 contexts, targets = self._tensorize(contexts), self._tensorize(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
                 contexts, targets = self._preprocess(contexts), self._preprocess(targets)

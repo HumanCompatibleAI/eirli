@@ -18,15 +18,16 @@ class Augmenter(ABC):
         self.augment_op = transforms.Compose(list(augmentations))
 
     @abstractmethod
-    def __call__(self, contexts, targets):
+    def __call__(self, dataset):
         pass
 
 
 class AugmentContextAndTarget(Augmenter):
-    def __call__(self, contexts, targets):
+    def __call__(self, dataset):
+
         return [np.array(self.augment_op(el)) for el in contexts], [np.array(self.augment_op(el)) for el in targets]
 
 
 class AugmentContextOnly(Augmenter):
-    def __call__(self, contexts, targets):
+    def __call__(self, dataset):
         return [np.array(self.augment_op(el)) for el in contexts], targets
