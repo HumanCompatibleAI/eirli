@@ -123,32 +123,23 @@ class CEBLoss(RepresentationLoss):
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form
     than done by traditional VIB techniques
     """
-    def __init__(self, device, beta=.1, sample=True):
-        super().__init__(device, sample=sample)
+    def __init__(self, device, beta=.1):
+        super().__init__(device, sample=True)
         # TODO allow for beta functions
         self.beta = beta
-        self.sample = sample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
 
-        if self.sample:
-            z = decoded_context_dist.sample() # B x Z
-        else:
-            z = decoded_context_dist.loc
-
-        single_distribution_samples = torch.stack([decoded_context_dist.sample()[0] for _ in range(10)])
+        z = decoded_context_dist.sample() # B x Z
 
         log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
         log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
 
-        cross_probas_logits = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
-        # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
-        #import pdb; pdb.set_trace()
-        catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
+        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z under _all_ target distributions
+        catgen = torch.distributions.Categorical(logits=cross_probas) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
                                                                       # targets/y values
         inds = torch.arange(start=0, end=len(z))
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
-
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
         return loss
 

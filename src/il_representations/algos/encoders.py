@@ -21,13 +21,12 @@ DEFAULT_CNN_ARCHITECTURE = {
     'CONV': [
                 {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
                 {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-                {'out_dim': 32, 'kernel_size': 3, 'stride': 1},
+                {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
             ],
     'DENSE': [
-                {'in_dim': 32*7*7}
+                {'in_dim': 64*7*7}
              ]
 }
-
 
 class DefaultStochasticCNN(nn.Module):
     def __init__(self, obs_space, representation_dim):
@@ -73,7 +72,7 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=0.01):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
