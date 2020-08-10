@@ -46,7 +46,7 @@ class DefaultStochasticCNN(nn.Module):
             shared_network_layers.append(nn.Linear(in_dim, out_dim))
             shared_network_layers.append(nn.ReLU())
 
-            self.shared_network = nn.Sequential(*shared_network_layers)
+        self.shared_network = nn.Sequential(*shared_network_layers)
 
         self.mean_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
         self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
