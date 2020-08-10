@@ -13,6 +13,7 @@ from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
 from stable_baselines3.ppo import PPO
 
 from il_representations import algos
+from il_representations.algos.augmenters import ColorSpace
 from il_representations.algos.representation_learner import \
     RepresentationLearner
 from il_representations.algos.utils import LinearWarmupCosine
@@ -96,14 +97,14 @@ def run(benchmark, use_random_rollouts,
             "use_random_rollouts not yet supported for dm_control"
         gym_env_name, dataset_dict = load_dataset_dm_control()
         venv = make_vec_env(gym_env_name, n_envs=1, parallel=False)
-        color_space = 'RGB'
+        color_space = ColorSpace.RGB
     elif benchmark['benchmark_name'] == 'atari':
         if not use_random_rollouts:
             dataset_dict = load_dataset_atari()
         gym_env_name_hwc = benchmark['atari_env_id']
         venv = VecTransposeImage(VecFrameStack(
             make_atari_env(gym_env_name_hwc), 4))
-        color_space = 'GRAY'
+        color_space = ColorSpace.GRAY
     else:
         raise NotImplementedError(
             f"no support for benchmark_name={benchmark['benchmark_name']!r}")

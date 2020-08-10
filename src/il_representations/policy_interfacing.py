@@ -16,6 +16,7 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
 
         # do forward prop to infer the feature dim
         if features_dim is None:
+            # the [None] adds a batch dimension
             sample_obs = torch.FloatTensor(observation_space.sample()[None])
             dev_encoder = encoder.to(sample_obs.device)
             sample_dist = dev_encoder(sample_obs, traj_info=None)
