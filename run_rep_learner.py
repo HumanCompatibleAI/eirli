@@ -17,10 +17,6 @@ import inspect
 represent_ex = Experiment('representation_learning')
 
 
-# pulled from: https://stackoverflow.com/a/12627202
-
-
-
 @represent_ex.config
 def default_config():
     env_id = 'BreakoutNoFrameskip-v4'

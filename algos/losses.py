@@ -245,7 +245,7 @@ class CEBLoss(RepresentationLoss):
             # Take the diagonal variance vector and stack batch-wise. Result: [B, Z]
             covariance_diagonals = torch.stack([batch_cov.diag() for batch_cov in normalized_context_dist.covariance_matrix])
             # Elementwise multiply each N(0, 1) sample by the covariance diagonal for that dimension
-            noise = torch.randn(z.shape) * covariance_diagonals
+            noise = torch.randn(z.shape) * torch.sqrt(covariance_diagonals)
             z += noise
 
         if self.rsample:
