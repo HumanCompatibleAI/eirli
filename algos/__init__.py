@@ -101,15 +101,14 @@ class TemporalCPC(RepresentationLearner):
         """
         kwargs = clean_kwargs(kwargs, self.__class__)
 
-        target_pair_constructor_kwargs = update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
-                                                           {'temporal_offset': temporal_offset}, self.__class__)
+        update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
+                          {'temporal_offset': temporal_offset}, self.__class__)
         super(TemporalCPC, self).__init__(env=env,
                                           log_dir=log_dir,
                                           encoder=DeterministicEncoder,
                                           decoder=NoOp,
                                           loss_calculator=BatchAsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
-                                          target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                           **kwargs)
 
 
@@ -125,13 +124,13 @@ class RecurrentCPC(RepresentationLearner):
     """
     def __init__(self, env, log_dir, **kwargs):
         kwargs = clean_kwargs(kwargs, self.__class__)
+        kwargs['shuffle_batches'] = False
         super(RecurrentCPC, self).__init__(env=env,
                                            log_dir=log_dir,
                                            encoder=RecurrentEncoder,
                                            decoder=NoOp,
                                            loss_calculator=BatchAsymmetricContrastiveLoss,
                                            target_pair_constructor=TemporalOffsetPairConstructor,
-                                           shuffle_batches=False,
                                            **kwargs)
 
 
@@ -143,7 +142,7 @@ class MoCo(RepresentationLearner):
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
         kwargs = clean_kwargs(kwargs, self.__class__, hardcoded_params)
-        batch_extender_kwargs = update_kwarg_dict(kwargs, 'batch_extender_kwargs', {'queue_size': queue_size}, self.__class__)
+        update_kwarg_dict(kwargs, 'batch_extender_kwargs', {'queue_size': queue_size}, self.__class__)
         super(MoCo, self).__init__(env=env,
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
@@ -152,7 +151,6 @@ class MoCo(RepresentationLearner):
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=TemporalOffsetPairConstructor,
                                    batch_extender=QueueBatchExtender,
-                                   batch_extender_kwargs=batch_extender_kwargs,
                                    **kwargs)
 
 
@@ -286,6 +284,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     """
     def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
         kwargs = clean_kwargs(kwargs, self.__class__)
+        kwargs['preprocess_extra_context'] = False
         update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
                                                            {"temporal_offset": temporal_offset, "mode": "dynamics"}, self.__class__)
 
@@ -294,7 +293,6 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
 
         super(ActionConditionedTemporalCPC, self).__init__(env=env,
                                                            log_dir=log_dir,
-                                                           preprocess_extra_context=False,
                                                            target_pair_constructor=TemporalOffsetPairConstructor,
                                                            encoder=DeterministicEncoder,
                                                            decoder=ActionConditionedVectorDecoder,
