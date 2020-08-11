@@ -25,7 +25,7 @@ def default_config():
     algo = "SimCLR"
     n_envs = 1
     train_from_expert = True
-    timesteps = 640
+    timesteps = 10000
     pretrain_only = False
     pretrain_epochs = 50
     scheduler = None

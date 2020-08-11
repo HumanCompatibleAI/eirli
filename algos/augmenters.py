@@ -1,71 +1,59 @@
-import enum
 from torchvision import transforms
 from .utils import gaussian_blur
-import torch
+import numpy as np
 from abc import ABC, abstractmethod
-import PIL
+from math import ceil
 """
-These are pretty basic: when constructed, they take in a list of augmentations, and
-either augment just the context, or both the context and the target, depending on the algorithm.
+These are pretty basic: when constructed, they take in a list of augmentations, and 
+either augment just the context, or both the context and the target, depending on the algorithm. 
 """
 
-DEFAULT_AUGMENTATIONS = (
-    transforms.ToPILImage(),
-    transforms.RandomAffine(  # could add rotation etc., but would be costly
-        degrees=0, translate=(0.05, 0.05), resample=PIL.Image.NEAREST),
-    transforms.Lambda(gaussian_blur),
-    transforms.ToTensor(),
-)
 
 
-class ColorSpace(str, enum.Enum):
-    RGB = 'RGB'
-    GRAY = 'GRAY'
+
+
+DEFAULT_AUGMENTATIONS = (transforms.ToPILImage(),
+                         transforms.Pad(4),
+                         transforms.RandomCrop(84),
+                         transforms.Lambda(gaussian_blur),)
 
 
 class Augmenter(ABC):
-    def __init__(self, color_space=ColorSpace.GRAY, augmentations=DEFAULT_AUGMENTATIONS):
-        self.augment_op = transforms.Compose(augmentations)
-        self.color_space = color_space
-
-    def _apply(self, frames):
-        """Apply augmentations to an N*C*H*W stack of frames."""
-        # FIXME(sam): this should really be done concurrently on CPU, or shoved
-        # over to the GPU. Realistically the augmentations we have right now
-        # are probably fastest to do in Torch, on the GPU.
-        frames_out = []
-        for frame in frames:
-            # split the frame into separate sub-frames
-            if self.color_space == ColorSpace.RGB:
-                # frames are RGB, so frame stack must be of size 3
-                assert (frames.size(1) % 3) == 0
-                sub_frames = torch.split(frame, 3)
-            elif self.color_space == ColorSpace.GRAY:
-                sub_frames = torch.split(frame, 1)
-            else:
-                raise NotImplementedError("no support for color space",
-                                          self.color_space)
-            stack_frame = torch.cat(
-                [self.augment_op(sub_frame) for sub_frame in sub_frames],
-                dim=0)
-            frames_out.append(stack_frame)
-        return torch.stack(frames_out, dim=0)
+    def __init__(self, augmentations=DEFAULT_AUGMENTATIONS, batch_augmentation_size=2048):
+        # TODO at some point check if I need to convert this to list or if it can stay a tuple
+        self.augment_op = transforms.Compose(list(augmentations))
+        self.batch_augmentation_size = batch_augmentation_size
 
     @abstractmethod
-    def __call__(self, contexts, targets):
+    def __call__(self, dataset):
         pass
 
-
-class NoAugmentation(Augmenter):
-    def __call__(self, contexts, targets):
+    def dataset_to_aug_batches(self, dataset):
+        contexts, targets = np.stack([el['context'] for el in dataset]), np.stack([el['target'] for el in dataset])
+        num_splits = ceil(len(dataset)/self.batch_augmentation_size)
+        # array_split allows splits to not be of equal size
+        contexts, targets = np.array_split(contexts, num_splits), np.array_split(contexts, num_splits)
         return contexts, targets
 
+    def to_dataset(self, contexts, targets, dataset):
+        for i in range(contexts.shape[0]):
+            dataset[i]['context'] = contexts[i]
+            dataset[i]['target'] = targets[i]
+        return dataset
+
+    def augment(self, data_batch):
+        return [np.array(self.augment_op(el)) for el in data_batch]
 
 class AugmentContextAndTarget(Augmenter):
-    def __call__(self, contexts, targets):
-        return self._apply(contexts), self._apply(targets)
+    def __call__(self, dataset):
+        contexts, targets = self.dataset_to_aug_batches(dataset)
+        augmented_context = np.concatenate([self.augment(batch) for batch in contexts])
+        augmented_targets = np.concatenate([self.augment(batch) for batch in targets])
+        return self.to_dataset(augmented_context, augmented_targets, dataset)
 
 
 class AugmentContextOnly(Augmenter):
-    def __call__(self, contexts, targets):
-        return self._apply(contexts), targets
+    def __call__(self, dataset):
+        contexts, targets = self.dataset_to_aug_batches(dataset)
+        augmented_context = np.concatenate([self.augment(batch) for batch in contexts])
+        return self.to_dataset(augmented_context, targets, dataset)

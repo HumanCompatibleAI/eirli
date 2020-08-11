@@ -172,7 +172,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
         dataset = self.augmenter(dataset)
-        import pdb; pdb.set_trace()
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
         # Set encoder and decoder to be in training mode
         self.encoder.train(True)
