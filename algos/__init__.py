@@ -2,8 +2,8 @@ from .representation_learner import RepresentationLearner
 from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
 from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, \
-    MatMulSymmetricContrastiveLoss, CosineSymmetricContrastiveLoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss
+
 from .augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from .batch_extenders import QueueBatchExtender
@@ -64,7 +64,7 @@ class SimCLR(RepresentationLearner):
                                      log_dir=log_dir,
                                      encoder=DeterministicEncoder,
                                      decoder=ProjectionHead,
-                                     loss_calculator=MatMulSymmetricContrastiveLoss,
+                                     loss_calculator=SymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
                                      target_pair_constructor=IdentityPairConstructor,
                                      **kwargs)
