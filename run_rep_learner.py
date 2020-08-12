@@ -22,7 +22,7 @@ represent_ex = Experiment('representation_learning')
 @represent_ex.config
 def default_config():
     env_id = 'BreakoutNoFrameskip-v4'
-    algo = "SimCLR"
+    algo = "MoCo"
     n_envs = 1
     train_from_expert = True
     timesteps = 640
@@ -81,7 +81,6 @@ def run(env_id, seed, algo, n_envs, timesteps, representation_dim, ppo_finetune,
                 correct_algo_cls = algo_cls
                 break
         algo = correct_algo_cls
-
     is_atari = 'NoFrameskip' in env_id
 
     # setup environment
