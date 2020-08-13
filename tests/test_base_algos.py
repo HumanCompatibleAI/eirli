@@ -24,6 +24,10 @@ def is_representation_learner(el):
 @pytest.mark.parametrize("benchmark_cfg", BENCHMARK_CONFIGS)
 def test_algo(algo, benchmark_cfg):
     represent_ex.run(config_updates={'pretrain_epochs': 1,
+                                     'timesteps': 32,
+                                     'batch_size': 7,
+                                     'unit_test_max_train_steps': 2,
+                                     'representation_dim': 3,
                                      'algo': algo,
                                      'use_random_rollouts': False,
                                      'benchmark': benchmark_cfg,
