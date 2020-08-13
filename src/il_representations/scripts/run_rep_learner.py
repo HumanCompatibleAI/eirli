@@ -14,8 +14,7 @@ from stable_baselines3.ppo import PPO
 
 from il_representations import algos
 from il_representations.algos.augmenters import ColorSpace
-from il_representations.algos.representation_learner import \
-    RepresentationLearner
+from il_representations.algos.representation_learner import RepresentationLearner
 from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import benchmark_ingredient
