@@ -126,7 +126,6 @@ class BYOLProjectionHead(MomentumProjectionHead):
                                       covariance_matrix=prediction_dist.covariance_matrix)
 
 
-
 class ActionConditionedVectorDecoder(LossDecoder):
     def __init__(self, representation_dim, projection_shape, action_space, sample=False, action_encoding_dim=128,
                  action_encoder_layers=1, learn_scale=False, action_embedding_dim=5, use_lstm=False):
@@ -136,7 +135,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
         # If actions are continuous/box, this is done via a simple flattening.
         if isinstance(action_space, spaces.Discrete):
-            self.action_processer= nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
+            self.action_processer = nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
             processed_action_dim = action_embedding_dim
         elif isinstance(action_space, spaces.Box):
             self.action_processer = torch.flatten
@@ -169,9 +168,10 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         actions = extra_context
+
         # Process each batch-vectorized set of actions, and then stack
         # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
-        processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
+        processed_actions = self.action_processer(actions)
 
         # Encode multiple actions into a single action vector (format based on LSTM)
         if self.action_encoder is not None:
