@@ -196,12 +196,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Typically the identity function
                 extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
 
-
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
                 decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
-
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import copy
 from torch.distributions import MultivariateNormal
+from functools import reduce
 import numpy as np
 from stable_baselines3.common.policies import NatureCNN
 from gym.spaces import Box
@@ -28,6 +29,7 @@ DEFAULT_CNN_ARCHITECTURE = {
              ]
 }
 
+
 class DefaultStochasticCNN(nn.Module):
     def __init__(self, obs_space, representation_dim):
         super().__init__()
@@ -49,6 +51,9 @@ class DefaultStochasticCNN(nn.Module):
 
         self.shared_network = nn.Sequential(*shared_network_layers)
 
+        dense_in_dim = reduce((lambda x, y: x * y), self.get_conv_image_shape(obs_space.shape[1:],
+                                                                              DEFAULT_CNN_ARCHITECTURE['CONV']))
+        DEFAULT_CNN_ARCHITECTURE['DENSE'][0]['in_dim'] = dense_in_dim
         self.mean_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
         self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
 
@@ -57,6 +62,42 @@ class DefaultStochasticCNN(nn.Module):
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
         return mean, scale
+
+    # TODO (Cynthia): What's the best location to put this function?
+    def get_conv_image_shape(self, image_shape, conv_arch):
+        """
+        Given the input image's shape of (H, W) and a convolution network's architecture, compute the output feature
+        map CONV(image)'s shape (C, H, W)
+        """
+        def compute_out_hw(h_in, w_in, layer_conf):
+            import math
+            padding = layer_conf['padding']
+            dilation = layer_conf['dilation']
+            kernel_size = layer_conf['kernel_size']
+            stride = layer_conf['stride']
+            h_out = math.floor((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) / stride[0] + 1)
+            w_out = math.floor((w_in + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) / stride[1] + 1)
+            return h_out, w_out
+
+        h, w = image_shape
+        default_config = {
+            'padding': [0, 0],
+            'dilation': [1, 1],
+            'kernel_size': [],
+            'stride': [1, 1]
+        }
+
+        for layer_config in conv_arch:
+            for param, default in default_config.items():
+                param_value = layer_config.get(param, default)
+                if isinstance(param_value, int):
+                    param_value = [param_value, param_value]
+                layer_config[param] = param_value
+                assert len(layer_config[param]) == 2
+            h, w = compute_out_hw(h, w, layer_config)
+
+        out_channel = conv_arch[-1]['out_dim']
+        return [out_channel, h, w]
 
 
 class Encoder(nn.Module):
@@ -104,6 +145,7 @@ class StochasticEncoder(Encoder):
         self.network = architecture_model_cls(obs_space, representation_dim)
 
     def forward(self, x, traj_info):
+        print(x.shape)
         features, scale = self.network(x)
         return independent_multivariate_normal(loc=features, scale=scale)
 
