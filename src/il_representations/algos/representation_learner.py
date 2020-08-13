@@ -20,8 +20,11 @@ def to_dict(kwargs_element):
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
+    def __init__(self, env, *,
+                 log_dir, encoder, decoder, loss_calculator,
+                 target_pair_constructor,
                  augmenter=AugmentContextOnly,
+                 color_space,
                  batch_extender=IdentityBatchExtender,
                  optimizer=torch.optim.Adam,
                  scheduler=None,
@@ -62,7 +65,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # This doesn't have any meaningful effect unless you specify a projection head.
             projection_dim = representation_dim
 
-        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
+        self.augmenter = augmenter(color_space=color_space, **to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
         self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)

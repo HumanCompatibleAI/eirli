@@ -53,7 +53,7 @@ def default_config():
     # GAIL config variables
     # #####################
 
-    # number of env time steps to perform during RL
+    # number of env time steps to perform during reinforcement learning
     gail_total_timesteps = 2048
 
 

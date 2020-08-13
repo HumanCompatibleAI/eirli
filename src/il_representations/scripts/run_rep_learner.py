@@ -115,9 +115,7 @@ def run(benchmark, use_random_rollouts,
 
     rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
-    if 'augmenter_kwargs' not in algo_params:
-        algo_params['augmenter_kwargs'] = {}
-    algo_params['augmenter_kwargs']['color_space'] = color_space
+    algo_params['color_space'] = color_space
     logging.info(f"Running {algo} with parameters: {algo_params}")
     model = algo(venv, log_dir=log_dir, **algo_params)
 
