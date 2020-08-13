@@ -37,7 +37,11 @@ def default_config():
     scheduler = None
     representation_dim = 128
     ppo_finetune = True
+    batch_size = 256
     scheduler_kwargs = dict()
+    # this is useful for constructing tests where we want to truncate the
+    # dataset to be small
+    unit_test_max_train_steps = None
     _ = locals()
     del _
 
@@ -111,9 +115,16 @@ def run(benchmark, use_random_rollouts,
     if use_random_rollouts:
         dataset_dict = get_random_traj(env=venv,
                                        timesteps=timesteps)
-    assert issubclass(algo, RepresentationLearner)
 
-    rep_learner_params = inspect.getfullargspec(RepresentationLearner.__init__).args
+    # FIXME(sam): this creates weird action-at-a-distance, and doesn't save us
+    # from specifying parameters in the default config anyway (Sacred will
+    # complain if we include a param that isn't in the default config). Should
+    # do one of the following:
+    # 1. Decorate RepresentationLearner constructor with a Sacred ingredient.
+    # 2. Just pass things manually.
+    assert issubclass(algo, RepresentationLearner)
+    init_sig = inspect.signature(RepresentationLearner.__init__)
+    rep_learner_params = [p for p in init_sig.parameters if p != 'self']
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
     algo_params['color_space'] = color_space
     logging.info(f"Running {algo} with parameters: {algo_params}")

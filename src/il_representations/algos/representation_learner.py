@@ -42,7 +42,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 scheduler_kwargs=None):
+                 scheduler_kwargs=None,
+                 unit_test_max_train_steps=None):
 
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
@@ -59,6 +60,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.save_interval = save_interval
+        self.unit_test_max_train_steps = unit_test_max_train_steps
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -217,6 +219,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 loss.backward()
                 self.optimizer.step()
                 self.log_info(loss, step, epoch, training_epochs)
+
+                if self.unit_test_max_train_steps is not None \
+                   and step >= self.unit_test_max_train_steps:
+                    # early exit
+                    break
 
             if self.scheduler is not None:
                 self.scheduler.step()
