@@ -3,25 +3,19 @@
 import logging
 import os
 
-from imitation.algorithms.bc import BC
 from imitation.algorithms.adversarial import GAIL
-from imitation.util.util import make_vec_env
+from imitation.algorithms.bc import BC
 import imitation.util.logger as imitation_logger
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common.cmd_util import make_atari_env
 import stable_baselines3.common.policies as sb3_pols
-from stable_baselines3.common.vec_env import VecFrameStack
-from stable_baselines3.common.vec_env.vec_transpose import VecTransposeImage
-from stable_baselines3.ppo import PPO
 from stable_baselines3.common.utils import get_device
+from stable_baselines3.ppo import PPO
 import torch as th
 
 from il_representations.data import TransitionsMinimalDataset
+import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
-from il_representations.envs.atari_envs import load_dataset_atari
-from il_representations.envs.dm_control_envs import load_dataset_dm_control
-from il_representations.envs.magical_envs import load_dataset_magical
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
@@ -161,26 +155,8 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
     log_dir = il_train_ex.observers[0].dir
     imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
 
-    if benchmark['benchmark_name'] == 'magical':
-        gym_env_name_chans_first, dataset_dict = load_dataset_magical()
-        venv_chans_first = make_vec_env(gym_env_name_chans_first,
-                                        n_envs=1,
-                                        parallel=False)
-    elif benchmark['benchmark_name'] == 'dm_control':
-        gym_env_name_chans_first, dataset_dict = load_dataset_dm_control()
-        venv_chans_first = make_vec_env(gym_env_name_chans_first,
-                                        n_envs=1,
-                                        parallel=False)
-    elif benchmark['benchmark_name'] == 'atari':
-        dataset_dict = load_dataset_atari()
-        gym_env_name_chans_last = benchmark['atari_env_id']
-        venv_nhwc = VecFrameStack(make_atari_env(gym_env_name_chans_last), 4)
-        venv_chans_first = VecTransposeImage(venv_nhwc)
-    else:
-        raise NotImplementedError(
-            f"this code does not yet support "
-            f"benchmark_name={benchmark['benchmark_name']!r}")
-
+    venv = auto_env.load_vec_env()
+    dataset_dict = auto_env.load_dataset()
     dataset = TransitionsMinimalDataset(dataset_dict)
 
     if encoder_path:
@@ -194,13 +170,13 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
 
     if algo == 'bc':
         do_training_bc(dataset=dataset,
-                       venv_chans_first=venv_chans_first,
+                       venv_chans_first=venv,
                        out_dir=log_dir,
                        encoder=encoder)
 
     elif algo == 'gail':
         do_training_gail(dataset=dataset,
-                         venv_chans_first=venv_chans_first,
+                         venv_chans_first=venv,
                          encoder=encoder)
 
     else:
@@ -208,7 +184,7 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
 
     # FIXME(sam): make sure this always closes correctly, even when there's an
     # exception after creating it (could use try/catch or a context manager)
-    venv_chans_first.close()
+    venv.close()
 
     return log_dir
 
