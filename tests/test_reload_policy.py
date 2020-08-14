@@ -1,27 +1,17 @@
 import glob
 import os
 
-from sacred.observers import FileStorageObserver
-
 from il_representations.algos import MoCo
-from il_representations.scripts.il_train import il_train_ex
-from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.test_support.configuration import BENCHMARK_CONFIGS
 
-# FIXME(sam): figure out a better way of doing this. Probably make each
-# experiment a "set up once" fixture that adds FileStorageObservers.
-for ex in (represent_ex, il_train_ex):
-    if not any(isinstance(o, FileStorageObserver) for o in ex.observers):
-        ex.observers.append(FileStorageObserver('test_observer'))
 
-
-def test_reload_policy():
+def test_reload_policy(represent_ex, il_train_ex, file_observer):
     """Test saving a policy with one specific representation learner, then loading
     it with the IL code.
 
     (I only test one IL algorithm, one dataset, and one representation learner
     because the process is roughly the same in all cases)"""
-    rep_result = represent_ex.run(
+    represent_ex.run(
         config_updates={
             'pretrain_epochs': 1,
             'batch_size': 7,
@@ -36,7 +26,7 @@ def test_reload_policy():
     # train BC using learnt representation
     encoder_list = glob.glob(
         os.path.join(
-            rep_result.observers[0].dir,
+            file_observer.dir,
             'training_logs/checkpoints/representation_encoder/*.ckpt'))
     policy_path = encoder_list[0]
     il_train_ex.run(
