@@ -19,8 +19,8 @@ register_envs()
 
 
 def load_data(
-    pickle_paths: List[str],
-    preprocessor_name: str,
+        pickle_paths: List[str],
+        preprocessor_name: str,
 ) -> Tuple[str, il_datasets.Dataset]:
     """Load MAGICAL data from pickle files."""
 
@@ -56,8 +56,6 @@ def load_data(
             demo_trajectories,
             orig_env_name=env_name,
             preproc_name=preprocessor_name)
-        env_name = saved_trajectories.splice_in_preproc_name(
-            env_name, preprocessor_name)
 
     # Finally we build a DictDataset for actions and observations.
     dataset_dict = collections.defaultdict(list)
@@ -87,7 +85,15 @@ def load_data(
         for item_name, array_list in dataset_dict.items()
     }
 
-    return env_name, dataset_dict
+    return dataset_dict, env_name
+
+
+@benchmark_ingredient.capture
+def get_env_name_magical(magical_env_prefix, magical_preproc):
+    orig_env_name = magical_env_prefix + '-Demo-v0'
+    gym_env_name = saved_trajectories.splice_in_preproc_name(
+        orig_env_name, magical_preproc)
+    return gym_env_name
 
 
 @benchmark_ingredient.capture
@@ -95,19 +101,19 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
                          magical_preproc):
     demo_dir = magical_demo_dirs[magical_env_prefix]
     logging.info(
-        f"Loading trajectory data for '{magical_env_prefix}' from '{demo_dir}'"
-    )
+        f"Loading trajectory data for '{magical_env_prefix}' from "
+        f"'{demo_dir}'")
     demo_paths = [
         os.path.join(demo_dir, f) for f in os.listdir(demo_dir)
         if f.endswith('.pkl.gz')
     ]
     if not demo_paths:
         raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
-    gym_env_name_chans_first, dataset_dict = load_data(
-        demo_paths,
-        preprocessor_name=magical_preproc)
-    assert gym_env_name_chans_first.startswith(magical_env_prefix)
-    return gym_env_name_chans_first, dataset_dict
+    dataset_dict, loaded_env_name = load_data(
+        demo_paths, preprocessor_name=magical_preproc)
+    gym_env_name = get_env_name_magical()
+    assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
+    return dataset_dict
 
 
 class SB3EvaluationProtocol(EvaluationProtocol):
