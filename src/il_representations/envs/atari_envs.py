@@ -21,9 +21,11 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, chans_first=True):
     # (we use same naming convention as `imitation` here)
     merged_trajectories = {'obs': [], 'acts': [], 'dones': []}
     for traj in trajectories:
-        merged_trajectories['obs'] += traj['states']
-        merged_trajectories['acts'] += traj['actions']
-        merged_trajectories['dones'] += traj['dones']
+        # we slice to :-1 so that we can have a meaningful next_obs
+        merged_trajectories['obs'] += traj['states'][:-1]
+        merged_trajectories['next_obs'] += traj['states'][1:]
+        merged_trajectories['acts'] += traj['actions'][:-1]
+        merged_trajectories['dones'] += traj['dones'][:-1]
     dataset_dict = {
         key: np.stack(values, axis=0)
         for key, values in merged_trajectories.items()
@@ -33,6 +35,7 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, chans_first=True):
         # In Gym Atari envs, channels are last; chans_first will transpose data
         # saved in that format so it's channels-first (making it compatible
         # with, e.g., Atari envs wrapped in a VecTransposeImage wrapper).
-        dataset_dict['obs'] = np.transpose(dataset_dict['obs'], (0, 3, 1, 2))
+        for key in ('obs', 'next_obs'):
+            dataset_dict[key] = np.transpose(dataset_dict[key], (0, 3, 1, 2))
 
     return dataset_dict

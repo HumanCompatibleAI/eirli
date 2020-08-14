@@ -49,6 +49,8 @@ def default_config():
 
     # number of env time steps to perform during reinforcement learning
     gail_total_timesteps = 2048
+    gail_disc_batch_size = 256
+    gail_disc_minibatch_size = 32
 
 
 @il_train_ex.capture
@@ -110,7 +112,8 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
 
 @il_train_ex.capture
 def do_training_gail(venv_chans_first, dataset, device_name, encoder,
-                     gail_total_timesteps):
+                     gail_total_timesteps, gail_disc_batch_size,
+                     gail_disc_minibatch_size):
     # Supporting encoder init requires:
     # - Thinking more about how to handle LR of the optimiser stuffed inside
     #   the policy (at the moment we just set an insane default LR because BC
@@ -119,8 +122,6 @@ def do_training_gail(venv_chans_first, dataset, device_name, encoder,
     #   discriminators are incredibly finicky, so that's probably where most
     #   of the value of representation learning will come from in GAIL).
     assert encoder is None, "encoder not yet supported"
-
-    raise NotImplementedError("This (mostly) doesn't work yet")
 
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
@@ -139,6 +140,8 @@ def do_training_gail(venv_chans_first, dataset, device_name, encoder,
         venv_chans_first,
         dataset,
         ppo_algo,
+        disc_batch_size=gail_disc_batch_size,
+        disc_minibatch_size=gail_disc_minibatch_size,
         discrim_kwargs=dict(discrim_net=discrim_net),
     )
 

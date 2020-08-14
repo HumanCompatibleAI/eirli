@@ -66,14 +66,15 @@ def load_data(
             # allocentric view, respectively. We handle this case first.
             for key, value in trajectory.obs.items():
                 # we clip off the last (terminal) time step, which doesn't
-                # correspond to any action
-                full_key = 'obs_' + key
-                dataset_dict[full_key].append(value[:-1])
+                # correspond to any action, and use it for next_obs instead
+                dataset_dict[f'obs_{key}'].append(value[:-1])
+                dataset_dict[f'next_obs_{key}'].append(value[1:])
         else:
             # Otherwise, observations should just be a flat ndarray
             assert isinstance(trajectory.obs, np.ndarray)
             # again clip off the terminal observation
             dataset_dict['obs'].append(trajectory.obs[:-1])
+            dataset_dict['next_obs'].append(trajectory.obs[1:])
         dataset_dict['acts'].append(trajectory.acts)
         traj_t = len(trajectory.acts)
         dones_array = np.array([False] * (traj_t - 1) + [True], dtype='bool')

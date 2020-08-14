@@ -96,6 +96,8 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         np.concatenate([t.obs[:-1] for t in loaded_trajs], axis=0),
         'acts':
         np.concatenate([t.acts for t in loaded_trajs], axis=0),
+        'next_obs':
+        np.concatenate([t.obs[1:] for t in loaded_trajs], axis=0),
         'infos':
         np.concatenate([t.infos for t in loaded_trajs], axis=0),
         'rews':
