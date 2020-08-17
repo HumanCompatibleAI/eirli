@@ -74,9 +74,6 @@ def register_dmc_envs():
 @benchmark_ingredient.capture
 def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
                             dm_control_demo_patterns):
-    # get real Gym env name
-    gym_env_name_chans_last = dm_control_full_env_names[dm_control_env]
-
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
     data_paths = glob.glob(os.path.expanduser(data_pattern))
@@ -107,7 +104,7 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         np.concatenate(dones_lists, axis=0),
     }
 
-    return gym_env_name_chans_last, dataset_dict
+    return dataset_dict
 
 
 register_dmc_envs()
