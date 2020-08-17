@@ -4,10 +4,10 @@ import numpy as np
 from collections import Counter
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from .batch_extenders import IdentityBatchExtender
-from .base_learner import BaseEnvironmentLearner
-from .utils import AverageMeter, LinearWarmupCosine, save_model, Logger
-from .augmenters import AugmentContextOnly
+from il_representations.algos.batch_extenders import IdentityBatchExtender
+from il_representations.algos.base_learner import BaseEnvironmentLearner
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
+from il_representations.algos.augmenters import AugmentContextOnly
 import itertools
 from gym.spaces import Box
 
@@ -21,8 +21,11 @@ def to_dict(kwargs_element):
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, log_dir, encoder, decoder, loss_calculator, target_pair_constructor,
+    def __init__(self, env, *,
+                 log_dir, encoder, decoder, loss_calculator,
+                 target_pair_constructor,
                  augmenter=AugmentContextOnly,
+                 color_space,
                  batch_extender=IdentityBatchExtender,
                  optimizer=torch.optim.Adam,
                  scheduler=None,
@@ -40,7 +43,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 scheduler_kwargs=None):
+                 scheduler_kwargs=None,
+                 unit_test_max_train_steps=None):
 
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
@@ -48,6 +52,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.logger = Logger(log_dir)
 
         if device is None:
+            # FIXME(sam): we can use SB3's get_device() for this instead
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = device
@@ -56,15 +61,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.save_interval = save_interval
-
-        self._make_channels_first()
+        self.unit_test_max_train_steps = unit_test_max_train_steps
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
             # This doesn't have any meaningful effect unless you specify a projection head.
             projection_dim = representation_dim
 
-        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
+        self.augmenter = augmenter(color_space=color_space, **to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
         self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
@@ -106,34 +110,30 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         f"lr {lr}, "
                         f"loss {loss}")
 
-    def _make_channels_first(self):
-        assert isinstance(self.observation_space, Box) and len(self.observation_shape) == 3, \
-            "Only image observations are supported (Box observation spaces with shapes of length 3)"
-
-        # Assumes an image in form (C, H, W) or (H, W, C) with H = W != C
-        x, y, z = self.observation_shape
-        if x != y and y == z:
-            self.permutation_tuple = None
-        else:
-            assert x == y and x != z, "Can only handle square images in format (C, H, W) or (H, W, C)"
-            self.observation_shape = (z, x, y)
-            low = self.observation_space.low.reshape(self.observation_shape)
-            high = self.observation_space.high.reshape(self.observation_shape)
-            self.observation_space = Box(shape=self.observation_shape, low=low, high=high, dtype=np.uint8)
-            self.permutation_tuple = (0, 3, 1, 2)
-
-    def _tensorize(self, arr):
+    def _prep_tensors(self, tensors_or_arrays):
         """
-        :param arr: A numpy array
-        :return: A torch tensor moved to the device associated with this learner
+        :param tensors_or_arrays: A list of Torch tensors or numpy arrays
+        :return: A torch tensor moved to the device associated with this
+            learner, and converted to float
         """
-        return torch.FloatTensor(arr).to(self.device)
+        if tensors_or_arrays.ndim == 4:
+            # if the tensors_or_arrays look like images, we check that they
+            # also seem like they're NCHW
+            is_nchw_heuristic = \
+                tensors_or_arrays.shape[1] < tensors_or_arrays.shape[2] \
+                and tensors_or_arrays.shape[1] < tensors_or_arrays.shape[3]
+            if not is_nchw_heuristic:
+                raise ValueError(
+                    f"Batch tensor axes {tensors_or_arrays.shape} do not look "
+                    "like they're in NCHW order. Did you accidentally pass in "
+                    "a channels-last tensor?")
+        tensor_list = [torch.as_tensor(tens) for tens in tensors_or_arrays]
+        batch_tensor = torch.stack(tensor_list, dim=0)
+        return batch_tensor.to(self.device, torch.float)
 
     def _preprocess(self, input_data):
-        # Make channels first for image inputs
-        if self.permutation_tuple is not None:
-            assert isinstance(input_data, torch.Tensor) and len(input_data.shape) == 4, "Expected 4D-tensor to permute"
-            input_data = input_data.permute(self.permutation_tuple)
+        # FIXME(sam): this is not compatible with the way that Stable Baselines
+        # does input normalisation.
 
         # Normalization to range [-1, 1]
         if isinstance(self.observation_space, Box):
@@ -160,9 +160,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         :return:
         """
         if len(batch['extra_context']) == 0:
-            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], None
+            return batch['context'], batch['target'], batch['traj_ts_ids'], None
         else:
-            return batch['context'].data.numpy(), batch['target'].data.numpy(), batch['traj_ts_ids'], batch['extra_context']
+            return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
 
     def learn(self, dataset, training_epochs):
@@ -190,7 +190,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self.augmenter(contexts, targets)
-                contexts, targets = self._tensorize(contexts), self._tensorize(targets)
+                contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
                 contexts, targets = self._preprocess(contexts), self._preprocess(targets)
                 extra_context = self._preprocess_extra_context(extra_context)
@@ -202,12 +202,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Typically the identity function
                 extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
 
-
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
                 decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
-
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic
@@ -222,6 +220,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 loss.backward()
                 self.optimizer.step()
                 self.log_info(loss, step, epoch, training_epochs)
+
+                if self.unit_test_max_train_steps is not None \
+                   and step >= self.unit_test_max_train_steps:
+                    # early exit
+                    break
 
             if self.scheduler is not None:
                 self.scheduler.step()
