@@ -19,6 +19,7 @@ def to_dict(kwargs_element):
         return kwargs_element
 
 
+
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, *,
                  log_dir, encoder, decoder, loss_calculator,
@@ -163,9 +164,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
+
     def learn(self, dataset, training_epochs):
         """
-
         :param dataset:
         :return:
         """
