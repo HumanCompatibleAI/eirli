@@ -29,27 +29,39 @@ def load_dataset(benchmark_name):
 
 
 @benchmark_ingredient.capture
+def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
+                     dm_control_env):
+    if benchmark_name == 'magical':
+        return get_env_name_magical()
+    elif benchmark_name == 'dm_control':
+        return dm_control_full_env_names[dm_control_env]
+    elif benchmark_name == 'atari':
+        return atari_env_id
+    raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
+
+
+@benchmark_ingredient.capture
 def load_vec_env(benchmark_name,
                  atari_env_id,
                  dm_control_full_env_names,
                  dm_control_env,
                  parallel=False,
                  n_envs=1):
-    if benchmark_name == 'magical':
-        gym_env_name = get_env_name_magical()
+    """Create a vec env for the selected benchmark task and wrap it with any
+    necessary wrappers."""
+    gym_env_name = get_gym_env_name()
+    if benchmark_name in ('magical', 'dm_control'):
         # FIXME(sam): I don't think that new versions of SB3 still use the
         # 'parallel' kwarg.
         return make_vec_env(gym_env_name, n_envs=n_envs, parallel=parallel)
-    elif benchmark_name == 'dm_control':
-        gym_env_name = dm_control_full_env_names[dm_control_env]
-        return make_vec_env(gym_env_name, n_envs=n_envs, parallel=parallel)
     elif benchmark_name == 'atari':
-        gym_env_name_hwc = atari_env_id
         assert not parallel, "currently does not support parallel kwarg"
-        return VecTransposeImage(
-            VecFrameStack(
-                make_atari_env(gym_env_name_hwc,
-                               n_envs=n_envs), 4))
+        final_env = VecFrameStack(
+            VecTransposeImage(make_atari_env(gym_env_name,
+                                             n_envs=n_envs), ), 4)
+        assert final_env.observation_space.shape == (4, 84, 84), \
+            final_env.observation_space.shape
+        return final_env
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
