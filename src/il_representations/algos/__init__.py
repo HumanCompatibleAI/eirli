@@ -1,11 +1,10 @@
-from il_representations.algos.representation_learner import RepresentationLearner
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
-from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
-from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss
-from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
-from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
+from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly
 from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.optimizers import LARS
+from il_representations.algos.decoders import ActionConditionedVectorDecoder, BYOLProjectionHead, MomentumProjectionHead, NoOp, ProjectionHead
+from il_representations.algos.encoders import DeterministicEncoder, DynamicsEncoder, InverseDynamicsEncoder, MomentumEncoder, RecurrentEncoder, StochasticEncoder
+from il_representations.algos.losses import BatchAsymmetricContrastiveLoss, CEBLoss, MSELoss, QueueAsymmetricContrastiveLoss, SymmetricContrastiveLoss
+from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
+from il_representations.algos.representation_learner import RepresentationLearner
 
 
 def update_kwarg_dict(kwargs, update_dict, cls):
@@ -15,6 +14,7 @@ def update_kwarg_dict(kwargs, update_dict, cls):
             raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
         kwargs[key] = value
     return kwargs
+
 
 class SimCLR(RepresentationLearner):
     """
@@ -51,7 +51,7 @@ class TemporalCPC(RepresentationLearner):
                                           log_dir=log_dir,
                                           encoder=DeterministicEncoder,
                                           decoder=NoOp,
-                                          loss_calculator=AsymmetricContrastiveLoss,
+                                          loss_calculator=BatchAsymmetricContrastiveLoss,
                                           target_pair_constructor=TemporalOffsetPairConstructor,
                                           target_pair_constructor_kwargs=target_pair_constructor_kwargs,
                                           **kwargs)
@@ -72,7 +72,7 @@ class RecurrentCPC(RepresentationLearner):
                                            log_dir=log_dir,
                                            encoder=RecurrentEncoder,
                                            decoder=NoOp,
-                                           loss_calculator=AsymmetricContrastiveLoss,
+                                           loss_calculator=BatchAsymmetricContrastiveLoss,
                                            target_pair_constructor=TemporalOffsetPairConstructor,
                                            shuffle_batches=False,
                                            **kwargs)
@@ -91,7 +91,7 @@ class MoCo(RepresentationLearner):
                                    log_dir=log_dir,
                                    encoder=MomentumEncoder,
                                    decoder=NoOp,
-                                   loss_calculator=AsymmetricContrastiveLoss,
+                                   loss_calculator=QueueAsymmetricContrastiveLoss,
                                    augmenter=AugmentContextAndTarget,
                                    target_pair_constructor=TemporalOffsetPairConstructor,
                                    batch_extender=QueueBatchExtender,
@@ -115,7 +115,7 @@ class MoCoWithProjection(RepresentationLearner):
                                                  log_dir=log_dir,
                                                  encoder=MomentumEncoder,
                                                  decoder=MomentumProjectionHead,
-                                                 loss_calculator=AsymmetricContrastiveLoss,
+                                                 loss_calculator=QueueAsymmetricContrastiveLoss,
                                                  augmenter=AugmentContextAndTarget,
                                                  target_pair_constructor=TemporalOffsetPairConstructor,
                                                  batch_extender=QueueBatchExtender,
@@ -175,7 +175,6 @@ class BYOL(RepresentationLearner):
                                    **kwargs)
 
 
-
 class CEB(RepresentationLearner):
     """
     """
@@ -189,6 +188,7 @@ class CEB(RepresentationLearner):
                                   augmenter=AugmentContextAndTarget,
                                   target_pair_constructor=TemporalOffsetPairConstructor,
                                   **kwargs)
+
 
 class ActionConditionedTemporalCPC(RepresentationLearner):
     """
@@ -216,7 +216,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                                            encoder=DeterministicEncoder,
                                                            decoder=ActionConditionedVectorDecoder,
                                                            decoder_kwargs=decoder_kwargs,
-                                                           loss_calculator=AsymmetricContrastiveLoss,
+                                                           loss_calculator=BatchAsymmetricContrastiveLoss,
                                                            shuffle_batches=shuffle_batches,
                                                            **kwargs)
 
