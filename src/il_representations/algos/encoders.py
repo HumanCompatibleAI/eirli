@@ -145,7 +145,6 @@ class StochasticEncoder(Encoder):
         self.network = architecture_model_cls(obs_space, representation_dim)
 
     def forward(self, x, traj_info):
-        print(x.shape)
         features, scale = self.network(x)
         return independent_multivariate_normal(loc=features, scale=scale)
 
