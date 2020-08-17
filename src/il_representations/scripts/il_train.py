@@ -166,7 +166,7 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
         encoder = th.load(encoder_path)
     else:
-        logging.info(f"No encoder provided, will init from scratch")
+        logging.info("No encoder provided, will init from scratch")
         encoder = None
 
     logging.info(f"Setting up '{algo}' IL algorithm")
