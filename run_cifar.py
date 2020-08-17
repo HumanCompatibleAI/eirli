@@ -2,7 +2,7 @@ from algos import *
 from gym.spaces import Discrete, Box
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from algos.utils import gaussian_blur
+from algos.optimizers import LARS
 
 import numpy as np
 import os
@@ -116,7 +116,7 @@ def evaluate_classifier(classifier, data_dir, device):
 
 
 def representation_learning(algo, data_dir, num_epochs, device, log_dir):
-    print('Creating model for representation learning')
+    print('Train representation learner')
 
     if isinstance(algo, str):
         algo = globals()[algo]
@@ -136,28 +136,33 @@ def representation_learning(algo, data_dir, num_epochs, device, log_dir):
         # SimCLR doesn't use blur for CIFAR-10
     ]
     env = MockGymEnv(Box(low=0.0, high=1.0, shape=(3, 32, 32), dtype=np.float32))
+
+    transform = transforms.ToTensor()
+    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
+    rep_learning_data = transform_to_rl(trainset)
+    num_examples = len(rep_learning_data)
+    batch_size = 512
+    num_steps = num_epochs * int(ceil(num_examples / batch_size))
+
     # Note that the resnet18 model used here has an architecture meant for
     # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
     # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
     # It seems that SimCLR does not include the final fully connected layer for ResNets, so we set it to the identity.
     resnet_without_fc = resnet18()
     resnet_without_fc.fc = torch.nn.Identity()
-    # Note SimCLR uses LARSOptimizer, which we currently do not do
+
     model = algo(
-        env, log_dir=log_dir, batch_size=512, representation_dim=512, projection_dim=128,
+        env, log_dir=log_dir, batch_size=batch_size, representation_dim=512, projection_dim=128,
         device=device, normalize=False, shuffle_batches=True,
         encoder_kwargs={'architecture_module_cls': lambda *args: resnet_without_fc},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
-        optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4, 'momentum': 0.9},
+        optimizer=LARS,
+        optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4, 'momentum': 0.9, 'max_epoch': num_steps},
         scheduler=LinearWarmupCosine,
-        scheduler_kwargs={'warmup_epoch': 10, 'T_max': num_epochs},
+        scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs, 'initial_learning_rate': 0.2},
         loss_calculator_kwargs={'temp': 0.5},
     )
 
-    print('Train representation learner')
-    transform = transforms.ToTensor()
-    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-    rep_learning_data = transform_to_rl(trainset)
     model.learn(rep_learning_data, num_epochs)
     env.close()
     return model
@@ -188,7 +193,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
     model = representation_learning(algo, data_dir, pretrain_epochs, device, log_dir)
 
     print('Train linear head')
-    classifier = LinearHead(model.encoder, 10).to(device)
+    classifier = LinearHead(model.encoder, output_dim=10).to(device)
     train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
     print('Evaluate accuracy on test set')

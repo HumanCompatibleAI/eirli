@@ -100,26 +100,30 @@ class Logger:
 
 
 class LinearWarmupCosine(_LRScheduler):
-    def __init__(self, optimizer, warmup_epoch, T_max, eta_min=0, last_epoch=-1):
-        self.eta_min = eta_min
+    def __init__(self, optimizer, warmup_epoch, total_epochs, initial_learning_rate=0.0001, last_epoch=-1):
+        assert warmup_epoch >= 0
+        self.eta_min = initial_learning_rate
         self.warmup_epoch = warmup_epoch
-        self.cosine_epochs = T_max - warmup_epoch
+        self.cosine_epochs = total_epochs - warmup_epoch
         super(LinearWarmupCosine, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
-        if self.warmup_epoch > 0:
-            if self.last_epoch <= self.warmup_epoch:
-                return [base_lr / self.warmup_epoch * self.last_epoch for base_lr in self.base_lrs]
-        if ((self.last_epoch - self.warmup_epoch) - 1 - self.cosine_epochs) % (2 * self.cosine_epochs) == 0:
+        # Linear scaling if we are in the warmup stage
+        if self.warmup_epoch > 0 and self.last_epoch <= self.warmup_epoch:
+            return [base_lr / self.warmup_epoch * self.last_epoch for base_lr in self.base_lrs]
+
+        # Outside the linear scaling regime, we rescale so that warmup_epoch is epoch 0
+        rescaled_epoch = self.last_epoch - self.warmup_epoch
+        if (rescaled_epoch - 1 - self.cosine_epochs) % (2 * self.cosine_epochs) == 0:
             return [group['lr'] + (base_lr - self.eta_min) *
                     (1 - math.cos(math.pi / self.cosine_epochs)) / 2
                     for base_lr, group in
                     zip(self.base_lrs, self.optimizer.param_groups)]
-        else:
-            return [(1 + math.cos(math.pi * (self.last_epoch - self.warmup_epoch) / self.cosine_epochs)) /
-                    (1 + math.cos(math.pi * ((self.last_epoch - self.warmup_epoch) - 1) / self.cosine_epochs)) *
-                    (group['lr'] - self.eta_min) + self.eta_min
-                    for group in self.optimizer.param_groups]
+
+        return [(1 + math.cos(math.pi * rescaled_epoch / self.cosine_epochs)) /
+                (1 + math.cos(math.pi * (rescaled_epoch - 1) / self.cosine_epochs)) *
+                (group['lr'] - self.eta_min) + self.eta_min
+                for group in self.optimizer.param_groups]
 
 
 def set_global_seeds(seed):

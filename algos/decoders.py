@@ -61,6 +61,7 @@ class ProjectionHead(LossDecoder):
         super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
         dim = self.representation_dim
+        # TODO(rohinmshah): Make the architecture configurable rather than reusing dim everywhere
         self.shared_mlp = nn.Sequential(nn.Linear(dim, dim),
                                         nn.ReLU(),
                                         nn.Linear(dim, dim),
