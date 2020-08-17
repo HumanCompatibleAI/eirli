@@ -1,5 +1,17 @@
-rep_learning_runs/*
-.idea/*
+rep_learning_runs
+il_train_runs
+il_test_runs
+test_observer
 *.pyc
+*.egg-info
+# data/ is used to set up symlinks to datasets
+/data
+
+# editor and devlopment tool cruft
+.pytype
+*.swp
+.#*
+*~
+.idea
 *.xml
 *.iml
