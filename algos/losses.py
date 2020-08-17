@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Independent
 
+
 class RepresentationLoss(ABC):
     def __init__(self, device, sample=False):
         self.device = device
@@ -22,13 +23,24 @@ class RepresentationLoss(ABC):
 class AsymmetricContrastiveLoss(RepresentationLoss):
     """
     A basic contrastive loss that only does prediction/similarity comparison in one direction,
-    only calculating a softmax of IJ similarity against all similarities with I. Represents InfoNCE
-    used in original CPC paper
+    only calculating a softmax of IJ similarity against all similarities with I.
     """
-    def __init__(self, device, sample=False, temp=0.1):
+    def __init__(self, device, sample=False, temp=0.1, normalize=True):
         super(AsymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
+
+        # Most methods use either cosine similarity or matrix multiplication similarity. Since cosine similarity equals
+        # taking MatMul on normalized vectors, setting normalize=True is equivalent to using torch.CosineSimilarity().
+        self.normalize = normalize
+
+        # Sometimes the calculated vectors may contain an image's similarity with itself, which can be a large number.
+        # Since we mostly care about maximizing an image's similarity with its augmented version, we subtract a large
+        # number to make the classification have ~0 probability picking the original image itself.
+        self.large_num = 1e9
+
+    def calculate_logits_and_labels(self, z_i, z_j, mask):
+        raise NotImplementedError
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
@@ -39,32 +51,107 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
         z_i = decoded_contexts
         z_j = targets
 
-        z_i = F.normalize(z_i, dim=1)
-        z_j = F.normalize(z_j, dim=1)
+        if self.normalize:  # Use cosine similarity
+            z_i = F.normalize(z_i, dim=1)
+            z_j = F.normalize(z_j, dim=1)
 
-        num_contexts = z_i.shape[0]
-        num_targets = z_j.shape[0]
+        batch_size = z_i.shape[0]
+        mask = torch.eye(batch_size) * self.large_num
 
-        if num_targets > num_contexts:
-            z_all = torch.cat([z_i, z_j], 0)
-            z_j = z_j[:num_contexts]
-        else:
-            z_all = torch.cat((z_i, z_j), 0)
-
-        # zi and zj are both matrices of dim (n x c), since they are z vectors of dim c for every element in the batch
-        # This einsum is constructing a vector of size n, where the nth element is a sum over C of the NCth elements
-        # That is to say, the nth element is a dot product between the Nth C-dim vector of each matrix
-        sim_ij = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
-
-        # TODO the num_targets in the below expression used to be batch size. Changed it to num_targets but this might be wrong
-        # (don't 100% understand the logic of the normalization term here)
-        sim_ik = (torch.einsum('nc,mc->n', [z_i, z_all]).unsqueeze(-1) - 1) / (2 * num_targets - 1)
-
-        logits = torch.cat((sim_ij, sim_ik), 1)
+        logits, labels = self.calculate_logits_and_labels(z_i, z_j, mask)
         logits /= self.temp
-
-        labels = torch.zeros(logits.shape[0], dtype=torch.long, device=self.device)
         return self.criterion(logits, labels)
+
+
+class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
+    """
+    This implements algorithms that use a queue to maintain all the negative examples. The contrastive loss is
+    calculated through the comparison of an image with its augmented version (positive example) and everything else
+    in the queue (negative examples). The method used in MoCo.
+
+    Alternatively, for higher sample efficiency, one may use (1) current batch's augmented images, (2) current batch's
+    original images, and (3) all the images in the queue as negative examples. This is implemented with setting
+    use_batch_neg=True.
+    """
+    def __init__(self, device, sample=False, temp=0.1, use_batch_neg=False):
+        super(QueueAsymmetricContrastiveLoss, self).__init__(device, sample)
+        self.temp = temp
+        self.use_batch_neg = use_batch_neg  # Use other images in current batch as negative samples
+
+    def calculate_logits_and_labels(self, z_i, z_j, mask):
+        """
+        z_i: dim (N, C). N - batch_size, C - representation dimension
+        z_j: dim (N+K, C). K - number of entries in the queue.
+        """
+        batch_size = z_i.shape[0]
+        queue = z_j[batch_size:]
+        z_j = z_j[:batch_size]
+
+        # Calculate the dot product similarity of each image with all images in the queue. Return an NxK tensor.
+        l_neg = torch.matmul(z_i, queue.T)  # NxK
+
+        if self.use_batch_neg:
+            # Dot product similarity with all other images in the batch
+            logits_aa = torch.matmul(z_i, z_i.T)  # NxN
+
+            # Values on the diagonal line are each image's similarity with itself
+            logits_aa = logits_aa - mask
+
+            # Dot product similarity with all other augmented images in the batch
+            logits_ab = torch.matmul(z_i, z_j.T)
+
+            logits = torch.cat([logits_ab, logits_aa, l_neg], dim=1)  # Nx(2N+K)
+
+            # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
+            # represent(image_i) and represent(augmented_image_i).
+            labels = torch.arange(batch_size, dtype=torch.long).to(self.device)
+
+        else:
+            # torch.einsum provides an elegant way to calculate vector dot products across a batch. Each entry on the
+            # Nx1 returned tensor is a dot product of represent(image_i) and represent(augmented_image_i).
+            l_pos = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
+
+            # The negative examples here only contain image representations in the queue.
+            logits = torch.cat([l_pos, l_neg], dim=1)  # Nx(1+K)
+
+            # The values we want to maximize lie on the 0-th index of each row.
+            labels = torch.zeros(batch_size, dtype=torch.long).to(self.device)
+
+        return logits, labels
+
+
+class BatchAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
+    """
+    This applies to algorithms that performs asymmetric contrast with samples in the same batch. i.e. Negative examples
+    come from all other images (and their augmented versions) in the same batch. Represents InfoNCE used in original
+    CPC paper.
+    """
+    def __init__(self, device, sample=False, temp=0.1):
+        super(BatchAsymmetricContrastiveLoss, self).__init__(device, sample)
+        self.temp = temp
+
+    def calculate_logits_and_labels(self, z_i, z_j, mask):
+        """
+        z_i: dim (N, C). N - batch_size, C - representation dimension
+        z_j: dim (N, C). The augmented images' representations
+        """
+        batch_size = z_i.shape[0]
+
+        # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
+        logits_aa = torch.matmul(z_i, z_i.T)  # NxN
+
+        # Values on the diagonal line are each image's similarity with itself
+        logits_aa = logits_aa - mask
+
+        # Similarity of original images and augmented images
+        logits_ab = torch.matmul(z_i, z_j.T)  # NxN
+
+        logits = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
+
+        # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
+        # represent(image_i) and represent(augmented_image_i).
+        label = torch.arange(batch_size, dtype=torch.long).to(self.device)
+        return logits, label
 
 
 class SymmetricContrastiveLoss(RepresentationLoss):
@@ -72,10 +159,19 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
-    def __init__(self, device, sample=False, temp=0.1):
+    def __init__(self, device, sample=False, temp=0.1, normalize=True):
         super(SymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
+
+        # Most methods use either cosine similarity or matrix multiplication similarity. Since cosine similarity equals
+        # taking MatMul on normalized vectors, setting normalize=True is equivalent to using torch.CosineSimilarity().
+        self.normalize = normalize
+
+        # Sometimes the calculated vectors may contain an image's similarity with itself, which can be a large number.
+        # Since we mostly care about maximizing an image's similarity with its augmented version, we subtract a large
+        # number to make the classification have ~0 probability picking the original image itself.
+        self.large_num = 1e9
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         # decoded_context -> representation of context + optional projection head
@@ -84,28 +180,40 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
         z_i = decoded_contexts
         z_j = targets
-
         batch_size = z_i.shape[0]
 
-        z_i = F.normalize(z_i, dim=1)
-        z_j = F.normalize(z_j, dim=1)
-        z_all = torch.cat((z_i, z_j), 0)  # 2NxC
+        if self.normalize:  # Use cosine similarity
+            z_i = F.normalize(z_i, dim=1)
+            z_j = F.normalize(z_j, dim=1)
 
-        # zi and zj are both matrices of dim (n x c), since they are z vectors of dim c for every element in the batch
-        # This einsum is constructing a vector of size n, where the nth element is a sum over C of the NCth elements
-        # That is to say, the nth element is a dot product between the Nth C-dim vector of each matrix
-        sim_ij = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
+        mask = torch.eye(batch_size) * self.large_num
 
-        sim_ik = (torch.einsum('nc,mc->n', [z_i, z_all]).unsqueeze(-1) - 1) / (2 * batch_size - 1)  # Nx1
-        sim_jk = (torch.einsum('nc,mc->n', [z_j, z_all]).unsqueeze(-1) - 1) / (2 * batch_size - 1)  # Nx1
+        # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
+        logits_aa = torch.matmul(z_i, z_i.T)  # NxN
 
-        logit_i = torch.cat((sim_ij, sim_ik), 1)  # Nx2
-        logit_j = torch.cat((sim_ij, sim_jk), 1)  # Nx2
-        logits = torch.cat((logit_i, logit_j), 0)  # 2Nx2
+        # Values on the diagonal line are each image's similarity with itself
+        logits_aa = logits_aa - mask
 
+        # Similarity of the augmented images with all other augmented images.
+        logits_bb = torch.matmul(z_j, z_j.T)  # NxN
+        logits_bb = logits_bb - mask
+
+        # Similarity of original images and augmented images
+        logits_ab = torch.matmul(z_i, z_j.T)  # NxN
+        logits_ba = torch.matmul(z_j, z_i.T)  # NxN
+
+        # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
+        # to both original and augmented images (hence "symmetric").
+        logits_i = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
+        logits_j = torch.cat((logits_ba, logits_bb), 1)  # Nx2N
+        logits = torch.cat((logits_i, logits_j), axis=0)  # 2Nx2N
         logits /= self.temp
 
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(self.device)  # 2Nx1
+        # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
+        # represent(image_i) and represent(augmented_image_i).
+        label = torch.arange(batch_size, dtype=torch.long).to(self.device)
+        labels = torch.cat((label, label), axis=0)
+
         return self.criterion(logits, labels)
 
 
@@ -143,5 +251,4 @@ class CEBLoss(RepresentationLoss):
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
         return loss
-
 
