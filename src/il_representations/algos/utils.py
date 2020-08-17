@@ -78,7 +78,7 @@ def plot_single(arr, label, msg):
 
 def save_model(model, env_id, save_path):
     os.makedirs(save_path, exist_ok=True)
-    torch.save(model.state_dict(), os.path.join(save_path, f'[{time_now(datetime.now())}]{env_id}.ckpt'))
+    torch.save(model.state_dict(), os.path.join(save_path, f'[{time_now(datetime.now())}]{env_id}.pth'))
 
 
 def time_now(n):
