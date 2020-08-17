@@ -3,6 +3,7 @@ from gym.spaces import Discrete, Box
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from algos.optimizers import LARS
+from math import ceil
 
 import numpy as np
 import os
@@ -60,7 +61,6 @@ class LinearHead(nn.Module):
 
 def train_classifier(classifier, data_dir, num_epochs, device):
     transform = transforms.Compose([
-        transforms.ToPILImage(),
         transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
         transforms.RandomHorizontalFlip(),
         # No color jitter or grayscale for finetuning
@@ -159,7 +159,7 @@ def representation_learning(algo, data_dir, num_epochs, device, log_dir):
         optimizer=LARS,
         optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4, 'momentum': 0.9, 'max_epoch': num_steps},
         scheduler=LinearWarmupCosine,
-        scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs, 'initial_learning_rate': 0.2},
+        scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': 0.5},
     )
 
