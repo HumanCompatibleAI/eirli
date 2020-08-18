@@ -3,10 +3,8 @@ Sacred configuration."""
 
 from imitation.util.util import make_vec_env
 from stable_baselines3.common.atari_wrappers import AtariWrapper
-from stable_baselines3.common.vec_env import (DummyVecEnv,
-                                              SubprocVecEnv,
-                                              VecFrameStack,
-                                              VecTransposeImage)
+from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
+                                              VecFrameStack, VecTransposeImage)
 
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
@@ -44,12 +42,8 @@ def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
 
 
 @benchmark_ingredient.capture
-def load_vec_env(benchmark_name,
-                 atari_env_id,
-                 dm_control_full_env_names,
-                 dm_control_env,
-                 venv_parallel,
-                 n_envs=1):
+def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
+                 dm_control_env, venv_parallel, n_envs):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     gym_env_name = get_gym_env_name()

@@ -30,49 +30,50 @@ def default_config():
     # ##################
 
     # device to place all computations on
-    device_name = 'auto'
+    device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'
-    algo = 'bc'
+    algo = 'bc'  # noqa: F841
     # place to load pretrained encoder from (if not given, it will be
     # re-intialised from scratch)
-    encoder_path = None
+    encoder_path = None  # noqa: F841
 
     # ##############
     # BC config vars
     # ##############
 
     # number of passes to make through dataset
-    bc_n_epochs = 250
-    bc_augs = 'rotate,translate,noise'
+    bc_n_epochs = 250  # noqa: F841
+    bc_augs = 'rotate,translate,noise'  # noqa: F841
 
     # #####################
     # GAIL config variables
     # #####################
 
     # number of env time steps to perform during reinforcement learning
-    gail_total_timesteps = int(1e6)
+    gail_total_timesteps = int(1e6)  # noqa: F841
     # "gail_disc_batch_size" is how many samples we take from the expert and
     # novice buffers to do a round of discriminator optimisation.
     # "gail_disc_minibatch_size" controls the size of the minibatches that we
     # divide that into. Thus, we do batch_size/minibatch_size minibatches of
     # optimisation at each discriminator update. gail_disc_batch_size = 256.
     # (this is a different naming convention to SB3 PPO)
-    gail_disc_minibatch_size = 32
-    gail_disc_lr = 1e-4
-    gail_disc_augs = "rotate,translate,noise"
-    gail_ppo_n_steps = 16
+    gail_disc_batch_size = 256  # noqa: F841
+    gail_disc_minibatch_size = 32  # noqa: F841
+    gail_disc_lr = 1e-4  # noqa: F841
+    gail_disc_augs = "rotate,translate,noise"  # noqa: F841
+    gail_ppo_n_steps = 16  # noqa: F841
     # "batch size" is actually the size of a _minibatch_. The amount of data
     # used for each training update is gail_ppo_n_steps*n_envs.
-    gail_ppo_batch_size = 32
-    gail_ppo_n_epochs = 4
-    gail_ppo_learning_rate = 2.5e-4
-    gail_ppo_gamma = 0.95
-    gail_ppo_gae_lambda = 0.95
-    gail_ppo_ent = 1e-5
-    gail_ppo_adv_clip = 0.05
+    gail_ppo_batch_size = 32  # noqa: F841
+    gail_ppo_n_epochs = 4  # noqa: F841
+    gail_ppo_learning_rate = 2.5e-4  # noqa: F841
+    gail_ppo_gamma = 0.95  # noqa: F841
+    gail_ppo_gae_lambda = 0.95  # noqa: F841
+    gail_ppo_ent = 1e-5  # noqa: F841
+    gail_ppo_adv_clip = 0.05  # noqa: F841
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
-    benchmark = dict(
+    benchmark = dict(  # noqa: F841
         venv_parallel=True,
         n_envs=16,
     )
