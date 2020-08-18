@@ -24,7 +24,6 @@ def default_config():
     policy_path = None
     seed = 42
     n_rollouts = 100
-    eval_batch_size = 32
     device_name = 'auto'
     # run_id is written into the produced DataFrame to indicate what model is
     # being tested
@@ -32,8 +31,7 @@ def default_config():
 
 
 @il_test_ex.main
-def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size,
-         device_name, run_id):
+def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
     log_dir = il_test_ex.observers[0].dir
@@ -57,7 +55,6 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size,
             policy=policy,
             n_rollouts=n_rollouts,
             seed=seed,
-            batch_size=eval_batch_size,
             run_id=run_id,
         )
         eval_data_frame = eval_protocol.do_eval(verbose=False)

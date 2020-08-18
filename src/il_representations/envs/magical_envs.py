@@ -121,12 +121,11 @@ class SB3EvaluationProtocol(EvaluationProtocol):
     """MAGICAL 'evaluation protocol' for Stable Baselines 3 policies."""
 
     # TODO: more docs, document __init__ in particular
-    def __init__(self, policy, run_id, seed, batch_size, **kwargs):
+    def __init__(self, policy, run_id, seed, **kwargs):
         super().__init__(**kwargs)
         self._run_id = run_id
         self.policy = policy
         self.seed = seed
-        self.batch_size = batch_size
 
     @property
     def run_id(self):
@@ -134,12 +133,13 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         `.do_eval()`."""
         return self._run_id
 
-    def obtain_scores(self, env_name):
+    @benchmark_ingredient.capture
+    def obtain_scores(self, env_name, venv_parallel, n_envs):
         """Collect `self.n_rollouts` scores on environment `env_name`."""
         vec_env_chans_last = make_vec_env(env_name,
-                                          n_envs=self.batch_size,
+                                          n_envs=n_envs,
                                           seed=self.seed,
-                                          parallel=False)
+                                          parallel=venv_parallel)
         rng = np.random.RandomState(self.seed)
         trajectories = il_rollout.generate_trajectories(
             self.policy,

@@ -12,6 +12,8 @@ def bench_defaults():
     # should venvs be parallel?
     venv_parallel = False
     n_envs = 2
+    # FIXME(sam): should also add a "num_traj" argument to select only a subset
+    # of available demonstrations
 
     # ########################
     # MAGICAL config variables
