@@ -5,6 +5,10 @@ from os import path
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
+COMMON_BENCHMARK_CONFIG = {
+    'venv_parallel': False,
+    'n_envs': 2,
+}
 BENCHMARK_CONFIGS = [
     {
         'benchmark_name': 'atari',
@@ -13,6 +17,7 @@ BENCHMARK_CONFIGS = [
             'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari',
                                             'pong.npz'),
         },
+        **COMMON_BENCHMARK_CONFIG,
     },
     {
         'benchmark_name': 'magical',
@@ -21,6 +26,7 @@ BENCHMARK_CONFIGS = [
             'MoveToRegion': path.join(TEST_DATA_DIR, 'magical',
                                       'move-to-region'),
         },
+        **COMMON_BENCHMARK_CONFIG,
     },
     {
         'benchmark_name': 'dm_control',
@@ -29,5 +35,6 @@ BENCHMARK_CONFIGS = [
             'reacher-easy':
             path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
         },
+        **COMMON_BENCHMARK_CONFIG,
     },
 ]
