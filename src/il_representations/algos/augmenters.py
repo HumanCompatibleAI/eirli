@@ -1,5 +1,6 @@
 import enum
 from torchvision import transforms
+from imitation.augment.color import ColorSpace  # noqa: F401
 from il_representations.algos.utils import gaussian_blur
 import torch
 from abc import ABC, abstractmethod
@@ -16,11 +17,6 @@ DEFAULT_AUGMENTATIONS = (
     transforms.Lambda(gaussian_blur),
     transforms.ToTensor(),
 )
-
-
-class ColorSpace(str, enum.Enum):
-    RGB = 'RGB'
-    GRAY = 'GRAY'
 
 
 class Augmenter(ABC):

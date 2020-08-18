@@ -9,6 +9,9 @@ benchmark_ingredient = Ingredient('benchmark')
 def bench_defaults():
     # set this to "magical" or "dm_control"
     benchmark_name = 'magical'
+    # should venvs be parallel?
+    venv_parallel = False
+    n_envs = 2
 
     # ########################
     # MAGICAL config variables
