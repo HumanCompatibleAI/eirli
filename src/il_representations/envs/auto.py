@@ -2,8 +2,11 @@
 Sacred configuration."""
 
 from imitation.util.util import make_vec_env
-from stable_baselines3.common.cmd_util import make_atari_env
-from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
+from stable_baselines3.common.atari_wrappers import AtariWrapper
+from stable_baselines3.common.vec_env import (DummyVecEnv,
+                                              SubprocVecEnv,
+                                              VecFrameStack,
+                                              VecTransposeImage)
 
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
@@ -45,20 +48,22 @@ def load_vec_env(benchmark_name,
                  atari_env_id,
                  dm_control_full_env_names,
                  dm_control_env,
-                 parallel=False,
+                 venv_parallel,
                  n_envs=1):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     gym_env_name = get_gym_env_name()
     if benchmark_name in ('magical', 'dm_control'):
-        # FIXME(sam): I don't think that new versions of SB3 still use the
-        # 'parallel' kwarg.
-        return make_vec_env(gym_env_name, n_envs=n_envs, parallel=parallel)
+        return make_vec_env(gym_env_name,
+                            n_envs=n_envs,
+                            parallel=venv_parallel)
     elif benchmark_name == 'atari':
-        assert not parallel, "currently does not support parallel kwarg"
-        final_env = VecFrameStack(
-            VecTransposeImage(make_atari_env(gym_env_name,
-                                             n_envs=n_envs), ), 4)
+        assert not venv_parallel, "currently does not support parallel kwarg"
+        raw_atari_env = make_vec_env(gym_env_name,
+                                     n_envs=n_envs,
+                                     parallel=venv_parallel,
+                                     wrapper_class=AtariWrapper)
+        final_env = VecFrameStack(VecTransposeImage(raw_atari_env), 4)
         assert final_env.observation_space.shape == (4, 84, 84), \
             final_env.observation_space.shape
         return final_env

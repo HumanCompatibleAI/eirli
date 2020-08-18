@@ -19,7 +19,7 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, chans_first=True):
 
     # merge stats/actions/dones from all trajectories into one big dataset
     # (we use same naming convention as `imitation` here)
-    merged_trajectories = {'obs': [], 'acts': [], 'dones': []}
+    merged_trajectories = {'obs': [], 'next_obs': [], 'acts': [], 'dones': []}
     for traj in trajectories:
         # we slice to :-1 so that we can have a meaningful next_obs
         merged_trajectories['obs'] += traj['states'][:-1]
