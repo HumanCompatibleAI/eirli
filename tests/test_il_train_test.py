@@ -37,7 +37,6 @@ def test_il_train_test(benchmark_cfg, algo, il_train_ex, il_test_ex,
     il_test_ex.run(
         config_updates={
             'n_rollouts': 2,
-            'eval_batch_size': 2,
             'policy_path': policy_path,
             **common_cfg,
         })
