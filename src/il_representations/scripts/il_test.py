@@ -7,16 +7,14 @@ import tempfile
 
 import imitation.util.logger as imitation_logger
 import imitation.data.rollout as il_rollout
-from imitation.util.util import make_vec_env
 import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common.cmd_util import make_atari_env
 from stable_baselines3.common.utils import get_device
-from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
 import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs import auto
 
 il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 
@@ -76,19 +74,8 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size,
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 
-        # make vec env
-        if benchmark['benchmark_name'] == 'dm_control':
-            short_env_name = benchmark['dm_control_env']
-            all_full_names = benchmark['dm_control_full_env_names']
-            full_env_name = all_full_names[short_env_name]
-            vec_env = make_vec_env(full_env_name,
-                                   n_envs=eval_batch_size,
-                                   parallel=False,
-                                   seed=seed)
-        else:
-            short_env_name = full_env_name = benchmark['atari_env_id']
-            vec_env = VecFrameStack(make_atari_env(full_env_name), 4)
-            vec_env = VecTransposeImage(vec_env)
+        full_env_name = auto.get_gym_env_name()
+        vec_env = auto.load_vec_env()
 
         # sample some trajectories
         rng = np.random.RandomState(seed)
@@ -108,7 +95,6 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size,
         # save to a .json file
         with tempfile.NamedTemporaryFile('w') as fp:
             full_stats_dict = collections.OrderedDict([
-                ('short_env_name', short_env_name),
                 ('full_env_name', full_env_name),
                 ('policy_path', policy_path),
                 ('seed', seed),
