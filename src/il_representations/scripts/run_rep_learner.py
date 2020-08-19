@@ -22,7 +22,7 @@ represent_ex = Experiment('representation_learning',
 
 @represent_ex.config
 def default_config():
-    algo = "SimCLR"
+    algo = "MoCo"
     use_random_rollouts = False
     n_envs = 1
     timesteps = 640

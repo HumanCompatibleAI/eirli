@@ -13,3 +13,5 @@ test_observer
 .#*
 *~
 .idea
+*.xml
+*.iml
