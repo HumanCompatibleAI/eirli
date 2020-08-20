@@ -24,7 +24,7 @@ def test_algo(algo, benchmark_cfg, represent_ex):
                                      'demo_timesteps': 32,
                                      'batch_size': 7,
                                      'unit_test_max_train_steps': 2,
-                                     'representation_dim': 3,
+                                     'algo_params': {'representation_dim': 3},
                                      'algo': algo,
                                      'use_random_rollouts': False,
                                      'benchmark': benchmark_cfg,
