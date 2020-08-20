@@ -71,7 +71,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.augmenter = augmenter(color_space=color_space, **to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
-        self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
+        encoder_kwargs = to_dict(encoder_kwargs)
+        encoder_kwargs.update({'device': self.device})
+        self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
 
         if batch_extender_kwargs is None:
@@ -82,6 +84,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Doing this slightly awkward updating of kwargs to avoid having
                 # the superclass of BatchExtender accept queue_dim as an argument
                 batch_extender_kwargs['queue_dim'] = projection_dim
+            batch_extender_kwargs['device'] = self.device
 
             self.batch_extender = batch_extender(**batch_extender_kwargs)
 

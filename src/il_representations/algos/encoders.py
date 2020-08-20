@@ -117,7 +117,7 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1, **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
@@ -136,7 +136,7 @@ class DeterministicEncoder(Encoder):
 
 
 class StochasticEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_model_cls=None):
+    def __init__(self, obs_space, representation_dim, architecture_model_cls=None, **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
@@ -166,7 +166,7 @@ class InverseDynamicsEncoder(DeterministicEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, inner_encoder_architecture_cls=None):
+                 momentum_weight=0.999, inner_encoder_architecture_cls=None, **kwargs):
         super(MomentumEncoder, self).__init__()
         if learn_scale:
             inner_encoder_cls = StochasticEncoder
@@ -200,12 +200,13 @@ class MomentumEncoder(Encoder):
 
 
 class RecurrentEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
+    def __init__(self, obs_shape, representation_dim, device, learn_scale=False, num_recurrent_layers=2,
                  single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None, rnn_output_dim=64):
         super(RecurrentEncoder, self).__init__()
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
+        self.device = device
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
         self.single_frame_encoder = DeterministicEncoder(obs_shape, self.single_frame_repr_dim,
                                                          inner_encoder_architecture_cls)
@@ -238,7 +239,7 @@ class RecurrentEncoder(Encoder):
             # Keep track of how many actual unpadded values were in the trajectory
             mask_lengths.append(traj_z.shape[0])
             pad_size = batch_size - traj_z.shape[0]
-            padding = torch.zeros((pad_size,) + input_shape)
+            padding = torch.zeros((pad_size,) + input_shape).to(self.device)
             padded_z = torch.cat([traj_z, padding])
             padded_trajectories.append(padded_z)
         assert np.mean(mask_lengths) > self.min_traj_size, f"Batches must contain trajectories with an average " \
