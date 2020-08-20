@@ -28,7 +28,7 @@ class TargetPairConstructor(ABC):
 
 class IdentityPairConstructor(TargetPairConstructor):
     def __call__(self, data_dict):
-        obs, actions, dones = data_dict['states'], data_dict['actions'], data_dict['dones']
+        obs, actions, dones = data_dict['obs'], data_dict['acts'], data_dict['dones']
         dataset = []
         trajectory_ind = timestep = 0
         for i in range(len(dones)):
@@ -47,7 +47,7 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
         self.k = temporal_offset
 
     def __call__(self, data_dict):
-        obs, actions, dones = data_dict['states'], data_dict['actions'], data_dict['dones']
+        obs, actions, dones = data_dict['obs'], data_dict['acts'], data_dict['dones']
         dataset = []
         trajectory_ind = timestep = 0
         i = 0

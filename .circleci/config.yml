@@ -1,21 +1,32 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@0.2.1
-
 jobs:
   build-and-test:
-    executor:
-      name: python/default
-      tag: '3.7'
+    docker:
+      - image: humancompatibleai/il-representations:2020.08.03-r3
     steps:
       - checkout
-      - python/install-deps
       - run:
-          command: pytest test_base_algos.py
+          command: pip install -r requirements.txt
+          name: Install dependencies
+      - run:
+          command: curl -so ~/.mujoco/mjkey.txt "${MUJOCO_KEY}"
+          name: Set up MuJoCo
+      - run:
+          command: pip install -e .
+          name: Install in dev mode
+      - run:
+          command: |
+            mkdir -p test-results
+            xvfb-run -a pytest --junitxml=test-results/junit.xml tests/
           name: Run Tests
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results
 
 workflows:
   main:
     jobs:
-      - build-and-test
+      - build-and-test:
+          context: MuJoCo

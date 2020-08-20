@@ -158,7 +158,6 @@ class BatchAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
         return logits, label
 
 
-
 class SymmetricContrastiveLoss(RepresentationLoss):
     """
     A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
@@ -246,44 +245,25 @@ class CEBLoss(RepresentationLoss):
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form
     than done by traditional VIB techniques
     """
-    def __init__(self, device, multi_logger, beta=.1, sample=True, rsample=False):
+
+    def __init__(self, device, multi_logger, beta=.1, sample=True):
         super().__init__(device, multi_logger, sample=sample)
         # TODO allow for beta functions
         self.beta = beta
         self.sample = sample
-        self.rsample = rsample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-        normalized_context_loc = F.normalize(decoded_context_dist.loc, dim=1)
-        normalized_target_loc = F.normalize(target_dist.loc, dim=1)
-        normalized_context_dist = torch.distributions.MultivariateNormal(loc=normalized_context_loc,
-                                                                         covariance_matrix=decoded_context_dist.covariance_matrix)
-        normalized_target_dist = torch.distributions.MultivariateNormal(loc=normalized_target_loc,
-                                                                        covariance_matrix=target_dist.covariance_matrix)
+        z = decoded_context_dist.rsample()
 
-        z = normalized_context_dist.loc
-        if self.sample:
-            # Take the diagonal variance vector and stack batch-wise. Result: [B, Z]
-            covariance_diagonals = torch.stack([batch_cov.diag() for batch_cov in normalized_context_dist.covariance_matrix])
-            # Elementwise multiply each N(0, 1) sample by the covariance diagonal for that dimension
-            noise = torch.randn(z.shape) * torch.sqrt(covariance_diagonals)
-            z += noise
+        log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
+        log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
 
-        if self.rsample:
-            z = normalized_context_dist.rsample()
-
-
-        log_ezx = normalized_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
-        log_bzy = normalized_target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
-
-        cross_probas_logits = torch.stack([normalized_target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
+        cross_probas_logits = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
         # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
-        #import pdb; pdb.set_trace()
         catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
                                                                       # targets/y values
         inds = torch.arange(start=0, end=len(z))
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
-
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
         return loss
 
