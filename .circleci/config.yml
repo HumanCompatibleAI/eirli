@@ -7,9 +7,6 @@ jobs:
     steps:
       - checkout
       - run:
-          command: pip install -r requirements.txt
-          name: Install dependencies
-      - run:
           command: curl -so ~/.mujoco/mjkey.txt "${MUJOCO_KEY}"
           name: Set up MuJoCo
       - run:
