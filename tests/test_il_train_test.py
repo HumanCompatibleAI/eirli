@@ -2,10 +2,10 @@ import os
 
 import pytest
 
-from il_representations.test_support.configuration import BENCHMARK_CONFIGS
+from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS
 
 
-@pytest.mark.parametrize("benchmark_cfg", BENCHMARK_CONFIGS)
+@pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
 @pytest.mark.parametrize("algo", ["bc", "gail"])
 def test_il_train_test(benchmark_cfg, algo, il_train_ex, il_test_ex,
                        file_observer):

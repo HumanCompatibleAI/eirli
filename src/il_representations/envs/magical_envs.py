@@ -4,6 +4,7 @@ environments."""
 import collections
 import logging
 import os
+import random
 from typing import List, Tuple
 
 import imitation.data.datasets as il_datasets
@@ -99,7 +100,7 @@ def get_env_name_magical(magical_env_prefix, magical_preproc):
 
 @benchmark_ingredient.capture
 def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc):
+                         magical_preproc, n_traj):
     demo_dir = magical_demo_dirs[magical_env_prefix]
     logging.info(
         f"Loading trajectory data for '{magical_env_prefix}' from "
@@ -110,6 +111,9 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
     ]
     if not demo_paths:
         raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
+    random.shuffle(demo_paths)
+    if n_traj is not None:
+        demo_paths = demo_paths[:n_traj]
     dataset_dict, loaded_env_name = load_data(
         demo_paths, preprocessor_name=magical_preproc)
     gym_env_name = get_env_name_magical()

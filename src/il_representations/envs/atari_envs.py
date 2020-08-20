@@ -1,11 +1,13 @@
 """Utilities for working with Atari environments and demonstrations."""
 import numpy as np
+import random
 
 from il_representations.envs.config import benchmark_ingredient
 
 
 @benchmark_ingredient.capture
-def load_dataset_atari(atari_env_id, atari_demo_paths, chans_first=True):
+def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj,
+                       chans_first=True):
     # load trajectories from disk
     full_rollouts_path = atari_demo_paths[atari_env_id]
     trajs_or_file = np.load(full_rollouts_path, allow_pickle=True)
@@ -16,6 +18,11 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, chans_first=True):
     else:
         # handle .npy files (one array)
         assert isinstance(trajectories, np.ndarray), type(trajectories)
+
+    trajectories = list(trajectories)
+    random.shuffle(trajectories)
+    if n_traj is not None:
+        trajectories = trajectories[:n_traj]
 
     # merge stats/actions/dones from all trajectories into one big dataset
     # (we use same naming convention as `imitation` here)

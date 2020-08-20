@@ -12,7 +12,7 @@ either augment just the context, or both the context and the target, depending o
 """
 
 
-class RepLearnAugmenter(ABC):
+class Augmenter(ABC):
     def __init__(self, augment_op):
         assert isinstance(augment_op, KorniaAugmentations)
         self.augment_op = augment_op
@@ -22,16 +22,16 @@ class RepLearnAugmenter(ABC):
         pass
 
 
-class NoAugmentation(RepLearnAugmenter):
+class NoAugmentation(Augmenter):
     def __call__(self, contexts, targets):
         return contexts, targets
 
 
-class AugmentContextAndTarget(RepLearnAugmenter):
+class AugmentContextAndTarget(Augmenter):
     def __call__(self, contexts, targets):
         return self.augment_op(contexts), self.augment_op(targets)
 
 
-class AugmentContextOnly(RepLearnAugmenter):
+class AugmentContextOnly(Augmenter):
     def __call__(self, contexts, targets):
         return self.augment_op(contexts), targets

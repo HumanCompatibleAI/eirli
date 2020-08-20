@@ -2,7 +2,7 @@ import glob
 import os
 
 from il_representations.algos import MoCo
-from il_representations.test_support.configuration import BENCHMARK_CONFIGS
+from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS
 
 
 def test_reload_policy(represent_ex, il_train_ex, file_observer):
@@ -19,7 +19,7 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
             'representation_dim': 3,
             'algo': MoCo,
             'use_random_rollouts': False,
-            'benchmark': BENCHMARK_CONFIGS[0],
+            'benchmark': BENCHMARK_TEST_CONFIGS[0],
             'ppo_finetune': False,
         })
 
@@ -35,6 +35,6 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
                 'n_epochs': 1,
             },
             'device_name': 'cpu',
-            'benchmark': BENCHMARK_CONFIGS[0],
+            'benchmark': BENCHMARK_TEST_CONFIGS[0],
             'encoder_path': policy_path,
         })

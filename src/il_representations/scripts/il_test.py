@@ -13,6 +13,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 import torch as th
 
+from il_representations.algos.utils import set_global_seeds
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.envs import auto
 
@@ -32,6 +33,7 @@ def default_config():
 
 @il_test_ex.main
 def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
+    set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
     log_dir = il_test_ex.observers[0].dir
