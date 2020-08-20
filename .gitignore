@@ -1,6 +1,7 @@
 rep_learning_runs
 il_train_runs
 il_test_runs
+chain_runs
 test_observer
 *.pyc
 *.egg-info
