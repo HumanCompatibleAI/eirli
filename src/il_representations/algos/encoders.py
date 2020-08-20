@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import copy
 from torch.distributions import MultivariateNormal
+from functools import reduce
 import numpy as np
 from stable_baselines3.common.policies import NatureCNN
 from gym.spaces import Box
-from .utils import independent_multivariate_normal
+from il_representations.algos.utils import independent_multivariate_normal
 
 
 """
@@ -21,12 +22,49 @@ DEFAULT_CNN_ARCHITECTURE = {
     'CONV': [
                 {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
                 {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-                {'out_dim': 32, 'kernel_size': 3, 'stride': 1},
+                {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
             ],
     'DENSE': [
-                {'in_dim': 32*7*7}
+                # this value works for Atari, but will be ovewritten for other envs
+                {'in_dim': 64*7*7},
              ]
 }
+
+
+def sb_conv_arch_output_size(image_shape, conv_arch):
+    """
+    Given the input image's shape of (H, W) and a convolution network's architecture, compute the output feature
+    map CONV(image)'s shape (C, H, W)
+    """
+    def compute_out_hw(h_in, w_in, layer_conf):
+        import math
+        padding = layer_conf['padding']
+        dilation = layer_conf['dilation']
+        kernel_size = layer_conf['kernel_size']
+        stride = layer_conf['stride']
+        h_out = math.floor((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) / stride[0] + 1)
+        w_out = math.floor((w_in + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) / stride[1] + 1)
+        return h_out, w_out
+
+    h, w = image_shape
+    default_config = {
+        'padding': [0, 0],
+        'dilation': [1, 1],
+        'kernel_size': [],
+        'stride': [1, 1],
+    }
+
+    for layer_config in conv_arch:
+        for param, default in default_config.items():
+            param_value = layer_config.get(param, default)
+            if isinstance(param_value, int):
+                param_value = [param_value, param_value]
+            layer_config[param] = param_value
+            assert len(layer_config[param]) == 2
+        h, w = compute_out_hw(h, w, layer_config)
+
+    out_channel = conv_arch[-1]['out_dim']
+    return [out_channel, h, w]
 
 
 class DefaultStochasticCNN(nn.Module):
@@ -36,22 +74,28 @@ class DefaultStochasticCNN(nn.Module):
         self.representation_dim = representation_dim
         shared_network_layers = []
 
-        for layer_spec in DEFAULT_CNN_ARCHITECTURE['CONV']:
+        # figure out how big the convolution output will be
+        conv_arch = DEFAULT_CNN_ARCHITECTURE['CONV']
+        dense_arch = DEFAULT_CNN_ARCHITECTURE['DENSE'].copy()  # copy to mutate
+        dense_in_dim = np.prod(sb_conv_arch_output_size(obs_space.shape[1:],
+                                                        conv_arch))
+        dense_arch[0]['in_dim'] = dense_in_dim
+
+        for layer_spec in conv_arch:
             shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
                                                    kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
             shared_network_layers.append(nn.ReLU())
             self.input_channel = layer_spec['out_dim']
 
         shared_network_layers.append(nn.Flatten())
-        for ind, layer_spec in enumerate(DEFAULT_CNN_ARCHITECTURE['DENSE'][:-1]):
+        for ind, layer_spec in enumerate(dense_arch[:-1]):
             in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
             shared_network_layers.append(nn.Linear(in_dim, out_dim))
             shared_network_layers.append(nn.ReLU())
 
         self.shared_network = nn.Sequential(*shared_network_layers)
-
-        self.mean_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
-        self.scale_layer = nn.Linear(DEFAULT_CNN_ARCHITECTURE['DENSE'][-1]['in_dim'], self.representation_dim)
+        self.mean_layer = nn.Linear(dense_arch[-1]['in_dim'], self.representation_dim)
+        self.scale_layer = nn.Linear(dense_arch[-1]['in_dim'], self.representation_dim)
 
     def forward(self, x):
         shared_repr = self.shared_network(x)
@@ -73,7 +117,7 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=0.01):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned

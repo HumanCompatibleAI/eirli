@@ -1,13 +1,13 @@
-from .representation_learner import RepresentationLearner
-from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
-from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
-from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss
+from il_representations.algos.representation_learner import RepresentationLearner
+from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
+from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
+from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, CosineSymmetricContrastiveLoss
 
-from .augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
-from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
-from .batch_extenders import QueueBatchExtender
-from .optimizers import LARS
+from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
+from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
+from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.optimizers import LARS
 import inspect
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
@@ -24,15 +24,13 @@ def get_default_args(func):
 
 def update_kwarg_dict(kwargs, kwargs_key, update_dict, cls):
     # Add values within `update_dict` to kwargs['kwargs_key']
-    try:
-        internal_kwargs = kwargs.get(kwargs_key) or {} # why is Python default not working?
-        for key, value in update_dict.items():
-            if key in internal_kwargs:
-                assert internal_kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
-                raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
-            internal_kwargs[key] = value
-    except:
-        import pdb; pdb.set_trace()
+    internal_kwargs = kwargs.get(kwargs_key) or {} # why is Python default not working?
+    for key, value in update_dict.items():
+        if key in internal_kwargs:
+            assert internal_kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
+            raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
+        internal_kwargs[key] = value
+
     kwargs[kwargs_key] = internal_kwargs
 
 def clean_kwargs(kwargs, cls, keys=None):
