@@ -14,6 +14,7 @@ from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
 import torch as th
 
+from il_representations.algos.utils import set_global_seeds
 from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
@@ -66,6 +67,8 @@ il_train_ex = Experiment('il_train', ingredients=[
 
 @il_train_ex.config
 def default_config():
+    # random seed for EVERYTHING
+    seed = 42  # noqa: F841
     # device to place all computations on
     device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'
@@ -75,7 +78,6 @@ def default_config():
     encoder_path = None  # noqa: F841
     # file name for final policy
     final_pol_name = 'policy_final.pt'  # noqa: F841
-
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
     benchmark = dict(  # noqa: F841
@@ -212,7 +214,8 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(algo, benchmark, encoder_path, _config):
+def train(seed, algo, benchmark, encoder_path, _config):
+    set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging

@@ -11,9 +11,11 @@ def bench_defaults():
     benchmark_name = 'magical'
     # should venvs be parallel?
     venv_parallel = False
+    # how many envs constitute a batch step (regardless of parallelisation)
     n_envs = 2
-    # FIXME(sam): at some point we should add a "num_traj" argument to select
-    # only a subset of available demonstrations
+    # this should be a number of trajectories to return, or None if returning
+    # all available trajectories is okay
+    n_traj = None
 
     # ########################
     # MAGICAL config variables
