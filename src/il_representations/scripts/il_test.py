@@ -44,6 +44,7 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
 
     device = get_device(device_name)
     policy = policy.to(device)
+    policy.eval()
 
     if benchmark['benchmark_name'] == 'magical':
         from il_representations.envs import magical_envs
