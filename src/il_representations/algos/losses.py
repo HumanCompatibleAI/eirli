@@ -1,10 +1,6 @@
 from abc import ABC
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Independent
-from logging import getLogger
-
 
 class RepresentationLoss(ABC):
     def __init__(self, device, multi_logger, sample=False):

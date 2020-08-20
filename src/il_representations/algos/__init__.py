@@ -2,7 +2,7 @@ from il_representations.algos.representation_learner import RepresentationLearne
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, CosineSymmetricContrastiveLoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor

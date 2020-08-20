@@ -95,7 +95,7 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts,
-        seed, algo, n_envs, algo_params, demo_timesteps, ppo_timesteps,
+        seed, algo, n_envs, algo_params, ppo_timesteps,
         ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
@@ -120,6 +120,7 @@ def run(benchmark, use_random_rollouts,
     # 1. Decorate RepresentationLearner constructor with a Sacred ingredient.
     # 2. Just pass things manually.
     assert issubclass(algo, RepresentationLearner)
+    algo_params = dict(algo_params)
     algo_params['color_space'] = color_space
     logging.info(f"Running {algo} with parameters: {algo_params}")
     model = algo(venv, log_dir=log_dir, **algo_params)
