@@ -31,7 +31,9 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
     policy_path = encoder_list[0]
     il_train_ex.run(
         config_updates={
-            'bc_n_epochs': 1,
+            'bc': {
+                'n_epochs': 1,
+            },
             'device_name': 'cpu',
             'benchmark': BENCHMARK_CONFIGS[0],
             'encoder_path': policy_path,

@@ -7,7 +7,7 @@ from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 from imitation.augment import StandardAugmentations
 import imitation.util.logger as imitation_logger
-from sacred import Experiment
+from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
@@ -20,15 +20,52 @@ from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
-il_train_ex = Experiment('il_train', ingredients=[benchmark_ingredient])
+bc_ingredient = Ingredient('bc')
+
+
+@bc_ingredient.config
+def bc_defaults():
+    # number of passes to make through dataset
+    n_epochs = 250  # noqa: F841
+    augs = 'rotate,translate,noise'  # noqa: F841
+
+
+gail_ingredient = Ingredient('gail')
+
+
+@gail_ingredient.config
+def gail_defaults():
+    # number of env time steps to perform during reinforcement learning
+    total_timesteps = int(1e6)  # noqa: F841
+    # "gail_disc_batch_size" is how many samples we take from the expert and
+    # novice buffers to do a round of discriminator optimisation.
+    # "gail_disc_minibatch_size" controls the size of the minibatches that we
+    # divide that into. Thus, we do batch_size/minibatch_size minibatches of
+    # optimisation at each discriminator update. gail_disc_batch_size = 256.
+    # (this is a different naming convention to SB3 PPO)
+    disc_batch_size = 256  # noqa: F841
+    disc_minibatch_size = 32  # noqa: F841
+    disc_lr = 1e-4  # noqa: F841
+    disc_augs = "rotate,translate,noise"  # noqa: F841
+    ppo_n_steps = 16  # noqa: F841
+    # "batch size" is actually the size of a _minibatch_. The amount of data
+    # used for each training update is gail_ppo_n_steps*n_envs.
+    ppo_batch_size = 32  # noqa: F841
+    ppo_n_epochs = 4  # noqa: F841
+    ppo_learning_rate = 2.5e-4  # noqa: F841
+    ppo_gamma = 0.95  # noqa: F841
+    ppo_gae_lambda = 0.95  # noqa: F841
+    ppo_ent = 1e-5  # noqa: F841
+    ppo_adv_clip = 0.05  # noqa: F841
+
+
+il_train_ex = Experiment('il_train', ingredients=[
+    benchmark_ingredient, bc_ingredient, gail_ingredient,
+])
 
 
 @il_train_ex.config
 def default_config():
-    # ##################
-    # Common config vars
-    # ##################
-
     # device to place all computations on
     device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'
@@ -36,41 +73,9 @@ def default_config():
     # place to load pretrained encoder from (if not given, it will be
     # re-intialised from scratch)
     encoder_path = None  # noqa: F841
+    # file name for final policy
+    final_pol_name = 'policy_final.pt'  # noqa: F841
 
-    # ##############
-    # BC config vars
-    # ##############
-
-    # number of passes to make through dataset
-    bc_n_epochs = 250  # noqa: F841
-    bc_augs = 'rotate,translate,noise'  # noqa: F841
-
-    # #####################
-    # GAIL config variables
-    # #####################
-
-    # number of env time steps to perform during reinforcement learning
-    gail_total_timesteps = int(1e6)  # noqa: F841
-    # "gail_disc_batch_size" is how many samples we take from the expert and
-    # novice buffers to do a round of discriminator optimisation.
-    # "gail_disc_minibatch_size" controls the size of the minibatches that we
-    # divide that into. Thus, we do batch_size/minibatch_size minibatches of
-    # optimisation at each discriminator update. gail_disc_batch_size = 256.
-    # (this is a different naming convention to SB3 PPO)
-    gail_disc_batch_size = 256  # noqa: F841
-    gail_disc_minibatch_size = 32  # noqa: F841
-    gail_disc_lr = 1e-4  # noqa: F841
-    gail_disc_augs = "rotate,translate,noise"  # noqa: F841
-    gail_ppo_n_steps = 16  # noqa: F841
-    # "batch size" is actually the size of a _minibatch_. The amount of data
-    # used for each training update is gail_ppo_n_steps*n_envs.
-    gail_ppo_batch_size = 32  # noqa: F841
-    gail_ppo_n_epochs = 4  # noqa: F841
-    gail_ppo_learning_rate = 2.5e-4  # noqa: F841
-    gail_ppo_gamma = 0.95  # noqa: F841
-    gail_ppo_gae_lambda = 0.95  # noqa: F841
-    gail_ppo_ent = 1e-5  # noqa: F841
-    gail_ppo_adv_clip = 0.05  # noqa: F841
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
     benchmark = dict(  # noqa: F841
@@ -118,12 +123,12 @@ def make_policy(venv, encoder_or_path):
 
 
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
-                   bc_augs, device_name):
+def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
+                   device_name, final_pol_name):
     policy = make_policy(venv_chans_first, encoder)
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
-        bc_augs, stack_color_space=color_space)
+        bc['augs'], stack_color_space=color_space)
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
@@ -135,9 +140,9 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc_n_epochs)
+    trainer.train(n_epochs=bc['n_epochs'])
 
-    final_path = os.path.join(out_dir, "policy_final.pt")
+    final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
     trainer.save_policy(final_path)
 
@@ -149,19 +154,8 @@ def do_training_gail(
     device_name,
     encoder,
     out_dir,
-    gail_total_timesteps,
-    gail_disc_batch_size,
-    gail_disc_minibatch_size,
-    gail_disc_lr,
-    gail_disc_augs,
-    gail_ppo_n_steps,
-    gail_ppo_batch_size,
-    gail_ppo_ent,
-    gail_ppo_adv_clip,
-    gail_ppo_n_epochs,
-    gail_ppo_gamma,
-    gail_ppo_gae_lambda,
-    gail_ppo_learning_rate,
+    final_pol_name,
+    gail,
 ):
     # Supporting encoder init requires:
     # - Thinking more about how to handle LR of the optimiser stuffed inside
@@ -185,40 +179,40 @@ def do_training_gail(
         verbose=1,
         tensorboard_log=None,
         device=device,
-        n_steps=gail_ppo_n_steps,
-        batch_size=gail_ppo_batch_size,
-        n_epochs=gail_ppo_n_epochs,
-        ent_coef=gail_ppo_ent,
-        gamma=gail_ppo_gamma,
-        gae_lambda=gail_ppo_gae_lambda,
-        clip_range=gail_ppo_adv_clip,
-        learning_rate=gail_ppo_learning_rate,
+        n_steps=gail['ppo_n_steps'],
+        batch_size=gail['ppo_batch_size'],
+        n_epochs=gail['ppo_n_epochs'],
+        ent_coef=gail['ppo_ent'],
+        gamma=gail['ppo_gamma'],
+        gae_lambda=gail['ppo_gae_lambda'],
+        clip_range=gail['ppo_adv_clip'],
+        learning_rate=gail['ppo_learning_rate'],
     )
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
-        gail_disc_augs, stack_color_space=color_space)
+        gail['disc_augs'], stack_color_space=color_space)
     trainer = GAIL(
         venv_chans_first,
         dataset,
         ppo_algo,
-        disc_batch_size=gail_disc_batch_size,
-        disc_minibatch_size=gail_disc_minibatch_size,
+        disc_batch_size=gail['disc_batch_size'],
+        disc_minibatch_size=gail['disc_minibatch_size'],
         discrim_kwargs=dict(discrim_net=discrim_net),
         obs_norm=False,
         rew_norm=True,
-        disc_opt_kwargs=dict(lr=gail_disc_lr),
+        disc_opt_kwargs=dict(lr=gail['disc_lr']),
         disc_augmentation_fn=augmenter,
     )
 
-    trainer.train(total_timesteps=gail_total_timesteps)
+    trainer.train(total_timesteps=gail['total_timesteps'])
 
-    final_path = os.path.join(out_dir, 'policy_final.pt')
+    final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final GAIL policy to {final_path}")
     th.save(ppo_algo.policy, final_path)
 
 
 @il_train_ex.main
-def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
+def train(algo, benchmark, encoder_path, _config):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
