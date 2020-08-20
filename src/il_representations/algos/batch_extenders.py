@@ -37,13 +37,15 @@ class QueueBatchExtender(BatchExtender):
         # potentially overriding old information in the process. Return targets concatenated to contents of queue
         targets_loc = target_dist.loc
         targets_covariance = target_dist.covariance_matrix
+        device = targets_loc.device
+        assert targets_loc.device == targets_covariance.device
 
         # Pull out the diagonals of our MultivariateNormal covariance matrices, so we don't store all the extra 0s
         targets_scale = torch.stack([batch_element_matrix.diag() for batch_element_matrix in targets_covariance])
 
         batch_size = targets_loc.shape[0]
-        queue_targets_scale = self.queue_scale.clone().detach()
-        queue_targets_loc = self.queue_loc.clone().detach()
+        queue_targets_scale = self.queue_scale.clone().detach().to(device)
+        queue_targets_loc = self.queue_loc.clone().detach().to(device)
         # TODO: Currently requires the queue size to be a multiple of the batch size. Don't require that.
         self.queue_loc[self.queue_ptr:self.queue_ptr + batch_size] = targets_loc
         self.queue_scale[self.queue_ptr:self.queue_ptr + batch_size] = targets_scale
