@@ -36,6 +36,12 @@ def default_config():
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
+    augmenter_kwargs = {
+        # augmenter_spec is a comma-separated list of enabled augmentations.
+        # See `help(imitation.augment.StandardAugmentations)` for available
+        # augmentations.
+        "augmenter_spec": "translate,rotate,gaussian_blur",
+    }
     _ = locals()
     del _
 
@@ -101,7 +107,10 @@ def run(benchmark, use_random_rollouts,
     init_sig = inspect.signature(RepresentationLearner.__init__)
     rep_learner_params = [p for p in init_sig.parameters if p != 'self']
     algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
-    algo_params['color_space'] = color_space
+    algo_params['augmenter_kwargs'] = {
+        'color_space': color_space,
+        **algo_params['augmenter_kwargs'],
+    }
     logging.info(f"Running {algo} with parameters: {algo_params}")
     model = algo(venv, log_dir=log_dir, **algo_params)
 

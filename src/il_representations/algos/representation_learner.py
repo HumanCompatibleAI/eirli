@@ -13,6 +13,7 @@ from il_representations.algos.augmenters import AugmentContextOnly
 import itertools
 from gym.spaces import Box
 
+
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
     if kwargs_element is None:
@@ -21,13 +22,11 @@ def to_dict(kwargs_element):
         return kwargs_element
 
 
-
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, *,
                  log_dir, encoder, decoder, loss_calculator,
                  target_pair_constructor,
                  augmenter=AugmentContextOnly,
-                 color_space,
                  batch_extender=IdentityBatchExtender,
                  optimizer=torch.optim.Adam,
                  scheduler=None,
@@ -40,7 +39,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  save_interval=1,
                  optimizer_kwargs=None,
                  target_pair_constructor_kwargs=None,
-                 augmenter_spec="translate,rotate,gaussian_blur",
+                 augmenter_kwargs,
                  encoder_kwargs=None,
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
@@ -70,10 +69,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # This doesn't have any meaningful effect unless you specify a projection head.
             projection_dim = representation_dim
 
-        augment_ops = StandardAugmentations.from_string_spec(
-            augmenter_spec,
-            stack_color_space=color_space)
-        self.augmenter = augmenter(augment_ops)
+        self.augmenter = augmenter(**augmenter_kwargs)
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
         self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
