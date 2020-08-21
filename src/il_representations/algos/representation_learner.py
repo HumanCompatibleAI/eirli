@@ -5,6 +5,7 @@ from il_representations.algos.batch_extenders import IdentityBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
+from il_representations.algos import DEFAULT_HARDCODED_PARAMS, get_default_args
 from gym.spaces import Box
 import torch
 
@@ -115,6 +116,48 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
+
+    def update_kwarg_dict(self, kwargs, kwargs_key, update_dict):
+        """
+        Updates an internal kwargs dict within `kwargs`, specified by `kwargs_key`, to
+        contain the values within `update_dict`
+
+        :param kwargs: A dictionary for all RepresentationLearner kwargs
+        :param kwargs_key: A key indexing into `kwargs` representing a keyword arg that is itself a kwargs dictionary.
+        :param update_dict: A dict containing the key/value changes that should be made to kwargs[kwargs_key]
+        :param cls: The class on which this is being called
+        :return:
+        """
+        internal_kwargs = kwargs.get(kwargs_key) or {}
+        for key, value in update_dict.items():
+            if key in internal_kwargs:
+                assert internal_kwargs[
+                           key] == value, f"{self.__class__.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
+                raise Warning(
+                    f"In {self.__class__.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
+            internal_kwargs[key] = value
+
+        kwargs[kwargs_key] = internal_kwargs
+
+    def clean_kwargs(self, kwargs, keys=None):
+        """
+        Checks to confirm that you're not passing in an non-default value for a parameter that gets hardcoded
+        by the class definition
+
+        :param kwargs: Dictionary of all RepresentationLearner params
+        :param cls: The class on which this is being called
+        :param keys: The keys that are hardcoded by the class definition
+        :return:
+        """
+        default_args = get_default_args(RepresentationLearner.__init__)
+        if keys is None:
+            keys = DEFAULT_HARDCODED_PARAMS
+        for k in keys:
+            if k not in kwargs:
+                continue
+            assert kwargs[k] == default_args[k] \
+                , f"You passed in a non-default value for parameter {k} hardcoded by {self.__class__.__name__}"
+            del kwargs[k]
 
     def log_info(self, loss, epoch_step, epoch_ind, training_epochs):
         self.multi_logger.add_scalar('loss', loss)
