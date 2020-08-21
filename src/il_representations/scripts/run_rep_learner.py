@@ -126,5 +126,5 @@ def run(benchmark, use_random_rollouts,
 
 
 if __name__ == '__main__':
-    represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
+    represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs'))
     represent_ex.run_commandline()

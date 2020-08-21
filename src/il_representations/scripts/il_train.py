@@ -190,5 +190,5 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
 
 
 if __name__ == '__main__':
-    il_train_ex.observers.append(FileStorageObserver('il_train_runs'))
+    il_train_ex.observers.append(FileStorageObserver('runs/il_train_runs'))
     il_train_ex.run_commandline()

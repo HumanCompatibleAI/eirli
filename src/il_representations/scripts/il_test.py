@@ -111,5 +111,5 @@ def test(policy_path, benchmark, seed, n_rollouts, eval_batch_size,
 
 
 if __name__ == '__main__':
-    il_test_ex.observers.append(FileStorageObserver('il_test_runs'))
+    il_test_ex.observers.append(FileStorageObserver('runs/il_test_runs'))
     il_test_ex.run_commandline()
