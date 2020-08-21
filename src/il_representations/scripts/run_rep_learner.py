@@ -10,7 +10,7 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
 
 from il_representations import algos
-from il_representations.algos.representation_learner import RepresentationLearner
+from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
@@ -29,7 +29,7 @@ def default_config():
     ppo_timesteps = 1000
     pretrain_only = False
     pretrain_epochs = 50
-    algo_params = algos.get_default_args(algos.RepresentationLearner)
+    algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
     ppo_finetune = True
     batch_size = 256

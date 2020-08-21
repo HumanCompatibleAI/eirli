@@ -1,4 +1,4 @@
-from il_representations.algos.representation_learner import RepresentationLearner
+from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
@@ -8,19 +8,6 @@ from il_representations.algos.augmenters import AugmentContextAndTarget, Augment
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.optimizers import LARS
-import inspect
-
-DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
-
-
-def get_default_args(func):
-    signature = inspect.signature(func)
-    return {
-        k: v.default
-        for k, v in signature.parameters.items()
-        if v.default is not inspect.Parameter.empty
-    }
-
 
 
 class SimCLR(RepresentationLearner):
@@ -37,13 +24,13 @@ class SimCLR(RepresentationLearner):
         self.clean_kwargs(kwargs)
 
         super().__init__(env=env,
-                                     log_dir=log_dir,
-                                     encoder=DeterministicEncoder,
-                                     decoder=ProjectionHead,
-                                     loss_calculator=SymmetricContrastiveLoss,
-                                     augmenter=AugmentContextAndTarget,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     **kwargs)
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=ProjectionHead,
+                         loss_calculator=SymmetricContrastiveLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=IdentityPairConstructor,
+                         **kwargs)
 
 
 class TemporalCPC(RepresentationLearner):
@@ -55,15 +42,16 @@ class TemporalCPC(RepresentationLearner):
         By default, augments only the context, but can be modified to augment both context and target.
         """
         self.clean_kwargs(kwargs)
-        self.update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
-                          {'temporal_offset': temporal_offset})
+        self.update_kwarg_dict(kwargs,
+                               'target_pair_constructor_kwargs',
+                               {'temporal_offset': temporal_offset})
         super().__init__(env=env,
-                                          log_dir=log_dir,
-                                          encoder=DeterministicEncoder,
-                                          decoder=NoOp,
-                                          loss_calculator=BatchAsymmetricContrastiveLoss,
-                                          target_pair_constructor=TemporalOffsetPairConstructor,
-                                          **kwargs)
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=NoOp,
+                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 
 class RecurrentCPC(RepresentationLearner):
@@ -80,12 +68,12 @@ class RecurrentCPC(RepresentationLearner):
         self.clean_kwargs(kwargs)
         kwargs['shuffle_batches'] = False
         super().__init__(env=env,
-                                           log_dir=log_dir,
-                                           encoder=RecurrentEncoder,
-                                           decoder=NoOp,
-                                           loss_calculator=BatchAsymmetricContrastiveLoss,
-                                           target_pair_constructor=TemporalOffsetPairConstructor,
-                                           **kwargs)
+                         log_dir=log_dir,
+                         encoder=RecurrentEncoder,
+                         decoder=NoOp,
+                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 
 class MoCo(RepresentationLearner):
@@ -96,16 +84,18 @@ class MoCo(RepresentationLearner):
     def __init__(self, env, log_dir, queue_size=8192, **kwargs):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
         self.clean_kwargs(kwargs, hardcoded_params)
-        self.update_kwarg_dict(kwargs, 'batch_extender_kwargs', {'queue_size': queue_size})
-        super(MoCo, self).__init__(env=env,
-                                   log_dir=log_dir,
-                                   encoder=MomentumEncoder,
-                                   decoder=NoOp,
-                                   loss_calculator=QueueAsymmetricContrastiveLoss,
-                                   augmenter=AugmentContextAndTarget,
-                                   target_pair_constructor=TemporalOffsetPairConstructor,
-                                   batch_extender=QueueBatchExtender,
-                                   **kwargs)
+        self.update_kwarg_dict(kwargs,
+                               'batch_extender_kwargs',
+                               {'queue_size': queue_size})
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=NoOp,
+                         loss_calculator=QueueAsymmetricContrastiveLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         batch_extender=QueueBatchExtender,
+                         **kwargs)
 
 
 class MoCoWithProjection(RepresentationLearner):
@@ -120,35 +110,39 @@ class MoCoWithProjection(RepresentationLearner):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
         self.clean_kwargs(kwargs, hardcoded_params)
 
-        self.update_kwarg_dict(kwargs, 'batch_extender_kwargs', {'queue_size': queue_size})
-        super(MoCoWithProjection, self).__init__(env=env,
-                                                 log_dir=log_dir,
-                                                 encoder=MomentumEncoder,
-                                                 decoder=MomentumProjectionHead,
-                                                 loss_calculator=QueueAsymmetricContrastiveLoss,
-                                                 augmenter=AugmentContextAndTarget,
-                                                 target_pair_constructor=TemporalOffsetPairConstructor,
-                                                 batch_extender=QueueBatchExtender,
-                                                 **kwargs)
+        self.update_kwarg_dict(kwargs,
+                               'batch_extender_kwargs',
+                               {'queue_size': queue_size})
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=MomentumProjectionHead,
+                         loss_calculator=QueueAsymmetricContrastiveLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         batch_extender=QueueBatchExtender,
+                         **kwargs)
 
 
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         self.clean_kwargs(kwargs)
 
-        self.update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
-                                                           {'mode': 'dynamics'})
-        super(DynamicsPrediction, self).__init__(env=env,
-                                                 log_dir=log_dir,
-                                                 encoder=DynamicsEncoder,
-                                                 decoder=NoOp, # Should be a pixel decoder that takes in action, currently errors
-                                                 loss_calculator=MSELoss,
-                                                 augmenter=AugmentContextOnly,
-                                                 target_pair_constructor=TemporalOffsetPairConstructor,
-                                                 **kwargs)
+        self.update_kwarg_dict(kwargs,
+                               'target_pair_constructor_kwargs',
+                               {'mode': 'dynamics'})
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DynamicsEncoder,
+                         # Should be a pixel decoder that takes in action, currently errors
+                         decoder=NoOp,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextOnly,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
     def learn(self, dataset, training_epochs):
-        raise NotImplementedError("DynamicsPrediction is not yet implemented")
+        raise NotImplementedError("DynamicsPrediction is not yet fully implemented")
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
@@ -156,17 +150,18 @@ class InverseDynamicsPrediction(RepresentationLearner):
         self.clean_kwargs(kwargs)
         self.update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
                                                            {'mode': 'inverse_dynamics'})
-        super(InverseDynamicsPrediction, self).__init__(env=env,
-                                                        log_dir=log_dir,
-                                                        encoder=InverseDynamicsEncoder,
-                                                        decoder=NoOp, # Should be a action decoder that takes in next obs representation
-                                                        loss_calculator=MSELoss,
-                                                        augmenter=AugmentContextOnly,
-                                                        target_pair_constructor=TemporalOffsetPairConstructor,
-                                                        **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=InverseDynamicsEncoder,
+                         # Should be a action decoder that takes in next obs representation
+                         decoder=NoOp,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextOnly,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
     def learn(self, dataset, training_epochs):
-        raise NotImplementedError("InverseDynamicsPrediction is not yet implemented")
+        raise NotImplementedError("InverseDynamicsPrediction is not yet fully implemented")
 
 
 class BYOL(RepresentationLearner):
@@ -178,57 +173,59 @@ class BYOL(RepresentationLearner):
     """
     def __init__(self, env, log_dir, **kwargs):
         self.clean_kwargs(kwargs)
-        super(BYOL, self).__init__(env=env,
-                                   log_dir=log_dir,
-                                   encoder=MomentumEncoder,
-                                   decoder=BYOLProjectionHead,
-                                   loss_calculator=MSELoss,
-                                   augmenter=AugmentContextAndTarget,
-                                   target_pair_constructor=IdentityPairConstructor,
-                                   **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=BYOLProjectionHead,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=IdentityPairConstructor,
+                         **kwargs)
 
 
 class CEB(RepresentationLearner):
     """
+    CEB with variance that is learned by StochasticEncoder
     """
     def __init__(self, env, log_dir, **kwargs):
         self.clean_kwargs(kwargs)
-        super(CEB, self).__init__(env=env,
-                                  log_dir=log_dir,
-                                  encoder=StochasticEncoder,
-                                  decoder=NoOp,
-                                  loss_calculator=CEBLoss,
-                                  augmenter=NoAugmentation,
-                                  target_pair_constructor=TemporalOffsetPairConstructor,
-                                  **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=StochasticEncoder,
+                         decoder=NoOp,
+                         loss_calculator=CEBLoss,
+                         augmenter=NoAugmentation,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 class FixedVarianceCEB(RepresentationLearner):
     """
+    CEB with fixed rather than learned variance
     """
     def __init__(self, env, log_dir, **kwargs):
         self.clean_kwargs(kwargs)
-        super(FixedVarianceCEB, self).__init__(env=env,
-                                  log_dir=log_dir,
-                                  encoder=DeterministicEncoder,
-                                  decoder=NoOp,
-                                  loss_calculator=CEBLoss,
-                                  augmenter=AugmentContextAndTarget,
-                                  target_pair_constructor=TemporalOffsetPairConstructor,
-                                  **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=NoOp,
+                         loss_calculator=CEBLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 class FixedVarianceTargetProjectedCEB(RepresentationLearner):
     """
     """
     def __init__(self, env, log_dir, **kwargs):
         self.clean_kwargs(kwargs)
-        super(FixedVarianceTargetProjectedCEB, self).__init__(env=env,
-                                                              log_dir=log_dir,
-                                                              encoder=DeterministicEncoder,
-                                                              decoder=TargetProjection,
-                                                              loss_calculator=CEBLoss,
-                                                              augmenter=AugmentContextAndTarget,
-                                                              target_pair_constructor=TemporalOffsetPairConstructor,
-                                                              **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=TargetProjection,
+                         loss_calculator=CEBLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 
 
@@ -242,7 +239,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     possible action distribution.
     """
     def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
-        self.clean_kwargs(kwargs, self.__class__)
+        self.clean_kwargs(kwargs)
         kwargs['preprocess_extra_context'] = False
         self.update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
                                                            {"temporal_offset": temporal_offset, "mode": "dynamics"})
@@ -250,14 +247,14 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
         self.update_kwarg_dict(kwargs, 'decoder_kwargs',
                                            {'action_space': env.action_space})
 
-        super(ActionConditionedTemporalCPC, self).__init__(env=env,
-                                                           log_dir=log_dir,
-                                                           target_pair_constructor=TemporalOffsetPairConstructor,
-                                                           encoder=DeterministicEncoder,
-                                                           decoder=ActionConditionedVectorDecoder,
-                                                           loss_calculator=BatchAsymmetricContrastiveLoss,
-                                                           shuffle_batches=shuffle_batches,
-                                                           **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         encoder=DeterministicEncoder,
+                         decoder=ActionConditionedVectorDecoder,
+                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         shuffle_batches=shuffle_batches,
+                         **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
 WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
