@@ -5,9 +5,22 @@ from il_representations.algos.batch_extenders import IdentityBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
-from il_representations.algos import DEFAULT_HARDCODED_PARAMS, get_default_args
 from gym.spaces import Box
 import torch
+import inspect
+
+
+DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
+
+
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+
 
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
