@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from il_representations.algos.batch_extenders import IdentityBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
+from il_representations.algos.utils import AverageMeter, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
 from gym.spaces import Box
 import torch
@@ -28,6 +28,7 @@ def to_dict(kwargs_element):
         return {}
     else:
         return kwargs_element
+
 
 class MultiLogger():
     def __init__(self, log_dir):
