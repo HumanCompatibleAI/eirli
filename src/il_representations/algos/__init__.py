@@ -23,8 +23,17 @@ def get_default_args(func):
 
 
 def update_kwarg_dict(kwargs, kwargs_key, update_dict, cls):
-    # Add values within `update_dict` to kwargs['kwargs_key']
-    internal_kwargs = kwargs.get(kwargs_key) or {} # why is Python default not working?
+    """
+    Updates an internal kwargs dict within `kwargs`, specified by `kwargs_key`, to
+    contain the values within `update_dict`
+
+    :param kwargs: A dictionary for all RepresentationLearner kwargs
+    :param kwargs_key: A key indexing into `kwargs` representing a keyword arg that is itself a kwargs dictionary.
+    :param update_dict: A dict containing the key/value changes that should be made to kwargs[kwargs_key]
+    :param cls: The class on which this is being called
+    :return:
+    """
+    internal_kwargs = kwargs.get(kwargs_key) or {}
     for key, value in update_dict.items():
         if key in internal_kwargs:
             assert internal_kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
@@ -33,7 +42,17 @@ def update_kwarg_dict(kwargs, kwargs_key, update_dict, cls):
 
     kwargs[kwargs_key] = internal_kwargs
 
+
 def clean_kwargs(kwargs, cls, keys=None):
+    """
+    Checks to confirm that you're not passing in an non-default value for a parameter that gets hardcoded
+    by the class definition
+
+    :param kwargs: Dictionary of all RepresentationLearner params
+    :param cls: The class on which this is being called
+    :param keys: The keys that are hardcoded by the class definition
+    :return:
+    """
     default_args = get_default_args(RepresentationLearner.__init__)
     if keys is None:
         keys = DEFAULT_HARDCODED_PARAMS
