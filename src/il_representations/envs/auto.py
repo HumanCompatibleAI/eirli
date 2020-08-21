@@ -59,7 +59,6 @@ def load_vec_env(benchmark_name,
         final_env = VecFrameStack(
             VecTransposeImage(make_atari_env(gym_env_name,
                                              n_envs=n_envs), ), 4)
-        import pdb; pdb.set_trace()
         assert final_env.observation_space.shape == (4, 84, 84), \
             final_env.observation_space.shape
         return final_env
