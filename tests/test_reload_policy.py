@@ -16,7 +16,7 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
             'pretrain_epochs': 1,
             'batch_size': 7,
             'unit_test_max_train_steps': 2,
-            'representation_dim': 3,
+            'algo_params': {'representation_dim': 3},
             'algo': MoCo,
             'use_random_rollouts': False,
             'benchmark': BENCHMARK_CONFIGS[0],
