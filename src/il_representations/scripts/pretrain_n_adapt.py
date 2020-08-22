@@ -3,6 +3,7 @@ This file should support:
 1. Running representation pretrain for X seeds, then adapt on an IL algo for Y seeds.
 2. Grid search over different configurations
 """
+import os
 import os.path as osp
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -49,14 +50,20 @@ def base_config(representation_learning, il_train):
     exp_name = "grid_search"
     spec = {
         'rep': {
-            'algo': tune.grid_search(['MoCo', 'SimCLR'])
+            'algo': tune.grid_search(['MoCo']),
         },
         'il': {
-            'lr': tune.grid_search([0.01, 0.02])
+            'lr': tune.grid_search([0.01, 0.02]),
         }
     }
+
     rep_ex_config = dict(representation_learning)
+    rep_ex_config['pretrain_epochs'] = 1
+    rep_ex_config['root_dir'] = os.getcwd()
+
     il_ex_config = dict(il_train)
+    il_ex_config['bc_n_epochs'] = 1
+    il_ex_config['root_dir'] = os.getcwd()
 
 
 @chain_ex.main

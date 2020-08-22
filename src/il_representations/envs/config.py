@@ -8,7 +8,7 @@ benchmark_ingredient = Ingredient('benchmark')
 @benchmark_ingredient.config
 def bench_defaults():
     # set this to "magical" or "dm_control"
-    benchmark_name = 'magical'
+    benchmark_name = 'atari'
 
     # ########################
     # MAGICAL config variables
@@ -71,5 +71,5 @@ def bench_defaults():
         'BreakoutNoFrameskip-v4':
         "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
         'PongNoFrameskip-v4':
-        "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+        "tests/data/atari/pong.npz",
     }

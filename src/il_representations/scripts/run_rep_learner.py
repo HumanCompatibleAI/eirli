@@ -24,6 +24,7 @@ represent_ex = Experiment('representation_learning',
 def default_config():
     algo = "MoCo"
     use_random_rollouts = False
+    root_dir = os.getcwd()
     n_envs = 1
     timesteps = 640
     pretrain_only = False
@@ -73,11 +74,15 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts,
-        seed, algo, n_envs, timesteps, representation_dim,
+        seed, algo, n_envs, root_dir, timesteps, representation_dim,
         ppo_finetune, pretrain_epochs, _config):
+
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
+
+    # The cwd can be changed when the experiment is called by Ray. Reset that.
+    os.chdir(root_dir)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
