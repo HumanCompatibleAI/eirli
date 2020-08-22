@@ -1,5 +1,4 @@
-"""Benchmark ingredient configurations for different tasks. Useful for writing
-unit tests."""
+"""Benchmark ingredient configurations for unit testing."""
 from os import path
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
@@ -39,3 +38,16 @@ BENCHMARK_TEST_CONFIGS = [
         **COMMON_TEST_CONFIG,
     },
 ]
+FAST_IL_TRAIN_CONFIG = {
+    'bc': {
+        'n_epochs': 1,
+    },
+    'gail': {
+        'total_timesteps': 2,
+        'ppo_n_steps': 1,
+        'ppo_batch_size': 2,
+        'ppo_n_epochs': 1,
+        'disc_minibatch_size': 2,
+        'disc_batch_size': 2,
+    },
+}

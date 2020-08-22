@@ -2,7 +2,8 @@ import os
 
 import pytest
 
-from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS
+from il_representations.test_support.configuration import (BENCHMARK_TEST_CONFIGS,
+                                                           FAST_IL_TRAIN_CONFIG)
 
 
 @pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
@@ -21,17 +22,7 @@ def test_il_train_test(benchmark_cfg, algo, il_train_ex, il_test_ex,
         'algo': algo,
         'final_pol_name': final_pol_name,
         # these defaults make training cheap
-        'bc': {
-            'n_epochs': 1,
-        },
-        'gail': {
-            'total_timesteps': 2,
-            'ppo_n_steps': 1,
-            'ppo_batch_size': 2,
-            'ppo_n_epochs': 1,
-            'disc_minibatch_size': 2,
-            'disc_batch_size': 2,
-        },
+        **FAST_IL_TRAIN_CONFIG,
         **common_cfg,
     })
     # FIXME(sam): same comment as elsewhere: should have a better way of
