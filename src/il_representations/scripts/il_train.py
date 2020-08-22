@@ -28,6 +28,7 @@ def default_config():
     # Common config vars
     # ##################
 
+    root_dir = os.getcwd()
     # device to place all computations on
     device_name = 'auto'
     # choose between 'bc'/'gail'
@@ -146,7 +147,7 @@ def do_training_gail(venv_chans_first, dataset, device_name, encoder,
 
 
 @il_train_ex.main
-def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
+def train(algo, bc_n_epochs, benchmark, encoder_path, root_dir, _config):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
@@ -154,6 +155,9 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, _config):
     # actually know the right way to write log files continuously in Sacred.
     log_dir = il_train_ex.observers[0].dir
     imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
+
+    # The cwd can be changed when the experiment is called by Ray. Reset that.
+    os.chdir(root_dir)
 
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()
