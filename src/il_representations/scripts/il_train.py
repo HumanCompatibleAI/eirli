@@ -86,21 +86,20 @@ def default_config():
     )
 
 
-@il_train_ex.capture
-def make_policy(venv, encoder_or_path):
+def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
-    # so that it can be configured in the same way, with the same defaults,
-    # etc.
+    # so that it can be configured in the same way, with the same default
+    # encoder architecture & kwargs.
     common_policy_kwargs = {
-        'observation_space': venv.observation_space,
-        'action_space': venv.action_space,
+        'observation_space': observation_space,
+        'action_space': action_space,
         # SB3 policies require a learning rate for the embedded optimiser. BC
         # should not use that optimiser, though, so we set the LR to some
         # insane value that is guaranteed to cause problems if the optimiser
         # accidentally is used for something (using infinite or non-numeric
         # values fails initial validation, so we need an insane-but-finite
         # number).
-        'lr_schedule': lambda _: 1e100,
+        'lr_schedule': (lambda _: 1e100) if lr_schedule is None else lr_schedule,
         'ortho_init': False,
     }
     if encoder_or_path is not None:
@@ -127,7 +126,7 @@ def make_policy(venv, encoder_or_path):
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
                    device_name, final_pol_name):
-    policy = make_policy(venv_chans_first, encoder)
+    policy = make_policy(venv_chans_first.observation_space, venv_chans_first.action_space, encoder)
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
         bc['augs'], stack_color_space=color_space)
@@ -159,22 +158,21 @@ def do_training_gail(
     final_pol_name,
     gail,
 ):
-    # Supporting encoder init requires:
-    # - Thinking more about how to handle LR of the optimiser stuffed inside
-    #   the policy (at the moment we just set an insane default LR because BC
-    #   doesn't use it, but PPO actually will use it).
-    # - Thinking about how to init the discriminator as well (GAIL
-    #   discriminators are incredibly finicky, so that's probably where most
-    #   of the value of representation learning will come from in GAIL).
-    assert encoder is None, "encoder not yet supported"
-
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
+        encoder=encoder,
     )
+
+    def policy_constructor(observation_space, action_space, lr_schedule, use_sde=False):
+        """Construct a policy with the right LR schedule (since PPO will
+        actually use it, unlike BC)."""
+        assert not use_sde
+        return make_policy(observation_space, action_space, encoder, lr_schedule)
+
     ppo_algo = PPO(
-        policy=sb3_pols.ActorCriticCnnPolicy,
+        policy=policy_constructor,
         env=venv_chans_first,
         # verbose=1 and tensorboard_log=False is a hack to work around SB3
         # issue #109.

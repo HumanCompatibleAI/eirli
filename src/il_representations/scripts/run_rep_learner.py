@@ -36,6 +36,11 @@ def default_config():
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
+    encoder_kwargs = {
+        # this is just the default, but we need to set it so that Sacred
+        # doesn't complain about unused values when we overwrite it later
+        'obs_encoder_cls': 'BasicCNN',
+    }
     augmenter_kwargs = {
         # augmenter_spec is a comma-separated list of enabled augmentations.
         # See `help(imitation.augment.StandardAugmentations)` for available
