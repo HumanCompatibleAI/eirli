@@ -106,6 +106,14 @@ class DefaultStochasticCNN(nn.Module):
 
 class Encoder(nn.Module):
     # Calls to self() will call self.forward()
+    def __init__(self):
+        super().__init__()
+
+    @property
+    def device(self):
+        first_param = next(self.parameters())
+        return first_param.device
+
     def encode_target(self, x, traj_info):
         return self(x, traj_info)
 
@@ -117,14 +125,14 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1, **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
         :param architecture_module_cls: An internal architecture implementing `forward` to return a single vector
         representing the mean representation z of a fixed-variance representation distribution
         """
-        super(DeterministicEncoder, self).__init__()
+        super().__init__(**kwargs)
         if architecture_module_cls is None:
             architecture_module_cls = NatureCNN
         self.network = architecture_module_cls(obs_space, representation_dim)
@@ -136,14 +144,14 @@ class DeterministicEncoder(Encoder):
 
 
 class StochasticEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_model_cls=None):
+    def __init__(self, obs_space, representation_dim, architecture_model_cls=None, **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
         :param architecture_module_cls: An internal architecture implementing `forward` to return
         two vectors, representing the mean AND learned standard deviation of a representation distribution
         """
-        super(StochasticEncoder, self).__init__()
+        super().__init__(**kwargs)
         if architecture_model_cls is None:
             architecture_model_cls = DefaultStochasticCNN
         self.network = architecture_model_cls(obs_space, representation_dim)
@@ -166,8 +174,8 @@ class InverseDynamicsEncoder(DeterministicEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, inner_encoder_architecture_cls=None):
-        super(MomentumEncoder, self).__init__()
+                 momentum_weight=0.999, inner_encoder_architecture_cls=None, **kwargs):
+        super().__init__(**kwargs)
         if learn_scale:
             inner_encoder_cls = StochasticEncoder
         else:
@@ -201,8 +209,8 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None, rnn_output_dim=64):
-        super(RecurrentEncoder, self).__init__()
+                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None, rnn_output_dim=64, **kwargs):
+        super().__init__(**kwargs)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
@@ -238,7 +246,7 @@ class RecurrentEncoder(Encoder):
             # Keep track of how many actual unpadded values were in the trajectory
             mask_lengths.append(traj_z.shape[0])
             pad_size = batch_size - traj_z.shape[0]
-            padding = torch.zeros((pad_size,) + input_shape)
+            padding = torch.zeros((pad_size,) + input_shape).to(self.device)
             padded_z = torch.cat([traj_z, padding])
             padded_trajectories.append(padded_z)
         assert np.mean(mask_lengths) > self.min_traj_size, f"Batches must contain trajectories with an average " \
