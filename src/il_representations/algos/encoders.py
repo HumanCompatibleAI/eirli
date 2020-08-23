@@ -106,9 +106,13 @@ class DefaultStochasticCNN(nn.Module):
 
 class Encoder(nn.Module):
     # Calls to self() will call self.forward()
-    def __init__(self, device):
+    def __init__(self):
         super().__init__()
-        self.device = device
+
+    @property
+    def device(self):
+        first_param = next(self.parameters())
+        return first_param.device
 
     def encode_target(self, x, traj_info):
         return self(x, traj_info)
@@ -210,7 +214,6 @@ class RecurrentEncoder(Encoder):
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
-        self.device = device
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
         self.single_frame_encoder = DeterministicEncoder(obs_shape, self.single_frame_repr_dim,
                                                          inner_encoder_architecture_cls)
