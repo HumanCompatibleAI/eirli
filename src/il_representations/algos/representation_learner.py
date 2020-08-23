@@ -1,7 +1,5 @@
 import os
 import torch
-import numpy as np
-from collections import Counter
 from stable_baselines3.common.utils import get_device
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -9,8 +7,8 @@ from il_representations.algos.batch_extenders import IdentityBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
-import itertools
 from gym.spaces import Box
+
 
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
@@ -18,7 +16,6 @@ def to_dict(kwargs_element):
         return {}
     else:
         return kwargs_element
-
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
@@ -174,7 +171,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return batch['context'], batch['target'], batch['traj_ts_ids'], None
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
-
 
     def learn(self, dataset, training_epochs):
         """
