@@ -92,6 +92,7 @@ def base_config(representation_learning, il_train, il_test):
         },
         'il_train': {
             'algo': tune.grid_search(['bc']),
+            # 'freeze_encoder': tune.grid_search([True, False])
         },
         'il_test': {
 
