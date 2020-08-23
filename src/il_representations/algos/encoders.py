@@ -106,6 +106,10 @@ class DefaultStochasticCNN(nn.Module):
 
 class Encoder(nn.Module):
     # Calls to self() will call self.forward()
+    def __init__(self, device='None'):
+        super().__init__()
+        self.device = device
+
     def encode_target(self, x, traj_info):
         return self(x, traj_info)
 
@@ -117,7 +121,7 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1, **kwargs):
+    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
@@ -136,7 +140,7 @@ class DeterministicEncoder(Encoder):
 
 
 class StochasticEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_model_cls=None, **kwargs):
+    def __init__(self, obs_space, representation_dim, architecture_model_cls=None):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
@@ -166,7 +170,7 @@ class InverseDynamicsEncoder(DeterministicEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, inner_encoder_architecture_cls=None, **kwargs):
+                 momentum_weight=0.999, inner_encoder_architecture_cls=None):
         super(MomentumEncoder, self).__init__()
         if learn_scale:
             inner_encoder_cls = StochasticEncoder
@@ -202,7 +206,7 @@ class MomentumEncoder(Encoder):
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, device, learn_scale=False, num_recurrent_layers=2,
                  single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None, rnn_output_dim=64):
-        super(RecurrentEncoder, self).__init__()
+        super(RecurrentEncoder, self).__init__(device=device)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
