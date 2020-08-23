@@ -29,3 +29,4 @@ def test_algo(algo, benchmark_cfg, represent_ex):
                                      'use_random_rollouts': False,
                                      'benchmark': benchmark_cfg,
                                      'ppo_finetune': False})
+

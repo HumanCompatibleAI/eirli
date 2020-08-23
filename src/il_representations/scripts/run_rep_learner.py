@@ -128,6 +128,7 @@ def run(benchmark, use_random_rollouts,
         ppo_model.learn(total_timesteps=1000)
 
     venv.close()
+    return {'encoder_path': os.path.join(model.encoder_checkpoints_path, f'{pretrain_epochs-1}_epochs.ckpt')}
 
 
 if __name__ == '__main__':

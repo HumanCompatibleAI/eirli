@@ -107,6 +107,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc_n_epochs, encoder,
     final_path = os.path.join(out_dir, 'policy_final.pt')
     logging.info(f"Saving final policy to {final_path}")
     trainer.save_policy(final_path)
+    return final_path
 
 
 @il_train_ex.capture
@@ -173,15 +174,15 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, root_dir, _config):
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        do_training_bc(dataset=dataset,
-                       venv_chans_first=venv,
-                       out_dir=log_dir,
-                       encoder=encoder)
+        final_path = do_training_bc(dataset=dataset,
+                                    venv_chans_first=venv,
+                                    out_dir=log_dir,
+                                    encoder=encoder)
 
     elif algo == 'gail':
-        do_training_gail(dataset=dataset,
-                         venv_chans_first=venv,
-                         encoder=encoder)
+        final_path = do_training_gail(dataset=dataset,
+                                      venv_chans_first=venv,
+                                      encoder=encoder)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
@@ -190,7 +191,7 @@ def train(algo, bc_n_epochs, benchmark, encoder_path, root_dir, _config):
     # exception after creating it (could use try/catch or a context manager)
     venv.close()
 
-    return log_dir
+    return {'model_path': final_path}
 
 
 if __name__ == '__main__':
