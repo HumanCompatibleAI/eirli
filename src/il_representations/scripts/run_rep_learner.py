@@ -32,6 +32,7 @@ def default_config():
     representation_dim = 128
     ppo_finetune = True
     batch_size = 256
+    device = "auto"
     scheduler_kwargs = dict()
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
