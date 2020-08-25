@@ -1,12 +1,10 @@
-from .representation_learner import RepresentationLearner
-from .encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
-from .decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder
-from .losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss
-from .augmenters import AugmentContextAndTarget, AugmentContextOnly
-from .pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
-from .batch_extenders import QueueBatchExtender
-from .optimizers import LARS
+from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly
+from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.decoders import ActionConditionedVectorDecoder, BYOLProjectionHead, MomentumProjectionHead, NoOp, ProjectionHead
+from il_representations.algos.encoders import DeterministicEncoder, DynamicsEncoder, InverseDynamicsEncoder, MomentumEncoder, RecurrentEncoder, StochasticEncoder
+from il_representations.algos.losses import BatchAsymmetricContrastiveLoss, CEBLoss, MSELoss, QueueAsymmetricContrastiveLoss, SymmetricContrastiveLoss
+from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
+from il_representations.algos.representation_learner import RepresentationLearner
 
 
 def update_kwarg_dict(kwargs, update_dict, cls):

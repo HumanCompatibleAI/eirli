@@ -1,9 +1,10 @@
+import functools
 import torch.nn as nn
 import copy
 import torch
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
-from .utils import independent_multivariate_normal
+from il_representations.algos.utils import independent_multivariate_normal
 import gym.spaces as spaces
 import numpy as np
 
@@ -128,7 +129,6 @@ class BYOLProjectionHead(MomentumProjectionHead):
                                       covariance_matrix=prediction_dist.covariance_matrix)
 
 
-
 class ActionConditionedVectorDecoder(LossDecoder):
     def __init__(self, representation_dim, projection_shape, action_space, sample=False, action_encoding_dim=128,
                  action_encoder_layers=1, learn_scale=False, action_embedding_dim=5, use_lstm=False):
@@ -138,11 +138,14 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
         # If actions are continuous/box, this is done via a simple flattening.
         if isinstance(action_space, spaces.Discrete):
-            self.action_processer= nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
+            self.action_processor = nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
             processed_action_dim = action_embedding_dim
+            self.action_shape = ()  # discrete actions are just numbers
         elif isinstance(action_space, spaces.Box):
-            self.action_processer = torch.flatten
+            self.action_processor = functools.partial(torch.flatten,
+                                                      start_dim=2)
             processed_action_dim = np.prod(action_space.shape)
+            self.action_shape = action_space.shape
         else:
             raise NotImplementedError("Action conditioning is only currently implemented for Discrete and Box action spaces")
 
@@ -171,9 +174,15 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         actions = extra_context
+        assert actions.ndim >= 2, actions.shape
+        assert actions.shape[2:] == self.action_shape, actions.shape
+        batch_dim, time_dim = actions.shape[:2]
+
         # Process each batch-vectorized set of actions, and then stack
         # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
-        processed_actions = torch.stack([self.action_processer(action) for action in actions], dim=1)
+        processed_actions = self.action_processor(actions)
+        assert processed_actions.shape[:2] == (batch_dim, time_dim), \
+            processed_actions.shape
 
         # Encode multiple actions into a single action vector (format based on LSTM)
         if self.action_encoder is not None:
@@ -182,6 +191,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
             hidden = torch.mean(processed_actions, dim=1)
 
         action_encoding_vector = torch.squeeze(hidden)
+        assert action_encoding_vector.shape[0] == batch_dim, \
+            action_encoding_vector.shape
 
         # Concatenate context representation and action representation and map to a merged representation
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)

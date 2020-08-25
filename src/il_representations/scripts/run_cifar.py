@@ -1,8 +1,10 @@
-from algos import *
 from gym.spaces import Discrete, Box
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from algos.optimizers import LARS
+from il_representations.algos import *
+from il_representations.algos.augmenters import ColorSpace
+from il_representations.algos.optimizers import LARS
+from il_representations.algos.utils import LinearWarmupCosine
 from math import ceil
 
 import numpy as np
@@ -14,7 +16,6 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet18
-from algos.utils import LinearWarmupCosine
 
 
 class MockGymEnv(object):
@@ -38,11 +39,11 @@ def transform_to_rl(dataset):
     adding dummy 'actions' (always 0) and 'dones' (always False), and pretending
     that everything is from the same 'trajectory'.
     """
-    states = [img for img, label in dataset]
+    obs = [img for img, label in dataset]
     data_dict = {
-        'states': states,
-        'actions': [0.0] * len(states),
-        'dones': [False] * len(states),
+        'obs': obs,
+        'acts': [0.0] * len(obs),
+        'dones': [False] * len(obs),
     }
     return data_dict
 
@@ -153,11 +154,12 @@ def representation_learning(algo, data_dir, num_epochs, device, log_dir):
 
     model = algo(
         env, log_dir=log_dir, batch_size=batch_size, representation_dim=512, projection_dim=128,
-        device=device, normalize=False, shuffle_batches=True,
+        device=device, normalize=False, shuffle_batches=True, color_space=ColorSpace.RGB,
+        save_interval=100,
         encoder_kwargs={'architecture_module_cls': lambda *args: resnet_without_fc},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
         optimizer=LARS,
-        optimizer_kwargs={'lr': 2.0, 'weight_decay': 1e-4, 'momentum': 0.9, 'max_epoch': num_steps},
+        optimizer_kwargs={'lr': 1.0, 'weight_decay': 1e-4, 'momentum': 0.9, 'max_epoch': num_steps},
         scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': 0.5},

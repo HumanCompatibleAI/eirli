@@ -18,7 +18,7 @@ def independent_multivariate_normal(loc, scale):
     batch_dim = loc.shape[0]
     if isinstance(scale, Number):
         # If the scale was passed in as a scalar, convert it to the same shape as loc
-        scale = torch.ones(loc.shape)*scale
+        scale = torch.ones(loc.shape, device=loc.device)*scale
 
     # Turn each <feature-dim>-length vector in the batch into a diagonal matrix, because we want an
     # independent multivariate normal
