@@ -169,17 +169,11 @@ class MAGICALCNN(nn.Module):
 
         # another FC layer to make feature maps the right size
         fc_in_size, = compute_output_shape(observation_space, conv_layers)
-        reduce_layer = nn.Linear(fc_in_size, fc_dim)
-        if use_sn:
-            # we also apply spectral norm to linear layers
-            reduce_layer = nn.utils.spectral_norm(reduce_layer)
-
         fc_layers = [
             nn.Linear(fc_in_size, fc_dim * w),
             ActivationCls(),
-            nn.Linear(fc_in_size, representation_dim),
+            nn.Linear(fc_dim * w, representation_dim),
         ]
-
         if use_sn:
             # apply SN to linear layers too
             fc_layers = [
