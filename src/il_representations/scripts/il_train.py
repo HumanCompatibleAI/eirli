@@ -148,10 +148,14 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         expert_data=dataset,
         device=device_name,
         augmentation_fn=augmenter,
+        optimizer_cls=th.optim.SGD,
+        optimizer_kwargs=dict(lr=1e-3, momentum=0.1),
+        ent_weight=1e-3,
+        l2_weight=1e-5,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'], log_interval=1000)
+    trainer.train(n_epochs=bc['n_epochs'], log_interval=500)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
