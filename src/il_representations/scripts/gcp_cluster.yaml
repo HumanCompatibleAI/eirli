@@ -71,6 +71,7 @@ head_node:
           diskSizeGb: 50
           # See https://cloud.google.com/compute/docs/images for more images
           sourceImage: projects/deeplearning-platform-release/global/images/family/tf-1-13-cpu
+          # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
 
     # Additional options can be found in in the compute docs at
     # https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert
@@ -94,6 +95,7 @@ worker_nodes:
           diskSizeGb: 50
           # See https://cloud.google.com/compute/docs/images for more images
           sourceImage: projects/deeplearning-platform-release/global/images/family/tf-1-13-cpu
+          # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
     # Run workers on preemtible instance by default.
     # Comment this out to use on-demand.
     scheduling:
@@ -142,6 +144,8 @@ setup_commands:
       && conda install -c anaconda python=3.7
     # Install ray
     - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.9.0.dev0-cp37-cp37m-manylinux1_x86_64.whl
+    - cd ~/il-rep/ && pip install -r requirements.txt
+    - cd ~/il-rep/ && pip install -e .
 
 
 # Custom commands that will be run on the head node after common setup.
@@ -150,6 +154,7 @@ head_setup_commands:
 
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: []
+
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
