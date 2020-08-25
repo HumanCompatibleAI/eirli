@@ -1,5 +1,6 @@
 runs
 test_observer
+*_runs
 *.pyc
 *.egg-info
 # data/ is used to set up symlinks to datasets
