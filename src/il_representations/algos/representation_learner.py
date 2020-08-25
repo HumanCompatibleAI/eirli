@@ -234,4 +234,3 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if epoch % self.save_interval == 0:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
-        return

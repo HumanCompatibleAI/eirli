@@ -68,10 +68,6 @@ il_train_ex = Experiment('il_train', ingredients=[
 
 @il_train_ex.config
 def default_config():
-    # ##################
-    # Common config vars
-    # ##################
-
     root_dir = os.getcwd()  # noqa: F841
     # random seed for EVERYTHING
     seed = 42  # noqa: F841
