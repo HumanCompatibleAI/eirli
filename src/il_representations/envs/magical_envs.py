@@ -10,8 +10,8 @@ from typing import List, Tuple
 import imitation.data.datasets as il_datasets
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
-from magical import register_envs, saved_trajectories
-from magical.evaluation import EvaluationProtocol
+# from magical import register_envs, saved_trajectories
+# from magical.evaluation import EvaluationProtocol
 import numpy as np
 
 from il_representations.envs.config import benchmark_ingredient

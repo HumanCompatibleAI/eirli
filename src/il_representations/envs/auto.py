@@ -10,8 +10,8 @@ from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
-from il_representations.envs.magical_envs import (get_env_name_magical,
-                                                  load_dataset_magical)
+# from il_representations.envs.magical_envs import (get_env_name_magical,
+#                                                   load_dataset_magical)
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark['benchmark_name']!r}"
 
