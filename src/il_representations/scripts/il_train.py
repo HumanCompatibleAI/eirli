@@ -135,7 +135,9 @@ def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
                    device_name, final_pol_name):
-    policy = make_policy(venv_chans_first.observation_space, venv_chans_first.action_space, encoder)
+    policy = make_policy(
+        observation_space=venv_chans_first.observation_space,
+        action_space=venv_chans_first.action_space, encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
     trainer = BC(
@@ -178,7 +180,9 @@ def do_training_gail(
         """Construct a policy with the right LR schedule (since PPO will
         actually use it, unlike BC)."""
         assert not use_sde
-        return make_policy(observation_space, action_space, encoder, lr_schedule)
+        return make_policy(
+            observation_space=observation_space, action_space=action_space,
+            encoder_or_path=encoder, lr_schedule=lr_schedule)
 
     ppo_algo = PPO(
         policy=policy_constructor,
