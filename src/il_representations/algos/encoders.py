@@ -105,14 +105,11 @@ class MAGICALCNN(nn.Module):
     def __init__(self,
                  observation_space,
                  representation_dim,
-                 # TODO(sam): enable BN by default once I'm sure that .train()
-                 # and .eval() are used correctly throughout the codebase.
-                 use_bn=False,
+                 use_bn=True,
                  use_ln=False,
                  dropout=None,
                  use_sn=False,
                  width=2,
-                 fc_dim=128,
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
@@ -170,9 +167,9 @@ class MAGICALCNN(nn.Module):
         # another FC layer to make feature maps the right size
         fc_in_size, = compute_output_shape(observation_space, conv_layers)
         fc_layers = [
-            nn.Linear(fc_in_size, fc_dim * w),
+            nn.Linear(fc_in_size, 128 * w),
             ActivationCls(),
-            nn.Linear(fc_dim * w, representation_dim),
+            nn.Linear(128 * w, representation_dim),
         ]
         if use_sn:
             # apply SN to linear layers too
