@@ -177,7 +177,7 @@ class MAGICALCNN(nn.Module):
         fc_layers = [
             nn.Linear(fc_in_size, fc_dim * w),
             ActivationCls(),
-            nn.Linear(fc_in_size, fc_dim),
+            nn.Linear(fc_in_size, representation_dim),
         ]
 
         if use_sn:
