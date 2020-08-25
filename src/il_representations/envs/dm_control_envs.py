@@ -3,6 +3,7 @@ environments with Gym."""
 import glob
 import gzip
 import os
+import random
 
 import cloudpickle
 import dmc2gym
@@ -73,7 +74,7 @@ def register_dmc_envs():
 
 @benchmark_ingredient.capture
 def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
-                            dm_control_demo_patterns):
+                            dm_control_demo_patterns, n_traj):
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
     data_paths = glob.glob(os.path.expanduser(data_pattern))
@@ -82,6 +83,11 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         with gzip.GzipFile(data_path, 'rb') as fp:
             new_data = cloudpickle.load(fp)
         loaded_trajs.extend(new_data)
+
+    loaded_trajs = list(loaded_trajs)
+    random.shuffle(loaded_trajs)
+    if n_traj is not None:
+        loaded_trajs = loaded_trajs[:n_traj]
 
     # join together all trajectories into a single dataset
     dones_lists = [
@@ -96,6 +102,8 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         np.concatenate([t.obs[:-1] for t in loaded_trajs], axis=0),
         'acts':
         np.concatenate([t.acts for t in loaded_trajs], axis=0),
+        'next_obs':
+        np.concatenate([t.obs[1:] for t in loaded_trajs], axis=0),
         'infos':
         np.concatenate([t.infos for t in loaded_trajs], axis=0),
         'rews':

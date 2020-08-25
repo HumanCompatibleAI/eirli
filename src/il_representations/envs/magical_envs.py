@@ -4,6 +4,7 @@ environments."""
 import collections
 import logging
 import os
+import random
 from typing import List, Tuple
 
 import imitation.data.datasets as il_datasets
@@ -66,14 +67,15 @@ def load_data(
             # allocentric view, respectively. We handle this case first.
             for key, value in trajectory.obs.items():
                 # we clip off the last (terminal) time step, which doesn't
-                # correspond to any action
-                full_key = 'obs_' + key
-                dataset_dict[full_key].append(value[:-1])
+                # correspond to any action, and use it for next_obs instead
+                dataset_dict[f'obs_{key}'].append(value[:-1])
+                dataset_dict[f'next_obs_{key}'].append(value[1:])
         else:
             # Otherwise, observations should just be a flat ndarray
             assert isinstance(trajectory.obs, np.ndarray)
             # again clip off the terminal observation
             dataset_dict['obs'].append(trajectory.obs[:-1])
+            dataset_dict['next_obs'].append(trajectory.obs[1:])
         dataset_dict['acts'].append(trajectory.acts)
         traj_t = len(trajectory.acts)
         dones_array = np.array([False] * (traj_t - 1) + [True], dtype='bool')
@@ -98,7 +100,7 @@ def get_env_name_magical(magical_env_prefix, magical_preproc):
 
 @benchmark_ingredient.capture
 def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc):
+                         magical_preproc, n_traj):
     demo_dir = magical_demo_dirs[magical_env_prefix]
     logging.info(
         f"Loading trajectory data for '{magical_env_prefix}' from "
@@ -109,6 +111,9 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
     ]
     if not demo_paths:
         raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
+    random.shuffle(demo_paths)
+    if n_traj is not None:
+        demo_paths = demo_paths[:n_traj]
     dataset_dict, loaded_env_name = load_data(
         demo_paths, preprocessor_name=magical_preproc)
     gym_env_name = get_env_name_magical()
@@ -120,12 +125,11 @@ class SB3EvaluationProtocol(EvaluationProtocol):
     """MAGICAL 'evaluation protocol' for Stable Baselines 3 policies."""
 
     # TODO: more docs, document __init__ in particular
-    def __init__(self, policy, run_id, seed, batch_size, **kwargs):
+    def __init__(self, policy, run_id, seed, **kwargs):
         super().__init__(**kwargs)
         self._run_id = run_id
         self.policy = policy
         self.seed = seed
-        self.batch_size = batch_size
 
     @property
     def run_id(self):
@@ -133,12 +137,13 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         `.do_eval()`."""
         return self._run_id
 
-    def obtain_scores(self, env_name):
+    @benchmark_ingredient.capture
+    def obtain_scores(self, env_name, venv_parallel, n_envs):
         """Collect `self.n_rollouts` scores on environment `env_name`."""
         vec_env_chans_last = make_vec_env(env_name,
-                                          n_envs=self.batch_size,
+                                          n_envs=n_envs,
                                           seed=self.seed,
-                                          parallel=False)
+                                          parallel=venv_parallel)
         rng = np.random.RandomState(self.seed)
         trajectories = il_rollout.generate_trajectories(
             self.policy,
