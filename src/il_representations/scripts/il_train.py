@@ -13,6 +13,7 @@ import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
 import torch as th
+from torch import nn
 
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data import TransitionsMinimalDataset
@@ -21,6 +22,7 @@ from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
+from il_representations.algos.encoders import DeterministicEncoder
 
 bc_ingredient = Ingredient('bc')
 
@@ -88,9 +90,14 @@ def default_config():
         venv_parallel=True,
         n_envs=16,
     )
+    encoder_kwargs = dict(  # noqa: F841
+        obs_encoder_cls='BasicCNN',
+        representation_dim=128,
+    )
 
 
-def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=None):
+@il_train_ex.capture
+def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs, lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
@@ -108,21 +115,19 @@ def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=No
     }
     if encoder_or_path is not None:
         if isinstance(encoder_or_path, str):
-            encoder_key = 'encoder_path'
+            encoder = th.load(encoder_or_path)
         else:
-            encoder_key = 'encoder'
-        policy_kwargs = {
-            'features_extractor_class': EncoderFeatureExtractor,
-            'features_extractor_kwargs': {
-                encoder_key: encoder_or_path
-            },
-            **common_policy_kwargs,
-        }
+            encoder = encoder_or_path
+        assert isinstance(encoder, nn.Module)
     else:
-        policy_kwargs = {
-            # don't pass a representation learner; we'll just use the default
-            **common_policy_kwargs,
-        }
+        encoder = DeterministicEncoder(observation_space, **encoder_kwargs)
+    policy_kwargs = {
+        'features_extractor_class': EncoderFeatureExtractor,
+        'features_extractor_kwargs': {
+            "encoder": encoder,
+        },
+        **common_policy_kwargs,
+    }
     policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
     return policy
 
