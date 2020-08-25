@@ -7,6 +7,10 @@ TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
 BENCHMARK_CONFIGS = [
     {
+        'benchmark_name': 'minecraft',
+        'minecraft_env_id': 'MineRLTreechopVectorObf-v0'
+    },
+    {
         'benchmark_name': 'atari',
         'atari_env_id': 'PongNoFrameskip-v4',
         'atari_demo_paths': {

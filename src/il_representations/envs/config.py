@@ -73,3 +73,11 @@ def bench_defaults():
         'PongNoFrameskip-v4':
         "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
     }
+
+    # ###########################
+    # Minecraft config variables
+    # ###########################
+
+    minecraft_env_id = 'MineRLTreechopVectorObf-v0'
+    minecraft_data_root = '/Users/cody/Data/minerl_updated/download/v3/data_texture_0_low_res/' #TODO fix this
+
