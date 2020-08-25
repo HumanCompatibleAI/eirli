@@ -2,9 +2,6 @@
 """Run an IL algorithm in some selected domain."""
 import logging
 import os
-# we need "readline" to stop PDB from segfaulting (it's some weird interaction
-# with Pyglet)
-import readline  # noqa: F401
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
@@ -154,7 +151,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'])
+    trainer.train(n_epochs=bc['n_epochs'], log_interval=1000)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
