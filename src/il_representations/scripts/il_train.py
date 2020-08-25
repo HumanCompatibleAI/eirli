@@ -2,6 +2,9 @@
 """Run an IL algorithm in some selected domain."""
 import logging
 import os
+# we need "readline" to stop PDB from segfaulting (it's some weird interaction
+# with Pyglet)
+import readline  # noqa: F401
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
