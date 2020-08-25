@@ -12,7 +12,7 @@ from il_representations.scripts.run_rep_learner import \
 def file_observer():
     # this will get created anew for each test, and added to experiments as
     # necessary
-    return FileStorageObserver('test_observer')
+    return FileStorageObserver('runs/test_observer')
 
 
 def _observer_fixture(ex, file_observer):
