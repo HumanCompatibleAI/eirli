@@ -1,7 +1,7 @@
 from gym.spaces import Discrete, Box
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from il_representations.algos import *
+from il_representations import algos
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.utils import LinearWarmupCosine
@@ -49,11 +49,11 @@ def transform_to_rl(dataset):
 
 
 class LinearHead(nn.Module):
-    def __init__(self, encoder, output_dim):
+    def __init__(self, encoder, encoder_dim, output_dim):
         super().__init__()
         self.encoder = encoder
         self.output_dim = output_dim
-        self.layer = nn.Linear(encoder.representation_dim, output_dim)
+        self.layer = nn.Linear(encoder_dim, output_dim)
 
     def forward(self, x):
         encoding = self.encoder.encode_context(x, None).loc.detach()
@@ -116,12 +116,11 @@ def evaluate_classifier(classifier, data_dir, device):
     print('Accuracy: %d %%' % (100 * correct / total))
 
 
-def representation_learning(algo, data_dir, num_epochs, device, log_dir):
+def representation_learning(algo, data_dir, device, log_dir, config):
     print('Train representation learner')
-
     if isinstance(algo, str):
-        algo = globals()[algo]
-    assert issubclass(algo, RepresentationLearner)
+        algo = getattr(algos, algo)
+    assert issubclass(algo, algos.RepresentationLearner)
 
     rep_learning_augmentations = [
         transforms.Lambda(torch.tensor),
@@ -142,7 +141,8 @@ def representation_learning(algo, data_dir, num_epochs, device, log_dir):
     trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
     rep_learning_data = transform_to_rl(trainset)
     num_examples = len(rep_learning_data)
-    batch_size = 512
+    num_epochs = config['pretrain_epochs']
+    batch_size = config['pretrain_batch_size']
     num_steps = num_epochs * int(ceil(num_examples / batch_size))
 
     # Note that the resnet18 model used here has an architecture meant for
@@ -153,16 +153,28 @@ def representation_learning(algo, data_dir, num_epochs, device, log_dir):
     resnet_without_fc.fc = torch.nn.Identity()
 
     model = algo(
-        env, log_dir=log_dir, batch_size=batch_size, representation_dim=512, projection_dim=128,
-        device=device, normalize=False, shuffle_batches=True, color_space=ColorSpace.RGB,
-        save_interval=100,
+        env,
+        log_dir=log_dir,
+        batch_size=batch_size,
+        representation_dim=config['representation_dim'],
+        projection_dim=config['projection_dim'],
+        device=device,
+        normalize=False,
+        shuffle_batches=True,
+        color_space=ColorSpace.RGB,
+        save_interval=config['pretrain_save_interval'],
         encoder_kwargs={'architecture_module_cls': lambda *args: resnet_without_fc},
         augmenter_kwargs={'augmentations': rep_learning_augmentations},
         optimizer=LARS,
-        optimizer_kwargs={'lr': 1.0, 'weight_decay': 1e-4, 'momentum': 0.9, 'max_epoch': num_steps},
+        optimizer_kwargs={
+            'lr': config['pretrain_lr'],
+            'weight_decay': config['pretrain_weight_decay'],
+            'momentum': config['pretrain_momentum'],
+            'max_epoch': num_steps,
+        },
         scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs},
-        loss_calculator_kwargs={'temp': 0.5},
+        loss_calculator_kwargs={'temp': config['pretrain_temperature']},
     )
 
     model.learn(rep_learning_data, num_epochs)
@@ -176,26 +188,34 @@ cifar_ex = Experiment('cifar')
 @cifar_ex.config
 def default_config():
     seed = 1
-    algo = SimCLR
+    algo = 'SimCLR'
     data_dir = 'cifar10/'
     pretrain_epochs = 1000
     finetune_epochs = 100
+    representation_dim = 512
+    projection_dim = 128
+    pretrain_lr = 1.0
+    pretrain_weight_decay = 1e-4
+    pretrain_momentum = 0.9
+    pretrain_batch_size = 512
+    pretrain_save_interval = 100
+    pretrain_temperature = 0.5
     _ = locals()
     del _
 
 
 @cifar_ex.main
-def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, _config):
+def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim, _config):
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
     os.makedirs(data_dir, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = representation_learning(algo, data_dir, pretrain_epochs, device, log_dir)
+    model = representation_learning(algo, data_dir, device, log_dir, _config)
 
     print('Train linear head')
-    classifier = LinearHead(model.encoder, output_dim=10).to(device)
+    classifier = LinearHead(model.encoder, representation_dim, output_dim=10).to(device)
     train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
     print('Evaluate accuracy on test set')
