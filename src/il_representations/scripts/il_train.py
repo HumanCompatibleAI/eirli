@@ -7,6 +7,7 @@ from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 from imitation.augment import StandardAugmentations
 import imitation.util.logger as imitation_logger
+import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
@@ -282,5 +283,6 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
 
 
 if __name__ == '__main__':
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     il_train_ex.observers.append(FileStorageObserver('runs/il_train_runs'))
     il_train_ex.run_commandline()
