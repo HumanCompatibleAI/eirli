@@ -13,7 +13,7 @@ PyYAML~=5.3.1
 
 # imitation needs special branch as of 2020-08-17
 git+git://github.com/HumanCompatibleAI/imitation@image-env-changes#egg=imitation
-git+https://github.com/HumanCompatibleAI/stable-baselines3.git@3f258877bdb42b415a833f903d6f7be070361b98#egg=stable-baselines3
+git+https://github.com/HumanCompatibleAI/stable-baselines3.git@7fbc974f15149f738ec7d6bd81c574e097dccb5a#egg=stable-baselines3
 
 # environments
 # (MAGICAL currently requires an old version of Pyglet)
