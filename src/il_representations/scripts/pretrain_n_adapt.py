@@ -2,6 +2,7 @@ import copy
 import os
 import os.path as osp
 import numpy as np
+import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import ray
@@ -158,6 +159,7 @@ def run(exp_name, metric, spec, num_samples, rep_ex_config, il_train_ex_config, 
 
 
 def main():
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     observer = FileStorageObserver('runs/chain_runs')
     chain_ex.observers.append(observer)
     chain_ex.run_commandline()
