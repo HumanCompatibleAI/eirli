@@ -10,7 +10,7 @@ for category in [FutureWarning, DeprecationWarning, PendingDeprecationWarning]:
 
 
 @pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
-def test_chain(benchmark_cfg, chain_ex):
+def test_chain(benchmark_cfg, chain_ex, file_observer):
     common_config = {
         'benchmark': benchmark_cfg,
         'device_name': 'cpu'
@@ -20,11 +20,10 @@ def test_chain(benchmark_cfg, chain_ex):
     chain_config['spec']['il_train'].update(common_config)
     chain_config['spec']['il_test'].update(common_config)
 
-    # TODO: Check if policy_path is needed
-    # final_pol_name = 'last_test_policy.pt'
-    # log_dir = file_observer.dir
-    # policy_path = os.path.join(log_dir, final_pol_name)
-    # chain_config['spec']['policy_path'].update(policy_path)
+    final_pol_name = 'last_test_policy.pt'
+    log_dir = file_observer.dir
+    policy_path = os.path.join(log_dir, final_pol_name)
+    chain_config['spec']['policy_path'].update(policy_path)
 
     observer = FileStorageObserver('runs/chain_runs')
     chain_ex.observers.append(observer)
