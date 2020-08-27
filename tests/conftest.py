@@ -4,7 +4,7 @@ from sacred.observers import FileStorageObserver
 
 from il_representations.scripts.il_test import il_test_ex as _il_test_ex
 from il_representations.scripts.il_train import il_train_ex as _il_train_ex
-from il_representations.scripts.pretrain_n_adapt import _chain_ex as _chain_ex
+from il_representations.scripts.pretrain_n_adapt import chain_ex as _chain_ex
 from il_representations.scripts.run_rep_learner import \
     represent_ex as _represent_ex
 
