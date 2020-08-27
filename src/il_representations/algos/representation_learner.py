@@ -8,6 +8,7 @@ from il_representations.algos.augmenters import AugmentContextOnly
 from gym.spaces import Box
 import torch
 import inspect
+import stable_baselines3.common.logger as sb_logger
 
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
@@ -46,7 +47,6 @@ class MultiLogger():
         self.writer.add_scalar(tag, scalar, self.global_step)
 
 
-
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, *,
                  log_dir, encoder, decoder, loss_calculator,
@@ -76,7 +76,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        self.multi_logger = MultiLogger(log_dir)
+        sb_logger.configure(log_dir, ["stdout", "tensorboard"])
+
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
         self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
@@ -118,7 +119,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             self.batch_extender = batch_extender(**batch_extender_kwargs)
 
-        self.loss_calculator = loss_calculator(self.device, self.multi_logger, **to_dict(loss_calculator_kwargs))
+        self.loss_calculator = loss_calculator(self.device, **to_dict(loss_calculator_kwargs))
 
         trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
         trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
@@ -293,8 +294,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.multi_logger.iterate_step()
-                self.log_info(loss, step, epoch, training_epochs)
+                sb_logger.record('epoch', epoch)
+                sb_logger.record('within_epoch_step', step)
+                sb_logger.dump()
 
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:

@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 import torch
 import torch.nn.functional as F
+import stable_baselines3.common.logger as sb_logger
+
 
 class RepresentationLoss(ABC):
-    def __init__(self, device, multi_logger, sample=False):
+    def __init__(self, device, sample=False):
         self.device = device
         self.sample = sample
-        self.multi_logger = multi_logger
 
     @abstractmethod
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
@@ -24,8 +25,8 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
     A basic contrastive loss that only does prediction/similarity comparison in one direction,
     only calculating a softmax of IJ similarity against all similarities with I.
     """
-    def __init__(self, device, multi_logger, sample=False, temp=0.1, normalize=True):
-        super(AsymmetricContrastiveLoss, self).__init__(device, multi_logger, sample)
+    def __init__(self, device, sample=False, temp=0.1, normalize=True):
+        super(AsymmetricContrastiveLoss, self).__init__(device, sample)
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
@@ -73,8 +74,8 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
     use_batch_neg=True.
     """
 
-    def __init__(self, device, multi_logger, sample=False, temp=0.1, use_batch_neg=False):
-        super(QueueAsymmetricContrastiveLoss, self).__init__(device, multi_logger, sample)
+    def __init__(self, device, sample=False, temp=0.1, use_batch_neg=False):
+        super(QueueAsymmetricContrastiveLoss, self).__init__(device, sample)
 
         self.temp = temp
         self.use_batch_neg = use_batch_neg  # Use other images in current batch as negative samples
@@ -127,8 +128,8 @@ class BatchAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
     come from all other images (and their augmented versions) in the same batch. Represents InfoNCE used in original
     CPC paper.
     """
-    def __init__(self, device, multi_logger, sample=False, temp=0.1):
-        super(BatchAsymmetricContrastiveLoss, self).__init__(device, multi_logger, sample)
+    def __init__(self, device, sample=False, temp=0.1):
+        super(BatchAsymmetricContrastiveLoss, self).__init__(device, sample)
         self.temp = temp
 
     def calculate_logits_and_labels(self, z_i, z_j, mask):
@@ -161,8 +162,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
 
-    def __init__(self, device, multi_logger, sample=False, temp=0.1, normalize=True):
-        super(SymmetricContrastiveLoss, self).__init__(device, multi_logger, sample)
+    def __init__(self, device, sample=False, temp=0.1, normalize=True):
+        super(SymmetricContrastiveLoss, self).__init__(device, sample)
 
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
@@ -203,14 +204,12 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         logits_ab = torch.matmul(z_i, z_j.T)  # NxN
         logits_ba = torch.matmul(z_j, z_i.T)  # NxN
 
-        avg_self_similarity = logits_ab.diag().mean().detach()
-        avg_other_similarity = logits_ab.masked_select(~torch.eye(batch_size, dtype=bool)).mean().detach()
+        avg_self_similarity = logits_ab.diag().mean().item()
+        avg_other_similarity = logits_ab.masked_select(~torch.eye(batch_size, dtype=bool)).mean().item()
 
-        self.multi_logger.add_scalar('average_self_similarity', avg_self_similarity)
-        self.multi_logger.add_scalar('average_other_similarity', avg_other_similarity)
-        self.multi_logger.add_scalar('self_other_similarity_delta', avg_self_similarity - avg_other_similarity)
-        self.multi_logger.log(
-            f"Avg similarity to target: {avg_self_similarity} Avg similarity to other: {avg_other_similarity}")
+        sb_logger.record('avg_self_similarity', avg_self_similarity)
+        sb_logger.record('avg_other_similarity', avg_other_similarity)
+        sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
 
         # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
         # to both original and augmented images (hence "symmetric").
@@ -228,8 +227,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
 
 
 class MSELoss(RepresentationLoss):
-    def __init__(self, device, multi_logger, sample=False):
-        super(MSELoss, self).__init__(device, multi_logger, sample)
+    def __init__(self, device, sample=False):
+        super(MSELoss, self).__init__(device, sample)
         self.criterion = torch.nn.MSELoss()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
@@ -243,8 +242,8 @@ class CEBLoss(RepresentationLoss):
     than done by traditional VIB techniques
     """
 
-    def __init__(self, device, multi_logger, beta=.1, sample=True):
-        super().__init__(device, multi_logger, sample=sample)
+    def __init__(self, device, beta=.1, sample=True):
+        super().__init__(device, sample=sample)
         # TODO allow for beta functions
         self.beta = beta
         self.sample = sample

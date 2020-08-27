@@ -53,6 +53,7 @@ class LossDecoder(nn.Module):
     def ones_like_projection_dim(self, x):
         return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
+
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
