@@ -8,12 +8,12 @@ pyyaml~=5.3.1
 sacred~=0.8.1
 tensorboard~=2.2.0
 pytest~=5.4.3
-ray~=0.8.7
-ray[tune]
+ray[tune]~=0.8.7
+PyYAML~=5.3.1
 
 # imitation needs special branch as of 2020-08-17
 git+git://github.com/HumanCompatibleAI/imitation@image-env-changes#egg=imitation
-git+https://github.com/HumanCompatibleAI/stable-baselines3.git@imitation#egg=stable-baselines3
+git+git://github.com/HumanCompatibleAI/stable-baselines3.git@e00331bc832ea109a197903941d59011c3cd3a3a#egg=stable-baselines3
 
 # environments
 # (MAGICAL currently requires an old version of Pyglet)

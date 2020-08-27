@@ -3,7 +3,10 @@ import inspect
 import logging
 import os
 
+from imitation.data import rollout
+from imitation.policies.base import RandomPolicy
 import numpy as np
+import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
@@ -61,17 +64,13 @@ def cosine_warmup_scheduler():
     del _
 
 
-def get_random_traj(env, timesteps):
-    # Currently not designed for VecEnvs with n>1
-    trajectory = {'obs': [], 'acts': [], 'dones': []}
-    obs = env.reset()
-    for i in range(timesteps):
-        trajectory['obs'].append(obs.squeeze())
-        action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
-        obs, rew, dones, info = env.step(action)
-        trajectory['acts'].append(action[0])
-        trajectory['dones'].append(dones[0])
-    return trajectory
+def get_random_traj(venv, timesteps):
+    random_policy = RandomPolicy(venv.observation_space, venv.action_space)
+    trajectories = rollout.generate_trajectories(
+        random_policy, venv, rollout.min_timesteps(timesteps))
+    flat_traj = rollout.flatten_trajectories(trajectories)
+    # "infos" and "next_obs" keys are also available
+    return {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}
 
 
 def initialize_non_features_extractor(sb3_model):
@@ -103,7 +102,7 @@ def run(benchmark, use_random_rollouts,
     venv = auto_env.load_vec_env()
     color_space = auto_env.load_color_space()
     if use_random_rollouts:
-        dataset_dict = get_random_traj(env=venv,
+        dataset_dict = get_random_traj(venv=venv,
                                        timesteps=timesteps)
     else:
         dataset_dict = auto_env.load_dataset()
@@ -147,5 +146,6 @@ def run(benchmark, use_random_rollouts,
 
 
 if __name__ == '__main__':
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs'))
     represent_ex.run_commandline()

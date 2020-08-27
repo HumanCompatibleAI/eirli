@@ -44,6 +44,9 @@ def bench_defaults():
     }
     magical_env_prefix = 'MoveToCorner'
     magical_preproc = 'LoResCHW4E'
+    # this should probably be True for all BC runs, False for GAIL runs
+    # (although TBH it doesn't really matter for GAIL)
+    magical_remove_null_actions = False
 
     # ###########################
     # dm_control config variables

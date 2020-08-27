@@ -7,6 +7,7 @@ from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 from imitation.augment import StandardAugmentations
 import imitation.util.logger as imitation_logger
+import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
@@ -135,7 +136,9 @@ def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
                    device_name, final_pol_name):
-    policy = make_policy(venv_chans_first.observation_space, venv_chans_first.action_space, encoder)
+    policy = make_policy(
+        observation_space=venv_chans_first.observation_space,
+        action_space=venv_chans_first.action_space, encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
     trainer = BC(
@@ -146,10 +149,14 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         expert_data=dataset,
         device=device_name,
         augmentation_fn=augmenter,
+        optimizer_cls=th.optim.SGD,
+        optimizer_kwargs=dict(lr=1e-3, momentum=0.1),
+        ent_weight=1e-3,
+        l2_weight=1e-5,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'])
+    trainer.train(n_epochs=bc['n_epochs'], log_interval=500)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
@@ -178,7 +185,9 @@ def do_training_gail(
         """Construct a policy with the right LR schedule (since PPO will
         actually use it, unlike BC)."""
         assert not use_sde
-        return make_policy(observation_space, action_space, encoder, lr_schedule)
+        return make_policy(
+            observation_space=observation_space, action_space=action_space,
+            encoder_or_path=encoder, lr_schedule=lr_schedule)
 
     ppo_algo = PPO(
         policy=policy_constructor,
@@ -274,5 +283,6 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
 
 
 if __name__ == '__main__':
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     il_train_ex.observers.append(FileStorageObserver('runs/il_train_runs'))
     il_train_ex.run_commandline()
