@@ -8,6 +8,7 @@ import tempfile
 import imitation.util.logger as imitation_logger
 import imitation.data.rollout as il_rollout
 import numpy as np
+import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
@@ -119,5 +120,6 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
 
 
 if __name__ == '__main__':
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     il_test_ex.observers.append(FileStorageObserver('runs/il_test_runs'))
     il_test_ex.run_commandline()

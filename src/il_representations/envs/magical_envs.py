@@ -10,8 +10,8 @@ from typing import List, Tuple
 import imitation.data.datasets as il_datasets
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
-# from magical import register_envs, saved_trajectories
-# from magical.evaluation import EvaluationProtocol
+from magical import register_envs, saved_trajectories
+from magical.evaluation import EvaluationProtocol
 import numpy as np
 
 from il_representations.envs.config import benchmark_ingredient
@@ -22,6 +22,7 @@ register_envs()
 def load_data(
         pickle_paths: List[str],
         preprocessor_name: str,
+        remove_null_actions: bool = False,
 ) -> Tuple[str, il_datasets.Dataset]:
     """Load MAGICAL data from pickle files."""
 
@@ -87,6 +88,12 @@ def load_data(
         for item_name, array_list in dataset_dict.items()
     }
 
+    if remove_null_actions:
+        # remove all "stay still" actions
+        chosen_mask = dataset_dict["acts"] != 0
+        for key in dataset_dict.keys():
+            dataset_dict[key] = dataset_dict[key][chosen_mask]
+
     return dataset_dict, env_name
 
 
@@ -100,7 +107,8 @@ def get_env_name_magical(magical_env_prefix, magical_preproc):
 
 @benchmark_ingredient.capture
 def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc, n_traj):
+                         magical_preproc, n_traj,
+                         magical_remove_null_actions):
     demo_dir = magical_demo_dirs[magical_env_prefix]
     logging.info(
         f"Loading trajectory data for '{magical_env_prefix}' from "
@@ -115,7 +123,8 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
     if n_traj is not None:
         demo_paths = demo_paths[:n_traj]
     dataset_dict, loaded_env_name = load_data(
-        demo_paths, preprocessor_name=magical_preproc)
+        demo_paths, preprocessor_name=magical_preproc,
+        remove_null_actions=magical_remove_null_actions)
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
     return dataset_dict

@@ -172,14 +172,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
-        # Set encoder and decoder to be in training mode
-        self.encoder.train(True)
-        self.decoder.train(True)
 
         loss_record = []
         for epoch in range(training_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
+
+            # Set encoder and decoder to be in training mode
+            self.encoder.train(True)
+            self.decoder.train(True)
+
             for step, batch in enumerate(dataloader, start=1):
 
                 # Construct batch (currently just using Torch's default batch-creator)
@@ -229,9 +231,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             if self.scheduler is not None:
                 self.scheduler.step()
+
             loss_record.append(loss_meter.avg.cpu().item())
-            self.encoder.train(False)
-            self.decoder.train(False)
+
+            # set the encoder and decoder to test mode
+            self.encoder.eval()
+            self.decoder.eval()
+
             if epoch % self.save_interval == 0:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
