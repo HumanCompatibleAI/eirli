@@ -1,5 +1,6 @@
 import copy
 import os
+import time
 import os.path as osp
 import numpy as np
 from sacred import Experiment
@@ -9,7 +10,7 @@ from ray import tune
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.il_test import il_test_ex
-from utils import sacred_copy, update, detect_ec2
+from il_representations.scripts.utils import sacred_copy, update, detect_ec2
 
 chain_ex = Experiment('chain', ingredients=[represent_ex, il_train_ex, il_test_ex])
 output_root = 'runs/chain_runs'
@@ -102,6 +103,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, config
 def base_config(representation_learning, il_train, il_test):
     exp_name = "grid_search"
     metric = 'reward_mean'
+    benchmark_name = 'atari'
     assert metric in ['reward_mean']  # currently only supports one metric
     spec = {
         'rep': {
@@ -118,6 +120,7 @@ def base_config(representation_learning, il_train, il_test):
 
     rep_ex_config = dict(representation_learning)
     rep_ex_config['root_dir'] = cwd
+    print(rep_ex_config)
 
     il_train_ex_config = dict(il_train)
     il_train_ex_config['root_dir'] = cwd
@@ -143,6 +146,8 @@ def run(exp_name, metric, spec, num_samples, rep_ex_config, il_train_ex_config, 
         ray.init(address="auto")
     else:
         ray.init()
+
+    time.sleep(30)
 
     rep_run = tune.run(
         trainable_function,

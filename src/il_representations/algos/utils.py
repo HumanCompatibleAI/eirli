@@ -47,6 +47,8 @@ def gaussian_blur(img):
 
 
 def show_plt_image(img):
+    if(img.shape[0]) == 4:
+        img = img.permute(1, 2, 0)
     plt.imshow(img)
     plt.show()
 
