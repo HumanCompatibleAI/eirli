@@ -63,8 +63,7 @@ class TargetProjection(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
         super(TargetProjection, self).__init__(representation_dim, projection_shape, sample)
 
-        self.target_projection = nn.Sequential(nn.Linear(self.representation_dim, self.projection_dim),
-                                               nn.ReLU())
+        self.target_projection = nn.Sequential(nn.Linear(self.representation_dim, self.projection_dim))
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return z_dist
