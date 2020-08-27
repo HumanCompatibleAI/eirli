@@ -16,6 +16,8 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
+import stable_baselines3.common.logger as sb_logger
+
 represent_ex = Experiment('representation_learning',
                           ingredients=[benchmark_ingredient])
 
@@ -94,12 +96,12 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts,
-        seed, algo, n_envs, algo_params, ppo_timesteps,
+def run(benchmark, use_random_rollouts, algo, algo_params, ppo_timesteps,
         ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
+
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -113,12 +115,6 @@ def run(benchmark, use_random_rollouts,
         # TODO be able to load a fixed number, `demo_timesteps`
         dataset_dict = auto_env.load_dataset()
 
-    # FIXME(sam): this creates weird action-at-a-distance, and doesn't save us
-    # from specifying parameters in the default config anyway (Sacred will
-    # complain if we include a param that isn't in the default config). Should
-    # do one of the following:
-    # 1. Decorate RepresentationLearner constructor with a Sacred ingredient.
-    # 2. Just pass things manually.
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
     algo_params['color_space'] = color_space
