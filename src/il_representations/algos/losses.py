@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import torch
 import torch.nn.functional as F
 
@@ -8,6 +8,7 @@ class RepresentationLoss(ABC):
         self.sample = sample
         self.multi_logger = multi_logger
 
+    @abstractmethod
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
         pass
 
