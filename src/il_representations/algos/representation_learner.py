@@ -10,6 +10,7 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
 from gym.spaces import Box
+from il_representations.algos.utils import show_plt_image
 
 
 def to_dict(kwargs_element):
