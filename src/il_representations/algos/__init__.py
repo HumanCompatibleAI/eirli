@@ -21,7 +21,7 @@ class SimCLR(RepresentationLearner):
      of target with all other contexts.
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
+        self.validate_and_update_kwargs(kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -41,10 +41,9 @@ class TemporalCPC(RepresentationLearner):
 
         By default, augments only the context, but can be modified to augment both context and target.
         """
-        self.clean_kwargs(kwargs)
-        self.update_kwarg_dict(kwargs,
-                               'target_pair_constructor_kwargs',
-                               {'temporal_offset': temporal_offset})
+        kwargs_updates = {'target_pair_constructor_kwargs': {'temporal_offset': temporal_offset}}
+        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DeterministicEncoder,
@@ -65,8 +64,7 @@ class RecurrentCPC(RepresentationLearner):
     By default, augments only the context, but can be modified to augment both context and target.
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
-        kwargs['shuffle_batches'] = False
+        self.validate_and_update_kwargs(kwargs, kwargs_updates={'shuffle_batches': False})
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=RecurrentEncoder,
@@ -81,12 +79,9 @@ class MoCo(RepresentationLearner):
     Implementation of MoCo: Momentum Contrast for Unsupervised Visual Representation Learning
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, env, log_dir, queue_size=8192, **kwargs):
+    def __init__(self, env, log_dir, **kwargs):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
-        self.clean_kwargs(kwargs, hardcoded_params)
-        self.update_kwarg_dict(kwargs,
-                               'batch_extender_kwargs',
-                               {'queue_size': queue_size})
+        self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
@@ -106,13 +101,10 @@ class MoCoWithProjection(RepresentationLearner):
     Includes an additional projection head atop the representation and before the prediction
     """
 
-    def __init__(self, env, log_dir, queue_size=8192, **kwargs):
+    def __init__(self, env, log_dir, **kwargs):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
-        self.clean_kwargs(kwargs, hardcoded_params)
+        self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
 
-        self.update_kwarg_dict(kwargs,
-                               'batch_extender_kwargs',
-                               {'queue_size': queue_size})
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
@@ -126,11 +118,8 @@ class MoCoWithProjection(RepresentationLearner):
 
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
-
-        self.update_kwarg_dict(kwargs,
-                               'target_pair_constructor_kwargs',
-                               {'mode': 'dynamics'})
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'}}
+        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DynamicsEncoder,
@@ -147,9 +136,9 @@ class DynamicsPrediction(RepresentationLearner):
 
 class InverseDynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
-        self.update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
-                                                           {'mode': 'inverse_dynamics'})
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'inverse_dynamics'}}
+        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=InverseDynamicsEncoder,
@@ -172,7 +161,7 @@ class BYOL(RepresentationLearner):
     from 0.996 to 1 via cosine scheduling.
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
+        self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
@@ -188,7 +177,7 @@ class CEB(RepresentationLearner):
     CEB with variance that is learned by StochasticEncoder
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
+        self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=StochasticEncoder,
@@ -203,7 +192,7 @@ class FixedVarianceCEB(RepresentationLearner):
     CEB with fixed rather than learned variance
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
+        self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DeterministicEncoder,
@@ -217,7 +206,7 @@ class FixedVarianceTargetProjectedCEB(RepresentationLearner):
     """
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.clean_kwargs(kwargs)
+        self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DeterministicEncoder,
@@ -238,14 +227,11 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     expected policy, as might need to happen if the algorithm needed to predict the frame at time (t+k) over any
     possible action distribution.
     """
-    def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
-        self.clean_kwargs(kwargs)
-        kwargs['preprocess_extra_context'] = False
-        self.update_kwarg_dict(kwargs, 'target_pair_constructor_kwargs',
-                                                           {"temporal_offset": temporal_offset, "mode": "dynamics"})
-
-        self.update_kwarg_dict(kwargs, 'decoder_kwargs',
-                                           {'action_space': env.action_space})
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs_updates = {'preprocess_extra_context': False,
+                          'target_pair_constructor_kwargs': {"mode": "dynamics"},
+                          'decoder_kwargs': env.action_space}
+        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -253,7 +239,6 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                          encoder=DeterministicEncoder,
                          decoder=ActionConditionedVectorDecoder,
                          loss_calculator=BatchAsymmetricContrastiveLoss,
-                         shuffle_batches=shuffle_batches,
                          **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished

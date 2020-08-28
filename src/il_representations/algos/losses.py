@@ -253,7 +253,6 @@ class CEBLoss(RepresentationLoss):
 
         log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
         log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
-
         cross_probas_logits = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
         # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
         catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
