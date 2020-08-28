@@ -14,7 +14,7 @@ scikit-video~=1.1.11
 Pillow~=7.2.0
 
 # imitation needs special branch as of 2020-08-17
-git+git://github.com/HumanCompatibleAI/imitation@image-env-changes#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@711b9f20c4542e930c6e4ac97cbfea14c7c95624#egg=imitation
 git+git://github.com/HumanCompatibleAI/stable-baselines3.git@e00331bc832ea109a197903941d59011c3cd3a3a#egg=stable-baselines3
 
 # environments

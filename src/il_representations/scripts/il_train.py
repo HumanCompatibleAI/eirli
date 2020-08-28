@@ -140,7 +140,8 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space, encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
+    augmenter = StandardAugmentations.from_string_spec(
+        bc['augs'], stack_color_space=color_space)
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
