@@ -216,7 +216,6 @@ class FixedVarianceTargetProjectedCEB(RepresentationLearner):
                          **kwargs)
 
 
-
 class ActionConditionedTemporalCPC(RepresentationLearner):
     """
     Implementation of reinforcement-learning-specific variant of Temporal CPC which adds a projection layer on top
