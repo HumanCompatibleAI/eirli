@@ -8,7 +8,7 @@ from il_representations.algos.augmenters import AugmentContextOnly
 from gym.spaces import Box
 import torch
 import inspect
-import stable_baselines3.common.logger as sb_logger
+import imitation.util.logger as logger
 
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
@@ -29,22 +29,6 @@ def to_dict(kwargs_element):
         return {}
     else:
         return kwargs_element
-
-
-class MultiLogger():
-    def __init__(self, log_dir):
-        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
-        self.logger = Logger(log_dir)
-        self.global_step = 0
-
-    def log(self, log_msg):
-        self.logger.log(log_msg)
-
-    def iterate_step(self):
-        self.global_step += 1
-
-    def add_scalar(self, tag, scalar):
-        self.writer.add_scalar(tag, scalar, self.global_step)
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
@@ -76,7 +60,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        sb_logger.configure(log_dir, ["stdout", "tensorboard"])
+        logger.configure(log_dir, ["stdout", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
@@ -132,56 +116,33 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
-    def update_kwarg_dict(self, kwargs, kwargs_key, update_dict):
-        """
-        Updates an internal kwargs dict within `kwargs`, specified by `kwargs_key`, to
-        contain the values within `update_dict`
+    def validate_and_update_kwargs(self, user_kwargs, kwargs_updates=None,
+                                   hardcoded_params=None, params_cleaned=False):
+        # return a copy instead of updating in-place to avoid inconsistent state
+        # after a failed update
+        kwargs_copy = user_kwargs.copy()
+        if not params_cleaned:
+            default_args = get_default_args(RepresentationLearner.__init__)
+            if hardcoded_params is None:
+                hardcoded_params = DEFAULT_HARDCODED_PARAMS
 
-        :param kwargs: A dictionary for all RepresentationLearner kwargs
-        :param kwargs_key: A key indexing into `kwargs` representing a keyword arg that is itself a kwargs dictionary.
-        :param update_dict: A dict containing the key/value changes that should be made to kwargs[kwargs_key]
-        :param cls: The class on which this is being called
-        :return:
-        """
-        internal_kwargs = kwargs.get(kwargs_key) or {}
-        for key, value in update_dict.items():
-            if key in internal_kwargs:
-                assert internal_kwargs[
-                           key] == value, f"{self.__class__.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
-                raise Warning(
-                    f"In {self.__class__.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
-            internal_kwargs[key] = value
+            for hardcoded_param in hardcoded_params:
+                if hardcoded_param not in user_kwargs:
+                    continue
+                if user_kwargs[hardcoded_param] != default_args[hardcoded_param]:
+                    raise ValueError(f"You passed in a non-default value for parameter {hardcoded_param} "
+                                     f"hardcoded by {self.__class__.__name__}")
+                del kwargs_copy[hardcoded_param]
 
-        kwargs[kwargs_key] = internal_kwargs
+        for kwarg_update_key in kwargs_updates.keys():
+            if isinstance(kwargs_copy[kwarg_update_key], dict):
+                kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(kwargs_copy[kwarg_update_key],
+                                                                                kwargs_updates[kwarg_update_key],
+                                                                                params_cleaned=True)
+            else:
+                kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
+        return kwargs_copy
 
-    def clean_kwargs(self, kwargs, keys=None):
-        """
-        Checks to confirm that you're not passing in an non-default value for a parameter that gets hardcoded
-        by the class definition
-
-        :param kwargs: Dictionary of all RepresentationLearner params
-        :param cls: The class on which this is being called
-        :param keys: The keys that are hardcoded by the class definition
-        :return:
-        """
-        default_args = get_default_args(RepresentationLearner.__init__)
-        if keys is None:
-            keys = DEFAULT_HARDCODED_PARAMS
-        for k in keys:
-            if k not in kwargs:
-                continue
-            assert kwargs[k] == default_args[k] \
-                , f"You passed in a non-default value for parameter {k} hardcoded by {self.__class__.__name__}"
-            del kwargs[k]
-
-    def log_info(self, loss, epoch_step, epoch_ind, training_epochs):
-        self.multi_logger.add_scalar('loss', loss)
-        lr = self.optimizer.param_groups[0]['lr']
-        self.multi_logger.add_scalar('learning_rate', lr)
-        self.multi_logger.log(f"Pretrain Epoch [{epoch_ind + 1}/{training_epochs}], step {epoch_step}, "
-                        f"lr {lr}, "
-                        f"loss {loss}, "
-                        f"Overall step: {self.multi_logger.global_step}")
 
     def _prep_tensors(self, tensors_or_arrays):
         """
@@ -294,9 +255,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                sb_logger.record('epoch', epoch)
-                sb_logger.record('within_epoch_step', step)
-                sb_logger.dump()
+                logger.record('loss', loss.item())
+                logger.record('epoch', epoch)
+                logger.record('within_epoch_step', step)
+                logger.dump()
 
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:
