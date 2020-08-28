@@ -10,6 +10,8 @@ tensorboard~=2.2.0
 pytest~=5.4.3
 ray[tune]~=0.8.7
 PyYAML~=5.3.1
+scikit-video~=1.1.11
+Pillow~=7.2.0
 
 # imitation needs special branch as of 2020-08-17
 git+git://github.com/HumanCompatibleAI/imitation@image-env-changes#egg=imitation

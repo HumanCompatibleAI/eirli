@@ -13,6 +13,7 @@ from imitation.util.util import make_vec_env
 from magical import register_envs, saved_trajectories
 from magical.evaluation import EvaluationProtocol
 import numpy as np
+import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
 
@@ -134,11 +135,12 @@ class SB3EvaluationProtocol(EvaluationProtocol):
     """MAGICAL 'evaluation protocol' for Stable Baselines 3 policies."""
 
     # TODO: more docs, document __init__ in particular
-    def __init__(self, policy, run_id, seed, **kwargs):
+    def __init__(self, policy, run_id, seed, video_writer=None, **kwargs):
         super().__init__(**kwargs)
         self._run_id = run_id
         self.policy = policy
         self.seed = seed
+        self.video_writer = video_writer
 
     @property
     def run_id(self):
@@ -162,4 +164,10 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         scores = []
         for trajectory in trajectories[:self.n_rollouts]:
             scores.append(trajectory.infos[-1]['eval_score'])
+
+            # optionally write the (scored) trajectory to video output
+            if self.video_writer is not None:
+                for obs in trajectory.obs:
+                    self.video_writer.add_tensor(th.FloatTensor(obs) / 255.)
+
         return scores

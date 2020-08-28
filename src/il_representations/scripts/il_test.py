@@ -5,8 +5,8 @@ import json
 import logging
 import tempfile
 
-import imitation.util.logger as imitation_logger
 import imitation.data.rollout as il_rollout
+import imitation.util.logger as imitation_logger
 import numpy as np
 import sacred
 from sacred import Experiment
@@ -15,8 +15,9 @@ from stable_baselines3.common.utils import get_device
 import torch as th
 
 from il_representations.algos.utils import set_global_seeds
-from il_representations.envs.config import benchmark_ingredient
 from il_representations.envs import auto
+from il_representations.envs.config import benchmark_ingredient
+from il_representations.utils import TensorFrameWriter
 
 il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 
@@ -30,10 +31,15 @@ def default_config():
     # run_id is written into the produced DataFrame to indicate what model is
     # being tested
     run_id = 'test'
+    # if True, then we'll add a video named <video_file_name> as a Sacred
+    # artifact
+    write_video = False
+    video_file_name = "rollouts.mp4"
 
 
 @il_test_ex.main
-def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
+def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
+         write_video, video_file_name):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
@@ -49,6 +55,11 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
     policy = policy.to(device)
     policy.eval()
 
+    if write_video:
+        video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
+        video_writer = TensorFrameWriter(video_fp.name,
+                                         color_space=auto.load_color_space())
+
     if benchmark['benchmark_name'] == 'magical':
         from il_representations.envs import magical_envs
         env_prefix = benchmark['magical_env_prefix']
@@ -60,6 +71,7 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
             n_rollouts=n_rollouts,
             seed=seed,
             run_id=run_id,
+            video_writer=video_writer if write_video else None,
         )
         eval_data_frame = eval_protocol.do_eval(verbose=False)
         # display to stdout
@@ -106,6 +118,14 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
             ('seed', seed),
             *stats.items(),
         ])
+        vec_env.close()
+
+        if write_video:
+            assert len(trajectories) > 0
+            # write the trajectories in sequence
+            for traj in trajectories:
+                for step_tensor in traj.obs:
+                    video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
@@ -117,6 +137,12 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
         json.dump(final_stats_dict, fp, indent=2, sort_keys=False)
         fp.flush()
         il_test_ex.add_artifact(fp.name, 'eval.json')
+
+    # also save video
+    if write_video:
+        video_writer.close()
+        il_test_ex.add_artifact(video_fp.name, video_file_name)
+        video_fp.close()
 
 
 if __name__ == '__main__':
