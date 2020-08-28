@@ -21,7 +21,7 @@ class SimCLR(RepresentationLearner):
      of target with all other contexts.
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.validate_and_update_kwargs(kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -42,7 +42,7 @@ class TemporalCPC(RepresentationLearner):
         By default, augments only the context, but can be modified to augment both context and target.
         """
         kwargs_updates = {'target_pair_constructor_kwargs': {'temporal_offset': temporal_offset}}
-        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -64,7 +64,7 @@ class RecurrentCPC(RepresentationLearner):
     By default, augments only the context, but can be modified to augment both context and target.
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.validate_and_update_kwargs(kwargs, kwargs_updates={'shuffle_batches': False})
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates={'shuffle_batches': False})
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=RecurrentEncoder,
@@ -81,7 +81,7 @@ class MoCo(RepresentationLearner):
     """
     def __init__(self, env, log_dir, **kwargs):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
-        self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
+        kwargs = self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
@@ -103,8 +103,7 @@ class MoCoWithProjection(RepresentationLearner):
 
     def __init__(self, env, log_dir, **kwargs):
         hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
-        self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
-
+        kwargs = self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
@@ -119,7 +118,7 @@ class MoCoWithProjection(RepresentationLearner):
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'}}
-        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DynamicsEncoder,
@@ -137,7 +136,7 @@ class DynamicsPrediction(RepresentationLearner):
 class InverseDynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'inverse_dynamics'}}
-        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -161,7 +160,7 @@ class BYOL(RepresentationLearner):
     from 0.996 to 1 via cosine scheduling.
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.validate_and_update_kwargs(kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
@@ -177,7 +176,7 @@ class CEB(RepresentationLearner):
     CEB with variance that is learned by StochasticEncoder
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.validate_and_update_kwargs(kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=StochasticEncoder,
@@ -192,7 +191,7 @@ class FixedVarianceCEB(RepresentationLearner):
     CEB with fixed rather than learned variance
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.validate_and_update_kwargs(kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DeterministicEncoder,
@@ -206,7 +205,7 @@ class FixedVarianceTargetProjectedCEB(RepresentationLearner):
     """
     """
     def __init__(self, env, log_dir, **kwargs):
-        self.validate_and_update_kwargs(kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DeterministicEncoder,
@@ -230,8 +229,8 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
         kwargs_updates = {'preprocess_extra_context': False,
                           'target_pair_constructor_kwargs': {"mode": "dynamics"},
-                          'decoder_kwargs': env.action_space}
-        self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+                          'decoder_kwargs': {'action_space': env.action_space}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
         super().__init__(env=env,
                          log_dir=log_dir,
