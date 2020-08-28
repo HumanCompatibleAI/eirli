@@ -56,7 +56,7 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
             z_j = F.normalize(z_j, dim=1)
 
         batch_size = z_i.shape[0]
-        mask = torch.eye(batch_size) * self.large_num
+        mask = (torch.eye(batch_size) * self.large_num).to(self.device)
 
         logits, labels = self.calculate_logits_and_labels(z_i, z_j, mask)
         logits /= self.temp
@@ -190,7 +190,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
             z_i = F.normalize(z_i, dim=1)
             z_j = F.normalize(z_j, dim=1)
 
-        mask = torch.eye(batch_size) * self.large_num
+        mask = (torch.eye(batch_size) * self.large_num).to(self.device)
 
         # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
         logits_aa = torch.matmul(z_i, z_i.T)  # NxN
@@ -257,7 +257,7 @@ class CEBLoss(RepresentationLoss):
         # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
         catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
                                                                       # targets/y values
-        inds = torch.arange(start=0, end=len(z))
+        inds = (torch.arange(start=0, end=len(z))).to(self.device)
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
         return loss

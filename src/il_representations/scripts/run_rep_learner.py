@@ -33,6 +33,7 @@ def default_config():
     algo_params["representation_dim"] = 128
     ppo_finetune = True
     batch_size = 256
+    device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
