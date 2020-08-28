@@ -1,7 +1,7 @@
 import os
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from il_representations.algos.batch_extenders import IdentityBatchExtender
+from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
@@ -92,15 +92,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
 
+        if batch_extender is QueueBatchExtender:
+            batch_extender_kwargs = batch_extender_kwargs or {}
+            batch_extender_kwargs['queue_dim'] = projection_dim
+
         if batch_extender_kwargs is None:
             # Doing this to avoid having batch_extender() take an optional kwargs dict
             self.batch_extender = batch_extender()
         else:
-            if batch_extender_kwargs.get('queue_size') is not None:
-                # Doing this slightly awkward updating of kwargs to avoid having
-                # the superclass of BatchExtender accept queue_dim as an argument
-                batch_extender_kwargs['queue_dim'] = projection_dim
-
             self.batch_extender = batch_extender(**batch_extender_kwargs)
 
         self.loss_calculator = loss_calculator(self.device, **to_dict(loss_calculator_kwargs))
@@ -134,13 +133,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                      f"hardcoded by {self.__class__.__name__}")
                 del kwargs_copy[hardcoded_param]
 
-        for kwarg_update_key in kwargs_updates.keys():
-            if isinstance(kwargs_copy[kwarg_update_key], dict):
-                kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(kwargs_copy[kwarg_update_key],
-                                                                                kwargs_updates[kwarg_update_key],
-                                                                                params_cleaned=True)
-            else:
-                kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
+        if kwargs_updates is not None:
+            if not isinstance(kwargs_updates, dict):
+                raise TypeError("kwargs_updates must be passed in in the form of a dict ")
+            for kwarg_update_key in kwargs_updates.keys():
+                if isinstance(kwargs_copy[kwarg_update_key], dict):
+                    kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(kwargs_copy[kwarg_update_key],
+                                                                                    kwargs_updates[kwarg_update_key],
+                                                                                    params_cleaned=True)
+                else:
+                    kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
         return kwargs_copy
 
 
