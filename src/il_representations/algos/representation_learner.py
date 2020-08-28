@@ -120,32 +120,31 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                    hardcoded_params=None, params_cleaned=False):
         # return a copy instead of updating in-place to avoid inconsistent state
         # after a failed update
-        kwargs_copy = user_kwargs.copy()
+        user_kwargs_copy = user_kwargs.copy()
         if not params_cleaned:
             default_args = get_default_args(RepresentationLearner.__init__)
             if hardcoded_params is None:
                 hardcoded_params = DEFAULT_HARDCODED_PARAMS
 
             for hardcoded_param in hardcoded_params:
-                if hardcoded_param not in user_kwargs:
+                if hardcoded_param not in user_kwargs_copy:
                     continue
-                if user_kwargs[hardcoded_param] != default_args[hardcoded_param]:
+                if user_kwargs_copy[hardcoded_param] != default_args[hardcoded_param]:
                     raise ValueError(f"You passed in a non-default value for parameter {hardcoded_param} "
                                      f"hardcoded by {self.__class__.__name__}")
-                del kwargs_copy[hardcoded_param]
+                del user_kwargs_copy[hardcoded_param]
 
         if kwargs_updates is not None:
             if not isinstance(kwargs_updates, dict):
                 raise TypeError("kwargs_updates must be passed in in the form of a dict ")
             for kwarg_update_key in kwargs_updates.keys():
-                if isinstance(kwargs_copy[kwarg_update_key], dict):
-                    kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(kwargs_copy[kwarg_update_key],
-                                                                                    kwargs_updates[kwarg_update_key],
-                                                                                    params_cleaned=True)
+                if isinstance(user_kwargs_copy[kwarg_update_key], dict):
+                    user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(user_kwargs_copy[kwarg_update_key],
+                                                                                         kwargs_updates[kwarg_update_key],
+                                                                                         params_cleaned=True)
                 else:
-                    kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
-        return kwargs_copy
-
+                    user_kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
+        return user_kwargs_copy
 
     def _prep_tensors(self, tensors_or_arrays):
         """
