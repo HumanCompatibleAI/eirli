@@ -1,16 +1,16 @@
-import torch
-import torch.nn as nn
 import copy
-from torch.distributions import MultivariateNormal
 from functools import reduce
+import warnings
+
+from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from gym.spaces import Box
-from il_representations.algos.utils import independent_multivariate_normal
-
 import numpy as np
 import torch
 from torch import nn
+
+from il_representations.algos.utils import independent_multivariate_normal
 
 
 """
@@ -55,6 +55,35 @@ def compute_rep_shape_encoder(observation_space, encoder):
     return sample_out.shape[1:]
 
 
+def warn_on_non_image_tensor(x):
+    """Do some basic checks to make sure the input image tensor looks like a
+    batch of stacked square frames. Good sanity check to make sure that
+    preprocessing is not being messed up somehow."""
+    # check that image has rank 4
+    if x.ndim != 4:
+        warnings.warn(f"Image tensor has rank {x.ndim}, not rank 4")
+
+    # check that H=W
+    if x.shape[2] != x.shape[3]:
+        warnings.warn(
+            f"Image tensor shape {x.shape} doesn't have square images")
+
+    # check that image is in [0,1] (approximately)
+    # this is the range that SB uses
+    v_min = torch.min(x).item()
+    v_max = torch.max(x).item()
+    if v_min < -0.01 or v_max > 1.01:
+        warnings.warn(
+            f"Input image tensor has values in range [{v_min}, {v_max}], "
+            "not expected range [0, 1]")
+
+    std = torch.std(x).item()
+    if std < 0.05:
+        warnings.warn(
+            f"Input image tensor values have low stddev {std} (range "
+            f"[{v_min}, {v_max}])")
+
+
 class BasicCNN(nn.Module):
     """Similar to the CNN from the Nature DQN paper."""
     def __init__(self, observation_space, representation_dim):
@@ -97,6 +126,7 @@ class BasicCNN(nn.Module):
         self.shared_network = nn.Sequential(*shared_network_layers)
 
     def forward(self, x):
+        warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
 
@@ -182,6 +212,7 @@ class MAGICALCNN(nn.Module):
         self.shared_network = nn.Sequential(*all_layers)
 
     def forward(self, x):
+        warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
 
