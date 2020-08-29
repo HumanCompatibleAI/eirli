@@ -10,7 +10,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from captum.attr import IntegratedGradients, Saliency
+from captum.attr import IntegratedGradients, Saliency, DeepLift
 from captum.attr import visualization as viz
 
 import il_representations.envs.auto as auto_env
@@ -37,7 +37,8 @@ def base_config():
 
     # Interpret settings
     saliency = False
-    integrated_gradient = True
+    integrated_gradient = False
+    deep_lift = True
 
 
 @interp_ex.capture
@@ -110,12 +111,19 @@ def saliency_(net, image, label):
 
 def integrated_gradient_(net, image, label):
     ig = IntegratedGradients(net)
-    attr_ig, delta = attribute_image_features(net, ig, image, [label], baselines=image * 0, return_convergence_delta=True)
+    attr_ig, delta = attribute_image_features(net, ig, image, label, baselines=image * 0, return_convergence_delta=True)
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
     return attr_ig
 
+
+def deep_lift_(net, image, label):
+    dl = DeepLift(net)
+    attr_dl = attribute_image_features(net, dl, image, label, baselines=image * 0)
+    attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
+    return attr_dl
+
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient):
+def run(show_imgs, saliency, integrated_gradient, deep_lift):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -144,6 +152,13 @@ def run(show_imgs, saliency, integrated_gradient):
                                               show_colorbar=True,
                                               title="Overlayed Integrated Gradients")
             save_img(figure_2_numpy(ig_viz[0]), 'integrated_gradients', log_dir, show=show_imgs)
+
+        if deep_lift:
+            dl = deep_lift_(network, img, label)
+            dl_viz = viz.visualize_image_attr(dl, original_img, method="blended_heat_map", sign="all",
+                                              show_colorbar=True,
+                                              title="Overlayed DeepLift")
+            save_img(figure_2_numpy(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
 
 
 if __name__ == '__main__':
