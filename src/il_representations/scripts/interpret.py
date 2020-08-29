@@ -36,7 +36,8 @@ def base_config():
     show_imgs = False
 
     # Interpret settings
-    saliency = True
+    saliency = False
+    integrated_gradient = True
 
 
 @interp_ex.capture
@@ -68,7 +69,7 @@ def save_img(img, save_name, save_dir, show=True):
     savefig_kwargs = {}
     if isinstance(img, torch.Tensor):
         if (img.shape[0]) == 4:
-            img = img.permute(1, 2, 0)
+            img = img.permute(1, 2, 0).detach().numpy()
     else:
         img = img[50:1150, 100:1100, :]
         plt.axis('off')
@@ -91,24 +92,30 @@ def figure_2_numpy(fig):
     return image
 
 
-def attribute_image_features(network, algorithm, input, label, **kwargs):
+def attribute_image_features(network, algorithm, image, label, **kwargs):
     network.zero_grad()
-    tensor_attributions = algorithm.attribute(input,
+    tensor_attributions = algorithm.attribute(image,
                                               target=label,
                                               **kwargs)
 
     return tensor_attributions
 
 
-def saliency_(net, input, label):
+def saliency_(net, image, label):
     saliency = Saliency(net)
-    grads = saliency.attribute(input, target=int(label))
+    grads = saliency.attribute(image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
     return grads
 
 
+def integrated_gradient_(net, image, label):
+    ig = IntegratedGradients(net)
+    attr_ig, delta = attribute_image_features(net, ig, image, [label], baselines=image * 0, return_convergence_delta=True)
+    attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
+    return attr_ig
+
 @interp_ex.main
-def run(show_imgs, saliency):
+def run(show_imgs, saliency, integrated_gradient):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -116,9 +123,11 @@ def run(show_imgs, saliency):
     for img, label in zip(images, labels):
         # Get policy prediction
         output = network(img)
+        original_img = img[0].permute(1, 2, 0).numpy()
+        label = int(label)
+        img.requires_grad = True
 
         log_dir = interp_ex.observers[0].dir
-        original_img = img[0].permute(1, 2, 0).numpy()
         save_img(img[0], 'original_image', log_dir, show=False)
 
         if saliency:
@@ -129,9 +138,12 @@ def run(show_imgs, saliency):
                                                     title="Overlayed Gradient Magnitudes")
             save_img(figure_2_numpy(saliency_viz[0]), 'saliency', log_dir, show=show_imgs)
 
-
-
-
+        if integrated_gradient:
+            ig = integrated_gradient_(network, img.contiguous(), label)
+            ig_viz = viz.visualize_image_attr(ig, original_img, method="blended_heat_map", sign="all",
+                                              show_colorbar=True,
+                                              title="Overlayed Integrated Gradients")
+            save_img(figure_2_numpy(ig_viz[0]), 'integrated_gradients', log_dir, show=show_imgs)
 
 
 if __name__ == '__main__':
