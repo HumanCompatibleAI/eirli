@@ -1,9 +1,11 @@
 """Benchmark ingredient configurations for unit testing."""
 import inspect
 from os import path
+
 from ray import tune
+
 from il_representations import algos
-from test_utils import is_representation_learner
+from il_representations.test_support.utils import is_representation_learner
 
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
@@ -57,13 +59,10 @@ FAST_IL_TRAIN_CONFIG = {
     },
 }
 
-# CHAIN_CONFIG = {
-#     'benchmark': tune.grid_search([bm for bm in BENCHMARK_TEST_CONFIGS]),
-# }
 CHAIN_CONFIG = {
     'spec': {
         'rep': {
-            'algo': tune.grid_search([el[1] for el in inspect.getmembers(algos) if is_representation_learner(el[1])]),
+            'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
             'pretrain_epochs': 1,
         },
         'il_train': {
@@ -73,6 +72,12 @@ CHAIN_CONFIG = {
         },
         'il_test': {
             'n_rollouts': 2,
-        }
-    }
+        },
+    },
+    'tune_run_kwargs': {
+        'resources_per_trial': {
+            'cpu': 1,
+            'gpu': 0,
+        },
+    },
 }

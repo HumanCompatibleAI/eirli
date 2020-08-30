@@ -19,7 +19,6 @@ output_root = 'runs/chain_runs'
 cwd = os.getcwd()
 
 
-@ray.remote
 def run_single_exp(inner_ex_config, config, log_dir, exp_name):
     """
     Run a specified experiment. We could not pass each Sacred experiment in because they are not pickle serializable,
@@ -79,24 +78,21 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, config
     config['rep'].update({
         'seed': rng.randint(1 << 31),
     })
-    pretrain_handles = run_single_exp.remote(rep_ex_config, config['rep'], log_dir, 'rep')
-    pretrain_result = ray.get(pretrain_handles)
+    pretrain_result = run_single_exp(rep_ex_config, config['rep'], log_dir, 'rep')
 
     # Run il train
     config['il_train'].update({
         'encoder_path': osp.join(cwd, pretrain_result['encoder_path']),
         'seed': rng.randint(1 << 31),
     })
-    il_train_handles = run_single_exp.remote(il_train_ex_config, config['il_train'], log_dir, 'il_train')
-    il_train_result = ray.get(il_train_handles)
+    il_train_result = run_single_exp(il_train_ex_config, config['il_train'], log_dir, 'il_train')
 
     # Run il test
     config['il_test'].update({
         'policy_path': osp.join(cwd, il_train_result['model_path']),
         'seed': rng.randint(1 << 31),
     })
-    il_test_handles = run_single_exp.remote(il_test_ex_config, config['il_test'], log_dir, 'il_test')
-    il_test_result = ray.get(il_test_handles)
+    il_test_result = run_single_exp(il_test_ex_config, config['il_test'], log_dir, 'il_test')
 
     tune.report(reward=il_test_result['reward_mean'])
 
@@ -105,7 +101,6 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, config
 def base_config(representation_learning, il_train, il_test):
     exp_name = "grid_search"
     metric = 'reward_mean'
-    benchmark_name = 'atari'
     assert metric in ['reward_mean']  # currently only supports one metric
     spec = {
         'rep': {
@@ -118,23 +113,29 @@ def base_config(representation_learning, il_train, il_test):
         'il_test': {
         }
     }
-    num_samples = 1
 
     rep_ex_config = dict(representation_learning)
     rep_ex_config['root_dir'] = cwd
-    print(rep_ex_config)
 
     il_train_ex_config = dict(il_train)
     il_train_ex_config['root_dir'] = cwd
 
     il_test_ex_config = dict(il_test)
 
+    tune_run_kwargs = dict(
+        num_samples=1,
+        resources_per_trial=dict(
+            cpu=5,
+            gpu=0.32,
+        ))
+
     _ = locals()
     del _
 
 
 @chain_ex.main
-def run(exp_name, metric, spec, num_samples, rep_ex_config, il_train_ex_config, il_test_ex_config):
+def run(exp_name, metric, spec, rep_ex_config, il_train_ex_config,
+        il_test_ex_config, tune_run_kwargs):
     rep_ex_config = sacred_copy(rep_ex_config)
     il_train_ex_config = sacred_copy(il_train_ex_config)
     il_test_ex_config = sacred_copy(il_test_ex_config)
@@ -142,20 +143,19 @@ def run(exp_name, metric, spec, num_samples, rep_ex_config, il_train_ex_config, 
     log_dir = chain_ex.observers[0].dir
 
     def trainable_function(config):
-        run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, config, log_dir)
+        run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
+                        config, log_dir)
 
     if detect_ec2():
         ray.init(address="auto")
     else:
         ray.init()
 
-    time.sleep(30)
-
     rep_run = tune.run(
         trainable_function,
         name=exp_name,
         config=spec,
-        num_samples=num_samples,
+        **tune_run_kwargs,
     )
 
     best_config = rep_run.get_best_config(metric=metric)
