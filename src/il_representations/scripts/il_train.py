@@ -16,6 +16,7 @@ from stable_baselines3.ppo import PPO
 import torch as th
 from torch import nn
 
+from il_representations.algos.encoders import DeterministicEncoder
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
@@ -23,7 +24,6 @@ from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
-from il_representations.algos.encoders import DeterministicEncoder
 
 bc_ingredient = Ingredient('bc')
 
@@ -33,6 +33,7 @@ def bc_defaults():
     # number of passes to make through dataset
     n_epochs = 250  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
+    log_interval = 500  # noqa: F841
 
 
 gail_ingredient = Ingredient('gail')
@@ -157,7 +158,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'], log_interval=500)
+    trainer.train(n_epochs=bc['n_epochs'], log_interval=bc['log_interval'])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
