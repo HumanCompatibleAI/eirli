@@ -47,7 +47,7 @@ def base_config():
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
     layer_conductance = False
     layer_gradcam = False
-    layer_gradxact = True
+    layer_gradxact = False
 
 
 @interp_ex.capture
@@ -214,6 +214,8 @@ def layer_gradxact_(net, layer, image, label, log_dir, show_imgs=True, columns=1
 
 def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
     fig = plt.figure()
+    plt.title(img_title, verticalalignment='baseline')
+    plt.axis('off')
     for i in range(len(imgs)):
         img = imgs[i]
         if isinstance(img, torch.Tensor):
@@ -222,8 +224,7 @@ def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
         fig.add_subplot(rows, columns, i+1)
         plt.axis('off')
         plt.imshow(img)
-    plt.title(img_title)
-    plt.savefig(f'{save_dir}/{save_name}.png', dpi=200)
+    plt.savefig(f'{save_dir}/{save_name}.png', dpi=400)
     if show:
         plt.show()
     plt.close(fig)
