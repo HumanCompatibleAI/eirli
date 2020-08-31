@@ -10,7 +10,8 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance
+from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance, LayerGradCam, LayerActivation, \
+    LayerAttribution
 from captum.attr import visualization as viz
 
 import il_representations.envs.auto as auto_env
@@ -106,24 +107,37 @@ def attribute_image_features(network, algorithm, image, label, **kwargs):
     return tensor_attributions
 
 
-def saliency_(net, image, label):
+def saliency_(net, image, label, original_img, log_dir, show_imgs):
     saliency = Saliency(net)
     grads = saliency.attribute(image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
+    saliency_viz = viz.visualize_image_attr(grads, original_img, method="blended_heat_map",
+                                            sign="absolute_value",
+                                            show_colorbar=True,
+                                            title="Overlayed Gradient Magnitudes")
+    save_img(figure_2_numpy(saliency_viz[0]), 'saliency', log_dir, show=show_imgs)
     return grads
 
 
-def integrated_gradient_(net, image, label):
+def integrated_gradient_(net, image, label, original_img, log_dir, show_imgs):
     ig = IntegratedGradients(net)
     attr_ig, delta = attribute_image_features(net, ig, image, label, baselines=image * 0, return_convergence_delta=True)
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
+    ig_viz = viz.visualize_image_attr(ig, original_img, method="blended_heat_map", sign="all",
+                                      show_colorbar=True,
+                                      title="Overlayed Integrated Gradients")
+    save_img(figure_2_numpy(ig_viz[0]), 'integrated_gradients', log_dir, show=show_imgs)
     return attr_ig
 
 
-def deep_lift_(net, image, label):
+def deep_lift_(net, image, label, original_img, log_dir, show_imgs):
     dl = DeepLift(net)
     attr_dl = attribute_image_features(net, dl, image, label, baselines=image * 0)
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
+    dl_viz = viz.visualize_image_attr(dl, original_img, method="blended_heat_map", sign="all",
+                                      show_colorbar=True,
+                                      title="Overlayed DeepLift")
+    save_img(figure_2_numpy(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
     return attr_dl
 
 
@@ -133,8 +147,18 @@ def layer_conductance_(net, layer, image, label):
     return attribution
 
 
+def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
+    lgc = LayerGradCam(net, layer)
+    gc_attr = lgc.attribute(image, target=label)
+    upsampled_gc_attr = LayerAttribution.interpolate(gc_attr, image.shape[2:])
+    lg_viz = viz.visualize_image_attr_multiple(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
+                                               original_image=original_img,
+                                               signs=["all", "positive", "negative"],
+                                               methods=["original_image", "blended_heat_map", "blended_heat_map"])
+    save_img(figure_2_numpy(lg_viz[0]), 'layer_gradcam', log_dir, show=show_imgs)
+
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance):
+def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -150,29 +174,19 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance):
         save_img(img[0], 'original_image', log_dir, show=False)
 
         if saliency:
-            saliency_grads = saliency_(network, img, label)
-            saliency_viz = viz.visualize_image_attr(saliency_grads, original_img, method="blended_heat_map",
-                                                    sign="absolute_value",
-                                                    show_colorbar=True,
-                                                    title="Overlayed Gradient Magnitudes")
-            save_img(figure_2_numpy(saliency_viz[0]), 'saliency', log_dir, show=show_imgs)
+            saliency_(network, img, label, original_img, log_dir, show_imgs)
 
         if integrated_gradient:
-            ig = integrated_gradient_(network, img.contiguous(), label)
-            ig_viz = viz.visualize_image_attr(ig, original_img, method="blended_heat_map", sign="all",
-                                              show_colorbar=True,
-                                              title="Overlayed Integrated Gradients")
-            save_img(figure_2_numpy(ig_viz[0]), 'integrated_gradients', log_dir, show=show_imgs)
+            integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
 
         if deep_lift:
-            dl = deep_lift_(network, img, label)
-            dl_viz = viz.visualize_image_attr(dl, original_img, method="blended_heat_map", sign="all",
-                                              show_colorbar=True,
-                                              title="Overlayed DeepLift")
-            save_img(figure_2_numpy(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
+            deep_lift_(network, img, label, original_img, log_dir, show_imgs)
 
         if layer_conductance:  # TODO: How to interpret this?
             lc = layer_conductance_(network, network.encoder[0], img, label)
+
+        if layer_gradcam:
+            layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs)
 
 
 if __name__ == '__main__':
