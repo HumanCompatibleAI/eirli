@@ -10,7 +10,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
-from captum.attr import IntegratedGradients, Saliency, DeepLift
+from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance
 from captum.attr import visualization as viz
 
 import il_representations.envs.auto as auto_env
@@ -36,9 +36,14 @@ def base_config():
     show_imgs = False
 
     # Interpret settings
+    # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
     saliency = False
     integrated_gradient = False
-    deep_lift = True
+    deep_lift = False
+
+    # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
+    layer_conductance = False
+    layer_gradcam = True
 
 
 @interp_ex.capture
@@ -98,7 +103,6 @@ def attribute_image_features(network, algorithm, image, label, **kwargs):
     tensor_attributions = algorithm.attribute(image,
                                               target=label,
                                               **kwargs)
-
     return tensor_attributions
 
 
@@ -122,8 +126,15 @@ def deep_lift_(net, image, label):
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
     return attr_dl
 
+
+def layer_conductance_(net, layer, image, label):
+    layer_cond = LayerConductance(net, layer)
+    attribution = layer_cond.attribute(image, target=label)  # Shape: torch.Size([1, 32, 20, 20])
+    return attribution
+
+
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient, deep_lift):
+def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -159,6 +170,9 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift):
                                               show_colorbar=True,
                                               title="Overlayed DeepLift")
             save_img(figure_2_numpy(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
+
+        if layer_conductance:  # TODO: How to interpret this?
+            lc = layer_conductance_(network, network.encoder[0], img, label)
 
 
 if __name__ == '__main__':
