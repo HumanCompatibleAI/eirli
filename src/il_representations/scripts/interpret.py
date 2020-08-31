@@ -151,18 +151,18 @@ def layer_conductance_(net, layer, image, label, save_dir):
         y_axis_lc_attr_test = lc_attr_test.mean(0).detach().numpy()
         y_axis_lc_attr_test = y_axis_lc_attr_test / np.linalg.norm(y_axis_lc_attr_test, ord=1)
 
-        y_axis_lin4_weight = layer_weight[0].detach().numpy()
-        y_axis_lin4_weight = y_axis_lin4_weight / np.linalg.norm(y_axis_lin4_weight, ord=1)
+        y_axis_lin_weight = layer_weight[0].detach().numpy()
+        y_axis_lin_weight = y_axis_lin_weight / np.linalg.norm(y_axis_lin_weight, ord=1)
 
         width = 0.25
         legends = ['Attributions', 'Weights']
-        x_axis_labels = ['Neuron {}'.format(i) for i in range(len(y_axis_lin4_weight))]
+        x_axis_labels = ['Neuron {}'.format(i) for i in range(len(y_axis_lin_weight))]
 
         ax = plt.subplot()
         ax.set_title('Aggregated neuron importances and learned weights in the indicated linear layer of the model')
 
         ax.bar(x_axis_data + width, y_axis_lc_attr_test, width, align='center', alpha=0.5, color='red')
-        ax.bar(x_axis_data + 2 * width, y_axis_lin4_weight, width, align='center', alpha=0.5, color='green')
+        ax.bar(x_axis_data + 2 * width, y_axis_lin_weight, width, align='center', alpha=0.5, color='green')
         plt.legend(legends, loc=2, prop={'size': 20})
         ax.autoscale_view()
         plt.tight_layout()
@@ -175,9 +175,8 @@ def layer_conductance_(net, layer, image, label, save_dir):
         plt.savefig(f'{save_dir}/layer_conductance.png')
 
     layer_cond = LayerConductance(net, layer)
-    # attribution = layer_cond.attribute(image, target=label)  # Shape: torch.Size([1, 32, 20, 20])
     attribution = layer_cond.attribute(image, n_steps=100, attribute_to_layer_input=True, target=label)
-    attribution = attribution[0]  # Shape: torch.Size([1, 4, 84, 84])
+    attribution = attribution[0]
     l_weight = layer.weight
     plot_lc(attribution, l_weight)
 
@@ -231,12 +230,11 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
 
         if layer_conductance:
             # The layer should be linear layer only.
-            lc = layer_conductance_(network, network.mlp_pi_decoder[1], img, label, log_dir)
+            layer_conductance_(network, network.mlp_pi_decoder[1], img, label, log_dir)
 
         if layer_gradcam:
             # GradCAM is usually applied to the last convolutional layer in the network.
             layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs)
-
 
 
 if __name__ == '__main__':
