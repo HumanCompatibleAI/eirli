@@ -11,7 +11,7 @@ from stable_baselines3.common.utils import get_device
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance, LayerGradCam, LayerActivation, \
-    LayerAttribution
+    LayerAttribution, LayerIntegratedGradients
 from captum.attr import visualization as viz
 
 import il_representations.envs.auto as auto_env
@@ -45,6 +45,7 @@ def base_config():
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
     layer_conductance = False
     layer_gradcam = True
+    layer_integrated_gradient = False
 
 
 @interp_ex.capture
@@ -150,15 +151,25 @@ def layer_conductance_(net, layer, image, label):
 def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     lgc = LayerGradCam(net, layer)
     gc_attr = lgc.attribute(image, target=label)
-    upsampled_gc_attr = LayerAttribution.interpolate(gc_attr, image.shape[2:])
-    lg_viz = viz.visualize_image_attr_multiple(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
-                                               original_image=original_img,
-                                               signs=["all", "positive", "negative"],
-                                               methods=["original_image", "blended_heat_map", "blended_heat_map"])
-    save_img(figure_2_numpy(lg_viz[0]), 'layer_gradcam', log_dir, show=show_imgs)
+    upsampled_gc_attr = LayerAttribution.interpolate(gc_attr, image.shape[2:])  # Shape [1, 1, 84, 84]
+    lg_viz_pos = viz.visualize_image_attr(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
+                                      original_img, method="blended_heat_map", sign="positive",
+                                      show_colorbar=True,
+                                      title="Overlayed DeepLift (Positive)")
+    lg_viz_neg = viz.visualize_image_attr(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
+                                      original_img, method="blended_heat_map", sign="negative",
+                                      show_colorbar=True,
+                                      title="Overlayed DeepLift (Negative)")
+    save_img(figure_2_numpy(lg_viz_pos[0]), 'layer_gradcam_pos', log_dir, show=show_imgs)
+    save_img(figure_2_numpy(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
+
+
+
+
 
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam):
+def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam,
+        layer_integrated_gradient):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
