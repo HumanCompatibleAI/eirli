@@ -1,6 +1,8 @@
 import torch
 import sacred
 import os
+import math
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,7 +13,7 @@ from stable_baselines3.common.utils import get_device
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance, LayerGradCam, LayerActivation, \
-    LayerAttribution, LayerIntegratedGradients
+    LayerAttribution, LayerIntegratedGradients, LayerGradientXActivation
 from captum.attr import visualization as viz
 
 import il_representations.envs.auto as auto_env
@@ -43,9 +45,9 @@ def base_config():
     deep_lift = False
 
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
-    layer_conductance = True
+    layer_conductance = False
     layer_gradcam = False
-    layer_integrated_gradient = False
+    layer_gradxact = True
 
 
 @interp_ex.capture
@@ -135,7 +137,7 @@ def deep_lift_(net, image, label, original_img, log_dir, show_imgs):
     dl = DeepLift(net)
     attr_dl = attribute_image_features(net, dl, image, label, baselines=image * 0)
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
-    dl_viz = viz.visualize_image_attr(dl, original_img, method="blended_heat_map", sign="all",
+    dl_viz = viz.visualize_image_attr(attr_dl, original_img, method="blended_heat_map", sign="all",
                                       show_colorbar=True,
                                       title="Overlayed DeepLift")
     save_img(figure_2_numpy(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
@@ -199,12 +201,37 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     save_img(figure_2_numpy(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
 
 
-def layer_integrated_gradient_():
-    print('hi')
+def layer_gradxact_(net, layer, image, label, log_dir, show_imgs=True, columns=10):
+    layer_ga = LayerGradientXActivation(net, layer)
+    ga_attr = layer_ga.attribute(image, label)
+    num_channels = ga_attr.shape[1]
+    column = columns
+    layer_info = str(layer)
+    img_title = f'layer_GradXActivation of {layer_info}'
+    show_img_grid(ga_attr[0], math.ceil(num_channels/column), column, log_dir, 'layer_GradXActivation',
+                  img_title, show_imgs)
+
+
+def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
+    fig = plt.figure()
+    for i in range(len(imgs)):
+        img = imgs[i]
+        if isinstance(img, torch.Tensor):
+            img = img.detach().numpy()
+        img = cv2.resize(img, dsize=(40, 40), interpolation=cv2.INTER_CUBIC)
+        fig.add_subplot(rows, columns, i+1)
+        plt.axis('off')
+        plt.imshow(img)
+    plt.title(img_title)
+    plt.savefig(f'{save_dir}/{save_name}.png', dpi=200)
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
 
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam,
-        layer_integrated_gradient):
+def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -235,6 +262,9 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
         if layer_gradcam:
             # GradCAM is usually applied to the last convolutional layer in the network.
             layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs)
+
+        if layer_gradxact:
+            layer_gradxact_(network, network.encoder[0], img, label, log_dir)
 
 
 if __name__ == '__main__':
