@@ -47,6 +47,7 @@ def base_config():
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
     layer_conductance = False
     layer_gradcam = False
+    layer_activation = True
     layer_gradxact = False
 
 
@@ -201,14 +202,14 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     save_img(figure_2_numpy(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
 
 
-def layer_gradxact_(net, layer, image, label, log_dir, show_imgs=True, columns=10):
-    layer_ga = LayerGradientXActivation(net, layer)
-    ga_attr = layer_ga.attribute(image, label)
-    num_channels = ga_attr.shape[1]
+def layer_act_(net, layer, algo, algo_name, image, label, log_dir, show_imgs=True, columns=10):
+    layer_a = LayerGradientXActivation(net, layer)
+    a_attr = layer_a.attribute(image, label)
+    num_channels = a_attr.shape[1]
     column = columns
     layer_info = str(layer)
-    img_title = f'layer_GradXActivation of {layer_info}'
-    show_img_grid(ga_attr[0], math.ceil(num_channels/column), column, log_dir, 'layer_GradXActivation',
+    img_title = f'{algo_name} of {layer_info}'
+    show_img_grid(a_attr[0], math.ceil(num_channels/column), column, log_dir, algo_name,
                   img_title, show_imgs)
 
 
@@ -232,7 +233,8 @@ def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
 
 
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact):
+def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact,
+        layer_activation):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -265,7 +267,12 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
             layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs)
 
         if layer_gradxact:
-            layer_gradxact_(network, network.encoder[0], img, label, log_dir)
+            layer_act_(network, network.encoder[0], LayerGradientXActivation, 'layer_GradXActivation',
+                       img, label, log_dir)
+
+        if layer_activation:
+            layer_act_(network, network.encoder[0], LayerActivation, 'layer_Activation',
+                       img, label, log_dir)
 
 
 if __name__ == '__main__':
