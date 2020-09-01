@@ -144,6 +144,8 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
         il_test_ex.add_artifact(video_fp.name, video_file_name)
         video_fp.close()
 
+    return final_stats_dict
+
 
 if __name__ == '__main__':
     sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
