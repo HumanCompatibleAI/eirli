@@ -10,7 +10,7 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
 
 from il_representations import algos
-from il_representations.algos.representation_learner import RepresentationLearner
+from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
@@ -25,15 +25,15 @@ def default_config():
     algo = "MoCo"
     use_random_rollouts = False
     n_envs = 1
-    timesteps = 640
+    demo_timesteps = 5000
+    ppo_timesteps = 1000
     pretrain_only = False
     pretrain_epochs = 50
-    scheduler = None
-    representation_dim = 128
+    algo_params = get_default_args(algos.RepresentationLearner)
+    algo_params["representation_dim"] = 128
     ppo_finetune = True
     batch_size = 256
     device = "auto"
-    scheduler_kwargs = dict()
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
@@ -43,17 +43,39 @@ def default_config():
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
-    scheduler = LinearWarmupCosine
-    scheduler_kwargs = {'warmup_epoch': 2, 'T_max': 10}
+    algo_params = {"scheduler": LinearWarmupCosine, "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}}
     _ = locals()
     del _
 
+@represent_ex.named_config
+def ceb_breakout():
+    env_id = 'BreakoutNoFrameskip-v4'
+    train_from_expert = True
+    algo = algos.FixedVarianceCEB
+    pretrain_epochs = 5
+    demo_timesteps = None
+    ppo_finetune = False
+    _ = locals()
+    del _
 
-def get_random_traj(env, timesteps):
+@represent_ex.named_config
+def tiny_epoch():
+    demo_timesteps=5000
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def target_projection():
+    algo = algos.FixedVarianceTargetProjectedCEB
+    _ = locals()
+    del _
+
+@represent_ex.capture
+def get_random_traj(env, demo_timesteps):
     # Currently not designed for VecEnvs with n>1
     trajectory = {'obs': [], 'acts': [], 'dones': []}
     obs = env.reset()
-    for i in range(timesteps):
+    for i in range(demo_timesteps):
         trajectory['obs'].append(obs.squeeze())
         action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
         obs, rew, dones, info = env.step(action)
@@ -73,12 +95,12 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts,
-        seed, algo, n_envs, timesteps, representation_dim,
+def run(benchmark, use_random_rollouts, algo, algo_params, ppo_timesteps,
         ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
+
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -87,21 +109,13 @@ def run(benchmark, use_random_rollouts,
     venv = auto_env.load_vec_env()
     color_space = auto_env.load_color_space()
     if use_random_rollouts:
-        dataset_dict = get_random_traj(env=venv,
-                                       timesteps=timesteps)
+        dataset_dict = get_random_traj(env=venv)
     else:
+        # TODO be able to load a fixed number, `demo_timesteps`
         dataset_dict = auto_env.load_dataset()
 
-    # FIXME(sam): this creates weird action-at-a-distance, and doesn't save us
-    # from specifying parameters in the default config anyway (Sacred will
-    # complain if we include a param that isn't in the default config). Should
-    # do one of the following:
-    # 1. Decorate RepresentationLearner constructor with a Sacred ingredient.
-    # 2. Just pass things manually.
     assert issubclass(algo, RepresentationLearner)
-    init_sig = inspect.signature(RepresentationLearner.__init__)
-    rep_learner_params = [p for p in init_sig.parameters if p != 'self']
-    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
+    algo_params = dict(algo_params)
     algo_params['color_space'] = color_space
     logging.info(f"Running {algo} with parameters: {algo_params}")
     model = algo(venv, log_dir=log_dir, **algo_params)
@@ -112,7 +126,8 @@ def run(benchmark, use_random_rollouts,
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
+        encoder_feature_extractor_kwargs = {'features_dim': algo_params["representation_dim"],
+                                            'encoder_path': latest_checkpoint}
 
         # TODO figure out how to not have to set `ortho_init` to False for the whole policy
         policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
@@ -121,7 +136,7 @@ def run(benchmark, use_random_rollouts,
         ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
                         verbose=1, policy_kwargs=policy_kwargs)
         ppo_model = initialize_non_features_extractor(ppo_model)
-        ppo_model.learn(total_timesteps=1000)
+        ppo_model.learn(total_timesteps=ppo_timesteps)
 
     venv.close()
 
