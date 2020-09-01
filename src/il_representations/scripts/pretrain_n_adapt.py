@@ -19,7 +19,6 @@ chain_ex = Experiment('chain', ingredients=[
     # explicitly list every ingredient we want to configure
     represent_ex, il_train_ex, il_test_ex, benchmark_ingredient,
 ])
-output_root = 'runs/chain_runs'
 cwd = os.getcwd()
 
 
@@ -90,7 +89,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, benchm
 
     # Run il train
     config['il_train'].update({
-        'encoder_path': osp.join(cwd, pretrain_result['encoder_path']),
+        'encoder_path': pretrain_result['encoder_path'],
         'seed': rng.randint(1 << 31),
         'benchmark': benchmark_config,
     })
@@ -98,7 +97,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, benchm
 
     # Run il test
     config['il_test'].update({
-        'policy_path': osp.join(cwd, il_train_result['model_path']),
+        'policy_path': il_train_result['model_path'],
         'seed': rng.randint(1 << 31),
         'benchmark': benchmark_config,
     })
@@ -131,13 +130,12 @@ def base_config():
         }
     }
 
-    representation_learning = {
-        'root_dir': cwd,
-    }
-
-    il_train = {
-        'root_dir': cwd,
-    }
+    # no updates, just leaving these in as a reminder that it's possible to
+    # supply more updates to these parts in config files
+    representation_learning = {}
+    il_train = {}
+    il_test = {}
+    benchmark = {}
 
     tune_run_kwargs = dict(
         num_samples=1,
@@ -160,6 +158,14 @@ def run(exp_name, metric, spec, representation_learning, il_train,
     spec = sacred_copy(spec)
     log_dir = chain_ex.observers[0].dir
 
+    # make Ray run from this directory
+    ray_dir = os.path.join(log_dir, 'ray')
+    os.makedirs(ray_dir, exist_ok=True)
+    # Ray Tune will change the directory when tuning; this next step ensures
+    # that pwd-relative data_roots remain valid.
+    benchmark_config['data_root'] = os.path.abspath(
+        os.path.join(cwd, benchmark_config['data_root']))
+
     def trainable_function(config):
         # "config" is passed in by Ray Tune
         run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
@@ -174,6 +180,7 @@ def run(exp_name, metric, spec, representation_learning, il_train,
         trainable_function,
         name=exp_name,
         config=spec,
+        local_dir=ray_dir,
         **tune_run_kwargs,
     )
 
