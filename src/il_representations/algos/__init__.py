@@ -1,19 +1,13 @@
-from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly
-from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.decoders import ActionConditionedVectorDecoder, BYOLProjectionHead, MomentumProjectionHead, NoOp, ProjectionHead
-from il_representations.algos.encoders import DeterministicEncoder, DynamicsEncoder, InverseDynamicsEncoder, MomentumEncoder, RecurrentEncoder, StochasticEncoder
-from il_representations.algos.losses import BatchAsymmetricContrastiveLoss, CEBLoss, MSELoss, QueueAsymmetricContrastiveLoss, SymmetricContrastiveLoss
+from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
+from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
+from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
+from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss
+
+from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
-from il_representations.algos.representation_learner import RepresentationLearner
-
-
-def update_kwarg_dict(kwargs, update_dict, cls):
-    for key, value in update_dict.items():
-        if key in kwargs:
-            assert kwargs[key] == value, f"{cls.__name__} tried to directly set keyword arg {key} to {value}, but it was specified elsewhere as {kwargs[key]}"
-            raise Warning(f"In {cls.__name__}, {key} was specified as both a direct argument and in a kwargs dictionary. Prefer using only one for robustness reasons.")
-        kwargs[key] = value
-    return kwargs
+from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.optimizers import LARS
 
 
 class SimCLR(RepresentationLearner):
@@ -27,14 +21,16 @@ class SimCLR(RepresentationLearner):
      of target with all other contexts.
     """
     def __init__(self, env, log_dir, **kwargs):
-        super(SimCLR, self).__init__(env=env,
-                                     log_dir=log_dir,
-                                     encoder=DeterministicEncoder,
-                                     decoder=ProjectionHead,
-                                     loss_calculator=SymmetricContrastiveLoss,
-                                     augmenter=AugmentContextAndTarget,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     **kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
+
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=ProjectionHead,
+                         loss_calculator=SymmetricContrastiveLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=IdentityPairConstructor,
+                         **kwargs)
 
 
 class TemporalCPC(RepresentationLearner):
@@ -45,16 +41,16 @@ class TemporalCPC(RepresentationLearner):
 
         By default, augments only the context, but can be modified to augment both context and target.
         """
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs, {'temporal_offset': temporal_offset}, TemporalCPC)
-        super(TemporalCPC, self).__init__(env=env,
-                                          log_dir=log_dir,
-                                          encoder=DeterministicEncoder,
-                                          decoder=NoOp,
-                                          loss_calculator=BatchAsymmetricContrastiveLoss,
-                                          target_pair_constructor=TemporalOffsetPairConstructor,
-                                          target_pair_constructor_kwargs=target_pair_constructor_kwargs,
-                                          **kwargs)
+        kwargs_updates = {'target_pair_constructor_kwargs': {'temporal_offset': temporal_offset}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=NoOp,
+                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 
 class RecurrentCPC(RepresentationLearner):
@@ -68,14 +64,14 @@ class RecurrentCPC(RepresentationLearner):
     By default, augments only the context, but can be modified to augment both context and target.
     """
     def __init__(self, env, log_dir, **kwargs):
-        super(RecurrentCPC, self).__init__(env=env,
-                                           log_dir=log_dir,
-                                           encoder=RecurrentEncoder,
-                                           decoder=NoOp,
-                                           loss_calculator=BatchAsymmetricContrastiveLoss,
-                                           target_pair_constructor=TemporalOffsetPairConstructor,
-                                           shuffle_batches=False,
-                                           **kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates={'shuffle_batches': False})
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=RecurrentEncoder,
+                         decoder=NoOp,
+                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 
 class MoCo(RepresentationLearner):
@@ -83,20 +79,18 @@ class MoCo(RepresentationLearner):
     Implementation of MoCo: Momentum Contrast for Unsupervised Visual Representation Learning
     https://arxiv.org/abs/1911.05722
     """
-    def __init__(self, env, log_dir, queue_size=8192, **kwargs):
-        batch_extender_kwargs = kwargs.get('batch_extender_kwargs', {})
-        batch_extender_kwargs = update_kwarg_dict(batch_extender_kwargs,
-                                                           {'queue_size': queue_size}, MoCo)
-        super(MoCo, self).__init__(env=env,
-                                   log_dir=log_dir,
-                                   encoder=MomentumEncoder,
-                                   decoder=NoOp,
-                                   loss_calculator=QueueAsymmetricContrastiveLoss,
-                                   augmenter=AugmentContextAndTarget,
-                                   target_pair_constructor=TemporalOffsetPairConstructor,
-                                   batch_extender=QueueBatchExtender,
-                                   batch_extender_kwargs=batch_extender_kwargs,
-                                   **kwargs)
+    def __init__(self, env, log_dir, **kwargs):
+        hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
+        kwargs = self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=NoOp,
+                         loss_calculator=QueueAsymmetricContrastiveLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         batch_extender=QueueBatchExtender,
+                         **kwargs)
 
 
 class MoCoWithProjection(RepresentationLearner):
@@ -107,54 +101,55 @@ class MoCoWithProjection(RepresentationLearner):
     Includes an additional projection head atop the representation and before the prediction
     """
 
-    def __init__(self, env, log_dir, queue_size=8192, **kwargs):
-        batch_extender_kwargs = kwargs.get('batch_extender_kwargs', {})
-        batch_extender_kwargs = update_kwarg_dict(batch_extender_kwargs,
-                                                  {'queue_size': queue_size}, MoCoWithProjection)
-        super(MoCoWithProjection, self).__init__(env=env,
-                                                 log_dir=log_dir,
-                                                 encoder=MomentumEncoder,
-                                                 decoder=MomentumProjectionHead,
-                                                 loss_calculator=QueueAsymmetricContrastiveLoss,
-                                                 augmenter=AugmentContextAndTarget,
-                                                 target_pair_constructor=TemporalOffsetPairConstructor,
-                                                 batch_extender=QueueBatchExtender,
-                                                 batch_extender_kwargs=batch_extender_kwargs,
-                                                 **kwargs)
+    def __init__(self, env, log_dir, **kwargs):
+        hardcoded_params = DEFAULT_HARDCODED_PARAMS + ['batch_extender']
+        kwargs = self.validate_and_update_kwargs(kwargs, hardcoded_params=hardcoded_params)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=MomentumProjectionHead,
+                         loss_calculator=QueueAsymmetricContrastiveLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         batch_extender=QueueBatchExtender,
+                         **kwargs)
 
 
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs,
-                                                           {'mode': 'dynamics'}, DynamicsPrediction)
-        super(DynamicsPrediction, self).__init__(env=env,
-                                                 log_dir=log_dir,
-                                                 encoder=DynamicsEncoder,
-                                                 decoder=NoOp, # Should be a pixel decoder that takes in action, currently errors
-                                                 loss_calculator=MSELoss,
-                                                 augmenter=AugmentContextOnly,
-                                                 target_pair_constructor=TemporalOffsetPairConstructor,
-                                                 target_pair_constructor_kwargs=target_pair_constructor_kwargs,
-                                                 **kwargs)
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DynamicsEncoder,
+                         # Should be a pixel decoder that takes in action, currently errors
+                         decoder=NoOp,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextOnly,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+    def learn(self, dataset, training_epochs):
+        raise NotImplementedError("DynamicsPrediction is not yet fully implemented")
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        if 'mode' in target_pair_constructor_kwargs:
-            raise Warning(
-                f"target_pair_constructor `mode` param must be set to `inverse_dynamics`, overwriting current value {target_pair_constructor_kwargs.get('mode')}")
-        target_pair_constructor_kwargs.update({'mode': 'inverse_dynamics'})
-        super(InverseDynamicsPrediction, self).__init__(env=env,
-                                                        log_dir=log_dir,
-                                                        encoder=InverseDynamicsEncoder,
-                                                        decoder=NoOp, # Should be a action decoder that takes in next obs representation
-                                                        loss_calculator=MSELoss,
-                                                        augmenter=AugmentContextOnly,
-                                                        target_pair_constructor=TemporalOffsetPairConstructor,
-                                                        target_pair_constructor_kwargs=target_pair_constructor_kwargs,
-                                                        **kwargs)
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'inverse_dynamics'}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=InverseDynamicsEncoder,
+                         # Should be a action decoder that takes in next obs representation
+                         decoder=NoOp,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextOnly,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+    def learn(self, dataset, training_epochs):
+        raise NotImplementedError("InverseDynamicsPrediction is not yet fully implemented")
 
 
 class BYOL(RepresentationLearner):
@@ -165,29 +160,60 @@ class BYOL(RepresentationLearner):
     from 0.996 to 1 via cosine scheduling.
     """
     def __init__(self, env, log_dir, **kwargs):
-        super(BYOL, self).__init__(env=env,
-                                   log_dir=log_dir,
-                                   encoder=MomentumEncoder,
-                                   decoder=BYOLProjectionHead,
-                                   loss_calculator=MSELoss,
-                                   augmenter=AugmentContextAndTarget,
-                                   target_pair_constructor=IdentityPairConstructor,
-                                   **kwargs)
+        kwargs = self.validate_and_update_kwargs(kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=BYOLProjectionHead,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=IdentityPairConstructor,
+                         **kwargs)
 
 
 class CEB(RepresentationLearner):
     """
+    CEB with variance that is learned by StochasticEncoder
     """
-    def __init__(self, env, log_dir, beta=0.1, **kwargs):
-        super(CEB, self).__init__(env=env,
-                                  log_dir=log_dir,
-                                  encoder=StochasticEncoder,
-                                  decoder=NoOp,
-                                  loss_calculator=CEBLoss,
-                                  loss_calculator_kwargs={'beta': beta},
-                                  augmenter=AugmentContextAndTarget,
-                                  target_pair_constructor=TemporalOffsetPairConstructor,
-                                  **kwargs)
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs = self.validate_and_update_kwargs(kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=StochasticEncoder,
+                         decoder=NoOp,
+                         loss_calculator=CEBLoss,
+                         augmenter=NoAugmentation,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+class FixedVarianceCEB(RepresentationLearner):
+    """
+    CEB with fixed rather than learned variance
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs = self.validate_and_update_kwargs(kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=NoOp,
+                         loss_calculator=CEBLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+class FixedVarianceTargetProjectedCEB(RepresentationLearner):
+    """
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs = self.validate_and_update_kwargs(kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=DeterministicEncoder,
+                         decoder=TargetProjection,
+                         loss_calculator=CEBLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
 
 
 class ActionConditionedTemporalCPC(RepresentationLearner):
@@ -199,26 +225,19 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     expected policy, as might need to happen if the algorithm needed to predict the frame at time (t+k) over any
     possible action distribution.
     """
-    def __init__(self, env, log_dir, temporal_offset=1, shuffle_batches=False, **kwargs):
-        target_pair_constructor_kwargs = kwargs.get('target_pair_constructor_kwargs', {})
-        decoder_kwargs = kwargs.get('decoder_kwargs', {})
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs_updates = {'preprocess_extra_context': False,
+                          'target_pair_constructor_kwargs': {"mode": "dynamics"},
+                          'decoder_kwargs': {'action_space': env.action_space}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
-        target_pair_constructor_kwargs = update_kwarg_dict(target_pair_constructor_kwargs,
-                                                           {"temporal_offset": temporal_offset, "mode": "dynamics"},
-                                                           ActionConditionedTemporalCPC)
-        decoder_kwargs = update_kwarg_dict(decoder_kwargs, {'action_space': env.action_space}, ActionConditionedTemporalCPC)
-
-        super(ActionConditionedTemporalCPC, self).__init__(env=env,
-                                                           log_dir=log_dir,
-                                                           preprocess_extra_context=False,
-                                                           target_pair_constructor=TemporalOffsetPairConstructor,
-                                                           target_pair_constructor_kwargs=target_pair_constructor_kwargs,
-                                                           encoder=DeterministicEncoder,
-                                                           decoder=ActionConditionedVectorDecoder,
-                                                           decoder_kwargs=decoder_kwargs,
-                                                           loss_calculator=BatchAsymmetricContrastiveLoss,
-                                                           shuffle_batches=shuffle_batches,
-                                                           **kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         encoder=DeterministicEncoder,
+                         decoder=ActionConditionedVectorDecoder,
+                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
 WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
