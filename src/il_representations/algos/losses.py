@@ -1,8 +1,7 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Independent
+import stable_baselines3.common.logger as sb_logger
 
 
 class RepresentationLoss(ABC):
@@ -10,6 +9,7 @@ class RepresentationLoss(ABC):
         self.device = device
         self.sample = sample
 
+    @abstractmethod
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
         pass
 
@@ -73,8 +73,10 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
     original images, and (3) all the images in the queue as negative examples. This is implemented with setting
     use_batch_neg=True.
     """
+
     def __init__(self, device, sample=False, temp=0.1, use_batch_neg=False):
         super(QueueAsymmetricContrastiveLoss, self).__init__(device, sample)
+
         self.temp = temp
         self.use_batch_neg = use_batch_neg  # Use other images in current batch as negative samples
 
@@ -159,8 +161,10 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
+
     def __init__(self, device, sample=False, temp=0.1, normalize=True):
         super(SymmetricContrastiveLoss, self).__init__(device, sample)
+
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
@@ -193,14 +197,20 @@ class SymmetricContrastiveLoss(RepresentationLoss):
 
         # Values on the diagonal line are each image's similarity with itself
         logits_aa = logits_aa - mask
-
         # Similarity of the augmented images with all other augmented images.
         logits_bb = torch.matmul(z_j, z_j.T)  # NxN
         logits_bb = logits_bb - mask
-
         # Similarity of original images and augmented images
         logits_ab = torch.matmul(z_i, z_j.T)  # NxN
         logits_ba = torch.matmul(z_j, z_i.T)  # NxN
+
+        avg_self_similarity = logits_ab.diag().mean().item()
+        logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+
+        sb_logger.record('avg_self_similarity', avg_self_similarity)
+        sb_logger.record('avg_other_similarity', avg_other_similarity)
+        sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
 
         # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
         # to both original and augmented images (hence "symmetric").
@@ -232,20 +242,21 @@ class CEBLoss(RepresentationLoss):
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form
     than done by traditional VIB techniques
     """
-    def __init__(self, device, beta=.1):
-        super().__init__(device, sample=True)
+
+    def __init__(self, device, beta=.1, sample=True):
+        super().__init__(device, sample=sample)
         # TODO allow for beta functions
         self.beta = beta
+        self.sample = sample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-
-        z = decoded_context_dist.sample() # B x Z
+        z = decoded_context_dist.rsample()
 
         log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
         log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
-
-        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z under _all_ target distributions
-        catgen = torch.distributions.Categorical(logits=cross_probas) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
+        cross_probas_logits = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
+        # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
+        catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
                                                                       # targets/y values
         inds = (torch.arange(start=0, end=len(z))).to(self.device)
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
