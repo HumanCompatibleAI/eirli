@@ -23,7 +23,7 @@ class IdentityBatchExtender(BatchExtender):
 
 
 class QueueBatchExtender(BatchExtender):
-    def __init__(self, queue_dim, queue_size, device, sample=False):
+    def __init__(self, queue_dim, device, queue_size=8192, sample=False):
         super(QueueBatchExtender, self).__init__()
         self.queue_size = queue_size
         self.representation_dim = queue_dim
