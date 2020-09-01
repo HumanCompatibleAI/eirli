@@ -1,12 +1,9 @@
 """Benchmark ingredient configurations for unit testing."""
-import inspect
 from os import path
 
 from ray import tune
 
 from il_representations import algos
-from il_representations.test_support.utils import is_representation_learner
-
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 TEST_DATA_DIR = path.abspath(
