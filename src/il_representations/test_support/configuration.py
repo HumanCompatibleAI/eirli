@@ -58,28 +58,42 @@ FAST_IL_TRAIN_CONFIG = {
         'disc_batch_size': 2,
     },
 }
-
+REPL_SMOKE_TEST_CONFIG = {
+    'pretrain_epochs': 1,
+    'timesteps': 32,
+    'batch_size': 7,
+    'unit_test_max_train_steps': 2,
+    'representation_dim': 3,
+    'use_random_rollouts': False,
+    'ppo_finetune': False,
+}
 CHAIN_CONFIG = {
     'spec': {
         'rep': {
             'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
-            'pretrain_epochs': 1,
         },
         'il_train': {
             # in practice we probably want to try GAIL too
             # (I'd put this in the unit test if it wasn't so slow)
             'algo': tune.grid_search(['bc']),
-            'final_pol_name': 'last_test_policy.pt',
-            **FAST_IL_TRAIN_CONFIG,
-        },
-        'il_test': {
-            'n_rollouts': 2,
         },
     },
     'tune_run_kwargs': {
         'resources_per_trial': {
-            'cpu': 1,
+            'cpu': 2,
             'gpu': 0,
         },
+    },
+    'il_train': {
+        'device_name': 'cpu',
+        **FAST_IL_TRAIN_CONFIG,
+    },
+    'il_test': {
+        'device_name': 'cpu',
+        'n_rollouts': 2,
+    },
+    'representation_learning': {
+        'device': 'cpu',
+        **REPL_SMOKE_TEST_CONFIG,
     },
 }

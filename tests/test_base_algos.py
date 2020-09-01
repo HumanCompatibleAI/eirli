@@ -7,7 +7,7 @@ import pytest
 from sacred.observers import FileStorageObserver
 
 from il_representations import algos
-from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS
+from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS, REPL_SMOKE_TEST_CONFIG
 from il_representations.test_support.utils import is_representation_learner
 
 
@@ -18,13 +18,6 @@ from il_representations.test_support.utils import is_representation_learner
 @pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
 def test_algo(algo, benchmark_cfg, represent_ex):
 
-    represent_ex.run(config_updates={'pretrain_epochs': 1,
-                                     'timesteps': 32,
-                                     'batch_size': 7,
-                                     'unit_test_max_train_steps': 2,
-                                     'representation_dim': 3,
-                                     'algo': algo,
-                                     'use_random_rollouts': False,
-                                     'benchmark': benchmark_cfg,
-                                     'ppo_finetune': False})
-
+    represent_ex.run(config_updates={
+        **REPL_SMOKE_TEST_CONFIG, 'algo': algo, 'benchmark': benchmark_cfg,
+    })

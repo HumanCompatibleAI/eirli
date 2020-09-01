@@ -30,7 +30,6 @@ def default_config():
     root_dir = os.getcwd()
     n_envs = 1
     timesteps = 640
-    pretrain_only = False
     pretrain_epochs = 50
     scheduler = None
     representation_dim = 128
