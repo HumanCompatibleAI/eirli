@@ -205,7 +205,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         logits_ba = torch.matmul(z_j, z_i.T)  # NxN
 
         avg_self_similarity = logits_ab.diag().mean().item()
-        avg_other_similarity = logits_ab.masked_select(~torch.eye(batch_size, dtype=bool)).mean().item()
+        logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
 
         sb_logger.record('avg_self_similarity', avg_self_similarity)
         sb_logger.record('avg_other_similarity', avg_other_similarity)
