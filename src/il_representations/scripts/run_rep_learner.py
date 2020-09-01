@@ -30,7 +30,7 @@ def default_config():
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_epochs = 50
+    pretrain_epochs = 500
     algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
     algo_params["augmenter_kwargs"] = {
@@ -39,7 +39,7 @@ def default_config():
         # augmentations.
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
-    ppo_finetune = True
+    ppo_finetune = False
     batch_size = 256
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
