@@ -117,11 +117,15 @@ def base_config():
     metric = "return_mean"  # anything returned by il_test is fair game
     spec = {
         'rep': {
-            'algo': tune.grid_search(['MoCo', 'SimCLR']),
+            'algo': tune.grid_search([
+                'MoCoWithProjection', 'SimCLR', 'CEB',
+                'ActionConditionedTemporalCPC', 'BYOL',
+                'TemporalCPC',
+            ]),
         },
         'il_train': {
             'algo': tune.grid_search(['bc']),
-            # 'freeze_encoder': tune.grid_search([True, False])
+            'freeze_encoder': tune.grid_search([True, False])
         },
         'il_test': {
         }
