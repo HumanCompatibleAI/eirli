@@ -216,7 +216,7 @@ def do_training_gail(
         ppo_algo,
         disc_batch_size=gail['disc_batch_size'],
         disc_minibatch_size=gail['disc_minibatch_size'],
-        discrim_kwargs=dict(discrim_net=discrim_net),
+        discrim_kwargs=dict(discrim_net=discrim_net, scale=True),
         obs_norm=False,
         rew_norm=True,
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
