@@ -16,6 +16,9 @@ def bench_defaults():
     # this should be a number of trajectories to return, or None if returning
     # all available trajectories is okay
     n_traj = None
+    # root directory for data; useful when script is being run under Ray Tune,
+    # which changes the working directory
+    data_root = '.'
 
     # ########################
     # MAGICAL config variables

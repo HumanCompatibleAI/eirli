@@ -72,7 +72,6 @@ il_train_ex = Experiment('il_train', ingredients=[
 
 @il_train_ex.config
 def default_config():
-    root_dir = os.getcwd()  # noqa: F841
     # random seed for EVERYTHING
     seed = 42  # noqa: F841
     # device to place all computations on
@@ -233,7 +232,7 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
+def train(seed, algo, benchmark, encoder_path, freeze_encoder,
           _config):
     set_global_seeds(seed)
     # python built-in logging
@@ -243,8 +242,6 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
     # actually know the right way to write log files continuously in Sacred.
     log_dir = os.path.abspath(il_train_ex.observers[0].dir)
     imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
-    # The cwd can be changed when the experiment is called by Ray. Reset that.
-    os.chdir(root_dir)
 
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()
@@ -255,7 +252,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
         encoder = th.load(encoder_path)
         if freeze_encoder:
             freeze_params(encoder)
-            assert len(encoder.parameters()) == 0
+            assert len(list(encoder.parameters())) == 0
     else:
         logging.info("No encoder provided, will init from scratch")
         encoder = None
@@ -281,7 +278,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
     # exception after creating it (could use try/catch or a context manager)
     venv.close()
 
-    return {'model_path': final_path}
+    return {'model_path': os.path.abspath(final_path)}
 
 
 if __name__ == '__main__':
