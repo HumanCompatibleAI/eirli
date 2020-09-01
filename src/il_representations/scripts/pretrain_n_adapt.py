@@ -30,6 +30,8 @@ def run_single_exp(inner_ex_config, config, log_dir, exp_name):
         log_dir: The log directory of current chain experiment.
         exp_name: Specify the experiment type in ['rep', 'il_train', 'il_test']
     """
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+
     from il_representations.scripts.run_rep_learner import represent_ex
     from il_representations.scripts.il_train import il_train_ex
     from il_representations.scripts.il_test import il_test_ex
@@ -93,15 +95,18 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, config
         'seed': rng.randint(1 << 31),
     })
     il_test_result = run_single_exp(il_test_ex_config, config['il_test'], log_dir, 'il_test')
+    filtered_result = {
+        k: v for k, v in il_test_result.items()
+        if isinstance(v, (int, float))
+    }
 
-    tune.report(reward=il_test_result['reward_mean'])
+    tune.report(**filtered_result)
 
 
 @chain_ex.config
 def base_config():
     exp_name = "grid_search"
-    metric = 'reward_mean'
-    assert metric in ['reward_mean']  # currently only supports one metric
+    metric = "return_mean"  # anything returned by il_test is fair game
     spec = {
         'rep': {
             'algo': tune.grid_search(['MoCo', 'SimCLR']),
