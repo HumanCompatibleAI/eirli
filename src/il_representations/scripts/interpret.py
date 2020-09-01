@@ -27,7 +27,7 @@ interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 @interp_ex.config
 def base_config():
     # Network settings
-    model_path = os.path.join(os.getcwd(), 'runs/downloads/nature_moco200_3l_seed555.pth')
+    model_path = os.path.join(os.getcwd(), 'runs/downloads/moco_3l_seed888.pth')
     network = NatureCnn
     network_args = {'action_size': 4, 'obs_shape': [84, 84, 4], 'z_dim': 64, 'pretrained': True}
     device = None
@@ -47,8 +47,8 @@ def base_config():
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
     layer_conductance = False
     layer_gradcam = False
-    layer_activation = True
-    layer_gradxact = False
+    layer_activation = False
+    layer_gradxact = True
 
 
 @interp_ex.capture
@@ -145,43 +145,18 @@ def deep_lift_(net, image, label, original_img, log_dir, show_imgs):
     return attr_dl
 
 
-def layer_conductance_(net, layer, image, label, save_dir):
-    def plot_lc(lc_attr_test, layer_weight):
-        plt.figure(figsize=(15, 8))
-
-        x_axis_data = np.arange(lc_attr_test.shape[1])
-
-        y_axis_lc_attr_test = lc_attr_test.mean(0).detach().numpy()
-        y_axis_lc_attr_test = y_axis_lc_attr_test / np.linalg.norm(y_axis_lc_attr_test, ord=1)
-
-        y_axis_lin_weight = layer_weight[0].detach().numpy()
-        y_axis_lin_weight = y_axis_lin_weight / np.linalg.norm(y_axis_lin_weight, ord=1)
-
-        width = 0.25
-        legends = ['Attributions', 'Weights']
-        x_axis_labels = ['Neuron {}'.format(i) for i in range(len(y_axis_lin_weight))]
-
-        ax = plt.subplot()
-        ax.set_title('Aggregated neuron importances and learned weights in the indicated linear layer of the model')
-
-        ax.bar(x_axis_data + width, y_axis_lc_attr_test, width, align='center', alpha=0.5, color='red')
-        ax.bar(x_axis_data + 2 * width, y_axis_lin_weight, width, align='center', alpha=0.5, color='green')
-        plt.legend(legends, loc=2, prop={'size': 20})
-        ax.autoscale_view()
-        plt.tight_layout()
-
-        ax.set_xticks(x_axis_data + 0.5)
-        ax.set_xticklabels(x_axis_labels)
-
-        plt.show()
-
-        plt.savefig(f'{save_dir}/layer_conductance.png')
-
+def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, columns=10):
     layer_cond = LayerConductance(net, layer)
     attribution = layer_cond.attribute(image, n_steps=100, attribute_to_layer_input=True, target=label)
     attribution = attribution[0]
-    l_weight = layer.weight
-    plot_lc(attribution, l_weight)
+    if len(attribution.shape) == 2:  # Attribution has one dimension only - usually seen in linear layers.
+        l_weight = layer.weight
+        plot_linear_layer_attributions(attribution, l_weight, log_dir)
+    elif len(attribution.shape) == 4:  # Attribution has three dimensions - usually seen in convolution layers.
+        attribution = attribution[0]
+        num_channels = attribution.shape[0]
+        show_img_grid(attribution, math.ceil(num_channels/columns), columns, log_dir, 'layer_conductance',
+                      'layer_conductance', show_imgs)
 
     return attribution
 
@@ -202,15 +177,18 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     save_img(figure_2_numpy(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
 
 
-def layer_act_(net, layer, algo, algo_name, image, label, log_dir, show_imgs=True, columns=10):
-    layer_a = LayerGradientXActivation(net, layer)
-    a_attr = layer_a.attribute(image, label)
-    num_channels = a_attr.shape[1]
-    column = columns
-    layer_info = str(layer)
-    img_title = f'{algo_name} of {layer_info}'
-    show_img_grid(a_attr[0], math.ceil(num_channels/column), column, log_dir, algo_name,
-                  img_title, show_imgs)
+def layer_act_(net, layer, algo, algo_name, image, label, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
+    layer_a = algo(net, layer)
+    a_attr = layer_a.attribute(image, **attr_kwargs)[0]
+    if len(a_attr.shape) == 1:  # Attribution has one dimension only - usually seen in linear layers.
+        l_weight = layer.weight
+        plot_linear_layer_attributions(a_attr, l_weight, log_dir)
+    elif len(a_attr.shape) == 3:  # Attribution has three dimensions - usually seen in convolution layers.
+        num_channels = a_attr.shape[0]
+        layer_info = str(layer)
+        img_title = f'{algo_name} of {layer_info}'
+        show_img_grid(a_attr, math.ceil(num_channels/columns), columns, log_dir, algo_name,
+                      img_title, show_imgs)
 
 
 def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
@@ -230,6 +208,37 @@ def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
         plt.show()
     plt.close(fig)
 
+
+def plot_linear_layer_attributions(lc_attr_test, layer_weight, save_dir):
+    plt.figure(figsize=(15, 8))
+
+    x_axis_data = np.arange(lc_attr_test.shape[1])
+
+    y_axis_lc_attr_test = lc_attr_test.mean(0).detach().numpy()
+    y_axis_lc_attr_test = y_axis_lc_attr_test / np.linalg.norm(y_axis_lc_attr_test, ord=1)
+
+    y_axis_lin_weight = layer_weight[0].detach().numpy()
+    y_axis_lin_weight = y_axis_lin_weight / np.linalg.norm(y_axis_lin_weight, ord=1)
+
+    width = 0.25
+    legends = ['Attributions', 'Weights']
+    x_axis_labels = ['Neuron {}'.format(i) for i in range(len(y_axis_lin_weight))]
+
+    ax = plt.subplot()
+    ax.set_title('Aggregated neuron importances and learned weights in the indicated linear layer of the model')
+
+    ax.bar(x_axis_data + width, y_axis_lc_attr_test, width, align='center', alpha=0.5, color='red')
+    ax.bar(x_axis_data + 2 * width, y_axis_lin_weight, width, align='center', alpha=0.5, color='green')
+    plt.legend(legends, loc=2, prop={'size': 20})
+    ax.autoscale_view()
+    plt.tight_layout()
+
+    ax.set_xticks(x_axis_data + 0.5)
+    ax.set_xticklabels(x_axis_labels)
+
+    plt.show()
+
+    plt.savefig(f'{save_dir}/layer_conductance.png')
 
 
 @interp_ex.main
@@ -259,20 +268,20 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
             deep_lift_(network, img, label, original_img, log_dir, show_imgs)
 
         if layer_conductance:
-            # The layer should be linear layer only.
-            layer_conductance_(network, network.mlp_pi_decoder[1], img, label, log_dir)
+            # layer_conductance_(network, network.mlp_pi_decoder[0], img, label, log_dir)
+            layer_conductance_(network, network.encoder[4], img, label, log_dir)
 
         if layer_gradcam:
             # GradCAM is usually applied to the last convolutional layer in the network.
-            layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs)
+            layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs,)
 
         if layer_gradxact:
             layer_act_(network, network.encoder[0], LayerGradientXActivation, 'layer_GradXActivation',
-                       img, label, log_dir)
+                       img, label, log_dir, attr_kwargs={'target': label})
 
         if layer_activation:
             layer_act_(network, network.encoder[0], LayerActivation, 'layer_Activation',
-                       img, label, log_dir)
+                       img, label, log_dir, attr_kwargs={})
 
 
 if __name__ == '__main__':
