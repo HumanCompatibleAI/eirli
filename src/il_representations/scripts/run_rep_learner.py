@@ -31,6 +31,12 @@ def default_config():
     pretrain_epochs = 50
     algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
+    algo_params["augmenter_kwargs"] = {
+        # augmenter_spec is a comma-separated list of enabled augmentations.
+        # See `help(imitation.augment.StandardAugmentations)` for available
+        # augmentations.
+        "augmenter_spec": "translate,rotate,gaussian_blur",
+    }
     ppo_finetune = True
     batch_size = 256
     device = "auto"
@@ -41,12 +47,6 @@ def default_config():
         # this is just the default, but we need to set it so that Sacred
         # doesn't complain about unused values when we overwrite it later
         'obs_encoder_cls': 'BasicCNN',
-    }
-    augmenter_kwargs = {
-        # augmenter_spec is a comma-separated list of enabled augmentations.
-        # See `help(imitation.augment.StandardAugmentations)` for available
-        # augmentations.
-        "augmenter_spec": "translate,rotate,gaussian_blur",
     }
     _ = locals()
     del _
@@ -106,8 +106,8 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts, algo, algo_params, ppo_timesteps,
-        ppo_finetune, pretrain_epochs, _config):
+def run(benchmark, use_random_rollouts, algo, algo_params,
+        ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
