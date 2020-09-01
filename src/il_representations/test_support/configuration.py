@@ -66,7 +66,9 @@ CHAIN_CONFIG = {
             'pretrain_epochs': 1,
         },
         'il_train': {
-            'algo': tune.grid_search(['bc', 'gail']),
+            # in practice we probably want to try GAIL too
+            # (I'd put this in the unit test if it wasn't so slow)
+            'algo': tune.grid_search(['bc']),
             'final_pol_name': 'last_test_policy.pt',
             **FAST_IL_TRAIN_CONFIG,
         },

@@ -22,7 +22,7 @@ cwd = os.getcwd()
 def run_single_exp(inner_ex_config, config, log_dir, exp_name):
     """
     Run a specified experiment. We could not pass each Sacred experiment in because they are not pickle serializable,
-    which is not supported by Ray.
+    which is not supported by Ray (when running this as a remote function).
 
     params:
         inner_ex_config: The current experiment's default config.
@@ -98,7 +98,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config, config
 
 
 @chain_ex.config
-def base_config(representation_learning, il_train, il_test):
+def base_config():
     exp_name = "grid_search"
     metric = 'reward_mean'
     assert metric in ['reward_mean']  # currently only supports one metric
@@ -114,13 +114,13 @@ def base_config(representation_learning, il_train, il_test):
         }
     }
 
-    rep_ex_config = dict(representation_learning)
-    rep_ex_config['root_dir'] = cwd
+    representation_learning = {
+        'root_dir': cwd,
+    }
 
-    il_train_ex_config = dict(il_train)
-    il_train_ex_config['root_dir'] = cwd
-
-    il_test_ex_config = dict(il_test)
+    il_train = {
+        'root_dir': cwd,
+    }
 
     tune_run_kwargs = dict(
         num_samples=1,
@@ -134,11 +134,11 @@ def base_config(representation_learning, il_train, il_test):
 
 
 @chain_ex.main
-def run(exp_name, metric, spec, rep_ex_config, il_train_ex_config,
-        il_test_ex_config, tune_run_kwargs):
-    rep_ex_config = sacred_copy(rep_ex_config)
-    il_train_ex_config = sacred_copy(il_train_ex_config)
-    il_test_ex_config = sacred_copy(il_test_ex_config)
+def run(exp_name, metric, spec, representation_learning, il_train,
+        il_test, tune_run_kwargs):
+    rep_ex_config = sacred_copy(representation_learning)
+    il_train_ex_config = sacred_copy(il_train)
+    il_test_ex_config = sacred_copy(il_test)
     spec = sacred_copy(spec)
     log_dir = chain_ex.observers[0].dir
 
