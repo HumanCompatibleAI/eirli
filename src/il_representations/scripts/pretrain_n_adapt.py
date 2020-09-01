@@ -26,8 +26,8 @@ chain_ex = Experiment(
 cwd = os.getcwd()
 
 
-def run_single_exp(inner_ex_config, benchmark_config, all_config, log_dir,
-                   exp_name):
+def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
+                   log_dir, exp_name):
     """
     Run a specified experiment. We could not pass each Sacred experiment in because they are not pickle serializable,
     which is not supported by Ray (when running this as a remote function).
@@ -55,13 +55,16 @@ def run_single_exp(inner_ex_config, benchmark_config, all_config, log_dir,
 
     inner_ex_dict = dict(inner_ex_config)
     # combine with benchmark config
-    merged_config = update(inner_ex_dict, {
-        'benchmark': benchmark_config,
-    })
+    merged_config = update(inner_ex_dict, dict(benchmark=benchmark_config))
     # now combine with rest of config values, form Ray
-    merged_config = update(merged_config, all_config[exp_name])
+    merged_config = update(merged_config, tune_config_updates[exp_name])
+    merged_config = update(merged_config, dict(benchmark=tune_config_updates['benchmark']))
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
+    import pprint
+    print("\n\nfinal config:")
+    pprint.pprint(merged_config)
+    print("\n\n")
     ret_val = inner_ex.run(config_updates=merged_config)
     return ret_val.result
 
@@ -88,30 +91,32 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     rng = np.random.RandomState()
 
     # copy config so that we don't mutate in-place
-    config = copy.deepcopy(config)
+    tune_config_updates = copy.deepcopy(config)
+    del config  # I want a new name for it
 
     # Run representation learning
-    config['representation_learning'].update({
+    tune_config_updates['representation_learning'].update({
         'seed': rng.randint(1 << 31),
     })
-    pretrain_result = run_single_exp(rep_ex_config, benchmark_config, config,
-                                     log_dir, 'representation_learning')
+    pretrain_result = run_single_exp(rep_ex_config, benchmark_config,
+                                     tune_config_updates, log_dir,
+                                     'representation_learning')
 
     # Run il train
-    config['il_train'].update({
+    tune_config_updates['il_train'].update({
         'encoder_path': pretrain_result['encoder_path'],
         'seed': rng.randint(1 << 31),
     })
     il_train_result = run_single_exp(il_train_ex_config, benchmark_config,
-                                     log_dir, 'il_train')
+                                     tune_config_updates, log_dir, 'il_train')
 
     # Run il test
-    config['il_test'].update({
+    tune_config_updates['il_test'].update({
         'policy_path': il_train_result['model_path'],
         'seed': rng.randint(1 << 31),
     })
     il_test_result = run_single_exp(il_test_ex_config, benchmark_config,
-                                    log_dir, 'il_test')
+                                    tune_config_updates, log_dir, 'il_test')
     filtered_result = {
         k: v
         for k, v in il_test_result.items() if isinstance(v, (int, float))
