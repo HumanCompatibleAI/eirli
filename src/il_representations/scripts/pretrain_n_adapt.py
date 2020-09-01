@@ -61,10 +61,6 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     merged_config = update(merged_config, dict(benchmark=tune_config_updates['benchmark']))
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
-    import pprint
-    print("\n\nfinal config:")
-    pprint.pprint(merged_config)
-    print("\n\n")
     ret_val = inner_ex.run(config_updates=merged_config)
     return ret_val.result
 
@@ -137,8 +133,6 @@ def base_config():
                 'SimCLR',
                 'CEB',
                 'ActionConditionedTemporalCPC',
-                'BYOL',
-                'TemporalCPC',
             ]),
         },
         'il_train': {
@@ -157,29 +151,30 @@ def base_config():
                 'MoveToCorner',
                 'MoveToRegion',
                 'MatchRegions',
-                'MakeLine',
                 'FixColour',
                 'FindDupe',
-                'ClusterColour',
-                'ClusterShape',
+                # 'MakeLine',
+                # 'ClusterColour',
+                # 'ClusterShape',
             ]]
-            # dm_control configs
-            +  # (+ on a separate line for ease of commenting-out)
-            [{
-                'benchmark_name': 'dm_control',
-                'dm_control_env': dm_control_env_name
-            } for dm_control_env_name in [
-                'reacher-easy',
-                'finger-spin',
-                'cheetah-run',
-                'walker-walk',
-                'cartpole-swingup',
-                'reacher-easy',
-                'ball-in-cup-catch',
-            ]]
-            # ATARI configs (TODO)
-            +  # separate line for + again
-            [])
+            # # dm_control configs
+            # +  # (+ on a separate line for ease of commenting-out)
+            # [{
+            #     'benchmark_name': 'dm_control',
+            #     'dm_control_env': dm_control_env_name
+            # } for dm_control_env_name in [
+            #     'reacher-easy',
+            #     'finger-spin',
+            #     'cheetah-run',
+            #     'walker-walk',
+            #     'cartpole-swingup',
+            #     'reacher-easy',
+            #     'ball-in-cup-catch',
+            # ]]
+            # # ATARI configs (TODO)
+            # +  # separate line for + again
+            # [],
+        )
     }
 
     # no updates, just leaving these in as a reminder that it's possible to
