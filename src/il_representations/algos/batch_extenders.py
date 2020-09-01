@@ -23,11 +23,12 @@ class IdentityBatchExtender(BatchExtender):
 
 
 class QueueBatchExtender(BatchExtender):
-    def __init__(self, queue_dim, queue_size, sample=False):
+    def __init__(self, queue_dim, device, queue_size=8192, sample=False):
         super(QueueBatchExtender, self).__init__()
         self.queue_size = queue_size
         self.representation_dim = queue_dim
         self.sample = sample
+        self.device = device
         self.queue_loc = torch.randn(self.queue_size, self.representation_dim)
         self.queue_scale = torch.ones(self.queue_size, self.representation_dim)
         self.queue_ptr = 0
@@ -42,8 +43,8 @@ class QueueBatchExtender(BatchExtender):
         targets_scale = torch.stack([batch_element_matrix.diag() for batch_element_matrix in targets_covariance])
 
         batch_size = targets_loc.shape[0]
-        queue_targets_scale = self.queue_scale.clone().detach()
-        queue_targets_loc = self.queue_loc.clone().detach()
+        queue_targets_scale = (self.queue_scale.clone().detach()).to(self.device)
+        queue_targets_loc = (self.queue_loc.clone().detach()).to(self.device)
         # TODO: Currently requires the queue size to be a multiple of the batch size. Don't require that.
         self.queue_loc[self.queue_ptr:self.queue_ptr + batch_size] = targets_loc
         self.queue_scale[self.queue_ptr:self.queue_ptr + batch_size] = targets_scale
