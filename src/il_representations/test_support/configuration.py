@@ -66,7 +66,7 @@ REPL_SMOKE_TEST_CONFIG = {
 }
 CHAIN_CONFIG = {
     'spec': {
-        'rep': {
+        'representation_learning': {
             'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
         },
         'il_train': {
@@ -74,6 +74,7 @@ CHAIN_CONFIG = {
             # (I'd put this in the unit test if it wasn't so slow)
             'algo': tune.grid_search(['bc']),
         },
+        'benchmark': tune.grid_search(BENCHMARK_TEST_CONFIGS),
     },
     'tune_run_kwargs': {
         'resources_per_trial': {
