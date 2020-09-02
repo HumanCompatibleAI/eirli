@@ -34,21 +34,27 @@ def base_config():
 
     # Data settings
     benchmark_name = 'atari'
-    imgs = [666]  # index of each image in the dataset (int)
+    imgs = [888]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
     show_imgs = False
 
     # Interpret settings
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
-    saliency = False
-    integrated_gradient = False
-    deep_lift = False
+    saliency = 0
+    integrated_gradient = 0  # TODO：Fix the bug here
+    deep_lift = 0
 
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
-    layer_conductance = False
-    layer_gradcam = False
-    layer_activation = False
-    layer_gradxact = True
+    layer_conductance = 1
+    layer_gradcam = 0
+    layer_activation = 0
+    layer_gradxact = 0
+    layer_kwargs = {
+        'layer_conductance': {'module': 'fc_pi_decoder', 'layer_idx': 2},
+        'layer_gradcam': {'module': 'encoder', 'layer_idx': 4},
+        'layer_activation': {'module': 'fc_pi_decoder', 'layer_idx': 2},
+        'layer_gradxact': {'module': 'fc_pi_decoder', 'layer_idx': 2},
+    }
 
 
 @interp_ex.capture
@@ -151,7 +157,7 @@ def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, column
     attribution = attribution[0]
     if len(attribution.shape) == 2:  # Attribution has one dimension only - usually seen in linear layers.
         l_weight = layer.weight
-        plot_linear_layer_attributions(attribution, l_weight, log_dir)
+        plot_linear_layer_attributions(attribution, l_weight, 'layer_conductance', log_dir, show_imgs)
     elif len(attribution.shape) == 4:  # Attribution has three dimensions - usually seen in convolution layers.
         attribution = attribution[0]
         num_channels = attribution.shape[0]
@@ -168,22 +174,24 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     lg_viz_pos = viz.visualize_image_attr(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
                                       original_img, method="blended_heat_map", sign="positive",
                                       show_colorbar=True,
-                                      title="Overlayed DeepLift (Positive)")
+                                      title="Layer GradCAM (Positive)")
     lg_viz_neg = viz.visualize_image_attr(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
                                       original_img, method="blended_heat_map", sign="negative",
                                       show_colorbar=True,
-                                      title="Overlayed DeepLift (Negative)")
+                                      title="Layer GradCAM (Negative)")
     save_img(figure_2_numpy(lg_viz_pos[0]), 'layer_gradcam_pos', log_dir, show=show_imgs)
     save_img(figure_2_numpy(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
 
 
-def layer_act_(net, layer, algo, algo_name, image, label, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
+def layer_act_(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
     layer_a = algo(net, layer)
-    a_attr = layer_a.attribute(image, **attr_kwargs)[0]
-    if len(a_attr.shape) == 1:  # Attribution has one dimension only - usually seen in linear layers.
+    a_attr = layer_a.attribute(image, **attr_kwargs)
+    print(a_attr.shape)
+    if len(a_attr.shape) == 2:  # Attribution has one dimension only - usually seen in linear layers.
         l_weight = layer.weight
-        plot_linear_layer_attributions(a_attr, l_weight, log_dir)
+        plot_linear_layer_attributions(a_attr, l_weight, algo_name, log_dir, show_imgs)
     elif len(a_attr.shape) == 3:  # Attribution has three dimensions - usually seen in convolution layers.
+        a_attr = a_attr[0]
         num_channels = a_attr.shape[0]
         layer_info = str(layer)
         img_title = f'{algo_name} of {layer_info}'
@@ -209,7 +217,7 @@ def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
     plt.close(fig)
 
 
-def plot_linear_layer_attributions(lc_attr_test, layer_weight, save_dir):
+def plot_linear_layer_attributions(lc_attr_test, layer_weight, save_name, save_dir, show_imgs=True):
     plt.figure(figsize=(15, 8))
 
     x_axis_data = np.arange(lc_attr_test.shape[1])
@@ -236,14 +244,15 @@ def plot_linear_layer_attributions(lc_attr_test, layer_weight, save_dir):
     ax.set_xticks(x_axis_data + 0.5)
     ax.set_xticklabels(x_axis_labels)
 
-    plt.show()
+    plt.savefig(f'{save_dir}/{save_name}.png')
+    if show_imgs:
+        plt.show()
 
-    plt.savefig(f'{save_dir}/layer_conductance.png')
 
 
 @interp_ex.main
 def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact,
-        layer_activation):
+        layer_activation, layer_kwargs):
     # Load the network and images
     images, labels = process_data()
     network = prepare_network()
@@ -262,26 +271,39 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
             saliency_(network, img, label, original_img, log_dir, show_imgs)
 
         if integrated_gradient:
+            # integrated_gradient_(network, img, label, original_img, log_dir, show_imgs)
             integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
 
         if deep_lift:
             deep_lift_(network, img, label, original_img, log_dir, show_imgs)
 
         if layer_conductance:
-            # layer_conductance_(network, network.mlp_pi_decoder[0], img, label, log_dir)
-            layer_conductance_(network, network.encoder[4], img, label, log_dir)
+            module, idx = layer_kwargs['layer_conductance']['module'], \
+                          layer_kwargs['layer_conductance']['layer_idx']
+            chosen_layer = getattr(network, module)[idx]
+            layer_conductance_(network, chosen_layer, img, label, log_dir)
 
         if layer_gradcam:
-            # GradCAM is usually applied to the last convolutional layer in the network.
-            layer_gradcam_(network, network.encoder[4], img, label, original_img, log_dir, show_imgs,)
+            module, idx = layer_kwargs['layer_gradcam']['module'], \
+                          layer_kwargs['layer_gradcam']['layer_idx']
+            chosen_layer = getattr(network, module)[idx]
+            assert isinstance(chosen_layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
+                                                              'convolutional layer in the network.'
+            layer_gradcam_(network, chosen_layer, img, label, original_img, log_dir, show_imgs,)
 
         if layer_gradxact:
-            layer_act_(network, network.encoder[0], LayerGradientXActivation, 'layer_GradXActivation',
-                       img, label, log_dir, attr_kwargs={'target': label})
+            module, idx = layer_kwargs['layer_gradxact']['module'], \
+                          layer_kwargs['layer_gradxact']['layer_idx']
+            chosen_layer = getattr(network, module)[idx]
+            layer_act_(network, chosen_layer, LayerGradientXActivation, 'layer_GradXActivation',
+                       img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label})
 
         if layer_activation:
-            layer_act_(network, network.encoder[0], LayerActivation, 'layer_Activation',
-                       img, label, log_dir, attr_kwargs={})
+            module, idx = layer_kwargs['layer_activation']['module'], \
+                          layer_kwargs['layer_activation']['layer_idx']
+            chosen_layer = getattr(network, module)[idx]
+            layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
+                       img, log_dir, show_imgs=show_imgs, attr_kwargs={})
 
 
 if __name__ == '__main__':
