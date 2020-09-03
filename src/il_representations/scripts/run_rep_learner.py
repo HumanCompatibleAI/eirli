@@ -80,6 +80,7 @@ def tiny_epoch():
 @represent_ex.capture
 def get_random_traj(venv, demo_timesteps):
     random_policy = RandomPolicy(venv.observation_space, venv.action_space)
+    import pdb; pdb.set_trace()
     trajectories = rollout.generate_trajectories(
         random_policy, venv, rollout.min_timesteps(demo_timesteps))
     flat_traj = rollout.flatten_trajectories(trajectories)

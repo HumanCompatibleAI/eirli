@@ -58,6 +58,9 @@ def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
                             n_envs=n_envs,
                             parallel=venv_parallel)
     elif benchmark_name == 'minecraft':
+        if venv_parallel:
+            raise ValueError("MineRL environments can only be run with `venv_parallel`=False as a result of "
+                             "issues with starting daemonic processes from SubprocVecEnv")
         return make_vec_env(gym_env_name,
                             n_envs=n_envs,
                             parallel=venv_parallel,

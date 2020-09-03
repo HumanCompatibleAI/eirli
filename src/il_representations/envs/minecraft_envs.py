@@ -66,7 +66,12 @@ class MinecraftVectorWrapper(Wrapper):
 
     def step(self, action):
         obs, rew, dones, infos = self.env.step(MinecraftVectorWrapper.dictify_action(action))
-        return MinecraftVectorWrapper.transform_obs(obs), rew, dones, infos
+        transformed_obs = MinecraftVectorWrapper.transform_obs(obs)
+        return transformed_obs, rew, dones, infos
+
+    def reset(self):
+        obs = self.env.reset()
+        return MinecraftVectorWrapper.transform_obs(obs)
 
 
 
