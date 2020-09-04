@@ -189,6 +189,10 @@ def base_config():
                                cpu=5,
                                gpu=0.32,
                            ))
+    ray_init_kwargs = dict(
+        memory=None,
+        object_store_memory=None,
+    )
 
     _ = locals()
     del _
@@ -196,7 +200,7 @@ def base_config():
 
 @chain_ex.main
 def run(exp_name, metric, spec, representation_learning, il_train, il_test,
-        benchmark, tune_run_kwargs):
+        benchmark, tune_run_kwargs, ray_init_kwargs):
     rep_ex_config = sacred_copy(representation_learning)
     il_train_ex_config = sacred_copy(il_train)
     il_test_ex_config = sacred_copy(il_test)
@@ -218,9 +222,9 @@ def run(exp_name, metric, spec, representation_learning, il_train, il_test,
                         benchmark_config, config, log_dir)
 
     if detect_ec2():
-        ray.init(address="auto")
+        ray.init(address="auto", **ray_init_kwargs)
     else:
-        ray.init()
+        ray.init(**ray_init_kwargs)
 
     rep_run = tune.run(
         trainable_function,
