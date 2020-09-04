@@ -74,7 +74,7 @@ CHAIN_CONFIG = {
             # (I'd put this in the unit test if it wasn't so slow)
             'algo': tune.grid_search(['bc']),
         },
-        'benchmark': tune.grid_search(BENCHMARK_TEST_CONFIGS),
+        'benchmark': tune.grid_search([BENCHMARK_TEST_CONFIGS[0]]),
     },
     'tune_run_kwargs': {
         'resources_per_trial': {
@@ -88,7 +88,6 @@ CHAIN_CONFIG = {
         # Setting sane defaults so this doesn't happen.
         'memory': int(0.2*1e9),
         'object_store_memory': int(0.2*1e9),
-        'include_dashboard': False,
     },
     'il_train': {
         'device_name': 'cpu',
