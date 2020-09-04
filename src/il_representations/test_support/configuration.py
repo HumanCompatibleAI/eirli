@@ -88,6 +88,7 @@ CHAIN_CONFIG = {
         # Setting sane defaults so this doesn't happen.
         'memory': int(0.2*1e9),
         'object_store_memory': int(0.2*1e9),
+        'include_dashboard': False,
     },
     'il_train': {
         'device_name': 'cpu',
