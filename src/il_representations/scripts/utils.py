@@ -7,9 +7,11 @@ import urllib
 def update(d, u):
     """Recursive dictionary update."""
     for k, v in u.items():
-        if isinstance(v, collections.Mapping):
-            d[k] = update(d.get(k, {}), v)
+        if isinstance(d.get(k), collections.Mapping):
+            # recursive insert into a mapping
+            d[k] = update(d[k], v)
         else:
+            # if the existing value is not a mapping, then overwrite it
             d[k] = v
     return d
 

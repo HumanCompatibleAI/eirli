@@ -112,13 +112,17 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     else:
         raise ValueError(f"cannot process exp type '{exp_name}'")
 
+    assert tune_config_updates.keys() \
+            <= {'repl', 'il_train', 'il_test', 'benchmark'}, \
+            tune_config_updates.keys()
+
     inner_ex_dict = dict(inner_ex_config)
     # combine with benchmark config
     merged_config = update(inner_ex_dict, dict(benchmark=benchmark_config))
     # now combine with rest of config values, form Ray
-    merged_config = update(merged_config, tune_config_updates[exp_name])
-    merged_config = update(merged_config,
-                           dict(benchmark=tune_config_updates['benchmark']))
+    merged_config = update(merged_config, tune_config_updates.get(exp_name, {}))
+    tune_bench_updates = tune_config_updates.get('benchmark', {})
+    merged_config = update(merged_config, dict(benchmark=tune_bench_updates))
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
     ret_val = inner_ex.run(config_updates=merged_config)
@@ -509,6 +513,10 @@ def run(exp_name, metric, spec, representation_learning, il_train, il_test,
                            points_to_evaluate=[[
                                ref_config_dict[k] for k in sorted_space.keys()
                            ] for ref_config_dict in skopt_ref_configs])
+        # completely remove 'spec'
+        if spec:
+            logging.warn("Will ignore everything in 'spec' argument")
+        spec = {}
     else:
         algo = None
 
