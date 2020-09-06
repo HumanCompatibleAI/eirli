@@ -241,7 +241,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
     # actually know the right way to write log files continuously in Sacred.
     log_dir = os.path.abspath(il_train_ex.observers[0].dir)
-    imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
+    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()

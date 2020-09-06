@@ -105,8 +105,7 @@ def initialize_non_features_extractor(sb3_model):
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
-    log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
-    os.mkdir(log_dir)
+    log_dir = represent_ex.observers[0].dir
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)

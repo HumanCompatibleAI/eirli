@@ -63,7 +63,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        logger.configure(log_dir, ["stdout", "tensorboard"])
+        logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
