@@ -206,7 +206,7 @@ class MAGICALCNN(nn.Module):
             *conv_block(64 * w, 64 * w, kernel_size=3, stride=2, padding=1),
             # now: (12, 12)
             *conv_block(64 * w, conv_out_dim, kernel_size=3, stride=2, padding=1),
-            # now (6,6)
+            # now (Trained network,Trained network)
             nn.Flatten()
         ]
 
