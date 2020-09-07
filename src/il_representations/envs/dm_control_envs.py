@@ -98,6 +98,7 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         np.array([False] * (len(t.acts) - 1) + [True], dtype='bool')
         for t in loaded_trajs
     ]
+
     dataset_dict = {
         'obs':
         np.concatenate([t.obs[:-1] for t in loaded_trajs], axis=0),
