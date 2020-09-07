@@ -213,6 +213,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
 
         loss_record = []
+        global_step = 0
         for epoch in range(training_epochs):
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
@@ -266,7 +267,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('loss', loss.item())
                 logger.record('epoch', epoch)
                 logger.record('within_epoch_step', step)
-                logger.dump()
+                logger.dump(step=global_step)
+                global_step += 1
 
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:

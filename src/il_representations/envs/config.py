@@ -45,7 +45,7 @@ def bench_defaults():
         'ClusterColour': 'data/magical/cluster-colour/',
         'ClusterShape': 'data/magical/cluster-shape/',
     }
-    magical_env_prefix = 'MoveToCorner'
+    magical_env_prefix = 'MatchRegions'
     magical_preproc = 'LoResCHW4E'
     # this should probably be True for all BC runs, False for GAIL runs
     # (although TBH it doesn't really matter for GAIL)

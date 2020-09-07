@@ -36,8 +36,8 @@ class StagesToRun(str, enum.Enum):
     """These enum flags are used to control whether the script tunes RepL, or
     IL, or both."""
     REPL_AND_IL = "REPL_AND_IL"
-    ONLY_REPL = "REPL_ONLY"
-    ONLY_IL = "IL_ONLY"
+    REPL_ONLY = "REPL_ONLY"
+    IL_ONLY = "IL_ONLY"
 
 
 def get_stages_to_run(stages_to_run):
@@ -112,15 +112,15 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     else:
         raise ValueError(f"cannot process exp type '{exp_name}'")
 
-    assert tune_config_updates.keys() \
-            <= {'repl', 'il_train', 'il_test', 'benchmark'}, \
+    assert tune_config_updates.keys() <= {'repl', 'il_train', 'il_test', 'benchmark'}, \
             tune_config_updates.keys()
 
     inner_ex_dict = dict(inner_ex_config)
     # combine with benchmark config
     merged_config = update(inner_ex_dict, dict(benchmark=benchmark_config))
     # now combine with rest of config values, form Ray
-    merged_config = update(merged_config, tune_config_updates.get(exp_name, {}))
+    merged_config = update(merged_config,
+                           tune_config_updates.get(exp_name, {}))
     tune_bench_updates = tune_config_updates.get('benchmark', {})
     merged_config = update(merged_config, dict(benchmark=tune_bench_updates))
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
@@ -306,7 +306,7 @@ def base_config():
 
     # no updates, just leaving these in as a reminder that it's possible to
     # supply more updates to these parts in config files
-    representation_learning = {}
+    repl = {}
     il_train = {}
     il_test = {}
     benchmark = {}
@@ -364,10 +364,10 @@ def cfg_tune_moco():
     use_skopt = True
     skopt_search_mode = 'min'
     metric = 'repl_loss'
-    stages_to_run = StagesToRun.ONLY_REPL
+    stages_to_run = StagesToRun.REPL_ONLY
 
     # the following settings are algorithm-specific
-    representation_learning = {
+    repl = {
         'algo': 'MoCoWithProjection',
         'use_random_rollouts': False,
         'ppo_finetune': False,
@@ -428,10 +428,10 @@ def cfg_tune_moco():
 
 
 @chain_ex.main
-def run(exp_name, metric, spec, representation_learning, il_train, il_test,
-        benchmark, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
+def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
+        tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space):
-    rep_ex_config = sacred_copy(representation_learning)
+    rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
     il_test_ex_config = sacred_copy(il_test)
     benchmark_config = sacred_copy(benchmark)
@@ -446,24 +446,23 @@ def run(exp_name, metric, spec, representation_learning, il_train, il_test,
             # return_mean is returned by il_test.run()
             StagesToRun.REPL_AND_IL:
             'return_mean',
-            StagesToRun.ONLY_IL:
+            StagesToRun.IL_ONLY:
             'return_mean',
             # repl_loss is returned by run_rep_learner.run()
-            StagesToRun.ONLY_REPL:
+            StagesToRun.REPL_ONLY:
             'repl_loss',
         }[stages_to_run]
 
     # We remove unnecessary keys from the "spec" that we pass to Ray Tune. This
     # ensures that Ray Tune doesn't try to tune over things that can't affect
     # the outcome.
-    if stages_to_run == StagesToRun.ONLY_IL \
-       and 'representation_learning' in spec:
+    if stages_to_run == StagesToRun.IL_ONLY and 'repl' in spec:
         logging.warn(
             "You only asked to tune IL, so I'm removing the representation "
             "learning config from the Tune spec.")
-        del spec['representation_learning']
+        del spec['repl']
 
-    if stages_to_run == StagesToRun.ONLY_REPL \
+    if stages_to_run == StagesToRun.REPL_ONLY \
        and 'il_train' in spec:
         logging.warn(
             "You only asked to tune RepL, so I'm removing the imitation "
@@ -485,10 +484,10 @@ def run(exp_name, metric, spec, representation_learning, il_train, il_test,
             run_end2end_exp(rep_ex_config, il_train_ex_config,
                             il_test_ex_config, benchmark_config, config,
                             log_dir)
-        if stages_to_run == StagesToRun.ONLY_IL:
+        if stages_to_run == StagesToRun.IL_ONLY:
             run_il_only_exp(il_train_ex_config, il_test_ex_config,
                             benchmark_config, config, log_dir)
-        if stages_to_run == StagesToRun.ONLY_REPL:
+        if stages_to_run == StagesToRun.REPL_ONLY:
             run_repl_only_exp(rep_ex_config, benchmark_config, config, log_dir)
 
     if detect_ec2():
