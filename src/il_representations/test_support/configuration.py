@@ -66,7 +66,7 @@ REPL_SMOKE_TEST_CONFIG = {
 }
 CHAIN_CONFIG = {
     'spec': {
-        'representation_learning': {
+        'repl': {
             'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
         },
         'il_train': {
@@ -97,7 +97,7 @@ CHAIN_CONFIG = {
         'device_name': 'cpu',
         'n_rollouts': 2,
     },
-    'representation_learning': {
+    'repl': {
         'device': 'cpu',
         **REPL_SMOKE_TEST_CONFIG,
     },

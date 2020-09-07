@@ -18,7 +18,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
-represent_ex = Experiment('representation_learning',
+represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
 
 

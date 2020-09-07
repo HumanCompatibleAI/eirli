@@ -23,7 +23,7 @@ def test_chain(chain_ex, file_observer):
 def test_all_benchmarks(chain_ex, file_observer, benchmark_cfg):
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     # don't search over representation learner
-    chain_config['spec']['representation_learning']['algo'] \
+    chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     # try just this benchmark
     chain_config['spec']['benchmark'] = tune.grid_search([benchmark_cfg])
@@ -39,7 +39,7 @@ def test_individual_stages(chain_ex, file_observer, stages):
     # test just doing IL, just doing REPL, etc.
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     # again, don't search over representation learner
-    chain_config['spec']['representation_learning']['algo'] \
+    chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     chain_config['stages_to_run'] = stages
     try:
