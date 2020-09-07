@@ -1,7 +1,6 @@
 import copy
 import collections
 import urllib
-# Copied from  decodyng/mvp_ray_sacred
 
 
 def update(d, u):
