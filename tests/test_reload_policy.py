@@ -1,11 +1,15 @@
 import glob
 import os
 
+import pytest
+
 from il_representations.algos import MoCo
-from il_representations.test_support.configuration import BENCHMARK_CONFIGS
+from il_representations.test_support.configuration import (BENCHMARK_TEST_CONFIGS,
+                                                           FAST_IL_TRAIN_CONFIG)
 
 
-def test_reload_policy(represent_ex, il_train_ex, file_observer):
+@pytest.mark.parametrize("algo", ["bc", "gail"])
+def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
     """Test saving a policy with one specific representation learner, then loading
     it with the IL code.
 
@@ -19,7 +23,7 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
             'algo_params': {'representation_dim': 3},
             'algo': MoCo,
             'use_random_rollouts': False,
-            'benchmark': BENCHMARK_CONFIGS[0],
+            'benchmark': BENCHMARK_TEST_CONFIGS[0],
             'ppo_finetune': False,
         })
 
@@ -31,8 +35,11 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
     policy_path = encoder_list[0]
     il_train_ex.run(
         config_updates={
-            'bc_n_epochs': 1,
+            'algo': algo,
             'device_name': 'cpu',
-            'benchmark': BENCHMARK_CONFIGS[0],
+            # we only test against once benchmark, since this process should be
+            # similar for all
+            'benchmark': BENCHMARK_TEST_CONFIGS[0],
             'encoder_path': policy_path,
+            **FAST_IL_TRAIN_CONFIG,
         })

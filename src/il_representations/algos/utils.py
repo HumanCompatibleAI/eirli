@@ -23,7 +23,9 @@ def independent_multivariate_normal(loc, scale):
     # Turn each <feature-dim>-length vector in the batch into a diagonal matrix, because we want an
     # independent multivariate normal
     merged_covariance_matrix = torch.stack([torch.diag(scale[i]) for i in range(batch_dim)])
-    return torch.distributions.MultivariateNormal(loc=loc, covariance_matrix=merged_covariance_matrix)
+    return torch.distributions.MultivariateNormal(
+        loc=loc,
+        covariance_matrix=merged_covariance_matrix.to(loc.device))
 
 
 def add_noise(state, noise_std_dev):

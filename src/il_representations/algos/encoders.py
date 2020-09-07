@@ -4,9 +4,13 @@ import copy
 from torch.distributions import MultivariateNormal
 from functools import reduce
 import numpy as np
-from stable_baselines3.common.policies import NatureCNN
+from stable_baselines3.common.preprocessing import preprocess_obs
 from gym.spaces import Box
 from il_representations.algos.utils import independent_multivariate_normal
+
+import numpy as np
+import torch
+from torch import nn
 
 
 """
@@ -18,90 +22,195 @@ and updates weights of one as a slowly moving average of the other. Note that th
 from the creation and filling of a queue of representations, which is handled by the BatchExtender module 
 """
 
-DEFAULT_CNN_ARCHITECTURE = {
-    'CONV': [
-                {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
-                {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-                {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
-            ],
-    'DENSE': [
-                # this value works for Atari, but will be ovewritten for other envs
-                {'in_dim': 64*7*7},
-             ]
-}
+
+def compute_output_shape(observation_space, layers):
+    """Compute the size of the output after passing an observation from
+    `observation_space` through the given `layers`."""
+    # [None] adds a batch dimension to the random observation
+    torch_obs = torch.tensor(observation_space.sample()[None])
+    with torch.no_grad():
+        sample = preprocess_obs(torch_obs, observation_space, normalize_images=True)
+        for layer in layers:
+            # forward prop to compute the right size
+            sample = layer(sample)
+
+    # make sure batch axis still matches
+    assert sample.shape[0] == torch_obs.shape[0]
+
+    # return everything else
+    return sample.shape[1:]
 
 
-def sb_conv_arch_output_size(image_shape, conv_arch):
-    """
-    Given the input image's shape of (H, W) and a convolution network's architecture, compute the output feature
-    map CONV(image)'s shape (C, H, W)
-    """
-    def compute_out_hw(h_in, w_in, layer_conf):
-        import math
-        padding = layer_conf['padding']
-        dilation = layer_conf['dilation']
-        kernel_size = layer_conf['kernel_size']
-        stride = layer_conf['stride']
-        h_out = math.floor((h_in + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) / stride[0] + 1)
-        w_out = math.floor((w_in + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) / stride[1] + 1)
-        return h_out, w_out
+def compute_rep_shape_encoder(observation_space, encoder):
+    """Compute representation shape for an entire Encoder."""
+    sample_obs = torch.FloatTensor(observation_space.sample()[None])
+    device_encoder = encoder.to(sample_obs.device)
+    with torch.no_grad():
+        sample_dist = device_encoder(sample_obs, traj_info=None)
+        sample_out = sample_dist.sample()
 
-    h, w = image_shape
-    default_config = {
-        'padding': [0, 0],
-        'dilation': [1, 1],
-        'kernel_size': [],
-        'stride': [1, 1],
-    }
+    # batch dim check
+    assert sample_out.shape[0] == sample_obs.shape[0]
 
-    for layer_config in conv_arch:
-        for param, default in default_config.items():
-            param_value = layer_config.get(param, default)
-            if isinstance(param_value, int):
-                param_value = [param_value, param_value]
-            layer_config[param] = param_value
-            assert len(layer_config[param]) == 2
-        h, w = compute_out_hw(h, w, layer_config)
-
-    out_channel = conv_arch[-1]['out_dim']
-    return [out_channel, h, w]
+    return sample_out.shape[1:]
 
 
-class DefaultStochasticCNN(nn.Module):
-    def __init__(self, obs_space, representation_dim):
+class BasicCNN(nn.Module):
+    """Similar to the CNN from the Nature DQN paper."""
+    def __init__(self, observation_space, representation_dim):
         super().__init__()
-        self.input_channel = obs_space.shape[0]
-        self.representation_dim = representation_dim
+
+        self.input_channel = observation_space.shape[0]
         shared_network_layers = []
 
-        # figure out how big the convolution output will be
-        conv_arch = DEFAULT_CNN_ARCHITECTURE['CONV']
-        dense_arch = DEFAULT_CNN_ARCHITECTURE['DENSE'].copy()  # copy to mutate
-        dense_in_dim = np.prod(sb_conv_arch_output_size(obs_space.shape[1:],
-                                                        conv_arch))
-        dense_arch[0]['in_dim'] = dense_in_dim
-
+        # first apply convolution layers + flattening
+        conv_arch = [
+            {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
+            {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
+        ]
         for layer_spec in conv_arch:
             shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
                                                    kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
             shared_network_layers.append(nn.ReLU())
             self.input_channel = layer_spec['out_dim']
-
         shared_network_layers.append(nn.Flatten())
+
+        # now customise the dense layers to handle an appropriate-sized conv output
+        dense_in_dim, = compute_output_shape(observation_space, shared_network_layers)
+        dense_arch = [
+            # this input size is accurate for Atari, but will be ovewritten for other envs
+            {'in_dim': 64*7*7},
+        ]
+        dense_arch[0]['in_dim'] = dense_in_dim
+        dense_arch[-1]['out_dim'] = representation_dim
+
+        # apply the dense layers
         for ind, layer_spec in enumerate(dense_arch[:-1]):
-            in_dim, out_dim = layer_spec.get('in_dim'), layer_spec.get('out_dim')
-            shared_network_layers.append(nn.Linear(in_dim, out_dim))
+            shared_network_layers.append(nn.Linear(layer_spec['in_dim'], layer_spec['out_dim']))
             shared_network_layers.append(nn.ReLU())
+        # no ReLU after last layer
+        last_layer_spec = dense_arch[-1]
+        shared_network_layers.append(
+            nn.Linear(last_layer_spec['in_dim'], last_layer_spec['out_dim']))
 
         self.shared_network = nn.Sequential(*shared_network_layers)
-        self.mean_layer = nn.Linear(dense_arch[-1]['in_dim'], self.representation_dim)
-        self.scale_layer = nn.Linear(dense_arch[-1]['in_dim'], self.representation_dim)
 
     def forward(self, x):
-        shared_repr = self.shared_network(x)
-        mean = self.mean_layer(shared_repr)
-        scale = torch.exp(self.scale_layer(shared_repr))
-        return mean, scale
+        return self.shared_network(x)
+
+
+class MAGICALCNN(nn.Module):
+    """The CNN from the MAGICAL paper."""
+    def __init__(self,
+                 observation_space,
+                 representation_dim,
+                 # TODO(sam): enable BN by default once I'm sure that .train()
+                 # and .eval() are used correctly throughout the codebase.
+                 use_bn=False,
+                 use_ln=False,
+                 dropout=None,
+                 use_sn=False,
+                 width=2,
+                 fc_dim=128,
+                 ActivationCls=torch.nn.ReLU):
+        super().__init__()
+
+        def conv_block(in_chans, out_chans, kernel_size, stride, padding):
+            # We sometimes disable bias because batch norm has its own bias.
+            conv_layer = nn.Conv2d(
+                in_chans,
+                out_chans,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                bias=not use_bn,
+                padding_mode='zeros')
+
+            if use_sn:
+                # apply spectral norm if necessary
+                conv_layer = nn.utils.spectral_norm(conv_layer)
+
+            layers = [conv_layer]
+
+            if dropout:
+                # dropout after conv, but before activation
+                # (doesn't matter for ReLU)
+                layers.append(nn.Dropout2d(dropout))
+
+            layers.append(ActivationCls())
+
+            if use_bn:
+                # Insert BN layer after convolution (and optionally after
+                # dropout). I doubt order matters much, but see here for
+                # CONTROVERSY:
+                # https://github.com/keras-team/keras/issues/1802#issuecomment-187966878
+                layers.append(nn.BatchNorm2d(out_chans))
+
+            return layers
+
+        w = width
+        conv_out_dim = 64 * w
+        conv_layers = [
+            # at input: (96, 96) (assuming MAGICAL; for other domains it will
+            # be 84x84)
+            *conv_block(observation_space.shape[0], 32 * w, kernel_size=5, stride=1, padding=2),
+            # now: (96, 96)
+            *conv_block(32 * w, 64 * w, kernel_size=3, stride=2, padding=1),
+            # now: (48, 48)
+            *conv_block(64 * w, 64 * w, kernel_size=3, stride=2, padding=1),
+            # now: (24, 24)
+            *conv_block(64 * w, 64 * w, kernel_size=3, stride=2, padding=1),
+            # now: (12, 12)
+            *conv_block(64 * w, conv_out_dim, kernel_size=3, stride=2, padding=1),
+            # now (6,6)
+            nn.Flatten()
+        ]
+
+        # another FC layer to make feature maps the right size
+        fc_in_size, = compute_output_shape(observation_space, conv_layers)
+        reduce_layer = nn.Linear(fc_in_size, fc_dim)
+        if use_sn:
+            # we also apply spectral norm to linear layers
+            reduce_layer = nn.utils.spectral_norm(reduce_layer)
+
+        fc_layers = [
+            nn.Linear(fc_in_size, fc_dim * w),
+            ActivationCls(),
+            nn.Linear(fc_in_size, fc_dim),
+        ]
+
+        if use_sn:
+            # apply SN to linear layers too
+            fc_layers = [
+                nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
+                for layer in fc_layers
+            ]
+
+        all_layers = [*conv_layers, *fc_layers]
+        self.shared_network = nn.Sequential(*all_layers)
+
+    def forward(self, x):
+        return self.shared_network(x)
+
+
+# string names for convolutional networks; this makes it easier to choose
+# between them from the command line
+NETWORK_SHORT_NAMES = {
+    'BasicCNN': BasicCNN,
+    'MAGICALCNN': MAGICALCNN,
+}
+
+
+def get_obs_encoder_cls(obs_encoder_cls):
+    if obs_encoder_cls is None:
+        return BasicCNN
+    if isinstance(obs_encoder_cls, str):
+        try:
+            return NETWORK_SHORT_NAMES[obs_encoder_cls]
+        except KeyError:
+            raise ValueError(f"Unknown encoder name '{obs_encoder_cls}'")
+    return obs_encoder_cls
 
 
 class Encoder(nn.Module):
@@ -125,17 +234,16 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_module_cls=None, scale_constant=1, **kwargs):
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, scale_constant=1, **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
-        :param architecture_module_cls: An internal architecture implementing `forward` to return a single vector
+        :param obs_encoder_cls: An internal architecture implementing `forward` to return a single vector
         representing the mean representation z of a fixed-variance representation distribution
         """
         super().__init__(**kwargs)
-        if architecture_module_cls is None:
-            architecture_module_cls = NatureCNN
-        self.network = architecture_module_cls(obs_space, representation_dim)
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
+        self.network = obs_encoder_cls(obs_space, representation_dim)
         self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
@@ -144,21 +252,29 @@ class DeterministicEncoder(Encoder):
 
 
 class StochasticEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, architecture_model_cls=None, **kwargs):
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
         :param representation_dim: The number of dimensions of the representation that will be learned
-        :param architecture_module_cls: An internal architecture implementing `forward` to return
+        :param obs_encoder_cls: An internal architecture implementing `forward` to return a single
+            vector. This is expected NOT to end in a ReLU (i.e. final layer should be linear).
+        :param latent_dim: Dimension of the latents that feed into mean and std networks (default:
+            representation_dim * 2).
         two vectors, representing the mean AND learned standard deviation of a representation distribution
         """
         super().__init__(**kwargs)
-        if architecture_model_cls is None:
-            architecture_model_cls = DefaultStochasticCNN
-        self.network = architecture_model_cls(obs_space, representation_dim)
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
+        if latent_dim is None:
+            latent_dim = representation_dim * 2
+        self.network = obs_encoder_cls(obs_space, latent_dim)
+        self.mean_layer = nn.Linear(latent_dim, representation_dim)
+        self.scale_layer = nn.Linear(latent_dim, representation_dim)
 
     def forward(self, x, traj_info):
-        features, scale = self.network(x)
-        return independent_multivariate_normal(loc=features, scale=scale)
+        shared_repr = self.network(x)
+        mean = self.mean_layer(shared_repr)
+        scale = torch.exp(self.scale_layer(shared_repr))
+        return independent_multivariate_normal(loc=mean, scale=scale)
 
 
 class DynamicsEncoder(DeterministicEncoder):
@@ -174,13 +290,14 @@ class InverseDynamicsEncoder(DeterministicEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, inner_encoder_architecture_cls=None, **kwargs):
+                 momentum_weight=0.999, obs_encoder_cls=None, **kwargs):
         super().__init__(**kwargs)
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         if learn_scale:
             inner_encoder_cls = StochasticEncoder
         else:
             inner_encoder_cls = DeterministicEncoder
-        self.query_encoder = inner_encoder_cls(obs_shape, representation_dim, inner_encoder_architecture_cls)
+        self.query_encoder = inner_encoder_cls(obs_shape, representation_dim, obs_encoder_cls)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
@@ -209,14 +326,15 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, inner_encoder_architecture_cls=None, rnn_output_dim=64, **kwargs):
+                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64, **kwargs):
         super().__init__(**kwargs)
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
         self.single_frame_encoder = DeterministicEncoder(obs_shape, self.single_frame_repr_dim,
-                                                         inner_encoder_architecture_cls)
+                                                         obs_encoder_cls)
         self.context_rnn = nn.LSTM(self.single_frame_repr_dim, rnn_output_dim,
                                    self.num_recurrent_layers, batch_first=True)
         self.mean_layer = nn.Linear(rnn_output_dim, self.representation_dim)
