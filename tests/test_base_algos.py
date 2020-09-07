@@ -7,7 +7,7 @@ import pytest
 from sacred.observers import FileStorageObserver
 
 from il_representations import algos
-from il_representations.test_support.configuration import BENCHMARK_CONFIGS
+from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS
 
 
 def is_representation_learner(el):
@@ -18,7 +18,7 @@ def is_representation_learner(el):
 
 
 @pytest.mark.parametrize("algo", [el[1] for el in inspect.getmembers(algos) if is_representation_learner(el[1])])
-@pytest.mark.parametrize("benchmark_cfg", BENCHMARK_CONFIGS)
+@pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
 def test_algo(algo, benchmark_cfg, represent_ex):
     represent_ex.run(config_updates={'pretrain_epochs': 1,
                                      'demo_timesteps': 32,
