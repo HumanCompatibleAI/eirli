@@ -5,8 +5,12 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 from il_representations.algos.utils import independent_multivariate_normal
+from il_representations.algos.encoders import BASIC_CNN_ARCH, compute_output_shape
 import gym.spaces as spaces
+from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
+import math
+from pyro.distributions import Delta
 
 
 """
@@ -26,6 +30,7 @@ bit of data that pair constructors can return, to be passed forward for use here
 """
 
 #TODO change shape to dim throughout this file and the code
+
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -48,7 +53,7 @@ class LossDecoder(nn.Module):
         if self.sample:
             return z_dist.sample()
         else:
-            return z_dist.loc
+            return z_dist.mean
 
     def ones_like_projection_dim(self, x):
         return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
@@ -71,7 +76,7 @@ class TargetProjection(LossDecoder):
     def decode_target(self, z_dist, traj_info, extra_context=None):
         z_vector = self.get_vector(z_dist)
         mean = self.target_projection(z_vector)
-        return torch.distributions.MultivariateNormal(loc=mean, covariance_matrix=z_dist.covariance_matrix)
+        return independent_multivariate_normal(mean, z_dist.variance)
 
 
 class ProjectionHead(LossDecoder):
@@ -118,7 +123,7 @@ class MomentumProjectionHead(LossDecoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             decoded_z_dist = self.target_decoder(z_dist, traj_info, extra_context=extra_context)
-            return MultivariateNormal(loc=decoded_z_dist.loc.detach(), covariance_matrix=decoded_z_dist.covariance_matrix.detach())
+            return independent_multivariate_normal(decoded_z_dist.mean.detach(), decoded_z_dist.variance.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -135,13 +140,128 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
         prediction_dist = self.context_predictor(internal_dist, traj_info, extra_context=None)
-        return independent_multivariate_normal(loc=F.normalize(prediction_dist.loc, dim=1), scale=prediction_dist.scale)
+        return independent_multivariate_normal(loc=F.normalize(prediction_dist.mean, dim=1), scale=prediction_dist.scale)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
-            return MultivariateNormal(loc=F.normalize(prediction_dist.loc, dim=1),
-                                      covariance_matrix=prediction_dist.covariance_matrix)
+            return independent_multivariate_normal(F.normalize(prediction_dist.mean, dim=1),
+                                                   prediction_dist.variance)
+
+
+class ActionPredictionHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, action_space, sample=False):
+        super().__init__(representation_dim, projection_shape, sample)
+        self.action_dist = make_proba_distribution(action_space)
+        self.latents_to_dist_logits = self.action_dist.proba_distribution_net(2*representation_dim)
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+        z = self.get_vector(z_dist)
+        z_future = self.get_vector(extra_context)
+        z_merged = torch.cat([z, z_future], dim=1)
+        logits = self.latents_to_dist_logits(z_merged)
+        return torch.distributions.Categorical(logits=logits)
+        # self.action_dist.proba_distribution(logits)
+        # import pdb; pdb.set_trace()
+        # return self.action_dist
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+        # I think the plan is for z_dist to not actually be a dist, and actually just be the true actions?
+
+
+def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
+    mocked_layers = []
+    # first apply convolution layers + flattening
+    current_channels = observation_space.shape[0]
+    for layer_spec in encoder_arch:
+        mocked_layers.append(nn.Conv2d(current_channels, layer_spec['out_dim'],
+                                               kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+        current_channels = layer_spec['out_dim']
+    mocked_layers.append(nn.Flatten())
+    decoder_input_shape = list(compute_output_shape(observation_space, mocked_layers))[0]
+    return decoder_input_shape
+
+
+class PixelDecoder(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, observation_space,
+                 sample=False, encoder_arch=None, learn_scale=False, constant_stddev=0.1):
+
+        assert isinstance(observation_space, spaces.Box)
+        # Assert that the observation space is a 3D box
+        assert len(observation_space.shape) == 3
+        # Assert it's square (2 of the dimensions are identical)
+        assert len(np.unique(observation_space.shape) == 2)
+        super().__init__(representation_dim, projection_shape, sample)
+        encoder_arch = encoder_arch or BASIC_CNN_ARCH
+        decoder_input_shape = compute_decoder_input_shape_from_encoder(observation_space, encoder_arch)
+        print(f"Decoder input shape: {decoder_input_shape}")
+        reversed_architecture = list(reversed(encoder_arch))
+        self.initial_channels = reversed_architecture[0]['out_dim']
+        self.initial_shape = int(math.sqrt(decoder_input_shape/self.initial_channels))
+        print(f"Initial channels: {self.initial_channels}")
+        print(f"Initial shape: {self.initial_shape}")
+        self.learn_scale = learn_scale
+        self.constant_stddev = constant_stddev
+
+        #https://github.com/AntixK/PyTorch-VAE/blob/master/models/vanilla_vae.py
+        self.initial_layer = nn.Linear(representation_dim, decoder_input_shape)
+
+        decoder_layers = []
+        for i in range(len(reversed_architecture) - 1):
+            decoder_layers.append(nn.Sequential(
+                                  nn.ConvTranspose2d(reversed_architecture[i]['out_dim'],
+                                                     reversed_architecture[i+1]['out_dim'],
+                                                     kernel_size=reversed_architecture[i]['kernel_size'],
+                                                     stride=reversed_architecture[i]['stride']),
+                                  nn.BatchNorm2d(reversed_architecture[i+1]['out_dim']),
+                                  nn.ReLU()))
+
+        decoder_layers.append(nn.Sequential(
+                              nn.ConvTranspose2d(reversed_architecture[-1]['out_dim'],
+                                                 reversed_architecture[-1]['out_dim'],
+                                                 kernel_size=reversed_architecture[-1]['kernel_size'],
+                                                 stride=reversed_architecture[-1]['stride']),
+                              nn.BatchNorm2d(reversed_architecture[-1]['out_dim']),
+                              nn.ReLU())
+        )
+
+        self.decoder = nn.Sequential(*decoder_layers)
+        self.mean_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
+                                                      out_channels=observation_space.shape[0], # TODO assumes channels are 0 dim?
+                                                      kernel_size=3,
+                                                      padding=1),
+                                            nn.Tanh()) # This isn't always positive; is that okay?
+        if self.learn_scale:
+            self.std_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
+                                                      out_channels=observation_space.shape[0], # TODO assumes channels are 0 dim?
+                                                      kernel_size=3,
+                                                      padding=1),
+                                            nn.ReLU()) # Is this a sensible activation here?
+
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+        # TODO optionally do something with extra_context
+        z = self.get_vector(z_dist)
+        batch_dim = z.shape[0]
+        print(f"Batch dim: {batch_dim}")
+        projected_z = self.initial_layer(z)
+        reshaped_z = projected_z.view((batch_dim, self.initial_channels, self.initial_shape, self.initial_shape))
+        decoded_latents = self.decoder(reshaped_z)
+        mean_pixels = self.mean_layer(decoded_latents)
+        if self.learn_scale:
+            std_pixels = self.std_layer(decoded_latents)
+        else:
+            std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
+
+        return independent_multivariate_normal(loc=mean_pixels, scale=std_pixels)
+        # TODO figure out how to do multidimensional multivariate normals
+
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+
 
 
 class ActionConditionedVectorDecoder(LossDecoder):

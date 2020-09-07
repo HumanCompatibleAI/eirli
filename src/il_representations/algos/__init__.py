@@ -1,8 +1,10 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, RecurrentEncoder, StochasticEncoder, DeterministicEncoder
-from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection
+from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, \
+    RecurrentEncoder, StochasticEncoder, DeterministicEncoder
+from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, \
+    BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection, ActionPredictionHead, PixelDecoder
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, LogLikelihood
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -117,39 +119,35 @@ class MoCoWithProjection(RepresentationLearner):
 
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'}}
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'},
+                          'decoder_kwargs': {'observation_space': env.observation_space},
+                          'preprocess_extra_context': False}
         kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=DynamicsEncoder,
-                         # Should be a pixel decoder that takes in action, currently errors
-                         decoder=NoOp,
+                         decoder=PixelDecoder,
                          loss_calculator=MSELoss,
-                         augmenter=AugmentContextOnly,
+                         augmenter=NoAugmentation,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
-
-    def learn(self, dataset, training_epochs):
-        raise NotImplementedError("DynamicsPrediction is not yet fully implemented")
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
-        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'inverse_dynamics'}}
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'inverse_dynamics'},
+                          'decoder_kwargs': {'action_space': env.action_space},
+                          'preprocess_target': False}
         kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=InverseDynamicsEncoder,
-                         # Should be a action decoder that takes in next obs representation
-                         decoder=NoOp,
-                         loss_calculator=MSELoss,
-                         augmenter=AugmentContextOnly,
+                         decoder=ActionPredictionHead,
+                         loss_calculator=LogLikelihood,
+                         augmenter=NoAugmentation,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
-
-    def learn(self, dataset, training_epochs):
-        raise NotImplementedError("InverseDynamicsPrediction is not yet fully implemented")
 
 
 class BYOL(RepresentationLearner):
