@@ -8,6 +8,7 @@ import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 import torch
 from torch import nn
+from pyro.distributions import Delta
 
 from il_representations.algos.utils import independent_multivariate_normal
 
@@ -21,6 +22,11 @@ and updates weights of one as a slowly moving average of the other. Note that th
 from the creation and filling of a queue of representations, which is handled by the BatchExtender module 
 """
 
+BASIC_CNN_ARCH = [
+            {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
+            {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
+        ]
 
 def compute_output_shape(observation_space, layers):
     """Compute the size of the output after passing an observation from
@@ -109,12 +115,8 @@ class BasicCNN(nn.Module):
         shared_network_layers = []
 
         # first apply convolution layers + flattening
-        conv_arch = [
-            {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
-            {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-            {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
-        ]
-        for layer_spec in conv_arch:
+
+        for layer_spec in BASIC_CNN_ARCH:
             shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
                                                    kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
             shared_network_layers.append(nn.ReLU())
@@ -317,14 +319,26 @@ class StochasticEncoder(Encoder):
 
 class DynamicsEncoder(DeterministicEncoder):
     # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
+
+    def encode_context(self, x, traj_info):
+        return self.forward(x, traj_info)
+
     def encode_target(self, x, traj_info):
-        return independent_multivariate_normal(loc=x, scale=0)
+        return Delta(x)
 
 
 class InverseDynamicsEncoder(DeterministicEncoder):
     def encode_extra_context(self, x, traj_info):
+        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
         return self.forward(x, traj_info)
 
+    def encode_target(self, x, traj_info):
+        # X here consists of the true actions, which is the "target" and thus doesn't get encoded
+        return Delta(x)
+
+    def encode_context(self, x, traj_info):
+        # X here consists of the initial frame
+        return self.forward(x, traj_info)
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
@@ -354,7 +368,7 @@ class MomentumEncoder(Encoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             z_dist = self.key_encoder(x, traj_info)
-            return MultivariateNormal(loc=z_dist.loc.detach(), covariance_matrix=z_dist.covariance_matrix.detach())
+            return independent_multivariate_normal(z_dist.mean.detach(), z_dist.variance.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -415,7 +429,7 @@ class RecurrentEncoder(Encoder):
 
     def forward(self, x, traj_info):
         # Reshape the input z to be (some number of) batch_size-length trajectories
-        z = self.single_frame_encoder(x, traj_info).loc
+        z = self.single_frame_encoder(x, traj_info).mean
         stacked_trajectories, mask_lengths = self._reshape_and_stack(z, traj_info)
         hiddens, final = self.context_rnn(stacked_trajectories)
         # Pull out only the hidden states corresponding to actual non-padding inputs, and concat together
