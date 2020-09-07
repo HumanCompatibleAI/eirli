@@ -70,7 +70,7 @@ def bench_defaults():
         'cheetah-run': 'data/dm_control/cheetah-run-*.pkl.gz',
         'walker-walk': 'data/dm_control/walker-walk-*.pkl.gz',
         'cartpole-swingup': 'data/dm_control/cartpole-swingup-*.pkl.gz',
-        'reacher-easy': 'tests/data/dm_control/reacher-easy-*.pkl.gz',
+        'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
         'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
     dm_control_env = 'reacher-easy'

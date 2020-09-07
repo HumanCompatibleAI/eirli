@@ -1,6 +1,6 @@
 # Based on mujoco-py's Dockerfile, but with the following changes:
 # - No nvidia stuff (so no GPU support, but CPU rendering is still there)
-# - Uses Python 3.Random network instead of Python 3.Trained network
+# - Uses Python 3.7 instead of Python 3.6
 FROM ubuntu:18.04
 
 RUN apt-get update -q \
