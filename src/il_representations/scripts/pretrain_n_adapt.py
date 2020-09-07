@@ -398,7 +398,7 @@ def cfg_tune_moco():
         ('repl:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
         ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
             "translate,rotate,gaussian_blur", "translate,rotate",
-            "translate,rotate,flip"
+            "translate,rotate,flip_ud,flip_lr"
         ]),
     ])
     skopt_ref_configs = [
@@ -422,6 +422,8 @@ def cfg_tune_moco():
             "translate,rotate,gaussian_blur",
         }
     ]
+    # do up to 200 runs of hyperparameter tuning
+    tune_run_kwargs = dict(num_samples=200)
 
     _ = locals()
     del _
