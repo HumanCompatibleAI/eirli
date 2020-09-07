@@ -4,10 +4,12 @@ import enum
 import logging
 import os
 import os.path as osp
+import weakref
 
 import numpy as np
 import ray
 from ray import tune
+from ray.tune.schedulers import FIFOScheduler
 from ray.tune.suggest.skopt import SkOptSearch
 import sacred
 from sacred import Experiment
@@ -51,6 +53,28 @@ def get_stages_to_run(stages_to_run):
             f"Could not convert '{stages_to_run}' to StagesToRun ({ex}). "
             f"Available options are {', '.join(options)}")
     return stage
+
+
+class CheckpointFIFOScheduler(FIFOScheduler):
+    """Variant of FIFOScheduler that periodically saves the given search
+    algorithm. Useful for, e.g., SkOptSearch, where it is helpful to be able to
+    re-instantiate the search object later on."""
+
+    # FIXME: this is a stupid hack, inherited from another project. There
+    # should be a better way of saving skopt internals as part of Ray Tune.
+    # Perhaps defining a custom trainable would do the trick?
+    def __init__(self, search_alg):
+        self.search_alg = weakref.proxy(search_alg)
+
+    def on_trial_complete(self, trial_runner, trial, result):
+        rv = super().on_trial_complete(trial_runner, trial, result)
+        # references to _local_checkpoint_dir and _session_dir are a bit hacky
+        checkpoint_path = os.path.join(
+            trial_runner._local_checkpoint_dir,
+            f'search-alg-{trial_runner._session_str}.pkl')
+        self.search_alg.save(checkpoint_path + '.tmp')
+        os.rename(checkpoint_path + '.tmp', checkpoint_path)
+        return rv
 
 
 def expand_dict_keys(config_dict):
@@ -371,8 +395,9 @@ def cfg_tune_moco():
         'algo': 'MoCoWithProjection',
         'use_random_rollouts': False,
         'ppo_finetune': False,
-        # this isn't a lot of training; we may have to push it up
-        'pretrain_epochs': 500,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 100,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -512,6 +537,11 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
                            points_to_evaluate=[[
                                ref_config_dict[k] for k in sorted_space.keys()
                            ] for ref_config_dict in skopt_ref_configs])
+        tune_run_kwargs = {
+            'search_algo': algo,
+            'scheduler': CheckpointFIFOScheduler(algo),
+            **tune_run_kwargs,
+        }
         # completely remove 'spec'
         if spec:
             logging.warn("Will ignore everything in 'spec' argument")
@@ -524,7 +554,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         name=exp_name,
         config=spec,
         local_dir=ray_dir,
-        search_alg=algo,
         **tune_run_kwargs,
     )
 
