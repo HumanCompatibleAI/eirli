@@ -534,12 +534,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     logging.info(rep_run._get_trial_paths())
 
 
-def main():
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
-    observer = FileStorageObserver('runs/chain_runs')
-    chain_ex.observers.append(observer)
-    chain_ex.run_commandline()
-
-
 if __name__ == '__main__':
-    main()
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+    chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
+    chain_ex.run_commandline()
