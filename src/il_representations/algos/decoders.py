@@ -201,6 +201,7 @@ class PixelDecoder(LossDecoder):
         assert len(observation_space.shape) == 3
         # Assert it's square (2 of the dimensions are identical)
         assert len(np.unique(observation_space.shape) == 2)
+        square_dim = np.max(np.unique(observation_space.shape))
         super().__init__(representation_dim, projection_shape, sample)
         encoder_arch_key = encoder_arch_key or "BasicCNN"
         self.encoder_arch = NETWORK_ARCHITECTURE_DEFINITIONS[encoder_arch_key]
@@ -238,6 +239,7 @@ class PixelDecoder(LossDecoder):
                               nn.BatchNorm2d(reversed_architecture[-1]['out_dim']),
                               nn.ReLU())
         )
+        decoder_layers.append(nn.Upsample((square_dim, square_dim)))
 
         self.decoder = nn.Sequential(*decoder_layers)
         self.mean_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
@@ -252,9 +254,7 @@ class PixelDecoder(LossDecoder):
                                                       padding=1),
                                             nn.ReLU()) # Is this a sensible activation here?
 
-
     def decode_context(self, z_dist, traj_info, extra_context=None):
-        # TODO optionally do something with extra_context
         z = self.get_vector(z_dist)
         batch_dim = z.shape[0]
         print(f"Batch dim: {batch_dim}")
@@ -267,43 +267,17 @@ class PixelDecoder(LossDecoder):
             std_pixels = self.std_layer(decoded_latents)
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
-        import pdb; pdb.set_trace()
         return independent_multivariate_normal(loc=mean_pixels, scale=std_pixels)
-        # TODO figure out how to do multidimensional multivariate normals
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
 
 
-
-
 class ActionConditionedVectorDecoder(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, action_space, sample=False, action_encoding_dim=128,
-                 action_encoder_layers=1, learn_scale=False, action_embedding_dim=5, use_lstm=False):
+    def __init__(self, representation_dim, projection_shape, sample=False, action_encoding_dim=128,
+                 learn_scale=False):
         super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
         self.learn_scale = learn_scale
-
-        # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
-        # If actions are continuous/box, this is done via a simple flattening.
-        if isinstance(action_space, spaces.Discrete):
-            self.action_processor = nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
-            processed_action_dim = action_embedding_dim
-            self.action_shape = ()  # discrete actions are just numbers
-        elif isinstance(action_space, spaces.Box):
-            self.action_processor = functools.partial(torch.flatten,
-                                                      start_dim=2)
-            processed_action_dim = np.prod(action_space.shape)
-            self.action_shape = action_space.shape
-        else:
-            raise NotImplementedError("Action conditioning is only currently implemented for Discrete and Box action spaces")
-
-        # Machinery for aggregating information from an arbitrary number of actions into a single vector,
-        # either through a LSTM, or by simply averaging the vector representations of the k states together
-        if use_lstm:
-            self.action_encoder = nn.LSTM(processed_action_dim, action_encoding_dim, action_encoder_layers, batch_first=True)
-        else:
-            self.action_encoder = None
-            action_encoding_dim = processed_action_dim
 
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
         self.action_conditioned_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
@@ -321,28 +295,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # Get a single vector out of the the distribution object passed in by the
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
-        actions = extra_context
-        assert actions.ndim >= 2, actions.shape
-        assert actions.shape[2:] == self.action_shape, actions.shape
-        batch_dim, time_dim = actions.shape[:2]
-
-        # Process each batch-vectorized set of actions, and then stack
-        # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
-        processed_actions = self.action_processor(actions)
-        assert processed_actions.shape[:2] == (batch_dim, time_dim), \
-            processed_actions.shape
-
-        # Encode multiple actions into a single action vector (format based on LSTM)
-        if self.action_encoder is not None:
-            output, (hidden, cell) = self.action_encoder(processed_actions)
-        else:
-            hidden = torch.mean(processed_actions, dim=1)
-
-        action_encoding_vector = torch.squeeze(hidden)
-        assert action_encoding_vector.shape[0] == batch_dim, \
-            action_encoding_vector.shape
-
-        # Concatenate context representation and action representation and map to a merged representation
+        action_encoding_vector = extra_context
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)

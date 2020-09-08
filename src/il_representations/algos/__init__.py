@@ -1,6 +1,6 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, \
-    RecurrentEncoder, StochasticEncoder, DeterministicEncoder
+    RecurrentEncoder, StochasticEncoder, DeterministicEncoder, VAEEncoder
 from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection, ActionPredictionHead, PixelDecoder
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
@@ -122,8 +122,8 @@ class DynamicsPrediction(RepresentationLearner):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
-
         kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'},
+                          'encoder_kwargs': {'action_space': env.action_space},
                           'decoder_kwargs': {'observation_space': env.observation_space,
                                              'encoder_arch_key': encoder_cls_key},
                           'preprocess_extra_context': False}
@@ -135,6 +135,24 @@ class DynamicsPrediction(RepresentationLearner):
                          loss_calculator=MSELoss,
                          augmenter=NoAugmentation,
                          target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+
+class VariationalAutoencoder(RepresentationLearner):
+    def __init__(self, env, log_dir, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+
+        kwargs_updates = {'decoder_kwargs': {'observation_space': env.observation_space,
+                                             'encoder_arch_key': encoder_cls_key}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=VAEEncoder,
+                         decoder=PixelDecoder,
+                         loss_calculator=MSELoss,
+                         augmenter=NoAugmentation,
+                         target_pair_constructor=IdentityPairConstructor,
                          **kwargs)
 
 
@@ -204,8 +222,10 @@ class FixedVarianceCEB(RepresentationLearner):
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
 
+
 class FixedVarianceTargetProjectedCEB(RepresentationLearner):
     """
+
     """
     def __init__(self, env, log_dir, **kwargs):
         kwargs = self.validate_and_update_kwargs(kwargs)
@@ -229,9 +249,11 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
     possible action distribution.
     """
     def __init__(self, env, log_dir, **kwargs):
+        # Figure out action_encoding_dim. Do this by simply using action_encoding_dim if use_lstm is true,
+        # and by calling infer_action_info to get processed_action_dim otherwise
         kwargs_updates = {'preprocess_extra_context': False,
                           'target_pair_constructor_kwargs': {"mode": "dynamics"},
-                          'decoder_kwargs': {'action_space': env.action_space}}
+                          'encoder_kwargs': {'action_space': env.action_space}}
         kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
 
         super().__init__(env=env,
