@@ -119,8 +119,13 @@ class MoCoWithProjection(RepresentationLearner):
 
 class DynamicsPrediction(RepresentationLearner):
     def __init__(self, env, log_dir, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+
+
         kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'},
-                          'decoder_kwargs': {'observation_space': env.observation_space},
+                          'decoder_kwargs': {'observation_space': env.observation_space,
+                                             'encoder_arch_key': encoder_cls_key},
                           'preprocess_extra_context': False}
         kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
@@ -238,4 +243,4 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                          **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
-WIP_ALGOS = [DynamicsPrediction, InverseDynamicsPrediction]
+WIP_ALGOS = []

@@ -14,9 +14,9 @@ class RepresentationLoss(ABC):
         pass
 
     def get_vector_forms(self, decoded_context_dist, target_dist, encoded_context_dist):
-        decoded_contexts = decoded_context_dist.sample() if self.sample else decoded_context_dist.loc
-        targets = target_dist.sample() if self.sample else target_dist.loc
-        encoded_contexts = encoded_context_dist.sample() if self.sample else encoded_context_dist.loc
+        decoded_contexts = decoded_context_dist.sample() if self.sample else decoded_context_dist.mean
+        targets = target_dist.sample() if self.sample else target_dist.mean
+        encoded_contexts = encoded_context_dist.sample() if self.sample else encoded_context_dist.mean
         return decoded_contexts, targets, encoded_contexts
 
 
@@ -227,9 +227,25 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         return self.criterion(logits, labels)
 
 
+class LogLikelihood(RepresentationLoss):
+    def __init__(self, device, sample=False):
+        super().__init__(device, sample)
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        # target dist is a Dirac Delta distribution containing the ground truth values
+        # decoded_context_dist is a predicted distribution we want to put high probability on the ground truth values
+
+        # Negative log likelihood loss. Using this rather than torch.nn.NLLLoss() so I can work directly
+        # with Torch distribution objects
+        ground_truth = torch.squeeze(target_dist.mean)
+        log_probas = decoded_context_dist.log_prob(ground_truth)
+        return torch.mean(-1*log_probas)
+
+#class NLLLoss(RepresentationLoss) :
+
 class MSELoss(RepresentationLoss):
     def __init__(self, device, sample=False):
-        super(MSELoss, self).__init__(device, sample)
+        super().__init__(device, sample)
         self.criterion = torch.nn.MSELoss()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
