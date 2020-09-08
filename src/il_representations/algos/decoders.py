@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import MultivariateNormal
 from il_representations.algos.utils import independent_multivariate_normal
-from il_representations.algos.encoders import BASIC_CNN_ARCH, compute_output_shape
+from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
 import gym.spaces as spaces
 from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
@@ -153,17 +153,26 @@ class ActionPredictionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, action_space, sample=False):
         super().__init__(representation_dim, projection_shape, sample)
         self.action_dist = make_proba_distribution(action_space)
-        self.latents_to_dist_logits = self.action_dist.proba_distribution_net(2*representation_dim)
+        latents_to_dist_params = self.action_dist.proba_distribution_net(2*representation_dim)
+        self.param_mappings = dict()
+        if isinstance(latents_to_dist_params, tuple):
+            self.param_mappings['mean_actions'] = latents_to_dist_params[0]
+            self.param_mappings['log_std'] = latents_to_dist_params[1]
+        else:
+            self.param_mappings['action_logits'] = latents_to_dist_params
+
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
         z_merged = torch.cat([z, z_future], dim=1)
-        logits = self.latents_to_dist_logits(z_merged)
-        return torch.distributions.Categorical(logits=logits)
-        # self.action_dist.proba_distribution(logits)
-        # import pdb; pdb.set_trace()
-        # return self.action_dist
+        if 'action_logits' in self.param_mappings:
+            self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
+        elif 'mean_actions' in self.param_mappings:
+            self.action_dist.proba_distribution(self.param_mappings['mean_actions'](z_merged),
+                                                self.param_mappings['log_std'])
+
+        return self.action_dist
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -185,7 +194,7 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
 
 class PixelDecoder(LossDecoder):
     def __init__(self, representation_dim, projection_shape, observation_space,
-                 sample=False, encoder_arch=None, learn_scale=False, constant_stddev=0.1):
+                 sample=False, encoder_arch_key=None, learn_scale=False, constant_stddev=0.1):
 
         assert isinstance(observation_space, spaces.Box)
         # Assert that the observation space is a 3D box
@@ -193,10 +202,11 @@ class PixelDecoder(LossDecoder):
         # Assert it's square (2 of the dimensions are identical)
         assert len(np.unique(observation_space.shape) == 2)
         super().__init__(representation_dim, projection_shape, sample)
-        encoder_arch = encoder_arch or BASIC_CNN_ARCH
-        decoder_input_shape = compute_decoder_input_shape_from_encoder(observation_space, encoder_arch)
+        encoder_arch_key = encoder_arch_key or "BasicCNN"
+        self.encoder_arch = NETWORK_ARCHITECTURE_DEFINITIONS[encoder_arch_key]
+        decoder_input_shape = compute_decoder_input_shape_from_encoder(observation_space, self.encoder_arch)
         print(f"Decoder input shape: {decoder_input_shape}")
-        reversed_architecture = list(reversed(encoder_arch))
+        reversed_architecture = list(reversed(self.encoder_arch))
         self.initial_channels = reversed_architecture[0]['out_dim']
         self.initial_shape = int(math.sqrt(decoder_input_shape/self.initial_channels))
         print(f"Initial channels: {self.initial_channels}")
@@ -209,28 +219,31 @@ class PixelDecoder(LossDecoder):
 
         decoder_layers = []
         for i in range(len(reversed_architecture) - 1):
+            padding = reversed_architecture[i].get('padding', 0)
             decoder_layers.append(nn.Sequential(
                                   nn.ConvTranspose2d(reversed_architecture[i]['out_dim'],
                                                      reversed_architecture[i+1]['out_dim'],
                                                      kernel_size=reversed_architecture[i]['kernel_size'],
-                                                     stride=reversed_architecture[i]['stride']),
+                                                     stride=reversed_architecture[i]['stride'],
+                                                     padding=padding),
                                   nn.BatchNorm2d(reversed_architecture[i+1]['out_dim']),
                                   nn.ReLU()))
-
+        final_padding = reversed_architecture[i].get('padding', 0)
         decoder_layers.append(nn.Sequential(
                               nn.ConvTranspose2d(reversed_architecture[-1]['out_dim'],
                                                  reversed_architecture[-1]['out_dim'],
                                                  kernel_size=reversed_architecture[-1]['kernel_size'],
-                                                 stride=reversed_architecture[-1]['stride']),
+                                                 stride=reversed_architecture[-1]['stride'],
+                                                 padding=final_padding),
                               nn.BatchNorm2d(reversed_architecture[-1]['out_dim']),
                               nn.ReLU())
         )
 
         self.decoder = nn.Sequential(*decoder_layers)
         self.mean_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
-                                                      out_channels=observation_space.shape[0], # TODO assumes channels are 0 dim?
-                                                      kernel_size=3,
-                                                      padding=1),
+                                                  out_channels=observation_space.shape[0], # TODO assumes channels are 0 dim?
+                                                  kernel_size=3,
+                                                  padding=1),
                                             nn.Tanh()) # This isn't always positive; is that okay?
         if self.learn_scale:
             self.std_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
@@ -245,6 +258,7 @@ class PixelDecoder(LossDecoder):
         z = self.get_vector(z_dist)
         batch_dim = z.shape[0]
         print(f"Batch dim: {batch_dim}")
+        print(f"Initial shape: {self.initial_shape}")
         projected_z = self.initial_layer(z)
         reshaped_z = projected_z.view((batch_dim, self.initial_channels, self.initial_shape, self.initial_shape))
         decoded_latents = self.decoder(reshaped_z)
@@ -253,10 +267,9 @@ class PixelDecoder(LossDecoder):
             std_pixels = self.std_layer(decoded_latents)
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
-
+        import pdb; pdb.set_trace()
         return independent_multivariate_normal(loc=mean_pixels, scale=std_pixels)
         # TODO figure out how to do multidimensional multivariate normals
-
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist

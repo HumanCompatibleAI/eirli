@@ -44,14 +44,15 @@ def default_config():
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
-    encoder_kwargs = {
-        # this is just the default, but we need to set it so that Sacred
-        # doesn't complain about unused values when we overwrite it later
-        'obs_encoder_cls': 'BasicCNN',
-    }
     _ = locals()
     del _
 
+
+@represent_ex.named_config
+def magical():
+    algo_params = {'encoder_kwargs': {'obs_encoder_cls': 'MAGICALCNN'}}
+    _ = locals()
+    del _
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
