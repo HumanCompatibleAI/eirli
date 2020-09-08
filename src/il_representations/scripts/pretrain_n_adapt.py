@@ -540,7 +540,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
                                ref_config_dict[k] for k in sorted_space.keys()
                            ] for ref_config_dict in skopt_ref_configs])
         tune_run_kwargs = {
-            'search_algo': algo,
+            'search_alg': algo,
             'scheduler': CheckpointFIFOScheduler(algo),
             **tune_run_kwargs,
         }
