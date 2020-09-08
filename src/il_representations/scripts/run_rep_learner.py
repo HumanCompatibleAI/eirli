@@ -47,13 +47,6 @@ def default_config():
     _ = locals()
     del _
 
-
-@represent_ex.named_config
-def magical():
-    algo_params = {'encoder_kwargs': {'obs_encoder_cls': 'MAGICALCNN'}}
-    _ = locals()
-    del _
-
 @represent_ex.named_config
 def cosine_warmup_scheduler():
     algo_params = {"scheduler": LinearWarmupCosine, "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}}
