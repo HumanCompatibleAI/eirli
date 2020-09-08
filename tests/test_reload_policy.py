@@ -32,7 +32,7 @@ def test_reload_policy(algo, freeze_encoder, represent_ex, il_train_ex, file_obs
     encoder_list = glob.glob(
         os.path.join(
             file_observer.dir,
-            'training_logs/checkpoints/representation_encoder/*.ckpt'))
+            'checkpoints/representation_encoder/*.ckpt'))
     policy_path = encoder_list[0]
     il_train_ex.run(
         config_updates={

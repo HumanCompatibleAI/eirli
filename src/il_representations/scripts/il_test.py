@@ -38,13 +38,13 @@ def default_config():
 
 
 @il_test_ex.main
-def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
-         write_video, video_file_name):
+def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
+        write_video, video_file_name):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
     log_dir = il_test_ex.observers[0].dir
-    imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
+    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     if policy_path is None:
         raise ValueError(

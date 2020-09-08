@@ -18,7 +18,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
-represent_ex = Experiment('representation_learning',
+represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
 
 
@@ -99,8 +99,7 @@ def initialize_non_features_extractor(sb3_model):
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
-    log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
-    os.mkdir(log_dir)
+    log_dir = represent_ex.observers[0].dir
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -124,7 +123,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
     model = algo(venv, log_dir=log_dir, **algo_params)
 
     # setup model
-    model.learn(dataset_dict, pretrain_epochs)
+    loss_record = model.learn(dataset_dict, pretrain_epochs)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
@@ -142,7 +141,15 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_model.learn(total_timesteps=ppo_timesteps)
 
     venv.close()
-    return {'encoder_path': os.path.join(model.encoder_checkpoints_path, f'{pretrain_epochs-1}_epochs.ckpt')}
+
+    encoder_path = os.path.join(model.encoder_checkpoints_path,
+                                f'{pretrain_epochs-1}_epochs.ckpt')
+
+    return {
+        'encoder_path': encoder_path,
+        # return average loss from final epoch for HP tuning
+        'repl_loss': loss_record[-1],
+    }
 
 
 if __name__ == '__main__':
