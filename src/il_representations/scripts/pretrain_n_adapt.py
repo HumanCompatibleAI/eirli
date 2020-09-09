@@ -341,8 +341,7 @@ def base_config():
                            resources_per_trial=dict(
                                cpu=5,
                                gpu=0.32,
-                           ))
-                           # queue_trials=True)
+                           ))  # queue_trials=True)
     ray_init_kwargs = dict(
         memory=None,
         object_store_memory=None,
@@ -535,6 +534,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             'skopt_search_mode must be "min" or "max", as appropriate for ' \
             'the metric being optmised'
         assert len(skopt_space) > 0, "was passed an empty skopt_space"
+
+        # do some sacred_copy() calls to ensure that we don't accidentally put
+        # a ReadOnlyDict or ReadOnlyList into our optimizer
+        skopt_space = sacred_copy(skopt_space)
+        skopt_search_mode = sacred_copy(skopt_search_mode)
+        skopt_ref_configs = sacred_copy(skopt_ref_configs)
+        metric = sacred_copy(metric)
+
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
         ])
