@@ -4,7 +4,7 @@ from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEn
 from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection, ActionPredictionHead, PixelDecoder
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, LogLikelihood
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, LogLikelihood, VAELoss
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -144,13 +144,14 @@ class VariationalAutoencoder(RepresentationLearner):
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
         kwargs_updates = {'decoder_kwargs': {'observation_space': env.observation_space,
-                                             'encoder_arch_key': encoder_cls_key}}
+                                             'encoder_arch_key': encoder_cls_key,
+                                             'sample': True}}
         kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=VAEEncoder,
                          decoder=PixelDecoder,
-                         loss_calculator=MSELoss,
+                         loss_calculator=VAELoss,
                          augmenter=NoAugmentation,
                          target_pair_constructor=IdentityPairConstructor,
                          **kwargs)

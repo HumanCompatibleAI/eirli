@@ -17,7 +17,7 @@ jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
 
 # imitation needs special branch as of 2020-08-17
-git+git://github.com/HumanCompatibleAI/imitation@711b9f20c4542e930c6e4ac97cbfea14c7c95624#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@1524b44a2d5dd837eda61115b140c9ff59888431#egg=imitation
 git+git://github.com/HumanCompatibleAI/stable-baselines3.git@e00331bc832ea109a197903941d59011c3cd3a3a#egg=stable-baselines3
 
 # environments

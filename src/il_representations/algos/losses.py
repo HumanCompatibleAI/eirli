@@ -13,11 +13,8 @@ class RepresentationLoss(ABC):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
         pass
 
-    def get_vector_forms(self, decoded_context_dist, target_dist, encoded_context_dist):
-        decoded_contexts = decoded_context_dist.sample() if self.sample else decoded_context_dist.mean
-        targets = target_dist.sample() if self.sample else target_dist.mean
-        encoded_contexts = encoded_context_dist.sample() if self.sample else encoded_context_dist.mean
-        return decoded_contexts, targets, encoded_contexts
+    def get_vector_forms(self, *args):
+        return [el.sample() if self.sample else el.mean for el in args]
 
 
 class AsymmetricContrastiveLoss(RepresentationLoss):
@@ -241,8 +238,6 @@ class LogLikelihood(RepresentationLoss):
         log_probas = decoded_context_dist.log_prob(ground_truth)
         return torch.mean(-1*log_probas)
 
-#class NLLLoss(RepresentationLoss) :
-
 class MSELoss(RepresentationLoss):
     def __init__(self, device, sample=False):
         super().__init__(device, sample)
@@ -251,6 +246,22 @@ class MSELoss(RepresentationLoss):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
         return self.criterion(decoded_contexts, targets)
+
+
+class VAELoss(RepresentationLoss):
+    def __init__(self, device, sample=True, beta=1.0, prior_scale=1.0):
+        super().__init__(device, sample)
+        self.beta = beta
+        self.prior_scale = prior_scale
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        ground_truth_pixels = self.get_vector_forms(target_dist)[0]
+        log_prob_x_given_z = decoded_context_dist.log_prob(ground_truth_pixels)
+        prior = torch.distributions.Normal(torch.zeros(decoded_context_dist.batch_shape + decoded_context_dist.event_shape), self.prior_scale)
+        independent_prior = torch.distributions.Independent(prior, len(decoded_context_dist.event_shape))
+        kld = torch.distributions.kl.kl_divergence(decoded_context_dist, independent_prior)
+        loss = self.beta*kld - log_prob_x_given_z
+        return torch.mean(loss)
 
 
 class CEBLoss(RepresentationLoss):
