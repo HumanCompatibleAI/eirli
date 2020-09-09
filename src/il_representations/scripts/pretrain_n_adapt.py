@@ -451,7 +451,10 @@ def cfg_tune_moco():
         }
     ]
     # do up to 200 runs of hyperparameter tuning
-    tune_run_kwargs = dict(num_samples=5)
+    # WARNING: This may require customisation on the command line. You want the
+    # number to be high enough that the script will keep running for at least a
+    # few days.
+    tune_run_kwargs = dict(num_samples=200)
 
     _ = locals()
     del _
@@ -488,7 +491,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     # the outcome.
 
     if stages_to_run == StagesToRun.IL_ONLY \
-       and 'representation_learning' in spec:
+       and 'repl' in spec:
         logging.warning(
             "You only asked to tune IL, so I'm removing the representation "
             "learning config from the Tune spec.")
