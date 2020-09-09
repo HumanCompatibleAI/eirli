@@ -119,19 +119,31 @@ class MoCoWithProjection(RepresentationLearner):
 
 
 def get_action_representation_dim(action_space, encoder_kwargs):
+    """
+    Infer what dimension of action representation will be produced by an encoder with the given
+    `encoder_kwargs` operating on the given `action_space`.
+
+    :return:
+    """
     default_dynamics_encoder_params = get_default_args(ActionEncodingEncoder.__init__)
     relevant_encoder_kwargs = {}
     for k in ['action_encoding_dim', 'action_embedding_dim', 'use_lstm']:
         relevant_encoder_kwargs[k] = encoder_kwargs.get(k,
                                                         default_dynamics_encoder_params[k])
     if relevant_encoder_kwargs['use_lstm']:
+        # If the encoder will use a LSTM to encoder the actions, they will be encoded into a vector
+        # of size `action_encoding_dim`
         action_representation_dim = relevant_encoder_kwargs['action_encoding_dim']
 
     else:
+        # If the encoder just takes an average over processed action representations, it matters
+        # what that processed action representation looks like (e.g. a flattening or an embedding), which
+        # is inferred and returned by `infer_action_shape_info`
         action_representation_dim, _, _ = infer_action_shape_info(action_space,
                                                                   relevant_encoder_kwargs['action_embedding_dim'])
 
     return action_representation_dim
+
 
 class DynamicsPrediction(RepresentationLearner):
     """
@@ -188,6 +200,10 @@ class VariationalAutoencoder(RepresentationLearner):
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
+    """
+    An implementation of an inverse dynamics model that tries to predict the action taken
+    in between two successive frames, given representations of those frames
+    """
     def __init__(self, env, log_dir, **kwargs):
         kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'inverse_dynamics'},
                           'decoder_kwargs': {'action_space': env.action_space},
