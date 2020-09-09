@@ -267,16 +267,18 @@ def base_config():
     # Name of the metric to optimise. By default, this will be automatically
     # selected based on the value of stages_to_run.
     metric = None
-    stages_to_run = StagesToRun.REPL_AND_IL
+    stages_to_run = StagesToRun.REPL_ONLY
     spec = {
         'repl': {
             'algo':
             tune.grid_search([
-                'MoCoWithProjection',
-                'SimCLR',
-                'CEB',
+                # 'MoCoWithProjection',
+                # 'SimCLR',
                 'ActionConditionedTemporalCPC',
+                # 'CEB',
+                # 'ActionConditionedTemporalCPC',
             ]),
+            'pretrain_epochs': 200
         },
         'il_train': {
             'algo': tune.grid_search(['bc']),
@@ -339,7 +341,7 @@ def base_config():
                            resources_per_trial=dict(
                                cpu=5,
                                gpu=0.32,
-                           ))
+                           ))  # queue_trials=True)
     ray_init_kwargs = dict(
         memory=None,
         object_store_memory=None,
@@ -375,7 +377,7 @@ def cfg_use_dm_control():
         # walker-walk is difficult relative to other dm-control tasks that we
         # use, but RL solves it quickly. Plateaus around 850-900 reward (see
         # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#).
-        'dm_control_env': 'walker-walk',
+        'dm_control_env': 'reacher-easy',
     }
 
     _ = locals()
@@ -397,7 +399,7 @@ def cfg_tune_moco():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 100,
+        'pretrain_epochs': 500,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -414,7 +416,7 @@ def cfg_tune_moco():
         # ('l1reg', [0.0]),
         ('repl:algo_params:batch_size', (32, 512)),
         ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1.0, 'log-uniform')),
-        ('repl:algo_params:representation_dim', (8, 256)),
+        ('repl:algo_params:representation_dim', (8, 1024)),
         ('repl:algo_params:projection_dim', (8, 256)),
         ('repl:algo_params:decoder_kwargs:momentum_weight', (0.95, 0.999,
                                                              'log-uniform')),
@@ -430,7 +432,7 @@ def cfg_tune_moco():
         # we include the default config as a reference
         {
             'repl:algo_params:batch_size':
-            128,
+            256,
             'repl:algo_params:representation_dim':
             128,
             'repl:algo_params:projection_dim':
@@ -438,7 +440,7 @@ def cfg_tune_moco():
             'repl:algo_params:optimizer_kwargs:lr':
             1e-3,
             'repl:algo_params:decoder_kwargs:momentum_weight':
-            0.99,
+            0.999,
             'repl:algo_params:encoder_kwargs:momentum_weight':
             0.999,
             'repl:encoder_kwargs:obs_encoder_cls':
@@ -448,6 +450,9 @@ def cfg_tune_moco():
         }
     ]
     # do up to 200 runs of hyperparameter tuning
+    # WARNING: This may require customisation on the command line. You want the
+    # number to be high enough that the script will keep running for at least a
+    # few days.
     tune_run_kwargs = dict(num_samples=200)
 
     _ = locals()
@@ -483,15 +488,17 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     # We remove unnecessary keys from the "spec" that we pass to Ray Tune. This
     # ensures that Ray Tune doesn't try to tune over things that can't affect
     # the outcome.
-    if stages_to_run == StagesToRun.IL_ONLY and 'repl' in spec:
-        logging.warn(
+
+    if stages_to_run == StagesToRun.IL_ONLY \
+       and 'repl' in spec:
+        logging.warning(
             "You only asked to tune IL, so I'm removing the representation "
             "learning config from the Tune spec.")
         del spec['repl']
 
     if stages_to_run == StagesToRun.REPL_ONLY \
        and 'il_train' in spec:
-        logging.warn(
+        logging.warning(
             "You only asked to tune RepL, so I'm removing the imitation "
             "learning config from the Tune spec.")
         del spec['il_train']
@@ -527,6 +534,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             'skopt_search_mode must be "min" or "max", as appropriate for ' \
             'the metric being optmised'
         assert len(skopt_space) > 0, "was passed an empty skopt_space"
+
+        # do some sacred_copy() calls to ensure that we don't accidentally put
+        # a ReadOnlyDict or ReadOnlyList into our optimizer
+        skopt_space = sacred_copy(skopt_space)
+        skopt_search_mode = sacred_copy(skopt_search_mode)
+        skopt_ref_configs = sacred_copy(skopt_ref_configs)
+        metric = sacred_copy(metric)
+
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
         ])
