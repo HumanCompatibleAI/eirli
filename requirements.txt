@@ -16,6 +16,7 @@ Pillow~=7.2.0
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
 seaborn~=0.11.0
+pyro-ppl~=1.4.0
 
 # imitation needs special branch as of 2020-08-17
 git+git://github.com/HumanCompatibleAI/imitation@1524b44a2d5dd837eda61115b140c9ff59888431#egg=imitation
