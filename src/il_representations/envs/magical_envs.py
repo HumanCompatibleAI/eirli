@@ -108,9 +108,9 @@ def get_env_name_magical(magical_env_prefix, magical_preproc):
 
 @benchmark_ingredient.capture
 def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc, n_traj,
-                         magical_remove_null_actions):
-    demo_dir = magical_demo_dirs[magical_env_prefix]
+                         magical_preproc, n_traj, magical_remove_null_actions,
+                         data_root):
+    demo_dir = os.path.join(data_root, magical_demo_dirs[magical_env_prefix])
     logging.info(
         f"Loading trajectory data for '{magical_env_prefix}' from "
         f"'{demo_dir}'")

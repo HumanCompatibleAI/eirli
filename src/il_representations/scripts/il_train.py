@@ -16,6 +16,7 @@ from stable_baselines3.ppo import PPO
 import torch as th
 from torch import nn
 
+from il_representations.algos.encoders import DeterministicEncoder
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
@@ -23,7 +24,6 @@ from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
-from il_representations.algos.encoders import DeterministicEncoder
 
 bc_ingredient = Ingredient('bc')
 
@@ -31,8 +31,9 @@ bc_ingredient = Ingredient('bc')
 @bc_ingredient.config
 def bc_defaults():
     # number of passes to make through dataset
-    n_epochs = 250  # noqa: F841
+    n_epochs = 1000  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
+    log_interval = 500  # noqa: F841
 
 
 gail_ingredient = Ingredient('gail')
@@ -71,7 +72,6 @@ il_train_ex = Experiment('il_train', ingredients=[
 
 @il_train_ex.config
 def default_config():
-    root_dir = os.getcwd()  # noqa: F841
     # random seed for EVERYTHING
     seed = 42  # noqa: F841
     # device to place all computations on
@@ -140,7 +140,8 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space, encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
+    augmenter = StandardAugmentations.from_string_spec(
+        bc['augs'], stack_color_space=color_space)
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
@@ -156,7 +157,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'], log_interval=500)
+    trainer.train(n_epochs=bc['n_epochs'], log_interval=bc['log_interval'])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
@@ -215,7 +216,7 @@ def do_training_gail(
         ppo_algo,
         disc_batch_size=gail['disc_batch_size'],
         disc_minibatch_size=gail['disc_minibatch_size'],
-        discrim_kwargs=dict(discrim_net=discrim_net),
+        discrim_kwargs=dict(discrim_net=discrim_net, scale=True),
         obs_norm=False,
         rew_norm=True,
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
@@ -231,7 +232,7 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
+def train(seed, algo, benchmark, encoder_path, freeze_encoder,
           _config):
     set_global_seeds(seed)
     # python built-in logging
@@ -240,9 +241,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
     # actually know the right way to write log files continuously in Sacred.
     log_dir = os.path.abspath(il_train_ex.observers[0].dir)
-    imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
-    # The cwd can be changed when the experiment is called by Ray. Reset that.
-    os.chdir(root_dir)
+    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()
@@ -253,7 +252,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
         encoder = th.load(encoder_path)
         if freeze_encoder:
             freeze_params(encoder)
-            assert len(encoder.parameters()) == 0
+            assert len(list(encoder.parameters())) == 0
     else:
         logging.info("No encoder provided, will init from scratch")
         encoder = None
@@ -279,7 +278,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, root_dir,
     # exception after creating it (could use try/catch or a context manager)
     venv.close()
 
-    return {'model_path': final_path}
+    return {'model_path': os.path.abspath(final_path)}
 
 
 if __name__ == '__main__':
