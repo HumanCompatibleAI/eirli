@@ -325,12 +325,19 @@ class StochasticEncoder(Encoder):
 
 
 def infer_action_shape_info(action_space, action_embedding_dim):
-    # action_embedding_dim is not used for Box actions
+    """
+    Creates an action_processor, processed_action_dim and action_shape based on the action_space
+    and the action_embedding_dim
+    """
+    # Machinery for turning raw actions into vectors.
+
     if isinstance(action_space, spaces.Discrete):
+        # If actions are discrete, this is done via an Embedding.
         action_processor = nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
         processed_action_dim = action_embedding_dim
         action_shape = ()  # discrete actions are just numbers
     elif isinstance(action_space, spaces.Box):
+        # If actions are continuous/box, this is done via a simple flattening.
         action_processor = functools.partial(torch.flatten, start_dim=2)
         processed_action_dim = np.prod(action_space.shape)
         action_shape = action_space.shape
@@ -341,12 +348,13 @@ def infer_action_shape_info(action_space, action_embedding_dim):
 
 
 class ActionEncodingEncoder(DeterministicEncoder):
-    def __init__(self, obs_space, representation_dim, action_space, obs_encoder_cls=None, action_encoding_dim=128,
+    """
+    An encoder that uses DeterministicEncoder logic for encoding the `context` and `target` pixel frames,
+    but which encodes an `extra_context` object containing actions into a vector form
+    """
+    def __init__(self, obs_space, representation_dim, action_space, obs_encoder_cls=None, action_encoding_dim=48,
                  action_encoder_layers=1, action_embedding_dim=5, use_lstm=False):
         super().__init__(obs_space, representation_dim, obs_encoder_cls)
-
-        # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
-        # If actions are continuous/box, this is done via a simple flattening.
 
         self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
                                                                                        action_embedding_dim)
@@ -363,8 +371,6 @@ class ActionEncodingEncoder(DeterministicEncoder):
             self.action_encoder = None
 
     def encode_extra_context(self, x, traj_info):
-        # Get a single vector out of the the distribution object passed in by the
-        # encoder (either via sampling or taking the mean)
         actions = x
         assert actions.ndim >= 2, actions.shape
         assert actions.shape[2:] == self.action_shape, actions.shape
@@ -386,10 +392,18 @@ class ActionEncodingEncoder(DeterministicEncoder):
         assert action_encoding_vector.shape[0] == batch_dim, \
             action_encoding_vector.shape
 
+        # Return a Dirac Delta distribution around this specific encoding vector
+        # Since we don't currently have an implementation for learned std deviation
         return Delta(action_encoding_vector)
 
 
 class VAEEncoder(DeterministicEncoder):
+    """
+    An encoder that uses DeterministicEncoder's logic for encoding
+    context, but for target, just returns a delta distribution
+    around ground truth pixels, since we don't want to vector-encode
+    them.
+    """
 
     def encode_context(self, x, traj_info):
         # Context here is the current frame, which should be vector-encoded
@@ -402,6 +416,11 @@ class VAEEncoder(DeterministicEncoder):
 
 
 class DynamicsEncoder(ActionEncodingEncoder):
+    """
+    Identical to VAE encoder, but inherits from ActionEncodingEncoder,
+    so we get that class's additional implementation
+    of `encode_extra_context`.
+    """
 
     def encode_context(self, x, traj_info):
         # Context here is the current frame, which should be vector-encoded

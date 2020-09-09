@@ -1,16 +1,13 @@
-import functools
 import torch.nn as nn
 import copy
 import torch
 import torch.nn.functional as F
-from torch.distributions import MultivariateNormal
 from il_representations.algos.utils import independent_multivariate_normal
 from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
 import gym.spaces as spaces
 from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
 import math
-from pyro.distributions import Delta
 
 
 """
@@ -150,21 +147,31 @@ class BYOLProjectionHead(MomentumProjectionHead):
 
 
 class ActionPredictionHead(LossDecoder):
+    """
+    A decoder that takes in two vector representations of frames
+    (one in context, one in extra_context), and produces a prediction
+    of the action taken in between the frames
+    """
     def __init__(self, representation_dim, projection_shape, action_space, sample=False):
         super().__init__(representation_dim, projection_shape, sample)
+
+        # Use Stable Baseline's logic for constructing a SB action_dist from an action space
         self.action_dist = make_proba_distribution(action_space)
         latents_to_dist_params = self.action_dist.proba_distribution_net(2*representation_dim)
         self.param_mappings = dict()
+
+        # Logic to cover both the Gaussian case of mean/stddev and the Categorical case of logits
         if isinstance(latents_to_dist_params, tuple):
             self.param_mappings['mean_actions'] = latents_to_dist_params[0]
             self.param_mappings['log_std'] = latents_to_dist_params[1]
         else:
             self.param_mappings['action_logits'] = latents_to_dist_params
 
-
     def decode_context(self, z_dist, traj_info, extra_context=None):
+        # vector representations of current and future frames
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
+        # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
         if 'action_logits' in self.param_mappings:
             self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
@@ -176,7 +183,6 @@ class ActionPredictionHead(LossDecoder):
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
-        # I think the plan is for z_dist to not actually be a dist, and actually just be the true actions?
 
 
 def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
@@ -194,17 +200,23 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
 
 class PixelDecoder(LossDecoder):
     def __init__(self, representation_dim, projection_shape, observation_space,
-                 sample=False, encoder_arch_key=None, learn_scale=False, constant_stddev=0.1):
+                 action_representation_dim=None,sample=False, encoder_arch_key=None,
+                 learn_scale=False, constant_stddev=0.1):
 
         assert isinstance(observation_space, spaces.Box)
         # Assert that the observation space is a 3D box
         assert len(observation_space.shape) == 3
         # Assert it's square (2 of the dimensions are identical)
         assert len(np.unique(observation_space.shape) == 2)
+        # Mildly hacky; assumes that we have more square
+        # dimensions in our pixel box than we do channels
         square_dim = np.max(np.unique(observation_space.shape))
         super().__init__(representation_dim, projection_shape, sample)
         encoder_arch_key = encoder_arch_key or "BasicCNN"
         self.encoder_arch = NETWORK_ARCHITECTURE_DEFINITIONS[encoder_arch_key]
+
+        # Computes the number of dimensions that will come out of the final
+        # (channels, shape, shape) output of the convolutional network, after flattening
         decoder_input_shape = compute_decoder_input_shape_from_encoder(observation_space, self.encoder_arch)
         print(f"Decoder input shape: {decoder_input_shape}")
         reversed_architecture = list(reversed(self.encoder_arch))
@@ -214,9 +226,14 @@ class PixelDecoder(LossDecoder):
         print(f"Initial shape: {self.initial_shape}")
         self.learn_scale = learn_scale
         self.constant_stddev = constant_stddev
+        self.action_representation_dim = action_representation_dim
 
         #https://github.com/AntixK/PyTorch-VAE/blob/master/models/vanilla_vae.py
-        self.initial_layer = nn.Linear(representation_dim, decoder_input_shape)
+        if self.action_representation_dim is not None:
+            self.initial_layer = nn.Linear(self.action_representation_dim + representation_dim,
+                                           decoder_input_shape)
+        else:
+            self.initial_layer = nn.Linear(representation_dim, decoder_input_shape)
 
         decoder_layers = []
         for i in range(len(reversed_architecture) - 1):
@@ -242,26 +259,39 @@ class PixelDecoder(LossDecoder):
         decoder_layers.append(nn.Upsample((square_dim, square_dim)))
 
         self.decoder = nn.Sequential(*decoder_layers)
+        # A final layer to produce each of mean and stdev
+        # that doesn't change image dimensions
         self.mean_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
-                                                  out_channels=observation_space.shape[0], # TODO assumes channels are 0 dim?
+                                                  out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?
                                                   kernel_size=3,
                                                   padding=1),
-                                            nn.Tanh()) # This isn't always positive; is that okay?
+                                        nn.Tanh()) # This isn't always positive; is that okay?
         if self.learn_scale:
             self.std_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
-                                                      out_channels=observation_space.shape[0], # TODO assumes channels are 0 dim?
+                                                      out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?
                                                       kernel_size=3,
                                                       padding=1),
-                                            nn.ReLU()) # Is this a sensible activation here?
+                                           nn.ReLU()) # Is this a sensible activation here?
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
         batch_dim = z.shape[0]
-        print(f"Batch dim: {batch_dim}")
-        print(f"Initial shape: {self.initial_shape}")
-        projected_z = self.initial_layer(z)
+
+        # Project z to have the number of dimensions needed to reshape into (channels, shape, shape)
+        if self.action_representation_dim is not None:
+            action_representation = self.get_vector(extra_context)
+            print(f"Z shape {z.shape}")
+            print(f"Action Representation shape: {action_representation.shape}")
+            projected_z = self.initial_layer(torch.cat([z, action_representation], dim=1))
+        else:
+            projected_z = self.initial_layer(z)
+
+        # Do the reshaping
         reshaped_z = projected_z.view((batch_dim, self.initial_channels, self.initial_shape, self.initial_shape))
+        # Decode latents into a pixel shape
         decoded_latents = self.decoder(reshaped_z)
+
+        # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
             std_pixels = self.std_layer(decoded_latents)
@@ -274,17 +304,22 @@ class PixelDecoder(LossDecoder):
 
 
 class ActionConditionedVectorDecoder(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False, action_encoding_dim=128,
+    """
+    A decoder that concatenates the frame representation
+    and the action representation, and predicts a vector from it
+    for use in contrastive losses
+    """
+    def __init__(self, representation_dim, projection_shape, sample=False, action_representation_dim=128,
                  learn_scale=False):
         super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
         self.learn_scale = learn_scale
 
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
-        self.action_conditioned_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+        self.action_conditioned_projection = nn.Linear(representation_dim + action_representation_dim, projection_shape)
 
         # If learning scale/std deviation parameter, declare a layer for that, otherwise, return a unit-constant vector
         if self.learn_scale:
-            self.scale_projection = nn.Linear(representation_dim + action_encoding_dim, projection_shape)
+            self.scale_projection = nn.Linear(representation_dim + action_representation_dim, projection_shape)
         else:
             self.scale_projection = self.ones_like_projection_dim
 
@@ -295,7 +330,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # Get a single vector out of the the distribution object passed in by the
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
-        action_encoding_vector = extra_context
+        action_encoding_vector = self.get_vector(extra_context)
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)

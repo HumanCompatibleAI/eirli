@@ -224,7 +224,12 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         return self.criterion(logits, labels)
 
 
-class LogLikelihood(RepresentationLoss):
+class NegativeLogLikelihood(RepresentationLoss):
+    """
+    A version of negative log likelihood that directly calculates from distributions
+    Uses the mean of target_dist as ground truth, calculates log_prob under
+    decoded_context_dist, negates and averages across batch
+    """
     def __init__(self, device, sample=False):
         super().__init__(device, sample)
 
@@ -238,7 +243,12 @@ class LogLikelihood(RepresentationLoss):
         log_probas = decoded_context_dist.log_prob(ground_truth)
         return torch.mean(-1*log_probas)
 
+
 class MSELoss(RepresentationLoss):
+    """
+    A loss that calculates Mean Squared Error between samples or means drawn from
+    target_dist and context_dist
+    """
     def __init__(self, device, sample=False):
         super().__init__(device, sample)
         self.criterion = torch.nn.MSELoss()
@@ -249,17 +259,28 @@ class MSELoss(RepresentationLoss):
 
 
 class VAELoss(RepresentationLoss):
+    """
+    An additive combination of negative log likelihood and
+    KL divergence between a Normal distribution prior on z and
+    the conditioned-on-x z distribution
+    """
     def __init__(self, device, sample=True, beta=1.0, prior_scale=1.0):
         super().__init__(device, sample)
-        self.beta = beta
-        self.prior_scale = prior_scale
+        self.beta = beta  # The relative weight on the KL Divergence/regularization loss, relative to reconstruction
+        self.prior_scale = prior_scale  # The scale parameter used to construct prior used in KLD
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         ground_truth_pixels = self.get_vector_forms(target_dist)[0]
         log_prob_x_given_z = decoded_context_dist.log_prob(ground_truth_pixels)
-        prior = torch.distributions.Normal(torch.zeros(decoded_context_dist.batch_shape + decoded_context_dist.event_shape), self.prior_scale)
-        independent_prior = torch.distributions.Independent(prior, len(decoded_context_dist.event_shape))
-        kld = torch.distributions.kl.kl_divergence(decoded_context_dist, independent_prior)
+
+        prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +
+                                                       encoded_context_dist.event_shape),
+                                           self.prior_scale)
+        independent_prior = torch.distributions.Independent(prior,
+                                                            len(encoded_context_dist.event_shape))
+        kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
+        # KL divergence of z dist from prior contributes to loss,
+        # log probability of ground truth pixels subtracts from it
         loss = self.beta*kld - log_prob_x_given_z
         return torch.mean(loss)
 
