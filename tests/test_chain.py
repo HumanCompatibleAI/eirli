@@ -1,24 +1,49 @@
 import copy
-import pytest
-from il_representations.test_support.configuration import CHAIN_CONFIG
-from il_representations.test_support.configuration import BENCHMARK_TEST_CONFIGS
 
-import warnings
-for category in [FutureWarning, DeprecationWarning, PendingDeprecationWarning]:
-    warnings.filterwarnings("ignore", category=category)
+import pytest
+import ray
+from ray import tune
+
+from il_representations import algos
+from il_representations.test_support.configuration import (
+    BENCHMARK_TEST_CONFIGS, CHAIN_CONFIG)
+from il_representations.scripts.pretrain_n_adapt import StagesToRun
+
+
+def test_chain(chain_ex, file_observer):
+    try:
+        chain_ex.run(config_updates=CHAIN_CONFIG)
+    finally:
+        # always shut down Ray, in case we get a test failure
+        if ray.is_initialized():
+            ray.shutdown()
 
 
 @pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
-def test_chain(benchmark_cfg, chain_ex, file_observer):
-    common_config = {
-        'benchmark': benchmark_cfg,
-        'device_name': 'cpu'
-    }
+def test_all_benchmarks(chain_ex, file_observer, benchmark_cfg):
     chain_config = copy.deepcopy(CHAIN_CONFIG)
-    chain_config['spec']['rep']['benchmark'] = benchmark_cfg
-    chain_config['spec']['il_train'].update(common_config)
-    chain_config['spec']['il_test'].update(common_config)
+    # don't search over representation learner
+    chain_config['spec']['repl']['algo'] \
+        = tune.grid_search([algos.SimCLR])
+    # try just this benchmark
+    chain_config['spec']['benchmark'] = tune.grid_search([benchmark_cfg])
+    try:
+        chain_ex.run(config_updates=chain_config)
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
 
-    chain_ex.run(config_updates=chain_config)
 
-
+@pytest.mark.parametrize("stages", list(StagesToRun))
+def test_individual_stages(chain_ex, file_observer, stages):
+    # test just doing IL, just doing REPL, etc.
+    chain_config = copy.deepcopy(CHAIN_CONFIG)
+    # again, don't search over representation learner
+    chain_config['spec']['repl']['algo'] \
+        = tune.grid_search([algos.SimCLR])
+    chain_config['stages_to_run'] = stages
+    try:
+        chain_ex.run(config_updates=chain_config)
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()

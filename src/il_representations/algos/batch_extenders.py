@@ -23,7 +23,7 @@ class IdentityBatchExtender(BatchExtender):
 
 
 class QueueBatchExtender(BatchExtender):
-    def __init__(self, queue_dim, queue_size, device, sample=False):
+    def __init__(self, queue_dim, device, queue_size=8192, sample=False):
         super(QueueBatchExtender, self).__init__()
         self.queue_size = queue_size
         self.representation_dim = queue_dim
@@ -45,10 +45,31 @@ class QueueBatchExtender(BatchExtender):
         batch_size = targets_loc.shape[0]
         queue_targets_scale = (self.queue_scale.clone().detach()).to(self.device)
         queue_targets_loc = (self.queue_loc.clone().detach()).to(self.device)
-        # TODO: Currently requires the queue size to be a multiple of the batch size. Don't require that.
-        self.queue_loc[self.queue_ptr:self.queue_ptr + batch_size] = targets_loc
-        self.queue_scale[self.queue_ptr:self.queue_ptr + batch_size] = targets_scale
-        self.queue_ptr = (self.queue_ptr + batch_size) % self.queue_size
+
+        # Insert all the targets into the queue, wrapping around at the end.
+        # insert_ptr is a pointer into targets_{loc,scale}.
+        insert_ptr = 0
+        while insert_ptr < batch_size:
+            # number of elements we'll insert on this round
+            n_inserted = min(
+                # don't insert more than we have in the targets array
+                batch_size - insert_ptr,
+                # don't insert beyond the end of the queue
+                self.queue_size - self.queue_ptr)
+            assert n_inserted > 0, \
+                (insert_ptr, batch_size, self.queue_ptr, self.queue_size)
+
+            # now overwrite the relevant elements using fresh data from the
+            # target_* tensors
+            self.queue_loc[self.queue_ptr:self.queue_ptr + n_inserted] \
+                = targets_loc[insert_ptr:insert_ptr + n_inserted]
+            self.queue_scale[self.queue_ptr:self.queue_ptr + n_inserted] \
+                = targets_scale[insert_ptr:insert_ptr + n_inserted]
+
+            # advance pointers
+            insert_ptr += n_inserted
+            self.queue_ptr = (self.queue_ptr + n_inserted) % self.queue_size
+
         merged_loc = torch.cat([targets_loc, queue_targets_loc], dim=0)
         merged_scale = torch.cat([targets_scale, queue_targets_scale], dim=0)
         merged_target_dist = independent_multivariate_normal(loc=merged_loc, scale=merged_scale)

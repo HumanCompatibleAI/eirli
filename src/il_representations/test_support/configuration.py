@@ -1,10 +1,9 @@
 """Benchmark ingredient configurations for unit testing."""
-import inspect
 from os import path
-from ray import tune
-from il_representations import algos
-from test_utils import is_representation_learner
 
+from ray import tune
+
+from il_representations import algos
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 TEST_DATA_DIR = path.abspath(
@@ -56,23 +55,50 @@ FAST_IL_TRAIN_CONFIG = {
         'disc_batch_size': 2,
     },
 }
-
-# CHAIN_CONFIG = {
-#     'benchmark': tune.grid_search([bm for bm in BENCHMARK_TEST_CONFIGS]),
-# }
+REPL_SMOKE_TEST_CONFIG = {
+    'pretrain_epochs': 1,
+    'demo_timesteps': 32,
+    'batch_size': 7,
+    'unit_test_max_train_steps': 2,
+    'algo_params': {'representation_dim': 3},
+    'use_random_rollouts': False,
+    'ppo_finetune': False,
+}
 CHAIN_CONFIG = {
     'spec': {
-        'rep': {
-            'algo': tune.grid_search([el[1] for el in inspect.getmembers(algos) if is_representation_learner(el[1])]),
-            'pretrain_epochs': 1,
+        'repl': {
+            'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
         },
         'il_train': {
-            'algo': tune.grid_search(['bc', 'gail']),
-            'final_pol_name': 'last_test_policy.pt',
-            **FAST_IL_TRAIN_CONFIG,
+            # in practice we probably want to try GAIL too
+            # (I'd put this in the unit test if it wasn't so slow)
+            'algo': tune.grid_search(['bc']),
         },
-        'il_test': {
-            'n_rollouts': 2,
-        }
-    }
+        'benchmark': tune.grid_search([BENCHMARK_TEST_CONFIGS[0]]),
+    },
+    'tune_run_kwargs': {
+        'resources_per_trial': {
+            'cpu': 2,
+            'gpu': 0,
+        },
+    },
+    'ray_init_kwargs': {
+        # Ray has been mysteriously complaining about the amount of memory
+        # available on CircleCI, even though the machines have heaps of RAM.
+        # Setting sane defaults so this doesn't happen.
+        'memory': int(0.2*1e9),
+        'object_store_memory': int(0.2*1e9),
+    },
+    'il_train': {
+        'device_name': 'cpu',
+        **FAST_IL_TRAIN_CONFIG,
+    },
+    'il_test': {
+        'device_name': 'cpu',
+        'n_rollouts': 2,
+    },
+    'repl': {
+        'device': 'cpu',
+        **REPL_SMOKE_TEST_CONFIG,
+    },
 }

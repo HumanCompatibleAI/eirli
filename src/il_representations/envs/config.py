@@ -8,7 +8,7 @@ benchmark_ingredient = Ingredient('benchmark')
 @benchmark_ingredient.config
 def bench_defaults():
     # set this to "atari", "magical", "dm_control"
-    benchmark_name = 'atari'
+    benchmark_name = 'dm_control'
     # should venvs be parallel?
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
@@ -16,6 +16,9 @@ def bench_defaults():
     # this should be a number of trajectories to return, or None if returning
     # all available trajectories is okay
     n_traj = None
+    # root directory for data; useful when script is being run under Ray Tune,
+    # which changes the working directory
+    data_root = '.'
 
     # ########################
     # MAGICAL config variables
@@ -42,7 +45,7 @@ def bench_defaults():
         'ClusterColour': 'data/magical/cluster-colour/',
         'ClusterShape': 'data/magical/cluster-shape/',
     }
-    magical_env_prefix = 'MoveToCorner'
+    magical_env_prefix = 'MatchRegions'
     magical_preproc = 'LoResCHW4E'
     # this should probably be True for all BC runs, False for GAIL runs
     # (although TBH it doesn't really matter for GAIL)
