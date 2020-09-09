@@ -30,7 +30,7 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
 
     def forward(self, observations):
         features_dist = self.representation_encoder(observations, traj_info=None)
-        return features_dist.loc
+        return features_dist.mean
 
 
 class EncoderSimplePolicyHead(EncoderFeatureExtractor):
