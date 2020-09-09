@@ -67,12 +67,13 @@ REPL_SMOKE_TEST_CONFIG = {
 CHAIN_CONFIG = {
     'spec': {
         'repl': {
-            'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
+            'algo': tune.grid_search([algos.SimCLR]),
         },
         'il_train': {
             # in practice we probably want to try GAIL too
             # (I'd put this in the unit test if it wasn't so slow)
             'algo': tune.grid_search(['bc']),
+            'freeze_encoder': tune.grid_search([False])
         },
         'benchmark': tune.grid_search([BENCHMARK_TEST_CONFIGS[0]]),
     },
@@ -81,6 +82,7 @@ CHAIN_CONFIG = {
             'cpu': 2,
             'gpu': 0,
         },
+        'num_samples': 1,
     },
     'ray_init_kwargs': {
         # Ray has been mysteriously complaining about the amount of memory
