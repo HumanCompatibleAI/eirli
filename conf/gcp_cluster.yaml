@@ -28,7 +28,7 @@ docker:
     # the image below is taken from .circleci/config.yml
     image: "humancompatibleai/il-representations:2020.08.28-r1"
     container_name: "il-rep-ray-tune"
-    # If true, always pull latest image version. Otherwise query cache first.
+    # Set to true if to always force-pull the latest image version (no cache).
     pull_before_run: False
     run_options: []  # Extra options to pass into "docker run"
 
@@ -37,14 +37,12 @@ provider:
     type: gcp
     region: us-west1
     availability_zone: us-west1-a
-    project_id: perfect-impulse-231401  # Globally unique project id
+    project_id: methodical-tea-257021
 
 # How Ray will authenticate with newly launched nodes.
+# (Ray will auto-create an SSH key on your machine)
 auth:
     ssh_user: ubuntu
-    # This allows you to use an existing SSH key instead of having Ray create
-    # one (not recommended). Consult Ray docs for how to use this.
-    # ssh_private_key: /path/to/your/key.pem
 
 
 
@@ -52,8 +50,6 @@ auth:
 
 # Provider-specific config for the head node, e.g. instance type. By default
 # Ray will auto-configure unspecified fields such as subnets and ssh-keys.
-# For more documentation on available fields, see:
-# https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert
 head_node:
     machineType: n1-standard-2
     disks:
@@ -129,7 +125,8 @@ head_setup_commands:
 worker_setup_commands: []
 
 
-#### RAY START COMMANDS (ON HEAD & WORKERS) ####
+
+#### RAY START COMMANDS (both head & workers) ####
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:

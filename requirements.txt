@@ -16,6 +16,13 @@ Pillow~=7.2.0
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
 seaborn~=0.11.0
+# deps for Ray + GCP (see Ray issue #10724)
+cryptography~=3.1
+oauth2client~=4.1.3
+# my version of google-api-python-client fixes issue #873 in that repo (which
+# has been known since at least 2017, and seems unlikely to ever get fixed)
+# google-api-python-client~1.11.0
+git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
 
 # imitation needs special branch as of 2020-08-17
 git+git://github.com/HumanCompatibleAI/imitation@711b9f20c4542e930c6e4ac97cbfea14c7c95624#egg=imitation
