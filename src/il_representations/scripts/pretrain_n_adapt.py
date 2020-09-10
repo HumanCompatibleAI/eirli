@@ -22,6 +22,7 @@ from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
 
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
     'chain',
     ingredients=[
@@ -121,7 +122,8 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
         log_dir: The log directory of current chain experiment.
         exp_name: Specify the experiment type in ['repl', 'il_train', 'il_test']
     """
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+    # we need to run the workaround in each raylet, so we do it at the start of run_single_exp
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 
     from il_representations.scripts.il_test import il_test_ex
     from il_representations.scripts.il_train import il_train_ex
@@ -582,6 +584,5 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
     chain_ex.run_commandline()
