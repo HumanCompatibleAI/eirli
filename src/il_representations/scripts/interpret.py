@@ -3,8 +3,12 @@ import sacred
 import os
 import math
 import cv2
+import glob
+import json
+import importlib
 import numpy as np
 import matplotlib.pyplot as plt
+import torch.nn as nn
 
 from sacred import Experiment
 from PIL import Image
@@ -16,24 +20,23 @@ from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductanc
     LayerAttribution, LayerIntegratedGradients, LayerGradientXActivation
 from captum.attr import visualization as viz
 
+from il_representations import algos
+from il_representations.algos import batch_extenders
+from il_representations.algos.representation_learner import DEFAULT_HARDCODED_PARAMS as hardcoded_params
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
-from il_representations.algos.pair_constructors import IdentityPairConstructor
-from il_representations.algos.model3l import NatureCnn
 
 interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 
 
 @interp_ex.config
 def base_config():
-    # Network settings
-    model_path = os.path.join(os.getcwd(), 'runs/downloads/moco_3l_seed888.pth')
-    network = NatureCnn
-    network_args = {'action_size': 4, 'obs_shape': [84, 84, 4], 'z_dim': 64, 'pretrained': True}
-    device = None
+    # Network setting
+    ray_tune_exp_dir = './runs/chain_runs/1/repl/1'
 
     # Data settings
-    benchmark_name = 'atari'
+    benchmark_name = 'dm_control'
+    device = get_device("auto")
     imgs = [888]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
     show_imgs = False
@@ -57,13 +60,77 @@ def base_config():
     }
 
 
+class Network(nn.Module):
+    def __init__(self, encoder, decoder):
+        super(Network, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+
 @interp_ex.capture
-def prepare_network(network, network_args, model_path, device):
-    network = network(**network_args)
-    network.eval()
+def prepare_network(ray_tune_exp_dir, device=None):
+    def get_model_weights(ray_tune_exp_dir, is_encoder=True):
+        ckpt_dir_name = 'representation_encoder' if is_encoder else 'loss_decoder'
+        path_pattern = os.path.join(ray_tune_exp_dir, f'checkpoints/{ckpt_dir_name}/*_epochs.ckpt')
+        model_paths = glob.glob(path_pattern)
+        if not model_paths:
+            raise IOError(f'Could not find model files at specified location. '
+                          f'Check if the {path_pattern} file exists.')
+        model_paths.sort()
+        model_path = model_paths[-1]
+        return model_path
+
+    encoder_path, decoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=True), \
+                                 get_model_weights(ray_tune_exp_dir, is_encoder=False),
+
+    with open(os.path.join(ray_tune_exp_dir, 'config.json'), 'r') as file:
+        exp_params = json.load(file)
+
+    algo_str = exp_params['algo']
+    algo = getattr(algos, algo_str)
+
+    venv = auto_env.load_vec_env()
+    color_space = auto_env.load_color_space()
+    algo_params_copy = exp_params['algo_params'].copy()
+    algo_params_copy['augmenter_kwargs'] = {
+        'color_space': color_space,
+        **algo_params_copy['augmenter_kwargs'],
+    }
+
+    def process_model_params(algo_params):
+        algo_params = algo_params.copy()
+        for param, param_value in algo_params.items():
+            if isinstance(param_value, dict):
+                if 'py/type' in param_value.keys():
+                    py_type = param_value['py/type']
+                    algo_component_module_str = '.'.join(py_type.split('.')[:-1])
+                    class_str = py_type.split('.')[-1]
+                    algo_component_module = importlib.import_module(algo_component_module_str)
+                    algo_component = getattr(algo_component_module, class_str)
+                    algo_params[param] = algo_component
+                elif 'dtype' in param_value.keys() and 'value' in param_value.keys():
+                    algo_params[param] = algo_params[param]['value']
+
+        for hardcoded_param in hardcoded_params:
+            if hardcoded_param in algo_params.keys():
+                del algo_params[hardcoded_param]
+        return algo_params
+
+    algo_params_copy = process_model_params(algo_params_copy)
+    algo = algo(venv, log_dir=interp_ex.observers[0].dir, **algo_params_copy)
+
     device = get_device("auto" if device is None else device)
-    model_state_dict = torch.load(model_path, map_location=device)
-    network.load_state_dict(model_state_dict)
+    # TODO (Cynthia): Make this compatible with reverted code
+    algo.encoder.load_state_dict(torch.load(encoder_path, map_location=device))
+    algo.decoder.load_state_dict(torch.load(decoder_path, map_location=device))
+
+    network = Network(algo.encoder, algo.decoder)
+    network.eval()
     return network
 
 
