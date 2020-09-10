@@ -18,6 +18,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
 
@@ -160,6 +161,5 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs'))
     represent_ex.run_commandline()
