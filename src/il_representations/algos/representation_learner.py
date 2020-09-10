@@ -49,7 +49,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  shuffle_batches=True,
                  batch_size=256,
                  preprocess_extra_context=True,
-                 save_interval=1,
+                 save_interval=100,
                  optimizer_kwargs=None,
                  target_pair_constructor_kwargs=None,
                  augmenter_kwargs,
@@ -218,6 +218,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         loss_record = []
         global_step = 0
         for epoch in range(training_epochs):
+
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
 
@@ -287,7 +288,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.encoder.eval()
             self.decoder.eval()
 
-            if epoch % self.save_interval == 0:
+            if epoch % self.save_interval == 0 or epoch == training_epochs:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
 
