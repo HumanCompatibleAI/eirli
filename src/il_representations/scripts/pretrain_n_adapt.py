@@ -346,6 +346,7 @@ def base_config():
                                gpu=0.32,
                            ))  # queue_trials=True)
     ray_init_kwargs = dict(
+        num_cpus=2,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
