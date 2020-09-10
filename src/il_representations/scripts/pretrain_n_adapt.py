@@ -239,6 +239,7 @@ def run_repl_only_exp(rep_ex_config, benchmark_config, config, log_dir):
     pretrain_result = run_single_exp(rep_ex_config, benchmark_config,
                                      tune_config_updates, log_dir, 'repl')
     report_experiment_result(pretrain_result)
+    logging.info("RepL experiment completed")
 
 
 def run_il_only_exp(il_train_ex_config, il_test_ex_config, benchmark_config,
@@ -574,7 +575,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         local_dir=ray_dir,
         **tune_run_kwargs,
     )
-
+    logging.info("Got to get_best_config")
     best_config = rep_run.get_best_config(metric=metric)
     logging.info(f"Best config is: {best_config}")
     logging.info("Results available at: ")
