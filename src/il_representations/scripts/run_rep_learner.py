@@ -18,7 +18,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
-represent_ex = Experiment('representation_learning',
+represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
 
 
@@ -26,11 +26,10 @@ represent_ex = Experiment('representation_learning',
 def default_config():
     algo = "MoCo"
     use_random_rollouts = False
-    root_dir = os.getcwd()
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_epochs = 50
+    pretrain_epochs = 500
     algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
     algo_params["augmenter_kwargs"] = {
@@ -39,7 +38,7 @@ def default_config():
         # augmentations.
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
-    ppo_finetune = True
+    ppo_finetune = False
     batch_size = 256
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
@@ -104,14 +103,10 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts, algo, algo_params, seed, root_dir,
+def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
-    log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
-    os.mkdir(log_dir)
-
-    # The cwd can be changed when the experiment is called by Ray. Reset that.
-    os.chdir(root_dir)
+    log_dir = represent_ex.observers[0].dir
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -135,13 +130,13 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed, root_dir,
     model = algo(venv, log_dir=log_dir, **algo_params)
 
     # setup model
-    model.learn(dataset_dict, pretrain_epochs)
+    loss_record = model.learn(dataset_dict, pretrain_epochs)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
         encoder_feature_extractor_kwargs = {'features_dim': algo_params["representation_dim"],
-                                            'encoder_path': latest_checkpoint}
+                                            'encoder_path': os.path.abspath(latest_checkpoint)}
 
         # TODO figure out how to not have to set `ortho_init` to False for the whole policy
         policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
@@ -153,7 +148,15 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed, root_dir,
         ppo_model.learn(total_timesteps=ppo_timesteps)
 
     venv.close()
-    return {'encoder_path': os.path.join(model.encoder_checkpoints_path, f'{pretrain_epochs-1}_epochs.ckpt')}
+
+    encoder_path = os.path.join(model.encoder_checkpoints_path,
+                                f'{pretrain_epochs-1}_epochs.ckpt')
+
+    return {
+        'encoder_path': encoder_path,
+        # return average loss from final epoch for HP tuning
+        'repl_loss': loss_record[-1],
+    }
 
 
 if __name__ == '__main__':

@@ -70,20 +70,30 @@ REPL_SMOKE_TEST_CONFIG = {
 }
 CHAIN_CONFIG = {
     'spec': {
-        'rep': {
-            'algo': tune.grid_search([algos.SimCLR, algos.BYOL]),
+        'repl': {
+            'algo': tune.grid_search([algos.SimCLR]),
         },
         'il_train': {
             # in practice we probably want to try GAIL too
             # (I'd put this in the unit test if it wasn't so slow)
             'algo': tune.grid_search(['bc']),
+            'freeze_encoder': tune.grid_search([False])
         },
+        'benchmark': tune.grid_search([BENCHMARK_TEST_CONFIGS[0]]),
     },
     'tune_run_kwargs': {
         'resources_per_trial': {
             'cpu': 2,
             'gpu': 0,
         },
+        'num_samples': 1,
+    },
+    'ray_init_kwargs': {
+        # Ray has been mysteriously complaining about the amount of memory
+        # available on CircleCI, even though the machines have heaps of RAM.
+        # Setting sane defaults so this doesn't happen.
+        'memory': int(0.2*1e9),
+        'object_store_memory': int(0.2*1e9),
     },
     'il_train': {
         'device_name': 'cpu',
@@ -93,7 +103,7 @@ CHAIN_CONFIG = {
         'device_name': 'cpu',
         'n_rollouts': 2,
     },
-    'representation_learning': {
+    'repl': {
         'device': 'cpu',
         **REPL_SMOKE_TEST_CONFIG,
     },

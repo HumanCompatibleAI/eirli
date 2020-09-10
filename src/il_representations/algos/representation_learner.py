@@ -49,7 +49,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  shuffle_batches=True,
                  batch_size=256,
                  preprocess_extra_context=True,
-                 save_interval=1,
+                 save_interval=100,
                  optimizer_kwargs=None,
                  target_pair_constructor_kwargs=None,
                  augmenter_kwargs,
@@ -63,7 +63,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        logger.configure(log_dir, ["stdout", "tensorboard"])
+        logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
@@ -210,10 +210,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
+        # Torch chokes when batch_size is a numpy int instead of a Python int,
+        # so we need to wrap the batch size in int() in case we're running
+        # under skopt (which uses numpy types).
+        dataloader = DataLoader(dataset, batch_size=int(self.batch_size), shuffle=self.shuffle_batches)
 
         loss_record = []
+        global_step = 0
         for epoch in range(training_epochs):
+
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
 
@@ -266,7 +271,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('loss', loss.item())
                 logger.record('epoch', epoch)
                 logger.record('within_epoch_step', step)
-                logger.dump()
+                logger.dump(step=global_step)
+                global_step += 1
 
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:
@@ -282,6 +288,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.encoder.eval()
             self.decoder.eval()
 
-            if epoch % self.save_interval == 0:
+            if epoch % self.save_interval == 0 or epoch == training_epochs - 1:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+
+        return loss_record
