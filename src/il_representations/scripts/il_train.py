@@ -65,6 +65,7 @@ def gail_defaults():
     ppo_adv_clip = 0.05  # noqa: F841
 
 
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_train_ex = Experiment('il_train', ingredients=[
     benchmark_ingredient, bc_ingredient, gail_ingredient,
 ])
@@ -282,6 +283,5 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     il_train_ex.observers.append(FileStorageObserver('runs/il_train_runs'))
     il_train_ex.run_commandline()
