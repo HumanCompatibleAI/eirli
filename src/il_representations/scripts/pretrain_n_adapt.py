@@ -269,6 +269,8 @@ def base_config():
     metric = None
     stages_to_run = StagesToRun.REPL_ONLY
     spec = {
+        # DO NOT UPDATE THESE DEFAULTS WITHOUT ALSO UPDATING CHAIN_CONFIG IN
+        # test_support/configuration.py. They will affect unit tests!
         'repl': {
             'algo':
             tune.grid_search([
@@ -278,7 +280,6 @@ def base_config():
                 # 'CEB',
                 # 'ActionConditionedTemporalCPC',
             ]),
-            'pretrain_epochs': 200
         },
         'il_train': {
             'algo': tune.grid_search(['bc']),
