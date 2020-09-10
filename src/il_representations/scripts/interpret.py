@@ -32,7 +32,7 @@ interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 @interp_ex.config
 def base_config():
     # Network setting
-    ray_tune_exp_dir = './runs/chain_runs/1/repl/1'
+    ray_tune_exp_dir = './runs/chain_runs/3/repl/1'
 
     # Data settings
     benchmark_name = 'dm_control'
@@ -88,48 +88,10 @@ def prepare_network(ray_tune_exp_dir, device=None):
     encoder_path, decoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=True), \
                                  get_model_weights(ray_tune_exp_dir, is_encoder=False),
 
-    with open(os.path.join(ray_tune_exp_dir, 'config.json'), 'r') as file:
-        exp_params = json.load(file)
+    encoder = torch.load(encoder_path, map_location=device)
+    decoder = torch.load(decoder_path, map_location=device)
 
-    algo_str = exp_params['algo']
-    algo = getattr(algos, algo_str)
-
-    venv = auto_env.load_vec_env()
-    color_space = auto_env.load_color_space()
-    algo_params_copy = exp_params['algo_params'].copy()
-    algo_params_copy['augmenter_kwargs'] = {
-        'color_space': color_space,
-        **algo_params_copy['augmenter_kwargs'],
-    }
-
-    def process_model_params(algo_params):
-        algo_params = algo_params.copy()
-        for param, param_value in algo_params.items():
-            if isinstance(param_value, dict):
-                if 'py/type' in param_value.keys():
-                    py_type = param_value['py/type']
-                    algo_component_module_str = '.'.join(py_type.split('.')[:-1])
-                    class_str = py_type.split('.')[-1]
-                    algo_component_module = importlib.import_module(algo_component_module_str)
-                    algo_component = getattr(algo_component_module, class_str)
-                    algo_params[param] = algo_component
-                elif 'dtype' in param_value.keys() and 'value' in param_value.keys():
-                    algo_params[param] = algo_params[param]['value']
-
-        for hardcoded_param in hardcoded_params:
-            if hardcoded_param in algo_params.keys():
-                del algo_params[hardcoded_param]
-        return algo_params
-
-    algo_params_copy = process_model_params(algo_params_copy)
-    algo = algo(venv, log_dir=interp_ex.observers[0].dir, **algo_params_copy)
-
-    device = get_device("auto" if device is None else device)
-    # TODO (Cynthia): Make this compatible with reverted code
-    algo.encoder.load_state_dict(torch.load(encoder_path, map_location=device))
-    algo.decoder.load_state_dict(torch.load(decoder_path, map_location=device))
-
-    network = Network(algo.encoder, algo.decoder)
+    network = Network(encoder, decoder)
     network.eval()
     return network
 
