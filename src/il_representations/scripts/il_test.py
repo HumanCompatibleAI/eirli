@@ -19,6 +19,7 @@ from il_representations.envs import auto
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.utils import TensorFrameWriter
 
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 
 
@@ -148,6 +149,5 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     il_test_ex.observers.append(FileStorageObserver('runs/il_test_runs'))
     il_test_ex.run_commandline()
