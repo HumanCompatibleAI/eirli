@@ -34,7 +34,8 @@ def test_all_benchmarks(chain_ex, file_observer, benchmark_cfg):
             ray.shutdown()
 
 
-@pytest.mark.parametrize("stages", list(StagesToRun))
+#@pytest.mark.parametrize("stages", list(StagesToRun))
+@pytest.mark.parametrize("stages", ["REPL_ONLY"])
 def test_individual_stages(chain_ex, file_observer, stages):
     # test just doing IL, just doing REPL, etc.
     chain_config = copy.deepcopy(CHAIN_CONFIG)
