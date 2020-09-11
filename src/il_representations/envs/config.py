@@ -97,6 +97,6 @@ def bench_defaults():
 @benchmark_ingredient.named_config
 def minecraft_defaults():
     venv_parallel = False
-    n_envs = 2
+    n_envs = 1
     _ = locals()
     del _
