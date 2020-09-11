@@ -19,10 +19,11 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance, LayerGradCam, LayerActivation, \
     LayerAttribution, LayerIntegratedGradients, LayerGradientXActivation
 from captum.attr import visualization as viz
+from stable_baselines3.common.preprocessing import preprocess_obs
 
-from il_representations import algos
-from il_representations.algos import batch_extenders
-from il_representations.algos.representation_learner import DEFAULT_HARDCODED_PARAMS as hardcoded_params
+from il_representations.scripts.il_train import make_policy
+from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, \
+    RecurrentEncoder, StochasticEncoder, DeterministicEncoder
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 
@@ -33,6 +34,7 @@ interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 def base_config():
     # Network setting
     ray_tune_exp_dir = './runs/chain_runs/3/repl/1'
+    load_decoder = False
 
     # Data settings
     benchmark_name = 'dm_control'
@@ -48,32 +50,30 @@ def base_config():
     deep_lift = 0
 
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
-    layer_conductance = 1
+    layer_conductance = 0
     layer_gradcam = 0
-    layer_activation = 0
-    layer_gradxact = 0
+    layer_activation = 1
+    layer_gradxact = 1
     layer_kwargs = {
-        'layer_conductance': {'module': 'fc_pi_decoder', 'layer_idx': 2},
+        'layer_conductance': {'module': 'encoder', 'layer_idx': 2},
         'layer_gradcam': {'module': 'encoder', 'layer_idx': 4},
-        'layer_activation': {'module': 'fc_pi_decoder', 'layer_idx': 2},
-        'layer_gradxact': {'module': 'fc_pi_decoder', 'layer_idx': 2},
+        'layer_activation': {'module': 'encoder', 'layer_idx': 7},
+        'layer_gradxact': {'module': 'encoder', 'layer_idx': 7},
     }
 
 
 class Network(nn.Module):
-    def __init__(self, encoder, decoder):
+    def __init__(self, policy):
         super(Network, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
+        self.policy = policy
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+        x = self.policy(x)
+        return x[0]
 
 
 @interp_ex.capture
-def prepare_network(ray_tune_exp_dir, device=None):
+def prepare_network(venv, ray_tune_exp_dir, load_decoder, device=None):
     def get_model_weights(ray_tune_exp_dir, is_encoder=True):
         ckpt_dir_name = 'representation_encoder' if is_encoder else 'loss_decoder'
         path_pattern = os.path.join(ray_tune_exp_dir, f'checkpoints/{ckpt_dir_name}/*_epochs.ckpt')
@@ -85,27 +85,31 @@ def prepare_network(ray_tune_exp_dir, device=None):
         model_path = model_paths[-1]
         return model_path
 
-    encoder_path, decoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=True), \
-                                 get_model_weights(ray_tune_exp_dir, is_encoder=False),
+    encoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=True)
+    if load_decoder:
+        decoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=False)
 
     encoder = torch.load(encoder_path, map_location=device)
-    decoder = torch.load(decoder_path, map_location=device)
-
-    network = Network(encoder, decoder)
+    policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
+    network = Network(policy)
     network.eval()
+    print(network)
     return network
 
 
 @interp_ex.capture
-def process_data(benchmark_name, imgs, device):
+def process_data(venv, benchmark_name, imgs, device):
     img_list = []
     label_list = []
     data_dict = auto_env.load_dataset(benchmark_name)
+
     for img_idx in imgs:
         img = data_dict['obs'][img_idx]
         label = data_dict['acts'][img_idx]
+        if isinstance(label, np.ndarray):
+            label = np.argmax(label)
         img = torch.FloatTensor(img).to(device).unsqueeze(dim=0)
-        img /= 225
+        img = preprocess_obs(img, venv.observation_space, normalize_images=True)
         img_list.append(img)
         label_list.append(label)
     return img_list, label_list
@@ -114,8 +118,9 @@ def process_data(benchmark_name, imgs, device):
 def save_img(img, save_name, save_dir, show=True):
     savefig_kwargs = {}
     if isinstance(img, torch.Tensor):
-        if (img.shape[0]) == 4:
-            img = img.permute(1, 2, 0).detach().numpy()
+        if img.shape[0] == 3 or img.shape[0] == 4:
+            img = img.permute(1, 2, 0)
+        img = img.detach().numpy()
     else:
         img = img[50:1150, 100:1100, :]
         plt.axis('off')
@@ -146,8 +151,10 @@ def attribute_image_features(network, algorithm, image, label, **kwargs):
     return tensor_attributions
 
 
-def saliency_(net, image, label, original_img, log_dir, show_imgs):
+def saliency_(net, image, label, original_img, log_dir, show_imgs, additional_args=None):
     saliency = Saliency(net)
+    print('label', label)
+    print('image', image)
     grads = saliency.attribute(image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
     saliency_viz = viz.visualize_image_attr(grads, original_img, method="blended_heat_map",
@@ -158,31 +165,44 @@ def saliency_(net, image, label, original_img, log_dir, show_imgs):
     return grads
 
 
-def integrated_gradient_(net, image, label, original_img, log_dir, show_imgs):
+def integrated_gradient_(net, image, label, original_img, log_dir, show_imgs, additional_args=None):
     ig = IntegratedGradients(net)
-    attr_ig, delta = attribute_image_features(net, ig, image, label, baselines=image * 0, return_convergence_delta=True)
+    attr_ig, delta = attribute_image_features(net, ig, image, label,
+                                              baselines=image * 0,
+                                              return_convergence_delta=True,
+                                              additional_forward_args=additional_args)
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    ig_viz = viz.visualize_image_attr(ig, original_img, method="blended_heat_map", sign="all",
+    ig_viz = viz.visualize_image_attr(ig, original_img,
+                                      method="blended_heat_map",
+                                      sign="all",
                                       show_colorbar=True,
                                       title="Overlayed Integrated Gradients")
     save_img(figure_2_numpy(ig_viz[0]), 'integrated_gradients', log_dir, show=show_imgs)
     return attr_ig
 
 
-def deep_lift_(net, image, label, original_img, log_dir, show_imgs):
+def deep_lift_(net, image, label, original_img, log_dir, show_imgs, additional_args=None):
     dl = DeepLift(net)
-    attr_dl = attribute_image_features(net, dl, image, label, baselines=image * 0)
+    attr_dl = attribute_image_features(net, dl, image, label,
+                                       baselines=image * 0,
+                                       additional_forward_args=additional_args)
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
-    dl_viz = viz.visualize_image_attr(attr_dl, original_img, method="blended_heat_map", sign="all",
+    dl_viz = viz.visualize_image_attr(attr_dl, original_img,
+                                      method="blended_heat_map",
+                                      sign="all",
                                       show_colorbar=True,
                                       title="Overlayed DeepLift")
     save_img(figure_2_numpy(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
     return attr_dl
 
 
-def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, columns=10):
+def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, columns=10, additional_args=None):
     layer_cond = LayerConductance(net, layer)
-    attribution = layer_cond.attribute(image, n_steps=100, attribute_to_layer_input=True, target=label)
+    attribution = layer_cond.attribute(image,
+                                       n_steps=100,
+                                       attribute_to_layer_input=True,
+                                       target=label,
+                                       additional_forward_args=additional_args)
     attribution = attribution[0]
     if len(attribution.shape) == 2:  # Attribution has one dimension only - usually seen in linear layers.
         l_weight = layer.weight
@@ -196,9 +216,9 @@ def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, column
     return attribution
 
 
-def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
+def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs, additional_args=None):
     lgc = LayerGradCam(net, layer)
-    gc_attr = lgc.attribute(image, target=label)
+    gc_attr = lgc.attribute(image, target=label, additional_forward_args=additional_args)
     upsampled_gc_attr = LayerAttribution.interpolate(gc_attr, image.shape[2:])  # Shape [1, 1, 84, 84]
     lg_viz_pos = viz.visualize_image_attr(upsampled_gc_attr[0].cpu().permute(1, 2, 0).detach().numpy(),
                                       original_img, method="blended_heat_map", sign="positive",
@@ -212,10 +232,11 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     save_img(figure_2_numpy(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
 
 
-def layer_act_(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
+def layer_act_(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10,
+               additional_args=None):
     layer_a = algo(net, layer)
+    attr_kwargs['additional_forward_args'] = additional_args
     a_attr = layer_a.attribute(image, **attr_kwargs)
-    print(a_attr.shape)
     if len(a_attr.shape) == 2:  # Attribution has one dimension only - usually seen in linear layers.
         l_weight = layer.weight
         plot_linear_layer_attributions(a_attr, l_weight, algo_name, log_dir, show_imgs)
@@ -278,17 +299,40 @@ def plot_linear_layer_attributions(lc_attr_test, layer_weight, save_name, save_d
         plt.show()
 
 
+def choose_layer(network, module_name, layer_idx):
+    """
+    network - The network to be interpreted.
+    module_name - The network module being interpreted. It should be either "encoder" or "decoder".
+    layer_idx - The index of the layer to be studied. It belongs to the module specified by module_name.
+    """
+
+    if module_name == 'encoder':
+        rep_encoder = network.policy.features_extractor.representation_encoder
+
+        if isinstance(rep_encoder, MomentumEncoder):
+            module = rep_encoder.query_encoder.network.shared_network
+            return module[layer_idx]
+        else:
+            raise NotImplementedError(f'The script does not support interpreting the current type of '
+                                      f'encoder {type(rep_encoder)}.')
+    elif module_name == 'decoder':
+        return network.policy.action_net
+
+
 
 @interp_ex.main
 def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact,
         layer_activation, layer_kwargs):
     # Load the network and images
-    images, labels = process_data()
-    network = prepare_network()
+    venv = auto_env.load_vec_env()
+    network = prepare_network(venv)
+    images, labels = process_data(venv)
 
     for img, label in zip(images, labels):
         # Get policy prediction
+        traj_info = None
         output = network(img)
+        print('output', output)
         original_img = img[0].permute(1, 2, 0).numpy()
         label = int(label)
         img.requires_grad = True
@@ -297,42 +341,44 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
         save_img(img[0], 'original_image', log_dir, show=False)
 
         if saliency:
-            saliency_(network, img, label, original_img, log_dir, show_imgs)
+            saliency_(network, img, label, original_img, log_dir, show_imgs, additional_args=traj_info)
 
         if integrated_gradient:
             # integrated_gradient_(network, img, label, original_img, log_dir, show_imgs)
-            integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
+            integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs,
+                                 additional_args=traj_info)
 
         if deep_lift:
-            deep_lift_(network, img, label, original_img, log_dir, show_imgs)
+            deep_lift_(network, img, label, original_img, log_dir, show_imgs, additional_args=traj_info)
 
         if layer_conductance:
             module, idx = layer_kwargs['layer_conductance']['module'], \
                           layer_kwargs['layer_conductance']['layer_idx']
-            chosen_layer = getattr(network, module)[idx]
-            layer_conductance_(network, chosen_layer, img, label, log_dir)
+            chosen_layer = choose_layer(network, module, idx)
+            layer_conductance_(network, chosen_layer, img, label, log_dir, additional_args=traj_info)
 
         if layer_gradcam:
             module, idx = layer_kwargs['layer_gradcam']['module'], \
                           layer_kwargs['layer_gradcam']['layer_idx']
-            chosen_layer = getattr(network, module)[idx]
+            chosen_layer = choose_layer(network, module, idx)
             assert isinstance(chosen_layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
                                                               'convolutional layer in the network.'
-            layer_gradcam_(network, chosen_layer, img, label, original_img, log_dir, show_imgs,)
+            layer_gradcam_(network, chosen_layer, img, label, original_img, log_dir, show_imgs,
+                           additional_args=traj_info)
 
         if layer_gradxact:
             module, idx = layer_kwargs['layer_gradxact']['module'], \
                           layer_kwargs['layer_gradxact']['layer_idx']
-            chosen_layer = getattr(network, module)[idx]
+            chosen_layer = choose_layer(network, module, idx)
             layer_act_(network, chosen_layer, LayerGradientXActivation, 'layer_GradXActivation',
-                       img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label})
+                       img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label}, additional_args=traj_info)
 
         if layer_activation:
             module, idx = layer_kwargs['layer_activation']['module'], \
                           layer_kwargs['layer_activation']['layer_idx']
-            chosen_layer = getattr(network, module)[idx]
+            chosen_layer = choose_layer(network, module, idx)
             layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
-                       img, log_dir, show_imgs=show_imgs, attr_kwargs={})
+                       img, log_dir, show_imgs=show_imgs, attr_kwargs={}, additional_args=traj_info)
 
 
 if __name__ == '__main__':
