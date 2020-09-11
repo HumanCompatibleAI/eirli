@@ -82,7 +82,6 @@ def get_random_traj(venv, demo_timesteps):
     random_policy = RandomPolicy(venv.observation_space, venv.action_space)
     trajectories = rollout.generate_trajectories(
         random_policy, venv, rollout.min_timesteps(demo_timesteps))
-    import pdb; pdb.set_trace()
     flat_traj = rollout.flatten_trajectories(trajectories)
     # "infos" and "next_obs" keys are also available
     return {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}

@@ -6,10 +6,10 @@ from gym import Wrapper, spaces
 
 
 @benchmark_ingredient.capture
-def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, chunk_length=100):
-
+def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, max_recordings=10, chunk_length=100):
     data_iterator = minerl.data.make(environment=minecraft_env_id,
-                                     data_dir=minecraft_data_root)
+                                     data_dir=minecraft_data_root,
+                                     max_recordings=max_recordings)
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
     for current_state, action, reward, next_state, done in data_iterator.batch_iter(batch_size=1,
                                                                                     num_epochs=1,
