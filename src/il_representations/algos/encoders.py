@@ -339,6 +339,10 @@ def infer_action_shape_info(action_space, action_embedding_dim):
         action_shape = ()  # discrete actions are just numbers
     elif isinstance(action_space, spaces.Box):
         # If actions are continuous/box, this is done via a simple flattening.
+        # We assume the first two dimensions are batch and timestep
+        # We want to flatten the representations of each timestep in a batch, to be
+        # either passed into a LSTM or else averaged to get an
+        # aggregated-across-timestep representation
         action_processor = functools.partial(torch.flatten, start_dim=2)
         processed_action_dim = np.prod(action_space.shape)
         action_shape = action_space.shape
