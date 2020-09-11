@@ -264,8 +264,7 @@ class PixelDecoder(LossDecoder):
         self.mean_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
                                                   out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?
                                                   kernel_size=3,
-                                                  padding=1),
-                                        nn.Tanh()) # This isn't always positive; is that okay?
+                                                  padding=1)) # This isn't always positive; is that okay?
         if self.learn_scale:
             self.std_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
                                                       out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?
