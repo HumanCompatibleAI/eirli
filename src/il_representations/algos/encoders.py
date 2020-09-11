@@ -102,8 +102,7 @@ def warn_on_non_image_tensor(x):
             f"Input image tensor values have low stddev {std} (range "
             f"[{v_min}, {v_max}])")
 
-# string names for convolutional networks; this makes it easier to choose
-# between them from the command line
+
 
 NETWORK_ARCHITECTURE_DEFINITIONS = {
     'BasicCNN': [
@@ -127,22 +126,22 @@ class BasicCNN(nn.Module):
         super().__init__()
 
         self.input_channel = observation_space.shape[0]
-        deconv_layers = []
+        conv_layers = []
         self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS['BasicCNN']
 
         # first apply convolution layers + flattening
 
         for layer_spec in self.architecture_definition:
-            deconv_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
+            conv_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
                                                    kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
-            deconv_layers.append(nn.ReLU())
+            conv_layers.append(nn.ReLU())
             self.input_channel = layer_spec['out_dim']
-        self.deconvolution = nn.Sequential(*deconv_layers)
+        self.convolution = nn.Sequential(*conv_layers)
         dense_layers = []
         dense_layers.append(nn.Flatten())
 
         # now customise the dense layers to handle an appropriate-sized conv output
-        dense_in_dim, = compute_output_shape(observation_space, deconv_layers + [nn.Flatten()])
+        dense_in_dim, = compute_output_shape(observation_space, conv_layers + [nn.Flatten()])
         dense_arch = [{'in_dim': dense_in_dim, 'out_dim': representation_dim}]
         print(dense_arch)
         # apply the dense layers
@@ -158,8 +157,8 @@ class BasicCNN(nn.Module):
 
     def forward(self, x):
         warn_on_non_image_tensor(x)
-        deconved_image = self.deconvolution(x)
-        representation = self.dense_network(deconved_image)
+        conved_image = self.convolution(x)
+        representation = self.dense_network(conved_image)
         return representation
 
 
@@ -243,6 +242,8 @@ class MAGICALCNN(nn.Module):
         warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
+# string names for convolutional networks; this makes it easier to choose
+# between them from the command line
 NETWORK_SHORT_NAMES = {
     'BasicCNN': BasicCNN,
     'MAGICALCNN': MAGICALCNN,
