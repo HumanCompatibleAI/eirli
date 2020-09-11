@@ -18,7 +18,6 @@ scikit-optimize~=0.8.1
 seaborn~=0.11.0
 # deps for Ray + GCP (see Ray issue #10724)
 cryptography~=3.1
-oauth2client~=4.1.3
 # my version of google-api-python-client fixes issue #873 in that repo (which
 # has been known since at least 2017, and seems unlikely to ever get fixed)
 # google-api-python-client~1.11.0
