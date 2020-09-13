@@ -20,6 +20,7 @@ from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductanc
     LayerAttribution, LayerIntegratedGradients, LayerGradientXActivation
 from captum.attr import visualization as viz
 from stable_baselines3.common.preprocessing import preprocess_obs
+from stable_baselines3.common.policies import ActorCriticCnnPolicy
 
 from il_representations.scripts.il_train import make_policy
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, \
@@ -33,8 +34,7 @@ interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 @interp_ex.config
 def base_config():
     # Network setting
-    ray_tune_exp_dir = './runs/chain_runs/3/repl/1'
-    load_decoder = False
+    encoder_path = './runs/chain_runs/3/policy_final.pt'
 
     # Data settings
     benchmark_name = 'dm_control'
@@ -45,9 +45,9 @@ def base_config():
 
     # Interpret settings
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
-    saliency = 0
+    saliency = 1
     integrated_gradient = 0  # TODO：Fix the bug here
-    deep_lift = 0
+    deep_lift = 1
 
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
     layer_conductance = 1
@@ -73,24 +73,12 @@ class Network(nn.Module):
 
 
 @interp_ex.capture
-def prepare_network(venv, ray_tune_exp_dir, load_decoder, device=None):
-    def get_model_weights(ray_tune_exp_dir, is_encoder=True):
-        ckpt_dir_name = 'representation_encoder' if is_encoder else 'loss_decoder'
-        path_pattern = os.path.join(ray_tune_exp_dir, f'checkpoints/{ckpt_dir_name}/*_epochs.ckpt')
-        model_paths = glob.glob(path_pattern)
-        if not model_paths:
-            raise IOError(f'Could not find model files at specified location. '
-                          f'Check if the {path_pattern} file exists.')
-        model_paths.sort()
-        model_path = model_paths[-1]
-        return model_path
-
-    encoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=True)
-    if load_decoder:
-        decoder_path = get_model_weights(ray_tune_exp_dir, is_encoder=False)
-
+def prepare_network(venv, encoder_path, device=None):
     encoder = torch.load(encoder_path, map_location=device)
-    policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
+    if isinstance(encoder, ActorCriticCnnPolicy):
+        policy = encoder
+    else:
+        policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
     network = Network(policy)
     network.eval()
     print('Network structure:')
@@ -309,10 +297,12 @@ def choose_layer(network, module_name, layer_idx):
 
         if isinstance(rep_encoder, MomentumEncoder):
             module = rep_encoder.query_encoder.network.shared_network
-            return module[layer_idx]
+        elif isinstance(rep_encoder, DeterministicEncoder):
+            module = rep_encoder.network.shared_network
         else:
             raise NotImplementedError(f'The script does not support interpreting the current type of '
                                       f'encoder {type(rep_encoder)}.')
+        return module[layer_idx]
     elif module_name == 'decoder':
         return network.policy.action_net
 
