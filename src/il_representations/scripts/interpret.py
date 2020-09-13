@@ -3,15 +3,11 @@ import sacred
 import os
 import math
 import cv2
-import glob
-import json
-import importlib
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
 
 from sacred import Experiment
-from PIL import Image
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
@@ -41,7 +37,11 @@ def base_config():
     device = get_device("auto")
     imgs = [888]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
+
+    # If log_dir is set to None, then image would not be saved.
+    log_dir = interp_ex.observers[0].dir
     show_imgs = False
+    verbose = True
 
     # Interpret settings
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
@@ -73,7 +73,7 @@ class Network(nn.Module):
 
 
 @interp_ex.capture
-def prepare_network(venv, encoder_path, device=None):
+def prepare_network(venv, encoder_path, verbose, device=None):
     encoder = torch.load(encoder_path, map_location=device)
     if isinstance(encoder, ActorCriticCnnPolicy):
         policy = encoder
@@ -81,8 +81,9 @@ def prepare_network(venv, encoder_path, device=None):
         policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
     network = Network(policy)
     network.eval()
-    print('Network structure:')
-    print(network)
+    if verbose:
+        print('Network structure:')
+        print(network)
     return network
 
 
@@ -99,6 +100,8 @@ def process_data(venv, benchmark_name, imgs, device):
             label = np.argmax(label)
         img = torch.FloatTensor(img).to(device).unsqueeze(dim=0)
         img = preprocess_obs(img, venv.observation_space, normalize_images=True)
+        img.requires_grad = True
+        label = int(label)
         img_list.append(img)
         label_list.append(label)
     return img_list, label_list
@@ -117,7 +120,8 @@ def save_img(img, save_name, save_dir, show=True):
     plt.imshow(img)
     if show:
         plt.show()
-    plt.savefig(f'{save_dir}/{save_name}.png', **savefig_kwargs)
+    if save_dir:
+        plt.savefig(f'{save_dir}/{save_name}.png', **savefig_kwargs)
     plt.close()
 
 
@@ -142,8 +146,6 @@ def attribute_image_features(network, algorithm, image, label, **kwargs):
 
 def saliency_(net, image, label, original_img, log_dir, show_imgs):
     saliency = Saliency(net)
-    print('label', label)
-    print('image', image)
     grads = saliency.attribute(image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
     saliency_viz = viz.visualize_image_attr(grads, original_img, method="blended_heat_map",
@@ -247,7 +249,8 @@ def show_img_grid(imgs, rows, columns, save_dir, save_name, img_title, show):
         fig.add_subplot(rows, columns, i+1)
         plt.axis('off')
         plt.imshow(img)
-    plt.savefig(f'{save_dir}/{save_name}.png', dpi=400)
+    if save_dir:
+        plt.savefig(f'{save_dir}/{save_name}.png', dpi=400)
     if show:
         plt.show()
     plt.close(fig)
@@ -280,7 +283,8 @@ def plot_linear_layer_attributions(lc_attr_test, layer_weight, save_name, save_d
     ax.set_xticks(x_axis_data + 0.5)
     ax.set_xticklabels(x_axis_labels)
 
-    plt.savefig(f'{save_dir}/{save_name}.png')
+    if save_dir:
+        plt.savefig(f'{save_dir}/{save_name}.png')
     if show_imgs:
         plt.show()
 
@@ -309,7 +313,7 @@ def choose_layer(network, module_name, layer_idx):
 
 
 @interp_ex.main
-def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact,
+def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact,
         layer_activation, layer_kwargs):
     # Load the network and images
     venv = auto_env.load_vec_env()
@@ -318,20 +322,14 @@ def run(show_imgs, saliency, integrated_gradient, deep_lift, layer_conductance, 
 
     for img, label in zip(images, labels):
         # Get policy prediction
-        output = network(img)
-        print('output', output)
-        original_img = img[0].permute(1, 2, 0).numpy()
-        label = int(label)
-        img.requires_grad = True
+        original_img = img[0].permute(1, 2, 0).detach().numpy()
 
-        log_dir = interp_ex.observers[0].dir
-        save_img(img[0], 'original_image', log_dir, show=False)
+        save_img(img[0], 'original_image', log_dir, show=show_imgs)
 
         if saliency:
             saliency_(network, img, label, original_img, log_dir, show_imgs)
 
         if integrated_gradient:
-            # integrated_gradient_(network, img, label, original_img, log_dir, show_imgs)
             integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
 
         if deep_lift:
