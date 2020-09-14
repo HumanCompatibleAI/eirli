@@ -43,7 +43,7 @@ def base_config():
     show_imgs = False
     verbose = True
 
-    # Interpret settings
+    # Interpret settings: Choose a method by setting it as "1 / True".
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
     saliency = 1
     integrated_gradient = 0  # TODO：Fix the bug here
@@ -301,8 +301,10 @@ def choose_layer(network, module_name, layer_idx):
 
         if isinstance(rep_encoder, MomentumEncoder):
             module = rep_encoder.query_encoder.network.shared_network
-        elif isinstance(rep_encoder, DeterministicEncoder):
+        elif isinstance(rep_encoder, (DeterministicEncoder, StochasticEncoder)):
             module = rep_encoder.network.shared_network
+        elif isinstance(rep_encoder, RecurrentEncoder):
+            module = rep_encoder.single_frame_encoder.network.shared_network
         else:
             raise NotImplementedError(f'The script does not support interpreting the current type of '
                                       f'encoder {type(rep_encoder)}.')
@@ -310,6 +312,11 @@ def choose_layer(network, module_name, layer_idx):
     elif module_name == 'decoder':
         return network.policy.action_net
 
+
+@interp_ex.capture
+def get_venv():
+    venv = auto_env.load_vec_env()
+    return venv
 
 
 @interp_ex.main
