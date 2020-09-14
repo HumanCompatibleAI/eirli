@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-and-test:
     docker:
-      - image: humancompatibleai/il-representations:2020.08.28-r1
+      - image: humancompatibleai/il-representations:2020.09.14-r1
     steps:
       - checkout
       - run:
