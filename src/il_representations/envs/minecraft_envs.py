@@ -3,21 +3,25 @@ import os
 import minerl
 import numpy as np
 from gym import Wrapper, spaces
+import time
+import logging
 
 
 @benchmark_ingredient.capture
-def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, max_recordings=10, chunk_length=100):
+def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, max_recordings=15, chunk_length=100):
     data_iterator = minerl.data.make(environment=minecraft_env_id,
                                      data_dir=minecraft_data_root,
                                      max_recordings=max_recordings)
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
+    start_time = time.time()
     for current_state, action, reward, next_state, done in data_iterator.batch_iter(batch_size=1,
                                                                                     num_epochs=1,
                                                                                     seq_len=chunk_length):
         appended_trajectories['obs'].append(MinecraftVectorWrapper.transform_obs(current_state)[0])
         appended_trajectories['acts'].append(MinecraftVectorWrapper.extract_action(action)[0])
         appended_trajectories['dones'].append(done[0])
-
+    end_time = time.time()
+    logging.info(f"Minecraft trajectory collection took {round(end_time - start_time, 2)} seconds to complete")
     merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
     return merged_trajectories
 
