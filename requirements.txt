@@ -1,3 +1,8 @@
+# WARNING: requirements.txt is baked into the Dockerfile. If you change this
+# file, you will have to rebuild the Docker image and push it to Docker Hub.
+# Remember to update the image reference in .circleci/config.yml too.
+# (if not sure how to do all this, ask Sam)
+
 numpy~=1.19.0
 gym[atari]~=0.17
 sacred~=0.8.1

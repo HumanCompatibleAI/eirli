@@ -142,8 +142,9 @@ setup_commands:
   - cd ~/il-rep/ && pip install -r requirements.txt
   - cd ~/il-rep/ && pip install -e .
 # Custom commands that will be run on the head node after common setup.
-head_setup_commands:
-  - pip install google-api-python-client==1.7.8
+head_setup_commands: []
+# ("pip install google-api-python-client==1.7.8" used to be a head_setup
+# command, but it's unnecessary now that it's in requirements.txt)
 # Custom commands that will be run on worker nodes after common setup.
 worker_setup_commands: []
 
