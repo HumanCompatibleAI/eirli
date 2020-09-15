@@ -1,17 +1,23 @@
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.utils import subset_all_dict_values
 import os
 import minerl
 import numpy as np
-from gym import Wrapper, spaces
+from gym import Wrapper, spaces, Env, register
 import time
 import logging
 
+mock_to_real_lookup = {
+    'MinecraftTreechopMockEnv-v0': 'MineRLTreechopVectorObf-v0'
+}
 
 @benchmark_ingredient.capture
-def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, max_recordings=15, chunk_length=100):
+def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, n_traj=None, timesteps=None, chunk_length=100):
+    if 'Mock' in minecraft_env_id:
+        minecraft_env_id = mock_to_real_lookup[minecraft_env_id]
     data_iterator = minerl.data.make(environment=minecraft_env_id,
                                      data_dir=minecraft_data_root,
-                                     max_recordings=max_recordings)
+                                     max_recordings=n_traj)
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
     start_time = time.time()
     for current_state, action, reward, next_state, done in data_iterator.batch_iter(batch_size=1,
@@ -23,6 +29,8 @@ def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, max_recordings
     end_time = time.time()
     logging.info(f"Minecraft trajectory collection took {round(end_time - start_time, 2)} seconds to complete")
     merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
+    if timesteps is not None:
+        merged_trajectories = subset_all_dict_values(merged_trajectories, timesteps)
     return merged_trajectories
 
 
@@ -78,9 +86,28 @@ class MinecraftVectorWrapper(Wrapper):
         return MinecraftVectorWrapper.transform_obs(obs)
 
 
+class TestingEnvironment(Env):
+    # Test environment for situations where we don't actually need to
+    # interact with a Minecraft environment, only pull env/action space info from it
+    def __init__(self, obs_shape=(64, 64, 3), action_shape=(64,), obs_high=255,
+                obs_low=0, action_high=1.05, action_low=-1.05):
+        super().__init__()
+        self.observation_space = spaces.Dict({'pov': spaces.Box(shape=obs_shape, high=obs_high, low=obs_low)})
+        self.action_space = spaces.Dict({'vector': spaces.Box(shape=action_shape, high=action_high, low=action_low)})
+
+    def reset(self):
+        return self.observation_space.sample()
+
+    def step(self, action):
+        return self.observation_space.sample()
 
 
+def entry_point(**kwargs):
+    # add in common kwargs
+    return TestingEnvironment(**kwargs)
 
-
+# frame skip 2
+register('MinecraftTreechopMockEnv-v0',
+         entry_point=entry_point)
 
 

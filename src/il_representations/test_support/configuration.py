@@ -16,7 +16,9 @@ COMMON_TEST_CONFIG = {
 BENCHMARK_TEST_CONFIGS = [
     {
         'benchmark_name': 'minecraft',
-        'minecraft_env_id': 'MineRLTreechopVectorObf-v0'
+        'minecraft_env_id': 'MinecraftTreechopMockEnv-v0', #'MineRLTreechopVectorObf-v0',
+        'venv_parallel': False,
+        'n_envs': 1
     },
     {
         'benchmark_name': 'atari',
@@ -61,8 +63,9 @@ FAST_IL_TRAIN_CONFIG = {
 }
 REPL_SMOKE_TEST_CONFIG = {
     'pretrain_epochs': 1,
-    'demo_timesteps': 32,
+    'timesteps': 32,
     'batch_size': 7,
+    'n_traj': 2,
     'unit_test_max_train_steps': 2,
     'algo_params': {'representation_dim': 3},
     'use_random_rollouts': False,

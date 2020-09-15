@@ -11,6 +11,7 @@ import gym
 import numpy as np
 
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.utils import subset_all_dict_values
 
 IMAGE_SIZE = 100
 _REGISTERED = False
@@ -74,7 +75,7 @@ def register_dmc_envs():
 
 @benchmark_ingredient.capture
 def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
-                            dm_control_demo_patterns, n_traj, data_root):
+                            dm_control_demo_patterns, n_traj, timesteps, data_root):
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
     user_pattern = os.path.expanduser(data_pattern)
@@ -113,6 +114,8 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         'dones':
         np.concatenate(dones_lists, axis=0),
     }
+    if timesteps is not None:
+        dataset_dict = subset_all_dict_values(dataset_dict, timesteps)
 
     return dataset_dict
 

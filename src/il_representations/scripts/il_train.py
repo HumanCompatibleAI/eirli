@@ -88,6 +88,9 @@ def default_config():
     freeze_encoder = False  # noqa: F841
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
+    n_traj = None # this should be a number of trajectories to return, or None if returning
+                  # all available trajectories is okay
+    demo_timesteps = None
     benchmark = dict(  # noqa: F841
         venv_parallel=True,
         n_envs=16,
@@ -234,7 +237,7 @@ def do_training_gail(
 
 @il_train_ex.main
 def train(seed, algo, benchmark, encoder_path, freeze_encoder,
-          _config):
+          n_traj, demo_timesteps, _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -245,7 +248,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
     imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     venv = auto_env.load_vec_env()
-    dataset_dict = auto_env.load_dataset()
+    dataset_dict = auto_env.load_dataset(n_traj=n_traj, timesteps=demo_timesteps)
     dataset = TransitionsMinimalDataset(dataset_dict)
 
     if encoder_path:

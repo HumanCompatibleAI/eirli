@@ -17,17 +17,16 @@ import minerl
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark['benchmark_name']!r}"
 
-
+load_dataset_funcs = {
+    'magical': load_dataset_magical,
+    'dm_control': load_dataset_dm_control,
+    'atari': load_dataset_atari,
+    'minecraft': load_dataset_minecraft
+}
 @benchmark_ingredient.capture
-def load_dataset(benchmark_name):
-    if benchmark_name == 'magical':
-        dataset_dict = load_dataset_magical()
-    elif benchmark_name == 'dm_control':
-        dataset_dict = load_dataset_dm_control()
-    elif benchmark_name == 'atari':
-        dataset_dict = load_dataset_atari()
-    elif benchmark_name == 'minecraft':
-        dataset_dict = load_dataset_minecraft()
+def load_dataset(benchmark_name, n_traj, timesteps):
+    if benchmark_name in load_dataset_funcs:
+        dataset_dict = load_dataset_funcs[benchmark_name](n_traj=n_traj, timesteps=timesteps)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
     return dataset_dict

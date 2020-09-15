@@ -8,7 +8,15 @@ from imitation.augment.color import ColorSpace
 from skvideo.io import FFmpegWriter
 import torch as th
 import torchvision.utils as vutils
+import logging
 
+def subset_all_dict_values(dct, n_subset):
+    # assumes all iterables in the dict are the same length
+    available_timesteps = len([el for el in dct.values()][0])
+    assert available_timesteps >= n_subset, f"Only loaded {available_timesteps} timesteps; requested {n_subset}"
+    logging.info(f"Subsetting {available_timesteps} to {n_subset}")
+    subset_dict = {k: v[:n_subset] for k, v in dct.items()}
+    return subset_dict
 
 def freeze_params(module):
     """Modifies Torch module in-place to convert all its parameters to buffers,

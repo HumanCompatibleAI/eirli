@@ -28,7 +28,9 @@ def default_config():
     algo = "MoCo"
     use_random_rollouts = False
     n_envs = 1
-    demo_timesteps = 5000
+    timesteps = None
+    n_traj = None     # this should be a number of trajectories to return, or None if returning
+                       # all available trajectories is okay
     ppo_timesteps = 1000
     pretrain_epochs = 500
     algo_params = get_default_args(algos.RepresentationLearner)
@@ -66,25 +68,42 @@ def ceb_breakout():
     train_from_expert = True
     algo = algos.FixedVarianceCEB
     pretrain_epochs = 5
-    demo_timesteps = None
     ppo_finetune = False
     _ = locals()
     del _
 
 @represent_ex.named_config
-def tiny_epoch():
-    demo_timesteps=5000
+def tiny_dataset():
+    timesteps=5000
+    repl_num_traj=25
     _ = locals()
     del _
 
 @represent_ex.capture
-def get_random_traj(venv, demo_timesteps):
+def get_random_traj(venv, timesteps, n_traj):
     random_policy = RandomPolicy(venv.observation_space, venv.action_space)
+    if n_traj is not None:
+        logging.info(f"Collecting {n_traj} trajectories of random transitions")
+        stopping_criteria = rollout.min_episodes(n_traj)
+    elif timesteps is not None:
+        logging.info(f"Collecting at least {timesteps} random transitions")
+        stopping_criteria = rollout.min_timesteps(timesteps)
+    else:
+        raise ValueError("One of `n_traj` or `timesteps` must be specified to collect "
+                         "a random trajectory dataset")
     trajectories = rollout.generate_trajectories(
-        random_policy, venv, rollout.min_timesteps(demo_timesteps))
+        random_policy, venv, stopping_criteria)
     flat_traj = rollout.flatten_trajectories(trajectories)
     # "infos" and "next_obs" keys are also available
-    return {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}
+    # TODO subset this to num_timesteps if that parameter is available
+    flattened_dict = {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}
+
+    if timesteps is not None:
+        available_timesteps = len(flattened_dict['obs'])
+        assert timesteps <= available_timesteps, f"Requested timesteps {timesteps} greater than available {available_timesteps}"
+        logging.info(f"Subsetting {available_timesteps} collected timesteps to requested {timesteps}")
+        flattened_dict = {k: v[:timesteps] for k, v in flattened_dict.items()}
+    return flattened_dict
 
 @represent_ex.named_config
 def target_projection():
@@ -104,7 +123,7 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
+        n_traj, timesteps, ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
 
@@ -118,7 +137,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         dataset_dict = get_random_traj(venv=venv)
     else:
         # TODO be able to load a fixed number, `demo_timesteps`
-        dataset_dict = auto_env.load_dataset()
+        dataset_dict = auto_env.load_dataset(n_traj=n_traj, timesteps=timesteps)
 
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
