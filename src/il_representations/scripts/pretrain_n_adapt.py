@@ -22,6 +22,7 @@ from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
 
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
     'chain',
     ingredients=[
@@ -121,7 +122,8 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
         log_dir: The log directory of current chain experiment.
         exp_name: Specify the experiment type in ['repl', 'il_train', 'il_test']
     """
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+    # we need to run the workaround in each raylet, so we do it at the start of run_single_exp
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 
     from il_representations.scripts.il_test import il_test_ex
     from il_representations.scripts.il_train import il_train_ex
@@ -236,6 +238,7 @@ def run_repl_only_exp(rep_ex_config, benchmark_config, config, log_dir):
     tune_config_updates['repl'].update({
         'seed': rng.randint(1 << 31),
     })
+
     pretrain_result = run_single_exp(rep_ex_config, benchmark_config,
                                      tune_config_updates, log_dir, 'repl')
     report_experiment_result(pretrain_result)
@@ -269,6 +272,8 @@ def base_config():
     metric = None
     stages_to_run = StagesToRun.REPL_ONLY
     spec = {
+        # DO NOT UPDATE THESE DEFAULTS WITHOUT ALSO UPDATING CHAIN_CONFIG IN
+        # test_support/configuration.py. They will affect unit tests!
         'repl': {
             'algo':
             tune.grid_search([
@@ -278,7 +283,6 @@ def base_config():
                 # 'CEB',
                 # 'ActionConditionedTemporalCPC',
             ]),
-            'pretrain_epochs': 200
         },
         'il_train': {
             'algo': tune.grid_search(['bc']),
@@ -339,11 +343,11 @@ def base_config():
 
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
-                               cpu=5,
+                               cpu=1,
                                gpu=0.32,
-                           ))
-                           # queue_trials=True)
+                           ))  # queue_trials=True)
     ray_init_kwargs = dict(
+        num_cpus=2,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
@@ -400,7 +404,7 @@ def cfg_tune_moco():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 500,
+        'pretrain_epochs': 250,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -415,10 +419,10 @@ def cfg_tune_moco():
         #
         # Using just a single value (in this case a float):
         # ('l1reg', [0.0]),
-        ('repl:algo_params:batch_size', (32, 512)),
-        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1.0, 'log-uniform')),
-        ('repl:algo_params:representation_dim', (8, 1024)),
-        ('repl:algo_params:projection_dim', (8, 256)),
+        ('repl:algo_params:batch_size', (64, 512)),
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+        ('repl:algo_params:representation_dim', (8, 512)),
+        ('repl:algo_params:projection_dim', (64, 256)),
         ('repl:algo_params:decoder_kwargs:momentum_weight', (0.95, 0.999,
                                                              'log-uniform')),
         ('repl:algo_params:encoder_kwargs:momentum_weight', (0.95, 0.999,
@@ -451,7 +455,80 @@ def cfg_tune_moco():
         }
     ]
     # do up to 200 runs of hyperparameter tuning
-    tune_run_kwargs = dict(num_samples=5)
+    # WARNING: This may require customisation on the command line. You want the
+    # number to be high enough that the script will keep running for at least a
+    # few days.
+    tune_run_kwargs = dict(num_samples=200)
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_tune_cpc():
+    # these settings will be the same for all rep learning tune runs
+    use_skopt = True
+    skopt_search_mode = 'min'
+    metric = 'repl_loss'
+    stages_to_run = StagesToRun.REPL_ONLY
+
+    # the following settings are algorithm-specific
+    repl = {
+        'algo': 'ActionConditionedTemporalCPC',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 250,
+    }
+    # this MUST be an ordered dict; skopt only looks at values (not k/v
+    # mappings), so we must preserve the order of both values and keys
+    skopt_space = collections.OrderedDict([
+        ('repl:algo_params:batch_size', (64, 512)),
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+        ('repl:algo_params:representation_dim', (8, 512)),
+        ('repl:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
+
+        # RecurrentCPC params:
+        # ('repl:algo_params:encoder_kwargs:rnn_output_dim', (8, 256)),
+
+        # ActionConditionedTemporalCPC params:
+        ('repl:algo_params:decoder_kwargs:action_encoding_dim', (64, 512)),
+        ('repl:algo_params:decoder_kwargs:action_embedding_dim', (5, 30)),
+
+        ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
+            "translate,rotate,gaussian_blur", "translate,rotate",
+            "translate,rotate,flip_ud,flip_lr"
+        ]),
+    ])
+    skopt_ref_configs = [
+        # we include the default config as a reference
+        {
+            'repl:algo_params:batch_size':
+            128,
+            'repl:algo_params:representation_dim':
+            128,
+            'repl:algo_params:optimizer_kwargs:lr':
+            1e-3,
+            'repl:encoder_kwargs:obs_encoder_cls':
+            'BasicCNN',
+
+            # RecurrentCPC params:
+            # 'repl:algo_params:encoder_kwargs:rnn_output_dim': 64,
+
+            # ActionConditionedTemporalCPC
+            'repl:algo_params:decoder_kwargs:action_encoding_dim': 128,
+            'repl:algo_params:decoder_kwargs:action_embedding_dim': 5,
+
+            'repl:algo_params:augmenter_kwargs:augmenter_spec':
+            "translate,rotate,gaussian_blur",
+        }
+    ]
+    # do up to 200 runs of hyperparameter tuning
+    # WARNING: This may require customisation on the command line. You want the
+    # number to be high enough that the script will keep running for at least a
+    # few days.
+    tune_run_kwargs = dict(num_samples=200)
 
     _ = locals()
     del _
@@ -488,7 +565,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     # the outcome.
 
     if stages_to_run == StagesToRun.IL_ONLY \
-       and 'representation_learning' in spec:
+       and 'repl' in spec:
         logging.warning(
             "You only asked to tune IL, so I'm removing the representation "
             "learning config from the Tune spec.")
@@ -532,6 +609,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             'skopt_search_mode must be "min" or "max", as appropriate for ' \
             'the metric being optmised'
         assert len(skopt_space) > 0, "was passed an empty skopt_space"
+
+        # do some sacred_copy() calls to ensure that we don't accidentally put
+        # a ReadOnlyDict or ReadOnlyList into our optimizer
+        skopt_space = sacred_copy(skopt_space)
+        skopt_search_mode = sacred_copy(skopt_search_mode)
+        skopt_ref_configs = sacred_copy(skopt_ref_configs)
+        metric = sacred_copy(metric)
+
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
         ])
@@ -551,7 +636,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         }
         # completely remove 'spec'
         if spec:
-            logging.warn("Will ignore everything in 'spec' argument")
+            logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
         algo = None
@@ -571,6 +656,5 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
     chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
     chain_ex.run_commandline()
