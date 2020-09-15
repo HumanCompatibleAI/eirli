@@ -66,12 +66,12 @@ def bench_defaults():
         'ball-in-cup-catch': 'DMC-Ball-In-Cup-Catch-v0',
     }
     dm_control_demo_patterns = {
-        'finger-spin': 'data/dm_control/walker-walk-*.pkl.gz',
-        'cheetah-run': 'data/dm_control/cheetah-run-*.pkl.gz',
-        'walker-walk': 'data/dm_control/walker-walk-*.pkl.gz',
-        'cartpole-swingup': 'data/dm_control/cartpole-swingup-*.pkl.gz',
-        'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
-        'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
+        'finger-spin': 'tests/data/dm_control/walker-walk-*.pkl.gz',
+        'cheetah-run': 'tests/data/dm_control/cheetah-run-*.pkl.gz',
+        'walker-walk': 'tests/data/dm_control/walker-walk-*.pkl.gz',
+        'cartpole-swingup': 'tests/data/dm_control/cartpole-swingup-*.pkl.gz',
+        'reacher-easy': 'tests/data/dm_control/reacher-easy-*.pkl.gz',
+        'ball-in-cup-catch': 'tests/data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
     dm_control_env = 'reacher-easy'
 
