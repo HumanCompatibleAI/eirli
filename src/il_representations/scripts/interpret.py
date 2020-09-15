@@ -48,13 +48,13 @@ def base_config(benchmark):
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
     saliency = 1
     integrated_gradient = 0  # TODO：Fix the bug here
-    deep_lift = 1
+    deep_lift = 0
 
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
-    layer_conductance = 1
-    layer_gradcam = 1
-    layer_activation = 1
-    layer_gradxact = 1
+    layer_conductance = 0
+    layer_gradcam = 0
+    layer_activation = 0
+    layer_gradxact = 0
     layer_kwargs = {
         'layer_conductance': {'module': 'encoder', 'layer_idx': 2},
         'layer_gradcam': {'module': 'encoder', 'layer_idx': 4},
@@ -68,10 +68,10 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.policy = policy
 
-    def forward(self, x):
-        latent_pi, _, latent_sde = self.policy._get_latent(x)
-        out = self.policy.action_net(latent_pi)
-        return out
+    def forward(self, obs):
+        latent_pi, latent_vf, latent_sde = self.policy._get_latent(obs)
+        mean_actions = self.policy.action_net(latent_pi)
+        return mean_actions
 
 
 @interp_ex.capture
@@ -102,7 +102,7 @@ def process_data(venv, benchmark_name, imgs, device):
         if isinstance(label, np.ndarray):
             label = np.argmax(label)
         img = torch.FloatTensor(img).to(device).unsqueeze(dim=0)
-        img = preprocess_obs(img, venv.observation_space, normalize_images=True)
+        # img = preprocess_obs(img, venv.observation_space, normalize_images=True)
         img.requires_grad = True
         label = int(label)
         img_list.append(img)
