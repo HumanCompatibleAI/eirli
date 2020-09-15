@@ -13,9 +13,7 @@ def bench_defaults():
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
     n_envs = 8
-    # this should be a number of trajectories to return, or None if returning
-    # all available trajectories is okay
-    n_traj = None
+
     # root directory for data; useful when script is being run under Ray Tune,
     # which changes the working directory
     data_root = '.'
