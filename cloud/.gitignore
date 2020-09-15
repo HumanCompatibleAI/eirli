@@ -4,6 +4,9 @@
 # ssh_deploy_key
 # ssh_deploy_key.pub
 
+# this is created by nfs_populate.sh (and should be deleted afterwards)
+_transfer_scratch
+
 # Ignore all YAML config files *EXCEPT* the template used to create GCP cluster
 # configs.
 *.yaml

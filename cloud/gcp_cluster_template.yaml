@@ -40,7 +40,7 @@ docker:
 provider:
   type: gcp
   region: us-west1
-  availability_zone: us-west1-a
+  availability_zone: us-west1-b
   project_id: methodical-tea-257021
 
 # How Ray will authenticate with newly launched nodes.
@@ -121,26 +121,21 @@ setup_commands:
     ( test -e ~/.ssh || ( mkdir -p ~/.ssh && chmod 0700 ~/.ssh ) )
     && cp -r /tmp/ssh_deploy_key* ~/.ssh
     && chmod 0600 ~/.ssh/ssh_deploy_key*
-  # Install MiniConda.
-  - >-
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/anaconda3.sh
-    || true
-    && bash ~/anaconda3.sh -b -p ~/anaconda3 || true
-    && rm ~/anaconda3.sh
-    && echo 'export PATH="$HOME/anaconda3/bin:$PATH"' >> ~/.profile
-    && source ~/.profile
-    && conda install -c anaconda python=3.7
   # Check out and install source code
   # (remember to insert your desired branch name after the -b!)
+  # (Aside: I (Sam) couldn't find an easy alternative to the
+  # StrictHostKeyChecking=no hack. If it's any consolation, Ray is at least
+  # MITM-vulnerable too, so connection to Github is not our weakest link...)
   - >-
     git -c core.sshCommand="ssh -v -i /root/.ssh/ssh_deploy_key -o StrictHostKeyChecking=no" \
       clone --depth 1 -b branch-name-XXX-CUSTOMIZE-THIS-XXX \
       git@github.com:HumanCompatibleAI/il-representations.git ~/il-rep
-  # (Aside: I (Sam) couldn't find an easy alternative to the
-  # StrictHostKeyChecking=no hack. If it's any consolation, Ray is at least
-  # MITM-vulnerable too, so connection to Github is not our weakest link...)
+  # Dependencies are baked into the Docker image, but we pip install
+  # requirements.txt just in case there are any new ones pip can easily add.
   - cd ~/il-rep/ && pip install -r requirements.txt
   - cd ~/il-rep/ && pip install -e .
+  # Mount project filesystem
+  - cd ~/il-rep/ && ./cloud/nfs_mount_cmd.sh
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands: []
 # ("pip install google-api-python-client==1.7.8" used to be a head_setup
