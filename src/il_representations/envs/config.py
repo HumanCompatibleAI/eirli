@@ -8,7 +8,7 @@ benchmark_ingredient = Ingredient('benchmark')
 @benchmark_ingredient.config
 def bench_defaults():
     # set this to "atari", "magical", "dm_control"
-    benchmark_name = 'dm_control'
+    benchmark_name = 'atari'
     # should venvs be parallel?
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
@@ -36,16 +36,16 @@ def bench_defaults():
         #     ln -s /scratch/sam/il-demos/magical/${dname}-2020-*/ \
         #         ./data/magical/${dname};
         # done
-        'MoveToCorner': 'data/magical/move-to-corner/',
-        'MoveToRegion': 'data/magical/move-to-region/',
-        'MatchRegions': 'data/magical/match-regions/',
-        'MakeLine': 'data/magical/make-line/',
-        'FixColour': 'data/magical/fix-colour/',
-        'FindDupe': 'data/magical/find-dupe/',
-        'ClusterColour': 'data/magical/cluster-colour/',
-        'ClusterShape': 'data/magical/cluster-shape/',
+        'MoveToCorner': 'tests/data/magical/move-to-corner/',
+        'MoveToRegion': 'tests/data/magical/move-to-region/',
+        'MatchRegions': 'tests/data/magical/match-regions/',
+        'MakeLine': 'tests/data/magical/make-line/',
+        'FixColour': 'tests/data/magical/fix-colour/',
+        'FindDupe': 'tests/data/magical/find-dupe/',
+        'ClusterColour': 'tests/data/magical/cluster-colour/',
+        'ClusterShape': 'tests/data/magical/cluster-shape/',
     }
-    magical_env_prefix = 'MatchRegions'
+    magical_env_prefix = 'move-to-region'
     magical_preproc = 'LoResCHW4E'
     # this should probably be True for all BC runs, False for GAIL runs
     # (although TBH it doesn't really matter for GAIL)
@@ -66,12 +66,12 @@ def bench_defaults():
         'ball-in-cup-catch': 'DMC-Ball-In-Cup-Catch-v0',
     }
     dm_control_demo_patterns = {
-        'finger-spin': 'data/dm_control/walker-walk-*.pkl.gz',
-        'cheetah-run': 'data/dm_control/cheetah-run-*.pkl.gz',
-        'walker-walk': 'data/dm_control/walker-walk-*.pkl.gz',
-        'cartpole-swingup': 'data/dm_control/cartpole-swingup-*.pkl.gz',
-        'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
-        'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
+        'finger-spin': 'tests/data/dm_control/walker-walk-*.pkl.gz',
+        'cheetah-run': 'tests/data/dm_control/cheetah-run-*.pkl.gz',
+        'walker-walk': 'tests/data/dm_control/walker-walk-*.pkl.gz',
+        'cartpole-swingup': 'tests/data/dm_control/cartpole-swingup-*.pkl.gz',
+        'reacher-easy': 'tests/data/dm_control/reacher-easy-*.pkl.gz',
+        'ball-in-cup-catch': 'tests/data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
     dm_control_env = 'reacher-easy'
 

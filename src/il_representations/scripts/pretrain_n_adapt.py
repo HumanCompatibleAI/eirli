@@ -277,10 +277,12 @@ def base_config():
         'repl': {
             'algo':
             tune.grid_search([
-                # 'MoCoWithProjection',
+                'MoCoWithProjection',
                 # 'SimCLR',
-                'ActionConditionedTemporalCPC',
+                # 'ActionConditionedTemporalCPC',
                 # 'CEB',
+                # 'DynamicsPrediction',
+                # 'BYOL',
                 # 'ActionConditionedTemporalCPC',
             ]),
         },
@@ -344,8 +346,9 @@ def base_config():
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.32,
-                           ))  # queue_trials=True)
+                               gpu=0,
+                           ))
+                           # queue_trials=True)
     ray_init_kwargs = dict(
         num_cpus=2,
         memory=None,
@@ -399,12 +402,13 @@ def cfg_tune_moco():
 
     # the following settings are algorithm-specific
     repl = {
-        'algo': 'MoCoWithProjection',
+        'algo': 'MoCo',
         'use_random_rollouts': False,
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_epochs': 250,
+
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -419,46 +423,65 @@ def cfg_tune_moco():
         #
         # Using just a single value (in this case a float):
         # ('l1reg', [0.0]),
-        ('repl:algo_params:batch_size', (64, 512)),
-        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
-        ('repl:algo_params:representation_dim', (8, 512)),
-        ('repl:algo_params:projection_dim', (64, 256)),
-        ('repl:algo_params:decoder_kwargs:momentum_weight', (0.95, 0.999,
-                                                             'log-uniform')),
-        ('repl:algo_params:encoder_kwargs:momentum_weight', (0.95, 0.999,
-                                                             'log-uniform')),
-        ('repl:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
         ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
             "translate,rotate,gaussian_blur", "translate,rotate",
             "translate,rotate,flip_ud,flip_lr"
         ]),
+        ('repl:algo_params:batch_size', (64, 512)),
+        ('repl:algo_params:encoder_kwargs:momentum_weight', (0.95, 0.999,
+                                                             'log-uniform')),
+        # ('repl:algo_params:decoder_kwargs:momentum_weight', (0.95, 0.999,
+        #                                                      'log-uniform')),
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+        # ('repl:algo_params:projection_dim', (64, 256)),
+        ('repl:algo_params:representation_dim', (8, 512)),
+
+        ('repl:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
     ])
     skopt_ref_configs = [
         # we include the default config as a reference
+
+        # MoCoWithProjection
+        # {
+        #     'repl:algo_params:augmenter_kwargs:augmenter_spec':
+        #     "translate,rotate,gaussian_blur",
+        #     'repl:algo_params:batch_size':
+        #     512,
+        #     'repl:algo_params:decoder_kwargs:momentum_weight':
+        #     0.99,
+        #     'repl:algo_params:encoder_kwargs:momentum_weight':
+        #     0.999,
+        #     'repl:algo_params:optimizer_kwargs:lr':
+        #     3e-5,
+        #     'repl:algo_params:projection_dim':
+        #     64,
+        #     'repl:algo_params:representation_dim':
+        #     128,
+        #     'repl:encoder_kwargs:obs_encoder_cls':
+        #     'BasicCNN',
+        # }
+
+        # MoCo
         {
-            'repl:algo_params:batch_size':
-            256,
-            'repl:algo_params:representation_dim':
-            128,
-            'repl:algo_params:projection_dim':
-            128,
-            'repl:algo_params:optimizer_kwargs:lr':
-            1e-3,
-            'repl:algo_params:decoder_kwargs:momentum_weight':
-            0.999,
-            'repl:algo_params:encoder_kwargs:momentum_weight':
-            0.999,
-            'repl:encoder_kwargs:obs_encoder_cls':
-            'BasicCNN',
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
-            "translate,rotate,gaussian_blur",
+                "translate,rotate,gaussian_blur",
+            'repl:algo_params:batch_size':
+                512,
+            'repl:algo_params:encoder_kwargs:momentum_weight':
+                0.98,
+            'repl:algo_params:optimizer_kwargs:lr':
+                3e-5,
+            'repl:algo_params:representation_dim':
+                128,
+            'repl:encoder_kwargs:obs_encoder_cls':
+                'BasicCNN',
         }
     ]
     # do up to 200 runs of hyperparameter tuning
     # WARNING: This may require customisation on the command line. You want the
     # number to be high enough that the script will keep running for at least a
     # few days.
-    tune_run_kwargs = dict(num_samples=200)
+    tune_run_kwargs = dict(num_samples=2)
 
     _ = locals()
     del _
@@ -503,25 +526,51 @@ def cfg_tune_cpc():
     ])
     skopt_ref_configs = [
         # we include the default config as a reference
+
+        # TemporalCPC
         {
             'repl:algo_params:batch_size':
-            128,
-            'repl:algo_params:representation_dim':
-            128,
+            64,
             'repl:algo_params:optimizer_kwargs:lr':
-            1e-3,
+            0.0003,
+            'repl:algo_params:representation_dim':
+            512,
             'repl:encoder_kwargs:obs_encoder_cls':
             'BasicCNN',
-
-            # RecurrentCPC params:
-            # 'repl:algo_params:encoder_kwargs:rnn_output_dim': 64,
-
-            # ActionConditionedTemporalCPC
-            'repl:algo_params:decoder_kwargs:action_encoding_dim': 128,
-            'repl:algo_params:decoder_kwargs:action_embedding_dim': 5,
-
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
             "translate,rotate,gaussian_blur",
+        },
+
+        # ActionConditionedCPC
+        # {
+        #     'repl:algo_params:batch_size':
+        #         128,
+        #     'repl:algo_params:representation_dim':
+        #         128,
+        #     'repl:algo_params:optimizer_kwargs:lr':
+        #         1e-3,
+        #     'repl:encoder_kwargs:obs_encoder_cls':
+        #         'BasicCNN',
+        #     'repl:algo_params:decoder_kwargs:action_encoding_dim': 128,
+        #     'repl:algo_params:decoder_kwargs:action_embedding_dim': 5,
+        #     'repl:algo_params:augmenter_kwargs:augmenter_spec':
+        #         "translate,rotate,gaussian_blur",
+        # }
+
+        # RecurrentCPC
+        {
+            'repl:algo_params:batch_size':
+                128,
+            'repl:algo_params:encoder_kwargs:rnn_output_dim':
+                64,
+            'repl:algo_params:optimizer_kwargs:lr':
+                0.001,
+            'repl:algo_params:representation_dim':
+                128,
+            'repl:encoder_kwargs:obs_encoder_cls':
+                'BasicCNN',
+            'repl:algo_params:augmenter_kwargs:augmenter_spec':
+                "translate,rotate,gaussian_blur",
         }
     ]
     # do up to 200 runs of hyperparameter tuning
