@@ -28,12 +28,13 @@ interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 
 
 @interp_ex.config
-def base_config():
+def base_config(benchmark):
     # Network setting
-    encoder_path = './runs/chain_runs/3/policy_final.pt'
+    # encoder_path = './runs/chain_runs/4/repl/1/checkpoints/representation_encoder/0_epochs.ckpt'
+    encoder_path = './runs/chain_runs/SimCLR/repl/1/checkpoints/representation_encoder/0_epochs.ckpt'
 
     # Data settings
-    benchmark_name = 'dm_control'
+    benchmark_name = benchmark['benchmark_name']
     device = get_device("auto")
     imgs = [888]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
@@ -68,8 +69,9 @@ class Network(nn.Module):
         self.policy = policy
 
     def forward(self, x):
-        x = self.policy(x)
-        return x[0]
+        latent_pi, _, latent_sde = self.policy._get_latent(x)
+        out = self.policy.action_net(latent_pi)
+        return out
 
 
 @interp_ex.capture
@@ -91,6 +93,7 @@ def prepare_network(venv, encoder_path, verbose, device=None):
 def process_data(venv, benchmark_name, imgs, device):
     img_list = []
     label_list = []
+    print(f'Loading benchmark {benchmark_name}...')
     data_dict = auto_env.load_dataset(benchmark_name)
 
     for img_idx in imgs:
@@ -104,6 +107,7 @@ def process_data(venv, benchmark_name, imgs, device):
         label = int(label)
         img_list.append(img)
         label_list.append(label)
+
     return img_list, label_list
 
 
