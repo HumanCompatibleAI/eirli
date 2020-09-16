@@ -4,7 +4,6 @@ jobs:
   build-and-test:
     docker:
       - image: humancompatibleai/il-representations:2020.09.14-r1
-    resource_class: small
     steps:
       - checkout
       - run:
