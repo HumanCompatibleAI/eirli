@@ -46,8 +46,8 @@ def base_config(benchmark):
 
     # Interpret settings: Choose a method by setting it as "1 / True".
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
-    saliency = 1
-    integrated_gradient = 0  # TODO：Fix the bug here
+    saliency = 0
+    integrated_gradient = 0
     deep_lift = 0
 
     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
@@ -166,7 +166,7 @@ def integrated_gradient_(net, image, label, original_img, log_dir, show_imgs):
                                               baselines=image * 0,
                                               return_convergence_delta=True,)
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    ig_viz = viz.visualize_image_attr(ig, original_img,
+    ig_viz = viz.visualize_image_attr(attr_ig, original_img,
                                       method="blended_heat_map",
                                       sign="all",
                                       show_colorbar=True,
