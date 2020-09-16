@@ -6,6 +6,11 @@
 
 set -e
 
+if mountpoint '/data/il-representations/'; then
+    echo "'/data/il-representations/' is already a mountpoint; skipping remount"
+    exit 0
+fi
+
 if [ -z "$(cat /proc/filesystems | grep 'nfsd$')" ]; then
     echo "This machine does not seem to have NFS support. Will attempt to"\
         "install NFS packages."
@@ -13,6 +18,8 @@ if [ -z "$(cat /proc/filesystems | grep 'nfsd$')" ]; then
 fi
 
 mkdir -p '/data/il-representations/' \
-    && mount '10.217.224.122:/vol1' '/data/il-representations/'
+    && echo '10.217.224.122:/vol1' '/data/il-representations/' nfs defaults,_netdev 0 0 >> /etc/fstab \
+    && mount -a \
+    && chmod go+rw '/data/il-representations/'
 
 echo "Done! Mount should be accessible on '/data/il-representations/'"
