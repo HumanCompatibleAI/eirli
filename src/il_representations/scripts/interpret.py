@@ -1,6 +1,5 @@
 import torch
 import sacred
-import os
 import math
 import cv2
 import numpy as np
@@ -15,7 +14,6 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from captum.attr import IntegratedGradients, Saliency, DeepLift, LayerConductance, LayerGradCam, LayerActivation, \
     LayerAttribution, LayerIntegratedGradients, LayerGradientXActivation
 from captum.attr import visualization as viz
-from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.policies import ActorCriticCnnPolicy
 
 from il_representations.scripts.il_train import make_policy
@@ -39,7 +37,7 @@ def base_config(benchmark):
     imgs = [888]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
 
-    # If log_dir is set to None, then image would not be saved.
+    # If log_dir is set to None, then the images would not be saved.
     log_dir = interp_ex.observers[0].dir
     show_imgs = False
     verbose = True
@@ -90,7 +88,7 @@ def prepare_network(venv, encoder_path, verbose, device=None):
 
 
 @interp_ex.capture
-def process_data(venv, benchmark_name, imgs, device):
+def process_data(benchmark_name, imgs, device):
     img_list = []
     label_list = []
     print(f'Loading benchmark {benchmark_name}...')
@@ -102,7 +100,6 @@ def process_data(venv, benchmark_name, imgs, device):
         if isinstance(label, np.ndarray):
             label = np.argmax(label)
         img = torch.FloatTensor(img).to(device).unsqueeze(dim=0)
-        # img = preprocess_obs(img, venv.observation_space, normalize_images=True)
         img.requires_grad = True
         label = int(label)
         img_list.append(img)
@@ -196,14 +193,16 @@ def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, column
                                        attribute_to_layer_input=True,
                                        target=label,)
     attribution = attribution[0]
-    if len(attribution.shape) == 2:  # Attribution has one dimension only - usually seen in linear layers.
+    if len(attribution.shape) == 2:  # Attribution has one axis only - usually seen in linear layers.
         l_weight = layer.weight
         plot_linear_layer_attributions(attribution, l_weight, 'layer_conductance', log_dir, show_imgs)
-    elif len(attribution.shape) == 4:  # Attribution has three dimensions - usually seen in convolution layers.
+    elif len(attribution.shape) == 4:  # Attribution has 4 axes - usually seen in convolution layers.
         attribution = attribution[0]
         num_channels = attribution.shape[0]
         show_img_grid(attribution, math.ceil(num_channels/columns), columns, log_dir, 'layer_conductance',
                       'layer_conductance', show_imgs)
+    else:
+        raise NotImplementedError('Incompatible attribute shape.')
 
     return attribution
 
@@ -227,10 +226,10 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
 def layer_act_(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
     layer_a = algo(net, layer)
     a_attr = layer_a.attribute(image, **attr_kwargs)
-    if len(a_attr.shape) == 3:  # Attribution has 3 dimensions - usually seen in linear layers.
+    if len(a_attr.shape) == 3:  # Attribution has 3 axis - usually seen in linear layers.
         l_weight = layer.weight
         plot_linear_layer_attributions(a_attr, l_weight, algo_name, log_dir, show_imgs)
-    elif len(a_attr.shape) == 4:  # Attribution has 4 dimensions - usually seen in convolution layers.
+    elif len(a_attr.shape) == 4:  # Attribution has 4 axes - usually seen in convolution layers.
         a_attr = a_attr[0]
         num_channels = a_attr.shape[0]
         layer_info = str(layer)
