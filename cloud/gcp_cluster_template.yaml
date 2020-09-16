@@ -30,7 +30,7 @@ idle_timeout_minutes: 5
 # Execute docker commands & open necessary ports.
 docker:
   # the image below is taken from .circleci/config.yml
-  image: "humancompatibleai/il-representations:2020.08.28-r1"
+  image: "humancompatibleai/il-representations:2020.09.14-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
@@ -97,8 +97,10 @@ worker_nodes:
 # Files or directories to copy to the head and worker nodes
 file_mounts: {
   # "/path1/on/remote/machine": "/path1/on/local/machine",
-  "/tmp/ssh_deploy_key": "cloud/ssh_deploy_key",
-  "/tmp/ssh_deploy_key.pub": "cloud/ssh_deploy_key.pub"
+  "/tmp/ssh_deploy_key": "./ssh_deploy_key",
+  "/tmp/ssh_deploy_key.pub": "./ssh_deploy_key.pub",
+  "/tmp/nfs_mount.sh": "nfs_mount.sh",
+  "/tmp/nfs_config.sh": "nfs_config.sh"
 }
 # List of files or directories to copy from the head node to the worker nodes.
 # The format is a list of paths. Not recommended.
@@ -113,7 +115,9 @@ file_mounts_sync_continuously: False
 
 # List of commands that will be run before `setup_commands`. If docker is
 # enabled, they will run outside the container before docker setup.
-initialization_commands: []
+initialization_commands:
+  # mount NFS before starting docker so that we can create a bind mount
+  - bash /tmp/nfs_mount.sh
 # List of shell commands to run to set up nodes (both head and worker).
 setup_commands:
   # Set up SSH key
@@ -135,7 +139,7 @@ setup_commands:
   - cd ~/il-rep/ && pip install -r requirements.txt
   - cd ~/il-rep/ && pip install -e .
   # Mount project filesystem
-  - cd ~/il-rep/ && ./cloud/nfs_mount_cmd.sh
+  - cd ~/il-rep/ && ./cloud/nfs_mount.sh
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands: []
 # ("pip install google-api-python-client==1.7.8" used to be a head_setup

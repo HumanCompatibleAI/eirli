@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Generate command for mounting the project NFS store. We bake the output into
-# nfs_mount_cmd.sh so that we don't have to install the Google Cloud SDK on our
+# nfs_mount.sh so that we don't have to install the Google Cloud SDK on our
 # Ray worker nodes (which would require some annoying credential distribution
 # steps).
 
@@ -29,6 +29,11 @@ tee "${THIS_DIR}/nfs_mount.sh" <<EOF
 
 set -e
 
+if mountpoint '${CLIENT_MOUNT_POINT}'; then
+    echo "'${CLIENT_MOUNT_POINT}' is already a mountpoint; skipping remount"
+    exit 0
+fi
+
 if [ -z "\$(cat /proc/filesystems | grep 'nfsd\$')" ]; then
     echo "This machine does not seem to have NFS support. Will attempt to"\\
         "install NFS packages."
@@ -36,7 +41,9 @@ if [ -z "\$(cat /proc/filesystems | grep 'nfsd\$')" ]; then
 fi
 
 mkdir -p '$CLIENT_MOUNT_POINT' \\
-    && mount '$server_ip:/vol1' '$CLIENT_MOUNT_POINT'
+    && echo '$server_ip:/vol1' '$CLIENT_MOUNT_POINT' nfs defaults,_netdev 0 0 >> /etc/fstab \\
+    && mount -a \\
+    && chmod go+rw '$CLIENT_MOUNT_POINT'
 
 echo "Done! Mount should be accessible on '$CLIENT_MOUNT_POINT'"
 EOF
