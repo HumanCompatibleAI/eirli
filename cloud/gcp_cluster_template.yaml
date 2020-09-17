@@ -34,7 +34,9 @@ docker:
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
-  run_options: []  # Extra options to pass into "docker run"
+  run_options:
+    - "--mount"
+    - "type=volume,source=project-data-volume,target=/project-data"
 
 # Cloud-provider specific configuration.
 provider:
@@ -97,10 +99,9 @@ worker_nodes:
 # Files or directories to copy to the head and worker nodes
 file_mounts: {
   # "/path1/on/remote/machine": "/path1/on/local/machine",
-  "/tmp/ssh_deploy_key": "./ssh_deploy_key",
-  "/tmp/ssh_deploy_key.pub": "./ssh_deploy_key.pub",
-  "/tmp/nfs_mount.sh": "nfs_mount.sh",
-  "/tmp/nfs_config.sh": "nfs_config.sh"
+  "/tmp/ssh_deploy_key": "ssh_deploy_key",
+  "/tmp/ssh_deploy_key.pub": "ssh_deploy_key.pub",
+  "/tmp/nfs_mount.sh": "nfs_mount.sh"
 }
 # List of files or directories to copy from the head node to the worker nodes.
 # The format is a list of paths. Not recommended.
@@ -117,7 +118,16 @@ file_mounts_sync_continuously: False
 # enabled, they will run outside the container before docker setup.
 initialization_commands:
   # mount NFS before starting docker so that we can create a bind mount
-  - bash /tmp/nfs_mount.sh
+  # (the 'mount | grep nfs | …' thing is a hack to get the NFS server's IP. The
+  # alternative is to authenticate gcloud so that we can run get_server_ip.
+  # nfs_mount.sh gets around this by *baking the IP into the script*; I should
+  # consider baking IPs etc. into some separate config file instead.)
+  - >-
+    sudo bash /tmp/nfs_mount.sh
+    && nfs_server_ip="$(mount | grep nfs | head -n 1 | cut -d : -f 1)"
+    && docker volume create --driver local --opt type=nfs \
+      --opt "o=addr=${nfs_server_ip},rw" --opt device=:/vol1 \
+      project-data-volume
 # List of shell commands to run to set up nodes (both head and worker).
 setup_commands:
   # Set up SSH key
@@ -138,8 +148,30 @@ setup_commands:
   # requirements.txt just in case there are any new ones pip can easily add.
   - cd ~/il-rep/ && pip install -r requirements.txt
   - cd ~/il-rep/ && pip install -e .
-  # Mount project filesystem
-  - cd ~/il-rep/ && ./cloud/nfs_mount.sh
+  # Finally, we set up the 'data' and 'runs' directories to point to places on
+  # the project NFS volume. Some things to note:
+  #
+  # - Outside the docker container, the project data NFS volume is mounted at
+  #   $CLIENT_MOUNT_POINT (e.g. /data/il-representations/). Inside the
+  #   container, it's mounted at /project-data. The script below sets up a
+  #   symlink inside the container pointing $CLIENT_MOUNT_POINT to
+  #   /project-data. This is not strictly necessary (we could just use
+  #   /project-data inside the container), but does make the inside of the
+  #   container look a little bit more like the outside of the container.
+  # - We put runs in their own special directory under $CLIENT_MOUNT_POINT that
+  #   is labelled with the current date. Ideally this should mean that separate
+  #   clusters end up with results in separate places.
+  - >-
+    cd ~/il-rep/
+    && source ./cloud/nfs_config.sh
+    && ( test ! -e "${CLIENT_MOUNT_POINT}" || mkdir -p "${CLIENT_MOUNT_POINT}" )
+    && ln -vs /project-data "${CLIENT_MOUNT_POINT}"
+  - >-
+    cd ~/il-rep/
+    && source ./cloud/nfs_config.sh
+    && ln -vs "${CLIENT_MOUNT_POINT}/il-demos/" data
+    && cluster_name="cluster-$(date -Iminutes | date -uIminutes | sed 's/+00:00$//')Z"
+    && ln -vs "${CLIENT_MOUNT_POINT}/cluster-data/${cluster_name}"
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands: []
 # ("pip install google-api-python-client==1.7.8" used to be a head_setup
