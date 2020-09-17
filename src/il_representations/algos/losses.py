@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import torch
 import torch.nn.functional as F
 import stable_baselines3.common.logger as sb_logger
-
+from pyro.distributions import Delta
 
 class RepresentationLoss(ABC):
     def __init__(self, device, sample=False):
@@ -234,6 +234,7 @@ class NegativeLogLikelihood(RepresentationLoss):
         super().__init__(device, sample)
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        assert isinstance(target_dist, Delta), "Target distribution should be a Delta distribution around a ground truth value"
         # target dist is a Dirac Delta distribution containing the ground truth values
         # decoded_context_dist is a predicted distribution we want to put high probability on the ground truth values
 
@@ -266,6 +267,8 @@ class VAELoss(RepresentationLoss):
     """
     def __init__(self, device, sample=True, beta=1.0, prior_scale=1.0):
         super().__init__(device, sample)
+        if not sample:
+            raise ValueError("The VAE loss as defined requires sampling to be set to True")
         self.beta = beta  # The relative weight on the KL Divergence/regularization loss, relative to reconstruction
         self.prior_scale = prior_scale  # The scale parameter used to construct prior used in KLD
 
