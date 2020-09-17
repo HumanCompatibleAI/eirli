@@ -234,7 +234,8 @@ class NegativeLogLikelihood(RepresentationLoss):
         super().__init__(device, sample)
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-        assert isinstance(target_dist, Delta), "Target distribution should be a Delta distribution around a ground truth value"
+        assert isinstance(target_dist, Delta), "Target distribution should be " \
+                                               "a Delta distribution around a ground truth value"
         # target dist is a Dirac Delta distribution containing the ground truth values
         # decoded_context_dist is a predicted distribution we want to put high probability on the ground truth values
 
