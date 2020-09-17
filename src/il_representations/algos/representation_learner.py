@@ -140,7 +140,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if not isinstance(kwargs_updates, dict):
                 raise TypeError("kwargs_updates must be passed in in the form of a dict ")
             for kwarg_update_key in kwargs_updates.keys():
-                if isinstance(user_kwargs_copy[kwarg_update_key], dict):
+                if kwarg_update_key in user_kwargs_copy and isinstance(user_kwargs_copy[kwarg_update_key], dict):
                     user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(user_kwargs_copy[kwarg_update_key],
                                                                                          kwargs_updates[kwarg_update_key],
                                                                                          params_cleaned=True)
