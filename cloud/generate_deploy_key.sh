@@ -8,7 +8,8 @@ THISDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 KEYURL="https://github.com/HumanCompatibleAI/il-representations/settings/keys"
 
 # make a new key with no passphrase
-key_path="${THISDIR}/ssh_deploy_key"
+mkdir -p "${THISDIR}/ray-init-scripts/"
+key_path="${THISDIR}/ray-init-scripts/ssh_deploy_key"
 if [ ! -f "$key_path" ]; then
     # make a passwordless deploy key
     echo "Generating new deploy key in '$key_path'"
