@@ -14,7 +14,7 @@ class RepresentationLoss(ABC):
         pass
 
     def get_vector_forms(self, *args):
-        return [el.sample() if self.sample else el.mean for el in args]
+        return [el.rsample() if self.sample else el.mean for el in args]
 
 
 class AsymmetricContrastiveLoss(RepresentationLoss):

@@ -212,13 +212,13 @@ class MAGICALCNN(nn.Module):
         self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS['MAGICALCNN']
         conv_layers = []
         in_dim = observation_space.shape[0]
-        for i in range(len(self.architecture_definition)):
+        for layer_definition in self.architecture_definition:
             conv_layers += conv_block(in_dim,
-                                      self.architecture_definition[i]['out_dim']*w,
-                                      kernel_size=self.architecture_definition[i]['kernel_size'],
-                                      stride=self.architecture_definition[i]['stride'],
-                                      padding=self.architecture_definition[i]['padding'])
-            in_dim = self.architecture_definition[i]['out_dim']*w
+                                      layer_definition['out_dim']*w,
+                                      kernel_size=layer_definition['kernel_size'],
+                                      stride=layer_definition['stride'],
+                                      padding=layer_definition['padding'])
+            in_dim = layer_definition['out_dim']*w
         conv_layers.append(nn.Flatten())
 
         # another FC layer to make feature maps the right size
@@ -296,7 +296,8 @@ class DeterministicEncoder(Encoder):
 
     def forward(self, x, traj_info):
         features = self.network(x)
-        return independent_multivariate_normal(loc=features, scale=self.scale_constant)
+        return independent_multivariate_normal(mean=features,
+                                               stddev=self.scale_constant)
 
 
 class StochasticEncoder(Encoder):
@@ -322,7 +323,8 @@ class StochasticEncoder(Encoder):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
-        return independent_multivariate_normal(loc=mean, scale=scale)
+        return independent_multivariate_normal(mean=mean,
+                                               stddev=scale)
 
 
 def infer_action_shape_info(action_space, action_embedding_dim):
@@ -402,9 +404,9 @@ class ActionEncodingEncoder(DeterministicEncoder):
         return Delta(action_encoding_vector)
 
 
-class VAEEncoder(DeterministicEncoder):
+class VAEEncoder(StochasticEncoder):
     """
-    An encoder that uses DeterministicEncoder's logic for encoding
+    An encoder that uses StochasticEncoder's logic for encoding
     context, but for target, just returns a delta distribution
     around ground truth pixels, since we don't want to vector-encode
     them.
@@ -479,7 +481,8 @@ class MomentumEncoder(Encoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             z_dist = self.key_encoder(x, traj_info)
-            return independent_multivariate_normal(z_dist.mean.detach(), z_dist.variance.detach())
+            return independent_multivariate_normal(z_dist.mean.detach(),
+                                                   z_dist.stddev.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -551,5 +554,6 @@ class RecurrentEncoder(Encoder):
 
         mean = self.mean_layer(flattened_hiddens)
         scale = self.scale_layer(flattened_hiddens)
-        return independent_multivariate_normal(loc=mean, scale=scale)
+        return independent_multivariate_normal(mean=mean,
+                                               stddev=scale)
 
