@@ -33,7 +33,6 @@ def test_all_benchmarks(chain_ex, file_observer, benchmark_cfg):
         if ray.is_initialized():
             ray.shutdown()
 
-#@pytest.mark.parametrize("stages", ["REPL_ONLY"])
 
 @pytest.mark.parametrize("stages", list(StagesToRun))
 def test_individual_stages(chain_ex, file_observer, stages):

@@ -11,12 +11,12 @@ from PIL import Image
 import cv2
 
 
-def independent_multivariate_normal(loc, scale):
+def independent_multivariate_normal(mean, stddev):
     # Create a normal distribution, which by default will assume all dimensions but one are a batch dimension
-    dist = torch.distributions.Normal(loc, scale)
+    dist = torch.distributions.Normal(mean, stddev)
     # Wrap the distribution in an Independent wrapper, which reclassifies all but one dimension as part of the actual
     # sample shape, but keeps variances defined only on the diagonal elements of what would be the MultivariateNormal
-    multivariate_mimicking_dist = torch.distributions.Independent(dist, len(loc.shape) - 1)
+    multivariate_mimicking_dist = torch.distributions.Independent(dist, len(mean.shape) - 1)
     return multivariate_mimicking_dist
 
 

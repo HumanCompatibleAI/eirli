@@ -8,7 +8,7 @@ import gym.spaces as spaces
 from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
 import math
-
+import logging
 
 """
 LossDecoders are meant to be mappings between the representation being learned, 
@@ -48,7 +48,7 @@ class LossDecoder(nn.Module):
 
     def get_vector(self, z_dist):
         if self.sample:
-            return z_dist.sample()
+            return z_dist.rsample()
         else:
             return z_dist.mean
 
@@ -73,7 +73,7 @@ class TargetProjection(LossDecoder):
     def decode_target(self, z_dist, traj_info, extra_context=None):
         z_vector = self.get_vector(z_dist)
         mean = self.target_projection(z_vector)
-        return independent_multivariate_normal(mean, z_dist.variance)
+        return independent_multivariate_normal(mean, z_dist.stddev)
 
 
 class ProjectionHead(LossDecoder):
@@ -94,7 +94,8 @@ class ProjectionHead(LossDecoder):
     def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
         shared_repr = self.shared_mlp(z)
-        return independent_multivariate_normal(loc=self.mean_layer(shared_repr), scale=torch.exp(self.scale_layer(shared_repr)))
+        return independent_multivariate_normal(mean=self.mean_layer(shared_repr),
+                                               stddev=torch.exp(self.scale_layer(shared_repr)))
 
 
 class MomentumProjectionHead(LossDecoder):
@@ -120,7 +121,8 @@ class MomentumProjectionHead(LossDecoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             decoded_z_dist = self.target_decoder(z_dist, traj_info, extra_context=extra_context)
-            return independent_multivariate_normal(decoded_z_dist.mean.detach(), decoded_z_dist.variance.detach())
+            return independent_multivariate_normal(decoded_z_dist.mean.detach(),
+                                                   decoded_z_dist.stddev.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -137,7 +139,8 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
         prediction_dist = self.context_predictor(internal_dist, traj_info, extra_context=None)
-        return independent_multivariate_normal(loc=F.normalize(prediction_dist.mean, dim=1), scale=prediction_dist.scale)
+        return independent_multivariate_normal(mean=F.normalize(prediction_dist.mean, dim=1),
+                                               stddev=prediction_dist.stddev)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         with torch.no_grad():
@@ -193,9 +196,9 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
         mocked_layers.append(nn.Conv2d(current_channels, layer_spec['out_dim'],
                                                kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
         current_channels = layer_spec['out_dim']
-    mocked_layers.append(nn.Flatten())
-    decoder_input_shape = list(compute_output_shape(observation_space, mocked_layers))[0]
-    return decoder_input_shape
+    obs_shape = compute_output_shape(observation_space, mocked_layers)
+    flattened_shape = np.prod(obs_shape)
+    return flattened_shape, obs_shape
 
 
 class PixelDecoder(LossDecoder):
@@ -217,23 +220,24 @@ class PixelDecoder(LossDecoder):
 
         # Computes the number of dimensions that will come out of the final
         # (channels, shape, shape) output of the convolutional network, after flattening
-        decoder_input_shape = compute_decoder_input_shape_from_encoder(observation_space, self.encoder_arch)
-        print(f"Decoder input shape: {decoder_input_shape}")
+        flattened_input_dim, self.full_input_shape = compute_decoder_input_shape_from_encoder(observation_space,
+                                                                                          self.encoder_arch)
+        logging.debug(f"Decoder input dims: {flattened_input_dim}")
         reversed_architecture = list(reversed(self.encoder_arch))
-        self.initial_channels = reversed_architecture[0]['out_dim']
-        self.initial_shape = int(math.sqrt(decoder_input_shape/self.initial_channels))
-        print(f"Initial channels: {self.initial_channels}")
-        print(f"Initial shape: {self.initial_shape}")
+
+        logging.debug(f"Initial channels: {self.full_input_shape[0]}")
+        logging.debug(f"Initial shape: {self.full_input_shape[1:]}")
         self.learn_scale = learn_scale
+        assert constant_stddev >= 0, f"Standard deviation must be non-negative, you passed in {constant_stddev}"
         self.constant_stddev = constant_stddev
         self.action_representation_dim = action_representation_dim
 
         #https://github.com/AntixK/PyTorch-VAE/blob/master/models/vanilla_vae.py
         if self.action_representation_dim is not None:
             self.initial_layer = nn.Linear(self.action_representation_dim + representation_dim,
-                                           decoder_input_shape)
+                                           flattened_input_dim)
         else:
-            self.initial_layer = nn.Linear(representation_dim, decoder_input_shape)
+            self.initial_layer = nn.Linear(representation_dim, flattened_input_dim)
 
         decoder_layers = []
         for i in range(len(reversed_architecture) - 1):
@@ -269,8 +273,7 @@ class PixelDecoder(LossDecoder):
             self.std_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
                                                       out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?
                                                       kernel_size=3,
-                                                      padding=1),
-                                           nn.ReLU()) # Is this a sensible activation here?
+                                                      padding=1))
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
@@ -279,24 +282,24 @@ class PixelDecoder(LossDecoder):
         # Project z to have the number of dimensions needed to reshape into (channels, shape, shape)
         if self.action_representation_dim is not None:
             action_representation = self.get_vector(extra_context)
-            print(f"Z shape {z.shape}")
-            print(f"Action Representation shape: {action_representation.shape}")
+            logging.debug(f"Action Representation shape: {action_representation.shape}")
             projected_z = self.initial_layer(torch.cat([z, action_representation], dim=1))
         else:
             projected_z = self.initial_layer(z)
 
         # Do the reshaping
-        reshaped_z = projected_z.view((batch_dim, self.initial_channels, self.initial_shape, self.initial_shape))
+        reshaped_z = projected_z.view([batch_dim] + list(self.full_input_shape))
         # Decode latents into a pixel shape
         decoded_latents = self.decoder(reshaped_z)
 
         # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
-            std_pixels = self.std_layer(decoded_latents)
+            std_pixels = torch.exp(self.std_layer(decoded_latents))
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
-        return independent_multivariate_normal(loc=mean_pixels, scale=std_pixels)
+        return independent_multivariate_normal(mean=mean_pixels,
+                                               stddev=std_pixels)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -333,5 +336,6 @@ class ActionConditionedVectorDecoder(LossDecoder):
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
-        return independent_multivariate_normal(loc=mean_projection, scale=scale)
+        return independent_multivariate_normal(mean=mean_projection,
+                                               stddev=scale)
 

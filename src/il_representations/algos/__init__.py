@@ -12,7 +12,6 @@ from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
 
-
 class SimCLR(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
@@ -125,11 +124,9 @@ def get_action_representation_dim(action_space, encoder_kwargs):
 
     :return:
     """
-    default_dynamics_encoder_params = get_default_args(ActionEncodingEncoder.__init__)
-    relevant_encoder_kwargs = {}
-    for k in ['action_encoding_dim', 'action_embedding_dim', 'use_lstm']:
-        relevant_encoder_kwargs[k] = encoder_kwargs.get(k,
-                                                        default_dynamics_encoder_params[k])
+    relevant_encoder_kwargs = get_default_args(ActionEncodingEncoder.__init__)
+    relevant_encoder_kwargs.update(encoder_kwargs)
+
     if relevant_encoder_kwargs['use_lstm']:
         # If the encoder will use a LSTM to encoder the actions, they will be encoded into a vector
         # of size `action_encoding_dim`
