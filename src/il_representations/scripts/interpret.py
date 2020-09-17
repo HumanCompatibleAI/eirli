@@ -26,20 +26,19 @@ interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
 
 
 @interp_ex.config
-def base_config(benchmark):
+def base_config():
     # Network setting
     # encoder_path = './runs/chain_runs/4/repl/1/checkpoints/representation_encoder/0_epochs.ckpt'
-    encoder_path = './runs/chain_runs/SimCLR/repl/1/checkpoints/representation_encoder/0_epochs.ckpt'
+    encoder_path = './runs/chain_runs/magical/repl/1/checkpoints/representation_encoder/0_epochs.ckpt'
 
     # Data settings
-    benchmark_name = benchmark['benchmark_name']
     device = get_device("auto")
-    imgs = [888]  # index of each image in the dataset (int)
+    imgs = [8]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
 
     # If log_dir is set to None, then the images would not be saved.
     log_dir = interp_ex.observers[0].dir
-    show_imgs = False
+    show_imgs = True
     verbose = True
 
     # Interpret settings: Choose a method by setting it as "1 / True".
@@ -88,12 +87,12 @@ def prepare_network(venv, encoder_path, verbose, device=None):
 
 
 @interp_ex.capture
-def process_data(benchmark_name, imgs, device):
+def process_data(imgs, device, benchmark):
     img_list = []
     label_list = []
+    benchmark_name = benchmark['benchmark_name']
     print(f'Loading benchmark {benchmark_name}...')
     data_dict = auto_env.load_dataset(benchmark_name)
-
     for img_idx in imgs:
         img = data_dict['obs'][img_idx]
         label = data_dict['acts'][img_idx]
@@ -111,11 +110,11 @@ def process_data(benchmark_name, imgs, device):
 def save_img(img, save_name, save_dir, show=True):
     savefig_kwargs = {}
     if isinstance(img, torch.Tensor):
-        if img.shape[0] == 3 or img.shape[0] == 4:
+        if img.shape[0] == 3 or img.shape[0] == 4 or img.shape[0] == 12:
             img = img.permute(1, 2, 0)
         img = img.detach().numpy()
     else:
-        img = img[50:1150, 100:1100, :]
+        # img = img[50:1150, 100:1100, :]
         plt.axis('off')
         savefig_kwargs = {'bbox_inches': 'tight', 'dpi': 150, 'pad_inches': 0}
     plt.imshow(img)
@@ -328,13 +327,13 @@ def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_cond
     # Load the network and images
     venv = auto_env.load_vec_env()
     network = prepare_network(venv)
-    images, labels = process_data(venv)
+    images, labels = process_data()
 
     for img, label in zip(images, labels):
         # Get policy prediction
         original_img = img[0].permute(1, 2, 0).detach().numpy()
 
-        save_img(img[0], 'original_image', log_dir, show=show_imgs)
+        save_img(original_img, 'original_image', log_dir, show=show_imgs)
 
         if saliency:
             saliency_(network, img, label, original_img, log_dir, show_imgs)
