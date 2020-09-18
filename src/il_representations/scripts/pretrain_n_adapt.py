@@ -584,6 +584,96 @@ def cfg_tune_cpc():
     del _
 
 
+@chain_ex.named_config
+def cfg_tune_dynamics():
+    # these settings will be the same for all rep learning tune runs
+    use_skopt = True
+    skopt_search_mode = 'min'
+    metric = 'repl_loss'
+    stages_to_run = StagesToRun.REPL_ONLY
+
+    # the following settings are algorithm-specific
+    repl = {
+        'algo': 'DynamicsPrediction',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 50,
+    }
+    # this MUST be an ordered dict; skopt only looks at values (not k/v
+    # mappings), so we must preserve the order of both values and keys
+    skopt_space = collections.OrderedDict([
+        ('repl:algo_params:batch_size', (256, 512)),
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+        ('repl:algo_params:representation_dim', (8, 512)),
+        ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
+        ('repl:algo_params:encoder_kwargs:action_encoding_dim', (64, 512)),
+        ('repl:algo_params:encoder_kwargs:action_embedding_dim', (5, 30)),
+    ])
+    skopt_ref_configs = [
+
+        {
+            'repl:algo_params:batch_size':  256,
+            'repl:algo_params:optimizer_kwargs:lr': 0.0003,
+            'repl:algo_params:representation_dim': 64,
+            'repl:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+        },
+
+    ]
+    # do up to 200 runs of hyperparameter tuning
+    # WARNING: This may require customisation on the command line. You want the
+    # number to be high enough that the script will keep running for at least a
+    # few days.
+    tune_run_kwargs = dict(num_samples=100)
+
+    _ = locals()
+    del _
+
+@chain_ex.named_config
+def cfg_tune_inverse_dynamics():
+    # these settings will be the same for all rep learning tune runs
+    use_skopt = True
+    skopt_search_mode = 'min'
+    metric = 'repl_loss'
+    stages_to_run = StagesToRun.REPL_ONLY
+
+    # the following settings are algorithm-specific
+    repl = {
+        'algo': 'InverseDynamicsPrediction',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 100,
+    }
+    # this MUST be an ordered dict; skopt only looks at values (not k/v
+    # mappings), so we must preserve the order of both values and keys
+    skopt_space = collections.OrderedDict([
+        ('repl:algo_params:batch_size', (64, 512)),
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+        ('repl:algo_params:representation_dim', (8, 512)),
+        ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
+    ])
+    skopt_ref_configs = [
+
+        {
+            'repl:algo_params:batch_size':  256,
+            'repl:algo_params:optimizer_kwargs:lr': 0.0003,
+            'repl:algo_params:representation_dim': 64,
+            'repl:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+        },
+
+    ]
+    # do up to 200 runs of hyperparameter tuning
+    # WARNING: This may require customisation on the command line. You want the
+    # number to be high enough that the script will keep running for at least a
+    # few days.
+    tune_run_kwargs = dict(num_samples=100)
+
+    _ = locals()
+    del _
+
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
