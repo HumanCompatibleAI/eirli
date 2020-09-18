@@ -608,7 +608,7 @@ def cfg_tune_dynamics():
         ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
         ('repl:algo_params:representation_dim', (8, 512)),
         ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
-        ('repl:algo_params:encoder_kwargs:action_encoding_dim', (64, 512)),
+        ('repl:algo_params:encoder_kwargs:action_encoding_dim', (8, 128)),
         ('repl:algo_params:encoder_kwargs:action_embedding_dim', (5, 30)),
     ])
     skopt_ref_configs = [
@@ -618,6 +618,8 @@ def cfg_tune_dynamics():
             'repl:algo_params:optimizer_kwargs:lr': 0.0003,
             'repl:algo_params:representation_dim': 64,
             'repl:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+            'repl:algo_params:encoder_kwargs:action_encoding_dim': 16,
+            'repl:algo_params:encoder_kwargs:action_embedding_dim': 16
         },
 
     ]
