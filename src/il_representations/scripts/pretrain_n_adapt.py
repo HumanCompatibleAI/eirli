@@ -628,6 +628,13 @@ def cfg_tune_dynamics():
     # number to be high enough that the script will keep running for at least a
     # few days.
     tune_run_kwargs = dict(num_samples=200)
+    ray_init_kwargs = dict(
+        num_cpus=10,
+        memory=None,
+        object_store_memory=None,
+        include_dashboard=False,
+    )
+
 
     _ = locals()
     del _
