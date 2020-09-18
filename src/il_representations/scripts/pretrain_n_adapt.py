@@ -347,11 +347,12 @@ def base_config():
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=1,
+                               gpu=0, #turn back to 0
                            ))
                            # queue_trials=True)
     ray_init_kwargs = dict(
-        num_cpus=2,
+        num_cpus=10,
+        num_gpus=1,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
@@ -599,7 +600,7 @@ def cfg_tune_dynamics():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 50,
+        'pretrain_epochs': 100,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -627,7 +628,7 @@ def cfg_tune_dynamics():
     # WARNING: This may require customisation on the command line. You want the
     # number to be high enough that the script will keep running for at least a
     # few days.
-    tune_run_kwargs = dict(num_samples=100)
+    tune_run_kwargs = dict(num_samples=200)
 
     _ = locals()
     del _
@@ -671,7 +672,7 @@ def cfg_tune_inverse_dynamics():
     # WARNING: This may require customisation on the command line. You want the
     # number to be high enough that the script will keep running for at least a
     # few days.
-    tune_run_kwargs = dict(num_samples=100)
+    tune_run_kwargs = dict(num_samples=200)
 
     _ = locals()
     del _
