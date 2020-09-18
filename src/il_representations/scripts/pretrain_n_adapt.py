@@ -687,6 +687,7 @@ def cfg_tune_inverse_dynamics():
 def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space):
+    print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
     il_test_ex_config = sacred_copy(il_test)
