@@ -617,7 +617,7 @@ def cfg_tune_dynamics():
             'repl:algo_params:batch_size':  256,
             'repl:algo_params:optimizer_kwargs:lr': 0.0003,
             'repl:algo_params:representation_dim': 64,
-            'repl:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
             'repl:algo_params:encoder_kwargs:action_encoding_dim': 16,
             'repl:algo_params:encoder_kwargs:action_embedding_dim': 16
         },
