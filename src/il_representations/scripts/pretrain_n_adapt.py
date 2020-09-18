@@ -347,12 +347,11 @@ def base_config():
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0, #turn back to 0
+                               gpu=1, #turn back to 0
                            ))
                            # queue_trials=True)
     ray_init_kwargs = dict(
         num_cpus=10,
-        num_gpus=1,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
