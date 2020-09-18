@@ -1,8 +1,9 @@
 # Based on mujoco-py's Dockerfile, but with the following changes:
-# - No nvidia stuff (so no GPU support, but CPU rendering is still there)
-# - Uses Conda Python 3.7 instead of Python 3.6
+# - Slightly changed nvidia stuff.
+# - Uses Conda Python 3.7 instead of Python 3.6.
+# - Adds nfs
 # The Conda bits are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
-FROM ubuntu:18.04
+FROM nvidia/cuda:10.1-cudnn8-runtime-ubuntu18.04
 
 RUN apt-get update -q \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -58,7 +59,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -
   && bash /root/conda.sh -b -p /opt/conda || true \
   && rm /root/conda.sh
 RUN conda update -n base -c defaults conda \
-  && conda install -c anaconda python=3.7 cudatoolkit=11 \
+  && conda install -c anaconda python=3.7 \
   && conda clean -ay
 
 # Install dependencies

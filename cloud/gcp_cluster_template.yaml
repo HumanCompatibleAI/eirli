@@ -3,6 +3,8 @@
 
 
 # Unique identifier for head node and workers of this cluster
+# (should be unique to you, so that we don't all start GCP instances with the
+# same names)
 cluster_name: il-rep-XXX-CUSTOMIZE-THIS-XXX
 
 
@@ -30,13 +32,14 @@ idle_timeout_minutes: 5
 # Execute docker commands & open necessary ports.
 docker:
   # the image below is taken from .circleci/config.yml
-  image: "humancompatibleai/il-representations:2020.09.14-r1"
+  image: "humancompatibleai/il-representations:2020.09.18-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
   run_options:
     - "--mount"
     - "type=volume,source=project-data-volume,target=/project-data"
+    - "--runtime=nvidia"
 
 # Cloud-provider specific configuration.
 provider:
@@ -60,7 +63,7 @@ head_node:
   # n1-standard-2 is a cheap default machine for testing the cluster, but
   # you'll probably need something much beefier (possibly something with GPUs)
   # for real experiments.
-  machineType: n1-standard-2  # XXX-CUSTOMIZE-THIS-XXX
+  machineType: n1-standard-8  # XXX-CUSTOMIZE-THIS-XXX
   disks:
     - boot: true
       autoDelete: true
@@ -71,13 +74,28 @@ head_node:
         sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu101
         # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
 
-    # Additional options can be found in in the compute docs at
-    # https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert
+  # This is not strictly needed (it just means that we kill the head node
+  # permanently if the underlying machine needs to be turned off for
+  # maintenance, as opposed to migrating the head node to another machine, which
+  # I assume would break Ray).
+  scheduling:
+    - onHostMaintenance: TERMINATE
+
+  guestAccelerators:
+    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-k80
+      acceleratorCount: 1
+  metadata:
+    items:
+      - key: install-nvidia-driver
+        value: "True"
+
+  # Additional options can be found in in the compute docs at
+  # https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert
 
 worker_nodes:
   # As above: you'll want to change the machine type on the workers to be
   # something more useful (possibly the same type as the head node).
-  machineType: n1-standard-2  # XXX-CUSTOMIZE-THIS-XXX
+  machineType: n1-standard-8  # XXX-CUSTOMIZE-THIS-XXX
   disks:
     - boot: true
       autoDelete: true
@@ -91,7 +109,15 @@ worker_nodes:
   # Comment this out to use on-demand.
   scheduling:
     - preemptible: true
+    - onHostMaintenance: TERMINATE
 
+  guestAccelerators:
+    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-k80
+      acceleratorCount: 1
+  metadata:
+    items:
+      - key: install-nvidia-driver
+        value: "True"
 
 
 #### FILE HANDLING ####
@@ -99,9 +125,7 @@ worker_nodes:
 # Files or directories to copy to the head and worker nodes
 file_mounts: {
   # "/path1/on/remote/machine": "/path1/on/local/machine",
-  "/tmp/ssh_deploy_key": "ssh_deploy_key",
-  "/tmp/ssh_deploy_key.pub": "ssh_deploy_key.pub",
-  "/tmp/nfs_mount.sh": "nfs_mount.sh"
+  "/tmp/ray-init-scripts": "ray-init-scripts",
 }
 # List of files or directories to copy from the head node to the worker nodes.
 # The format is a list of paths. Not recommended.
@@ -123,7 +147,7 @@ initialization_commands:
   # nfs_mount.sh gets around this by *baking the IP into the script*; I should
   # consider baking IPs etc. into some separate config file instead.)
   - >-
-    sudo bash /tmp/nfs_mount.sh
+    sudo bash /tmp/ray-init-scripts/nfs_mount.sh
     && nfs_server_ip="$(mount | grep nfs | head -n 1 | cut -d : -f 1)"
     && docker volume create --driver local --opt type=nfs \
       --opt "o=addr=${nfs_server_ip},rw" --opt device=:/vol1 \
@@ -133,7 +157,7 @@ setup_commands:
   # Set up SSH key
   - >-
     ( test -e ~/.ssh || ( mkdir -p ~/.ssh && chmod 0700 ~/.ssh ) )
-    && cp -r /tmp/ssh_deploy_key* ~/.ssh
+    && cp -r /tmp/ray-init-scripts/ssh_deploy_key* ~/.ssh
     && chmod 0600 ~/.ssh/ssh_deploy_key*
   # Check out and install source code
   # (remember to insert your desired branch name after the -b!)
@@ -141,7 +165,6 @@ setup_commands:
   # StrictHostKeyChecking=no hack. If it's any consolation, Ray is at least
   # MITM-vulnerable too, so connection to Github is not our weakest link...)
   - >-
-    git -c core.sshCommand="ssh -v -i /root/.ssh/ssh_deploy_key -o StrictHostKeyChecking=no" \
       clone --depth 1 -b branch-name-XXX-CUSTOMIZE-THIS-XXX \
       git@github.com:HumanCompatibleAI/il-representations.git ~/il-rep
   # Dependencies are baked into the Docker image, but we pip install
@@ -164,14 +187,18 @@ setup_commands:
   - >-
     cd ~/il-rep/
     && source ./cloud/nfs_config.sh
-    && ( test ! -e "${CLIENT_MOUNT_POINT}" || mkdir -p "${CLIENT_MOUNT_POINT}" )
-    && ln -vs /project-data "${CLIENT_MOUNT_POINT}"
+    && mount_parent="$(dirname "$CLIENT_MOUNT_POINT")"
+    && mount_no_slash="$(echo "$CLIENT_MOUNT_POINT" | sed 's-/$--')"
+    && ( test -e "$mount_parent" || mkdir -p "$mount_parent" )
+    && ( test -e "$CLIENT_MOUNT_POINT" || ln -vs /project-data "$mount_no_slash" )
   - >-
     cd ~/il-rep/
     && source ./cloud/nfs_config.sh
-    && ln -vs "${CLIENT_MOUNT_POINT}/il-demos/" data
+    && mkdir -p "${CLIENT_MOUNT_POINT}/il-demos/"
+    && ( test -e data || ln -vs "${CLIENT_MOUNT_POINT}/il-demos/" data )
     && cluster_name="cluster-$(date -Iminutes | date -uIminutes | sed 's/+00:00$//')Z"
-    && ln -vs "${CLIENT_MOUNT_POINT}/cluster-data/${cluster_name}"
+    && runs_path="${CLIENT_MOUNT_POINT}/cluster-data/${cluster_name}"
+    && ( test -e runs || ( mkdir -p "$runs_path" && ln -vs "$runs_path" runs ) )
 # Custom commands that will be run on the head node after common setup.
 head_setup_commands: []
 # ("pip install google-api-python-client==1.7.8" used to be a head_setup
@@ -188,7 +215,7 @@ head_start_ray_commands:
   - ray stop
   - >-
     ulimit -n 65536;
-    ray start
+    xvfb-run -a -s "-maxclients 1024 -screen 0 1280x1024x8" ray start
     --head
     --port=6379
     --object-manager-port=8076
@@ -198,6 +225,6 @@ worker_start_ray_commands:
   - ray stop
   - >-
     ulimit -n 65536;
-    ray start
+    xvfb-run -a -s "-maxclients 1024 -screen 0 640x480x8" ray start
     --address=$RAY_HEAD_IP:6379
     --object-manager-port=8076
