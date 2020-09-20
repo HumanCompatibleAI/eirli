@@ -38,7 +38,7 @@ def base_config():
 
     # If log_dir is set to None, then the images would not be saved.
     log_dir = interp_ex.observers[0].dir
-    show_imgs = True
+    show_imgs = False
     verbose = True
 
     # Interpret settings: Choose a method by setting it as "1 / True".
@@ -110,13 +110,18 @@ def process_data(imgs, device, benchmark):
 def save_img(img, save_name, save_dir, show=True):
     savefig_kwargs = {}
     if isinstance(img, torch.Tensor):
-        if img.shape[0] == 3 or img.shape[0] == 4 or img.shape[0] == 12:
+        if img.shape[0] == 3 or img.shape[0] == 4:
             img = img.permute(1, 2, 0)
         img = img.detach().numpy()
     else:
-        # img = img[50:1150, 100:1100, :]
-        plt.axis('off')
-        savefig_kwargs = {'bbox_inches': 'tight', 'dpi': 150, 'pad_inches': 0}
+        if img.shape[2] == 12:  # For MAGICAL, img shape is [96, 96, 12]
+            img = img.astype(int)
+            img = np.dsplit(img, 4)
+            img = np.concatenate(img, axis=1)  # frames tiled horizontally
+        else:
+            # img = img[50:1150, 100:1100, :]
+            plt.axis('off')
+            savefig_kwargs = {'bbox_inches': 'tight', 'dpi': 150, 'pad_inches': 0}
     plt.imshow(img)
     if show:
         plt.show()
@@ -126,6 +131,10 @@ def save_img(img, save_name, save_dir, show=True):
 
 
 def figure_2_numpy(fig):
+    """
+    Captum's visualize_image_attr method returns matplotlib.pyplot.figure object. To plot the figures, we need to
+    convert them to numpy arrays first.
+    """
     canvas = FigureCanvas(fig)
     canvas.draw()
     image_shape = fig.get_size_inches() * fig.dpi
@@ -192,7 +201,7 @@ def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, column
                                        attribute_to_layer_input=True,
                                        target=label,)
     attribution = attribution[0]
-    if len(attribution.shape) == 2:  # Attribution has one axis only - usually seen in linear layers.
+    if len(attribution.shape) == 2:  # Attribution has 2 axes - usually seen in linear layers.
         l_weight = layer.weight
         plot_linear_layer_attributions(attribution, l_weight, 'layer_conductance', log_dir, show_imgs)
     elif len(attribution.shape) == 4:  # Attribution has 4 axes - usually seen in convolution layers.
@@ -225,7 +234,7 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
 def layer_act_(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
     layer_a = algo(net, layer)
     a_attr = layer_a.attribute(image, **attr_kwargs)
-    if len(a_attr.shape) == 3:  # Attribution has 3 axis - usually seen in linear layers.
+    if len(a_attr.shape) == 3:  # Attribution has 3 axes - usually seen in linear layers.
         l_weight = layer.weight
         plot_linear_layer_attributions(a_attr, l_weight, algo_name, log_dir, show_imgs)
     elif len(a_attr.shape) == 4:  # Attribution has 4 axes - usually seen in convolution layers.
@@ -313,12 +322,6 @@ def choose_layer(network, module_name, layer_idx):
         return module[layer_idx]
     elif module_name == 'decoder':
         return network.policy.action_net
-
-
-@interp_ex.capture
-def get_venv():
-    venv = auto_env.load_vec_env()
-    return venv
 
 
 @interp_ex.main
