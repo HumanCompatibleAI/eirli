@@ -73,8 +73,8 @@ il_train_ex = Experiment('il_train', ingredients=[
 
 @il_train_ex.config
 def default_config():
-    # random seed for EVERYTHING
-    seed = 42  # noqa: F841
+    # manually set number of Torch threads
+    torch_num_threads = None  # noqa: F841
     # device to place all computations on
     device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'
@@ -234,7 +234,7 @@ def do_training_gail(
 
 @il_train_ex.main
 def train(seed, algo, benchmark, encoder_path, freeze_encoder,
-          _config):
+          torch_num_threads, _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -243,6 +243,8 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
     # actually know the right way to write log files continuously in Sacred.
     log_dir = os.path.abspath(il_train_ex.observers[0].dir)
     imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
+    if torch_num_threads is not None:
+        th.set_num_threads(torch_num_threads)
 
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()
