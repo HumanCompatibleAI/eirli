@@ -14,7 +14,7 @@ from ray.tune.suggest.skopt import SkOptSearch
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from skopt.optimizer import Optimizer
+import skopt
 
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.scripts.il_test import il_test_ex
@@ -271,26 +271,10 @@ def base_config():
     metric = None
     stages_to_run = StagesToRun.REPL_ONLY
     spec = {
-        # DO NOT UPDATE THESE DEFAULTS WITHOUT ALSO UPDATING CHAIN_CONFIG IN
-        # test_support/configuration.py. They will affect unit tests!
-        'repl': {
-            'algo':
-            tune.grid_search([
-                # 'MoCoWithProjection',
-                # 'SimCLR',
-                'ActionConditionedTemporalCPC',
-                # 'CEB',
-                # 'ActionConditionedTemporalCPC',
-            ]),
-        },
-        'il_train': {
-            'algo': tune.grid_search(['bc']),
-            'freeze_encoder': tune.grid_search([True, False])
-        },
-        'il_test': {},
-        'benchmark': {},
+        # DO NOT ADD ANYTHING TO THESE BY DEFAULT.
+        # They will affect unit tests (and also every other use of the script).
         # Example grid search config for benchmark:
-        # tune.grid_search(
+        # 'benchmark': tune.grid_search(
         #     # MAGICAL configs
         #     [{
         #         'benchmark_name': 'magical',
@@ -426,7 +410,8 @@ def cfg_tune_moco():
                                                              'log-uniform')),
         ('repl:algo_params:encoder_kwargs:momentum_weight', (0.95, 0.999,
                                                              'log-uniform')),
-        ('repl:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
+        ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN',
+                                                             'MAGICALCNN']),
         ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
             "translate,rotate,gaussian_blur", "translate,rotate",
             "translate,rotate,flip_ud,flip_lr"
@@ -447,7 +432,7 @@ def cfg_tune_moco():
             0.999,
             'repl:algo_params:encoder_kwargs:momentum_weight':
             0.999,
-            'repl:encoder_kwargs:obs_encoder_cls':
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls':
             'BasicCNN',
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
             "translate,rotate,gaussian_blur",
@@ -461,6 +446,167 @@ def cfg_tune_moco():
 
     _ = locals()
     del _
+
+
+@chain_ex.named_config
+def cfg_base_3seed_5cpu_pt3gpu():
+    """Basic config that does three samples per config, using 5 CPU cores and
+    0.3 of a GPU."""
+    tune_run_kwargs = dict(num_samples=3,
+                           resources_per_trial=dict(
+                               cpu=5,
+                               gpu=0.32,
+                           ))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_short_sweep_magical():
+    """Sweeps over four easiest MAGICAL instances."""
+    spec = dict(benchmark=tune.grid_search(
+        # MAGICAL configs
+        [
+            {
+                'benchmark_name': 'magical',
+                'magical_env_prefix': magical_env_name,
+                'magical_remove_null_actions': True,
+            } for magical_env_name in [
+                'MoveToCorner',
+                'MoveToRegion',
+                'FixColour',
+                'MatchRegions',
+                # 'FindDupe',
+                # 'MakeLine',
+                # 'ClusterColour',
+                # 'ClusterShape',
+            ]
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_short_sweep_dm_control():
+    """Sweeps over four easiest dm_control instances."""
+    spec = dict(benchmark=tune.grid_search(
+        # dm_control configs
+        [
+            {
+                'benchmark_name': 'dm_control',
+                'dm_control_env': dm_control_env_name
+            } for dm_control_env_name in [
+                # to gauge how hard these are, see
+                # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
+                'reacher-easy',
+                'finger-spin',
+                'ball-in-cup-catch',
+                'cartpole-swingup',
+                # 'cheetah-run',
+                # 'walker-walk',
+                # 'reacher-easy',
+            ]
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_none():
+    stages_to_run = StagesToRun.IL_ONLY
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_moco():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'MoCoWithProjection',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        'pretrain_epochs': 2000,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_simclr():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'SimCLR',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        'pretrain_epochs': 2000,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_temporal_cpc():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'TemporalCPC',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        'pretrain_epochs': 2000,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_ceb():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'CEB',
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        'pretrain_epochs': 2000,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_il_bc_nofreeze():
+    il_train = {
+        'algo': 'bc',
+        'bc': {
+            'n_epochs': 1000,
+        },
+        'freeze_encoder': False,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_il_bc_freeze():
+    il_train = {
+        'algo': 'bc',
+        'bc': {
+            'n_epochs': 1000,
+        },
+        'freeze_encoder': True,
+    }
+
+    _ = locals()
+    del _
+
+
+# TODO(sam): GAIL configs
 
 
 @chain_ex.main
@@ -549,8 +695,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
         ])
-        skopt_optimiser = Optimizer(list(sorted_space.values()),
-                                    base_estimator='RF')
+        for k, v in list(sorted_space.items()):
+            # cast each value in sorted_space to a skopt Dimension object, then
+            # make the name of the Dimension object match the corresponding key
+            new_v = skopt.space.check_dimension(v)
+            new_v.name = k
+            sorted_space[k] = new_v
+        skopt_optimiser = skopt.optimizer.Optimizer([*sorted_space.values()],
+                                                    base_estimator='RF')
         algo = SkOptSearch(skopt_optimiser,
                            list(sorted_space.keys()),
                            metric=metric,

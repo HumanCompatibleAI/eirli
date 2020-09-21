@@ -26,7 +26,6 @@ il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 @il_test_ex.config
 def default_config():
     policy_path = None
-    seed = 42
     n_rollouts = 100
     device_name = 'auto'
     # run_id is written into the produced DataFrame to indicate what model is

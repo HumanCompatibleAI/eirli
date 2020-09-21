@@ -5,6 +5,7 @@ import gym
 import math
 from torch.optim.lr_scheduler import _LRScheduler
 import os
+import struct
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -130,14 +131,20 @@ def set_global_seeds(seed):
     """
     set the seed for python random, tensorflow, numpy and gym spaces
 
-    :param seed: (int) the seed
+    :param seed: (int or None) the seed
     """
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
+    if seed is None:
+        # seed from os.urandom if no seed given
+        seed, = struct.unpack('<I', os.urandom(4))
+
+    # we use this rng to create a separate seed for each random stream
+    rng = np.random.RandomState(seed)
+    torch.manual_seed(rng.randint((1 << 63) - 1))
+    np.random.seed(rng.randint((1 << 63) - 1))
+    random.seed(rng.randint((1 << 63) - 1))
     # prng was removed in latest gym version
     if hasattr(gym.spaces, 'prng'):
-        gym.spaces.prng.seed(seed)
+        gym.spaces.prng.seed(rng.randint((1 << 63) - 1))
 
 
 def accuracy(output, target, topk=(1,)):
