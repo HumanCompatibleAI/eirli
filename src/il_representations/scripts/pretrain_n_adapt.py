@@ -272,7 +272,16 @@ def base_config():
     stages_to_run = StagesToRun.REPL_ONLY
     spec = {
         # DO NOT ADD ANYTHING TO THESE BY DEFAULT.
-        # They will affect unit tests (and also every other use of the script).
+        # They will affect unit tests and also every other use of the script.
+        # If you really want to make a permanent change to a default, then
+        # change the `repl`, `il_train`, `il_test`, etc. dictionaries at the
+        # *top level of this config*, rather than within `spec` (which is
+        # *intended for Tune grid search).
+        'repl': {},
+        'il_train': {},
+        'il_test': {},
+        'benchmark': {},
+
         # Example grid search config for benchmark:
         # 'benchmark': tune.grid_search(
         #     # MAGICAL configs
