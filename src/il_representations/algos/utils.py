@@ -139,12 +139,12 @@ def set_global_seeds(seed):
 
     # we use this rng to create a separate seed for each random stream
     rng = np.random.RandomState(seed)
-    torch.manual_seed(rng.randint((1 << 63) - 1))
-    np.random.seed(rng.randint((1 << 63) - 1))
-    random.seed(rng.randint((1 << 63) - 1))
+    torch.manual_seed(rng.randint((1 << 31) - 1))
+    np.random.seed(rng.randint((1 << 31) - 1))
+    random.seed(rng.randint((1 << 31) - 1))
     # prng was removed in latest gym version
     if hasattr(gym.spaces, 'prng'):
-        gym.spaces.prng.seed(rng.randint((1 << 63) - 1))
+        gym.spaces.prng.seed(rng.randint((1 << 31) - 1))
 
 
 def accuracy(output, target, topk=(1,)):
