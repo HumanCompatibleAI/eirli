@@ -205,11 +205,16 @@ class ActionConditionedVectorDecoder(LossDecoder):
         else:
             hidden = torch.mean(processed_actions, dim=1)
 
-        action_encoding_vector = torch.squeeze(hidden)
+        if len(z.shape) == len(hidden.shape):
+            action_encoding_vector = hidden
+        else:
+            action_encoding_vector = torch.squeeze(hidden)
         assert action_encoding_vector.shape[0] == batch_dim, \
             action_encoding_vector.shape
 
         # Concatenate context representation and action representation and map to a merged representation
+        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
+                                                                  f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
