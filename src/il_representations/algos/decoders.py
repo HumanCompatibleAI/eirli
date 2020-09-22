@@ -159,7 +159,7 @@ class ActionPredictionHead(LossDecoder):
         super().__init__(representation_dim, projection_shape, sample)
 
         # Use Stable Baseline's logic for constructing a SB action_dist from an action space
-        self.action_dist = make_proba_distribution(action_space)
+        self.action_dist = make_proba_distribution(action_space, dist_kwargs=dict(device=torch.device("cuda" if torch.cuda.is_available() else "cpu")))
         latents_to_dist_params = self.action_dist.proba_distribution_net(2*representation_dim)
         self.param_mappings = dict()
 
