@@ -7,19 +7,12 @@ you pass it)."""
 import os
 import sys
 
-import xvfbwrapper
-
 from il_representations.scripts.pretrain_n_adapt import main
 
 if __name__ == '__main__':
     os.chdir(os.path.expanduser('~/il-rep/'))
-    x_server = xvfbwrapper.Xvfb()
-    x_server.start()
-    try:
-        main([
-            # the autoscaler always launches a Ray server on this address;
-            # we want to connect to it instead of making a new one
-            sys.argv[0], 'run', 'with',
-            'ray_init_kwargs.address=localhost:6379', *sys.argv[1:]])
-    finally:
-        x_server.stop()
+    main([
+        # the autoscaler always launches a Ray server on this address;
+        # we want to connect to it instead of making a new one
+        sys.argv[0], 'run', 'with',
+        'ray_init_kwargs.address=localhost:6379', *sys.argv[1:]])

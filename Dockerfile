@@ -50,7 +50,6 @@ ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
 
 # This is a simple init copied from Conda dockerfile. Zombie-reaping
 # capabilities are probably useful for any Dockerfile.
-# FIXME(sam): not using this at the moment. Consider adding it back in.
 ENV TINI_VERSION v0.16.1
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
 RUN chmod +x /usr/bin/tini
@@ -68,5 +67,5 @@ RUN conda update -n base -c defaults conda \
 COPY requirements.txt /root/requirements.txt
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
 
-# Always run under xvfb
-ENTRYPOINT [ "/bin/sh", "-c", "xvfb-run -a -- $@", "" ]
+# Always run under simple init
+ENTRYPOINT [ "/usr/bin/tini", "--" ]
