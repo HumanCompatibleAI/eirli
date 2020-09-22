@@ -8,9 +8,11 @@ import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 import torch
 from torch import nn
+from pyro.distributions import Delta
 
+from gym import spaces
 from il_representations.algos.utils import independent_multivariate_normal
-
+import functools
 
 """
 Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
@@ -20,6 +22,7 @@ The only real complex thing to note here is the MomentumEncoder architecture, wh
 and updates weights of one as a slowly moving average of the other. Note that this bit of momentum is separated 
 from the creation and filling of a queue of representations, which is handled by the BatchExtender module 
 """
+
 
 
 def compute_output_shape(observation_space, layers):
@@ -100,50 +103,63 @@ def warn_on_non_image_tensor(x):
             f"[{v_min}, {v_max}])")
 
 
+
+NETWORK_ARCHITECTURE_DEFINITIONS = {
+    'BasicCNN': [
+            {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
+            {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
+        ],
+    'MAGICALCNN': [
+            {'out_dim': 32, 'kernel_size': 5, 'stride': 1, 'padding': 2},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+        ]
+}
+
+
 class BasicCNN(nn.Module):
     """Similar to the CNN from the Nature DQN paper."""
     def __init__(self, observation_space, representation_dim):
         super().__init__()
 
         self.input_channel = observation_space.shape[0]
-        shared_network_layers = []
+        conv_layers = []
+        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS['BasicCNN']
 
         # first apply convolution layers + flattening
-        conv_arch = [
-            {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
-            {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-            {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
-        ]
-        for layer_spec in conv_arch:
-            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
+
+        for layer_spec in self.architecture_definition:
+            conv_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
                                                    kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
-            shared_network_layers.append(nn.ReLU())
+            conv_layers.append(nn.ReLU())
             self.input_channel = layer_spec['out_dim']
-        shared_network_layers.append(nn.Flatten())
+        self.convolution = nn.Sequential(*conv_layers)
+        dense_layers = []
+        dense_layers.append(nn.Flatten())
 
         # now customise the dense layers to handle an appropriate-sized conv output
-        dense_in_dim, = compute_output_shape(observation_space, shared_network_layers)
-        dense_arch = [
-            # this input size is accurate for Atari, but will be ovewritten for other envs
-            {'in_dim': 64*7*7},
-        ]
-        dense_arch[0]['in_dim'] = dense_in_dim
-        dense_arch[-1]['out_dim'] = representation_dim
-
+        dense_in_dim, = compute_output_shape(observation_space, conv_layers + [nn.Flatten()])
+        dense_arch = [{'in_dim': dense_in_dim, 'out_dim': representation_dim}]
+        print(dense_arch)
         # apply the dense layers
         for ind, layer_spec in enumerate(dense_arch[:-1]):
-            shared_network_layers.append(nn.Linear(layer_spec['in_dim'], layer_spec['out_dim']))
-            shared_network_layers.append(nn.ReLU())
+            dense_layers.append(nn.Linear(layer_spec['in_dim'], layer_spec['out_dim']))
+            dense_layers.append(nn.ReLU())
         # no ReLU after last layer
         last_layer_spec = dense_arch[-1]
-        shared_network_layers.append(
+        dense_layers.append(
             nn.Linear(last_layer_spec['in_dim'], last_layer_spec['out_dim']))
 
-        self.shared_network = nn.Sequential(*shared_network_layers)
+        self.dense_network = nn.Sequential(*dense_layers)
 
     def forward(self, x):
         warn_on_non_image_tensor(x)
-        return self.shared_network(x)
+        conved_image = self.convolution(x)
+        representation = self.dense_network(conved_image)
+        return representation
 
 
 class MAGICALCNN(nn.Module):
@@ -193,22 +209,17 @@ class MAGICALCNN(nn.Module):
             return layers
 
         w = width
-        conv_out_dim = 64 * w
-        conv_layers = [
-            # at input: (96, 96) (assuming MAGICAL; for other domains it will
-            # be 84x84)
-            *conv_block(observation_space.shape[0], 32 * w, kernel_size=5, stride=1, padding=2),
-            # now: (96, 96)
-            *conv_block(32 * w, 64 * w, kernel_size=3, stride=2, padding=1),
-            # now: (48, 48)
-            *conv_block(64 * w, 64 * w, kernel_size=3, stride=2, padding=1),
-            # now: (24, 24)
-            *conv_block(64 * w, 64 * w, kernel_size=3, stride=2, padding=1),
-            # now: (12, 12)
-            *conv_block(64 * w, conv_out_dim, kernel_size=3, stride=2, padding=1),
-            # now (6,6)
-            nn.Flatten()
-        ]
+        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS['MAGICALCNN']
+        conv_layers = []
+        in_dim = observation_space.shape[0]
+        for layer_definition in self.architecture_definition:
+            conv_layers += conv_block(in_dim,
+                                      layer_definition['out_dim']*w,
+                                      kernel_size=layer_definition['kernel_size'],
+                                      stride=layer_definition['stride'],
+                                      padding=layer_definition['padding'])
+            in_dim = layer_definition['out_dim']*w
+        conv_layers.append(nn.Flatten())
 
         # another FC layer to make feature maps the right size
         fc_in_size, = compute_output_shape(observation_space, conv_layers)
@@ -230,7 +241,6 @@ class MAGICALCNN(nn.Module):
     def forward(self, x):
         warn_on_non_image_tensor(x)
         return self.shared_network(x)
-
 
 # string names for convolutional networks; this makes it easier to choose
 # between them from the command line
@@ -286,7 +296,8 @@ class DeterministicEncoder(Encoder):
 
     def forward(self, x, traj_info):
         features = self.network(x)
-        return independent_multivariate_normal(loc=features, scale=self.scale_constant)
+        return independent_multivariate_normal(mean=features,
+                                               stddev=self.scale_constant)
 
 
 class StochasticEncoder(Encoder):
@@ -312,17 +323,133 @@ class StochasticEncoder(Encoder):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
-        return independent_multivariate_normal(loc=mean, scale=scale)
+        return independent_multivariate_normal(mean=mean,
+                                               stddev=scale)
 
 
-class DynamicsEncoder(DeterministicEncoder):
-    # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
+def infer_action_shape_info(action_space, action_embedding_dim):
+    """
+    Creates an action_processor, processed_action_dim and action_shape based on the action_space
+    and the action_embedding_dim
+    """
+    # Machinery for turning raw actions into vectors.
+
+    if isinstance(action_space, spaces.Discrete):
+        # If actions are discrete, this is done via an Embedding.
+        action_processor = nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
+        processed_action_dim = action_embedding_dim
+        action_shape = ()  # discrete actions are just numbers
+    elif isinstance(action_space, spaces.Box):
+        # If actions are continuous/box, this is done via a simple flattening.
+        # We assume the first two dimensions are batch and timestep
+        # We want to flatten the representations of each timestep in a batch, to be
+        # either passed into a LSTM or else averaged to get an
+        # aggregated-across-timestep representation
+        action_processor = functools.partial(torch.flatten, start_dim=2)
+        processed_action_dim = np.prod(action_space.shape)
+        action_shape = action_space.shape
+    else:
+        raise NotImplementedError("Action conditioning is only currently implemented "
+                                  "for Discrete and Box action spaces")
+    return processed_action_dim, action_shape, action_processor
+
+
+class ActionEncodingEncoder(DeterministicEncoder):
+    """
+    An encoder that uses DeterministicEncoder logic for encoding the `context` and `target` pixel frames,
+    but which encodes an `extra_context` object containing actions into a vector form
+    """
+    def __init__(self, obs_space, representation_dim, action_space, obs_encoder_cls=None, action_encoding_dim=48,
+                 action_encoder_layers=1, action_embedding_dim=5, use_lstm=False):
+        super().__init__(obs_space, representation_dim, obs_encoder_cls)
+
+        self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
+                                                                                       action_embedding_dim)
+        # Machinery for aggregating information from an arbitrary number of actions into a single vector,
+        # either through a LSTM, or by simply averaging the vector representations of the k states together
+        if use_lstm:
+            # If Using a LSTM, we take in actions of shape (processed_action_dim)
+            # and produce ones of (action_encoding_dim)
+            self.action_encoder = nn.LSTM(self.processed_action_dim, action_encoding_dim,
+                                          action_encoder_layers, batch_first=True)
+        else:
+            # If not using LSTM, action_encoding_dim is the same as processed_action_dim, because
+            # we just take an elementwise average
+            self.action_encoder = None
+
+    def encode_extra_context(self, x, traj_info):
+        actions = x
+        assert actions.ndim >= 2, actions.shape
+        assert actions.shape[2:] == self.action_shape, actions.shape
+        batch_dim, time_dim = actions.shape[:2]
+
+        # Process each batch-vectorized set of actions, and then stack
+        # processed_actions shape - [Batch-dim, Seq-dim, Processed-Action-Dim]
+        processed_actions = self.action_processor(actions)
+        assert processed_actions.shape[:2] == (batch_dim, time_dim), \
+            processed_actions.shape
+
+        # Encode multiple actions into a single action vector (format based on LSTM)
+        if self.action_encoder is not None:
+            output, (hidden, cell) = self.action_encoder(processed_actions)
+        else:
+            hidden = torch.mean(processed_actions, dim=1)
+
+        action_encoding_vector = torch.squeeze(hidden)
+        assert action_encoding_vector.shape[0] == batch_dim, \
+            action_encoding_vector.shape
+
+        # Return a Dirac Delta distribution around this specific encoding vector
+        # Since we don't currently have an implementation for learned std deviation
+        return Delta(action_encoding_vector)
+
+
+class VAEEncoder(StochasticEncoder):
+    """
+    An encoder that uses StochasticEncoder's logic for encoding
+    context, but for target, just returns a delta distribution
+    around ground truth pixels, since we don't want to vector-encode
+    them.
+    """
+
+    def encode_context(self, x, traj_info):
+        # Context here is the current frame, which should be vector-encoded
+        return self.forward(x, traj_info)
+
     def encode_target(self, x, traj_info):
-        return independent_multivariate_normal(loc=x, scale=0)
+        # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
+        # So we just create a Dirac Delta distribution around the pixel values
+        return Delta(x)
+
+
+class DynamicsEncoder(ActionEncodingEncoder):
+    """
+    Identical to VAE encoder, but inherits from ActionEncodingEncoder,
+    so we get that class's additional implementation
+    of `encode_extra_context`.
+    """
+
+    def encode_context(self, x, traj_info):
+        # Context here is the current frame, which should be vector-encoded
+        return self.forward(x, traj_info)
+
+    def encode_target(self, x, traj_info):
+        # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
+        # So we just create a Dirac Delta distribution around the pixel values
+        return Delta(x)
 
 
 class InverseDynamicsEncoder(DeterministicEncoder):
     def encode_extra_context(self, x, traj_info):
+        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
+        return self.forward(x, traj_info)
+
+    def encode_target(self, x, traj_info):
+        # X here consists of the true actions, which is the "target" and thus doesn't get encoded
+        return Delta(x)
+
+    def encode_context(self, x, traj_info):
+        # X here consists of the initial frame
         return self.forward(x, traj_info)
 
 
@@ -354,7 +481,8 @@ class MomentumEncoder(Encoder):
         with torch.no_grad():
             self._momentum_update_key_encoder()
             z_dist = self.key_encoder(x, traj_info)
-            return MultivariateNormal(loc=z_dist.loc.detach(), covariance_matrix=z_dist.covariance_matrix.detach())
+            return independent_multivariate_normal(z_dist.mean.detach(),
+                                                   z_dist.stddev.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
@@ -415,7 +543,7 @@ class RecurrentEncoder(Encoder):
 
     def forward(self, x, traj_info):
         # Reshape the input z to be (some number of) batch_size-length trajectories
-        z = self.single_frame_encoder(x, traj_info).loc
+        z = self.single_frame_encoder(x, traj_info).mean
         stacked_trajectories, mask_lengths = self._reshape_and_stack(z, traj_info)
         hiddens, final = self.context_rnn(stacked_trajectories)
         # Pull out only the hidden states corresponding to actual non-padding inputs, and concat together
@@ -426,5 +554,6 @@ class RecurrentEncoder(Encoder):
 
         mean = self.mean_layer(flattened_hiddens)
         scale = self.scale_layer(flattened_hiddens)
-        return independent_multivariate_normal(loc=mean, scale=scale)
+        return independent_multivariate_normal(mean=mean,
+                                               stddev=scale)
 

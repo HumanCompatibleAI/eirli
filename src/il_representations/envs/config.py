@@ -8,7 +8,7 @@ benchmark_ingredient = Ingredient('benchmark')
 @benchmark_ingredient.config
 def bench_defaults():
     # set this to "atari", "magical", "dm_control"
-    benchmark_name = 'dm_control'
+    benchmark_name = 'magical'
     # should venvs be parallel?
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
@@ -45,7 +45,7 @@ def bench_defaults():
         'ClusterColour': 'data/magical/cluster-colour/',
         'ClusterShape': 'data/magical/cluster-shape/',
     }
-    magical_env_prefix = 'MatchRegions'
+    magical_env_prefix = 'MoveToRegion'
     magical_preproc = 'LoResCHW4E'
     # this should probably be True for all BC runs, False for GAIL runs
     # (although TBH it doesn't really matter for GAIL)
@@ -84,5 +84,5 @@ def bench_defaults():
         'BreakoutNoFrameskip-v4':
         "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
         'PongNoFrameskip-v4':
-        "tests/data/atari/pong.npz",
+        "data/atari/pong.npz",
     }
