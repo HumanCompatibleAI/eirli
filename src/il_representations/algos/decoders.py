@@ -175,6 +175,8 @@ class ActionPredictionHead(LossDecoder):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
+        print(z.device)
+        print(z_future.device)
         import pdb; pdb.set_trace()
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
