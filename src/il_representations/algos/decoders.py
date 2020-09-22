@@ -170,19 +170,20 @@ class ActionPredictionHead(LossDecoder):
         else:
             self.param_mappings['action_logits'] = latents_to_dist_params
 
+        print(torch.cuda.is_available())
+        print("Param mappings device: {}".format(self.param_mappings['mean_actions']._parameters['weight'].device))
+
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
-        print(z.device)
-        print(z_future.device)
-        print(torch.cuda.is_available())
-        print(torch.cuda.get_device_name(0))
-        import pdb; pdb.set_trace()
+
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
-
+        print("Z device: {}".format(z_merged.device))
+        print("Param mappings device: {}".format(self.param_mappings['mean_actions']._parameters['weight'].device))
+        print(torch.cuda.is_available())
         if 'action_logits' in self.param_mappings:
             self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
         elif 'mean_actions' in self.param_mappings:
