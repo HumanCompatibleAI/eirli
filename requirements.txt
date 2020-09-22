@@ -22,6 +22,7 @@ jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
 seaborn~=0.11.0
 pyro-ppl~=1.4.0
+xvfbwrapper~=0.2.9
 # deps for Ray + GCP (see Ray issue #10724)
 cryptography~=3.1
 # my version of google-api-python-client fixes issue #873 in that repo (which

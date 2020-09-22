@@ -220,6 +220,8 @@ head_start_ray_commands:
     --port=6379
     --object-manager-port=8076
     --autoscaling-config=~/ray_bootstrap_config.yaml
+    --block &
+    disown
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
   - ray stop
@@ -228,3 +230,5 @@ worker_start_ray_commands:
     xvfb-run -a -s "-maxclients 1024 -screen 0 640x480x8" ray start
     --address=$RAY_HEAD_IP:6379
     --object-manager-port=8076
+    --block &
+    disown
