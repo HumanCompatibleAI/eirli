@@ -149,6 +149,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
                  action_encoder_layers=1, learn_scale=False, action_embedding_dim=5, use_lstm=False):
         super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
         self.learn_scale = learn_scale
+        print(action_space)
 
         # Machinery for turning raw actions into vectors. If actions are discrete, this is done via an Embedding.
         # If actions are continuous/box, this is done via a simple flattening.
@@ -189,6 +190,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         actions = extra_context
+        print(actions.shape)
+        print('action shape', self.action_shape)
         assert actions.ndim >= 2, actions.shape
         assert actions.shape[2:] == self.action_shape, actions.shape
         batch_dim, time_dim = actions.shape[:2]

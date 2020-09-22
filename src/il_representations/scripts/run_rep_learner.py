@@ -25,7 +25,7 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
+    algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     n_envs = 1
     demo_timesteps = 5000
@@ -113,6 +113,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
 
     # setup environment & dataset
     venv = auto_env.load_vec_env()
+    print('venv action space', venv.action_space)
     color_space = auto_env.load_color_space()
     if use_random_rollouts:
         dataset_dict = get_random_traj(venv=venv)
