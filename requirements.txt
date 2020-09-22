@@ -21,6 +21,7 @@ Pillow~=7.2.0
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
 seaborn~=0.11.0
+pyro-ppl~=1.4.0
 # deps for Ray + GCP (see Ray issue #10724)
 cryptography~=3.1
 # my version of google-api-python-client fixes issue #873 in that repo (which
@@ -29,7 +30,7 @@ cryptography~=3.1
 git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
 
 # imitation needs special branch as of 2020-08-17
-git+git://github.com/HumanCompatibleAI/imitation@711b9f20c4542e930c6e4ac97cbfea14c7c95624#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@1524b44a2d5dd837eda61115b140c9ff59888431#egg=imitation
 git+git://github.com/HumanCompatibleAI/stable-baselines3.git@e00331bc832ea109a197903941d59011c3cd3a3a#egg=stable-baselines3
 
 # environments
