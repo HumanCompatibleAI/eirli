@@ -173,6 +173,8 @@ class ActionPredictionHead(LossDecoder):
         if torch.cuda.is_available():
             for k in self.param_mappings:
                 self.param_mappings[k].to(torch.cuda.current_device())
+            if 'log_std' in self.param_mappings:
+                print(self.param_mappings['log_std'].device)
 
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
@@ -187,8 +189,8 @@ class ActionPredictionHead(LossDecoder):
             self.action_dist.proba_distribution(action_logits)
         elif 'mean_actions' in self.param_mappings:
             mean_actions = self.param_mappings['mean_actions'](z_merged)
-            print(mean_actions.device)
-            print(self.param_mappings['log_std'].device)
+            print("Mean actions device: {}".format(mean_actions.device))
+            print("Log std device: {}".format(self.param_mappings['log_std'].device))
             self.action_dist.proba_distribution(mean_actions,
                                                 self.param_mappings['log_std'])
 
