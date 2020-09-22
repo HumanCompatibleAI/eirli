@@ -335,7 +335,7 @@ def base_config():
 
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
-                               cpu=5,
+                               cpu=4,
                                gpu=0.32,
                            ))  # queue_trials=True)
     ray_init_kwargs = dict(
@@ -457,9 +457,10 @@ def cfg_tune_moco():
 
 
 @chain_ex.named_config
-def cfg_base_3seed_5cpu_pt3gpu():
+def cfg_base_3seed_4cpu_pt3gpu():
     """Basic config that does three samples per config, using 5 CPU cores and
     0.3 of a GPU."""
+    use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            resources_per_trial=dict(
                                cpu=5,
