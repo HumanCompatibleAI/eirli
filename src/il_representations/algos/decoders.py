@@ -170,8 +170,9 @@ class ActionPredictionHead(LossDecoder):
         else:
             self.param_mappings['action_logits'] = latents_to_dist_params
 
-        print(torch.cuda.is_available())
-        print("Param mappings device: {}".format(self.param_mappings['mean_actions']._parameters['weight'].device))
+        if torch.cuda.is_available():
+            for k in self.param_mappings:
+                self.param_mappings[k].to(torch.cuda.current_device())
 
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
@@ -181,9 +182,6 @@ class ActionPredictionHead(LossDecoder):
 
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
-        print("Z device: {}".format(z_merged.device))
-        print("Param mappings device: {}".format(self.param_mappings['mean_actions']._parameters['weight'].device))
-        print(torch.cuda.is_available())
         if 'action_logits' in self.param_mappings:
             self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
         elif 'mean_actions' in self.param_mappings:
