@@ -339,7 +339,6 @@ def base_config():
                                gpu=0.32,
                            ))  # queue_trials=True)
     ray_init_kwargs = dict(
-        num_cpus=2,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
@@ -745,6 +744,11 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     logging.info(rep_run._get_trial_paths())
 
 
-if __name__ == '__main__':
+def main(argv=None):
+    # this function is here because it gets called from other scripts
     chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
-    chain_ex.run_commandline()
+    chain_ex.run_commandline(argv)
+
+
+if __name__ == '__main__':
+    main()
