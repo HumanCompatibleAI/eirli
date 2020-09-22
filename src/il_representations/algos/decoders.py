@@ -172,6 +172,7 @@ class ActionPredictionHead(LossDecoder):
 
         if torch.cuda.is_available():
             for k in self.param_mappings:
+                print("Moving {} to cuda".format(k))
                 self.param_mappings[k].to(torch.cuda.current_device())
             if 'log_std' in self.param_mappings:
                 print(self.param_mappings['log_std'].device)
