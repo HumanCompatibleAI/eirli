@@ -183,9 +183,13 @@ class ActionPredictionHead(LossDecoder):
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
         if 'action_logits' in self.param_mappings:
-            self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
+            action_logits = self.param_mappings['action_logits'](z_merged)
+            self.action_dist.proba_distribution(action_logits)
         elif 'mean_actions' in self.param_mappings:
-            self.action_dist.proba_distribution(self.param_mappings['mean_actions'](z_merged),
+            mean_actions = self.param_mappings['mean_actions'](z_merged)
+            print(mean_actions.device)
+            print(self.param_mappings['log_std'].device)
+            self.action_dist.proba_distribution(mean_actions,
                                                 self.param_mappings['log_std'])
 
         return self.action_dist
