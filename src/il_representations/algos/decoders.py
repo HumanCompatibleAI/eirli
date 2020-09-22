@@ -171,6 +171,11 @@ class ActionPredictionHead(LossDecoder):
             self.param_mappings['action_logits'] = latents_to_dist_params
 
         if torch.cuda.is_available():
+            print("Log std device before move to Cuda: {}".format(self.param_mappings['log_std'].device))
+            self.param_mappings['log_std'].to(torch.device('cuda'))
+            print("Log std device after in-place move to Cuda: {}".format(self.param_mappings['log_std'].device))
+            self.param_mappings['log_std'] = self.param_mappings['log_std'].to(torch.device('cuda'))
+            print("Log std device after reassigned move to Cuda: {}".format(self.param_mappings['log_std'].device))
             for k in self.param_mappings:
                 print("Moving {} to cuda".format(k))
                 self.param_mappings[k].to(torch.device('cuda'))
