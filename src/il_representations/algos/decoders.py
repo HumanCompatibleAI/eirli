@@ -174,8 +174,13 @@ class ActionPredictionHead(LossDecoder):
             for k in self.param_mappings:
                 print("Moving {} to cuda".format(k))
                 self.param_mappings[k].to(torch.cuda.current_device())
+
             if 'log_std' in self.param_mappings:
+                print("Log std:")
                 print(self.param_mappings['log_std'].device)
+            if 'mean_actions' in self.param_mappings:
+                print("Mean actions:")
+                print(next(self.param_mappings['mean_actions'].parameters()).is_cuda)
 
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
