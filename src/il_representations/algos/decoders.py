@@ -177,9 +177,12 @@ class ActionPredictionHead(LossDecoder):
         z_future = self.get_vector(extra_context)
         print(z.device)
         print(z_future.device)
+        print(torch.cuda.is_available())
+        print(torch.cuda.get_device_name(0))
         import pdb; pdb.set_trace()
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
+
         if 'action_logits' in self.param_mappings:
             self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
         elif 'mean_actions' in self.param_mappings:
