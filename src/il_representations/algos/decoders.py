@@ -170,10 +170,12 @@ class ActionPredictionHead(LossDecoder):
         else:
             self.param_mappings['action_logits'] = latents_to_dist_params
 
+
     def decode_context(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
+        import pdb; pdb.set_trace()
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
         if 'action_logits' in self.param_mappings:
