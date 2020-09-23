@@ -67,5 +67,9 @@ RUN conda update -n base -c defaults conda \
 COPY requirements.txt /root/requirements.txt
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
 
+# This is useful for making the X server work (but will break unless the X
+# server is on the right port)
+ENV DISPLAY=:0
+
 # Always run under simple init
 ENTRYPOINT [ "/usr/bin/tini", "--" ]
