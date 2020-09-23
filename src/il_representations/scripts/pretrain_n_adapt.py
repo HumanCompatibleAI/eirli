@@ -665,12 +665,27 @@ def cfg_tune_inverse_dynamics():
 @chain_ex.named_config
 def cfg_base_3seed_4cpu_pt3gpu():
     """Basic config that does three samples per config, using 5 CPU cores and
-    0.3 of a GPU."""
+    0.3 of a GPU. Reasonable idea for, e.g., GAIL on svm/perceptron."""
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            resources_per_trial=dict(
                                cpu=5,
                                gpu=0.32,
+                           ))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_base_3seed_1cpu_pt2gpu():
+    """Another config that uses only one CPU per run, and .2 of a GPU. Good for
+    running GPU-intensive algorithms (repL, BC) on GCP."""
+    use_skopt = False
+    tune_run_kwargs = dict(num_samples=3,
+                           resources_per_trial=dict(
+                               cpu=1,
+                               gpu=0.19,
                            ))
 
     _ = locals()
