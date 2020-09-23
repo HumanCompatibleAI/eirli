@@ -1,119 +1,151 @@
 from il_representations.algos import TemporalOffsetPairConstructor
 from il_representations.algos.encoders import ActionEncodingEncoder
+from il_representations.scripts.run_rep_learner import represent_ex
 
 # TODO make it possible to modify algorithms essential components albeit with warning
 
 
 # Assume changes such that momentum=True, projection=True are true for all algorithms
+@represent_ex.named_config
+def condition_one_temporal_cpc_random():
+    # Temporal CPC with random demonstrations
+    algo = 'TemporalCPC'
+    use_random_rollouts = True
+    _ = locals()
+    del _
 
-# 1 - TemporalCPC - Random
-conf1 = {'algo': 'TemporalCPC',
-         'use_random_rollouts': True}
 
-# 2 - Temporal CPC
+@represent_ex.named_config
+def condition_two_temporal_cpc():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
-conf2 = {'algo': 'TemporalCPC',
-         'use_random_rollouts': False}
 
-# 3 - Augmentation CPC
+@represent_ex.named_config
+def condition_three_augmentation_cpc():
+    # TODO figure out how this is different from MoCo
+
 
 # Is this just MoCO?
 
-# 4 - Temporal AutoEncoder
-conf4 = {'algo': 'VariationalAutoencoder',
-        'algo_params': {
-            'target_pair_constructor': TemporalOffsetPairConstructor, # make this actually parse strings correctly,
+@represent_ex.named_config
+def condition_four_temporal_autoencoder():
+    algo = 'VariationalAutoencoder'
+    use_random_rollouts = False
+    algo_params = {
+            'target_pair_constructor': TemporalOffsetPairConstructor,
+            'loss_kwargs': {'beta': 0}}
+    _ = locals()
+    del _
+
+
+
+@represent_ex.named_config
+def condition_five_autoencoder():
+    algo = 'VariationalAutoencoder'
+    use_random_rollouts = False
+    algo_params = {
             'loss_kwargs': {'beta': 0},
-        'use_random_rollouts': False
-        }}
+                    }
+    _ = locals()
+    del _
 
-# 5 - Autoencoder
 
-conf5 = {'algo': 'VariationalAutoencoder',
-        'algo_params': {
-            'loss_kwargs': {'beta': 0}
-        },
-        'use_random_rollouts': False}
+@represent_ex.named_config
+def condition_six_vae():
+    algo = 'VariationalAutoencoder'
+    use_random_rollouts = False
+    algo_params = {
+        'loss_kwargs': {'beta': 0.01}} # TODO What is a good default beta here?
+    _ = locals()
+    del _
 
-# 6 - VAE
 
-conf6 = {'algo': 'VariationalAutoencoder', 'use_random_rollouts': False}
+@represent_ex.named_config
+def condition_seven_temporal_ceb_lowbeta():
+    algo = 'FixedVarianceCEB'
+    algo_params = {'loss_kwargs': {'beta': 0.01}}
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
-# 7 - TemporalCEB - Beta = 0.01
-conf7 = {'algo': 'FixedVarianceCEB',
-        'algo_params': {
-            'loss_kwargs': {'beta': 0.01}
-        },
-         'use_random_rollouts': False}
+@represent_ex.named_config
+def condition_eight_temporal_ceb_highbeta():
+    algo = 'FixedVarianceCEB'
+    algo_params = {'loss_kwargs': {'beta': 1.0}}
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
-# 8 - TemporalCEB - Beta = 1
 
-conf8 = {'algo': 'FixedVarianceCEB', # Currently CEB is temporal by default
-        'algo_params': {
-            'loss_kwargs': {'beta': 1.0}
-        },
-         'use_random_rollouts': False}
 
-# 9 - TemporalVAE - Beta = 0.01
-conf9 = {'algo': 'VariationalAutoencoder',
-        'algo_params': {
-            'target_pair_constructor': TemporalOffsetPairConstructor, # TODO make this actually parse strings correctly,
-            'loss_kwargs': {'beta': 0.01}
-        },
-         'use_random_rollouts': False}
+@represent_ex.named_config
+def condition_nine_temporal_vae_lowbeta():
+    algo = 'VariationalAutoencoder'
+    algo_params = {'target_pair_constructor': TemporalOffsetPairConstructor, # TODO make this actually parse strings correctly,
+                    'loss_kwargs': {'beta': 0.01}}
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
-# 10 - TemporalVAE - Beta = 1
-conf10 = {'algo': 'VariationalAutoencoder',
-        'algo_params': {
-            'target_pair_constructor': TemporalOffsetPairConstructor, # TODO make this actually parse strings correctly,
-            'loss_kwargs': {'beta': 1.0}
-        },
-          'use_random_rollouts': False}
+@represent_ex.named_config
+def condition_ten_temporal_vae_highbeta():
+    algo = 'VariationalAutoencoder'
+    algo_params = {'target_pair_constructor': TemporalOffsetPairConstructor, # TODO make this actually parse strings correctly,
+                    'loss_kwargs': {'beta': 1.0}}
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
-# 11 - TemporalCPC - (t+2)
-conf11 = {'algo': 'TemporalCPC',
-         'use_random_rollouts': False,
-         'algo_params': {
-             'target_pair_constructor_kwargs': {
-                 'temporal_offset': 2
-             }
-         }}
 
-# 12 - TemporalCPC - (t+5)
-conf12 = {'algo': 'TemporalCPC',
-         'use_random_rollouts': False,
-         'algo_params': {
-             'target_pair_constructor_kwargs': {
-                 'temporal_offset': 5
-             }
-         }}
+@represent_ex.named_config
+def condition_eleven_temporal_cpc_2():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor_kwargs': {'temporal_offset': 2}}
+    _ = locals()
+    del _
 
-# 13 - Action Conditioned TemporalCPC - (t+1)
-conf13 = {'algo': 'ActionConditionedTemporalCPC',
-         'use_random_rollouts': False
-          }
 
-# 14 - Action Conditioned TemporalCPC - (t+2)
-conf14 = {'algo': 'ActionConditionedTemporalCPC',
-         'use_random_rollouts': False,
-          'algo_params': {
-              'target_pair_constructor_kwargs': {
-                  'temporal_offset': 2
-              }
-          }}
+@represent_ex.named_config
+def condition_twelve_temporal_cpc_5():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor_kwargs': {'temporal_offset': 5}}
+    _ = locals()
+    del _
 
-# 15 - Action Conditioned TemporalCPC - (t+5)
-conf15 = {'algo': 'ActionConditionedTemporalCPC',
-         'use_random_rollouts': False,
-          'algo_params': {
-              'target_pair_constructor_kwargs': {
-                  'temporal_offset': 5
-              }
-          }}
-# 16 - Action Conditioned TemporalVAE - (t+1)
 
-conf16 = {
-    'algo': 'ActionConditionedTemporalVAE',
-    'use_random_rollouts': False,
+@represent_ex.named_config
+def condition_thirteen_ac_temporal_cpc():
+    algo = 'ActionConditionedTemporalCPC'
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
-}
+
+@represent_ex.named_config
+def condition_fourteen_ac_temporal_cpc_2():
+    algo = 'ActionConditionedTemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor_kwargs': {'temporal_offset': 2}}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def condition_fifteen_ac_temporal_cpc_5():
+    algo = 'ActionConditionedTemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor_kwargs': {'temporal_offset': 5}}
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def condition_sixteen_ac_temporal_vae():
+    algo = 'ActionConditionedTemporalVAE'
+    use_random_rollouts = False
+    _ = locals()
+    del _
