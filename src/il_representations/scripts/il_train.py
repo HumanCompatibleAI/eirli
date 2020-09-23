@@ -74,7 +74,7 @@ il_train_ex = Experiment('il_train', ingredients=[
 @il_train_ex.config
 def default_config():
     # manually set number of Torch threads
-    torch_num_threads = None  # noqa: F841
+    torch_num_threads = 1  # noqa: F841
     # device to place all computations on
     device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'

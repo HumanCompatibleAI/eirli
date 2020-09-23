@@ -10,6 +10,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
+import torch
 
 from il_representations import algos
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
@@ -27,6 +28,7 @@ represent_ex = Experiment('repl',
 def default_config():
     algo = "MoCo"
     use_random_rollouts = False
+    torch_num_threads = 1
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
@@ -99,9 +101,12 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
+        ppo_timesteps, ppo_finetune, pretrain_epochs, torch_num_threads,
+        _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
+    if torch_num_threads is not None:
+        torch.set_num_threads(torch_num_threads)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
