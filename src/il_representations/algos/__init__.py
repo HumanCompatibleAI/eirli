@@ -1,6 +1,6 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, \
-    RecurrentEncoder, StochasticEncoder, DeterministicEncoder, VAEEncoder, ActionEncodingEncoder, infer_action_shape_info
+from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
+    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, infer_action_shape_info
 from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection, ActionPredictionHead, PixelDecoder
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
@@ -11,6 +11,7 @@ from il_representations.algos.pair_constructors import IdentityPairConstructor, 
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
+
 
 class SimCLR(RepresentationLearner):
     """
@@ -27,7 +28,7 @@ class SimCLR(RepresentationLearner):
 
         super().__init__(env=env,
                          log_dir=log_dir,
-                         encoder=DeterministicEncoder,
+                         encoder=BaseEncoder,
                          decoder=ProjectionHead,
                          loss_calculator=SymmetricContrastiveLoss,
                          augmenter=AugmentContextAndTarget,
@@ -36,19 +37,18 @@ class SimCLR(RepresentationLearner):
 
 
 class TemporalCPC(RepresentationLearner):
-    def __init__(self, env, log_dir, temporal_offset=1, **kwargs):
+    def __init__(self, env, log_dir, **kwargs):
         """
         Implementation of a non-recurrent version of CPC: Contrastive Predictive Coding
         https://arxiv.org/abs/1807.03748
 
         By default, augments only the context, but can be modified to augment both context and target.
         """
-        kwargs_updates = {'target_pair_constructor_kwargs': {'temporal_offset': temporal_offset}}
-        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        kwargs = self.validate_and_update_kwargs(kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
-                         encoder=DeterministicEncoder,
+                         encoder=BaseEncoder,
                          decoder=NoOp,
                          loss_calculator=BatchAsymmetricContrastiveLoss,
                          target_pair_constructor=TemporalOffsetPairConstructor,
@@ -116,6 +116,75 @@ class MoCoWithProjection(RepresentationLearner):
                          batch_extender=QueueBatchExtender,
                          **kwargs)
 
+class BYOL(RepresentationLearner):
+    """Implementation of Bootstrap Your Own Latent: https://arxiv.org/pdf/2006.07733.pdf
+
+    The hyperparameters do _not_ match those in the paper (see Section 3.2).
+    Most notably, the momentum weight is set to a constant, instead of annealed
+    from 0.996 to 1 via cosine scheduling.
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs = self.validate_and_update_kwargs(kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=MomentumEncoder,
+                         decoder=BYOLProjectionHead,
+                         loss_calculator=MSELoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=IdentityPairConstructor,
+                         **kwargs)
+
+
+class CEB(RepresentationLearner):
+    """
+    CEB with variance that is learned by StochasticEncoder
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs_updates = {'encoder_kwargs': {'stochastic': True}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=BaseEncoder,
+                         decoder=NoOp,
+                         loss_calculator=CEBLoss,
+                         augmenter=NoAugmentation,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+
+class FixedVarianceCEB(RepresentationLearner):
+    """
+    CEB with fixed rather than learned variance
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs_updates = {'encoder_kwargs': {'stochastic': True}}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=BaseEncoder,
+                         decoder=NoOp,
+                         loss_calculator=CEBLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
+
+class FixedVarianceTargetProjectedCEB(RepresentationLearner):
+    """
+    CEB with a fixed (rather than learned) variance that also has a projection layer
+    to more closely mimic a learned bilinear loss
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        kwargs = self.validate_and_update_kwargs(kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         encoder=BaseEncoder,
+                         decoder=TargetProjection,
+                         loss_calculator=CEBLoss,
+                         augmenter=AugmentContextAndTarget,
+                         target_pair_constructor=TemporalOffsetPairConstructor,
+                         **kwargs)
+
 
 def get_action_representation_dim(action_space, encoder_kwargs):
     """
@@ -155,7 +224,7 @@ class DynamicsPrediction(RepresentationLearner):
         action_representation_dim = get_action_representation_dim(env.action_space, encoder_kwargs)
 
         kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'},
-                          'encoder_kwargs': {'action_space': env.action_space},
+                          'encoder_kwargs': {'action_space': env.action_space, 'stochastic': False},
                           'decoder_kwargs': {'observation_space': env.observation_space,
                                              'encoder_arch_key': encoder_cls_key,
                                              'action_representation_dim': action_representation_dim},
@@ -163,7 +232,7 @@ class DynamicsPrediction(RepresentationLearner):
         kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
                          log_dir=log_dir,
-                         encoder=DynamicsEncoder,
+                         encoder=TargetStoringActionEncoder,
                          decoder=PixelDecoder,
                          loss_calculator=MSELoss,
                          augmenter=NoAugmentation,
@@ -179,6 +248,7 @@ class VariationalAutoencoder(RepresentationLearner):
     z distribution and a normal prior
     """
     def __init__(self, env, log_dir, **kwargs):
+        pair_constructor = kwargs.get('target_pair_constructor', IdentityPairConstructor)
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
@@ -192,7 +262,7 @@ class VariationalAutoencoder(RepresentationLearner):
                          decoder=PixelDecoder,
                          loss_calculator=VAELoss,
                          augmenter=NoAugmentation,
-                         target_pair_constructor=IdentityPairConstructor,
+                         target_pair_constructor=pair_constructor,
                          **kwargs)
 
 
@@ -217,70 +287,30 @@ class InverseDynamicsPrediction(RepresentationLearner):
                          **kwargs)
 
 
-class BYOL(RepresentationLearner):
-    """Implementation of Bootstrap Your Own Latent: https://arxiv.org/pdf/2006.07733.pdf
-
-    The hyperparameters do _not_ match those in the paper (see Section 3.2).
-    Most notably, the momentum weight is set to a constant, instead of annealed
-    from 0.996 to 1 via cosine scheduling.
+class ActionConditionedTemporalVAE(RepresentationLearner):
+    """
+    Essentially the same as a DynamicsModel, but with learned standard deviation (stochastic=True) and
+    VAELoss instead of MSELoss
     """
     def __init__(self, env, log_dir, **kwargs):
-        kwargs = self.validate_and_update_kwargs(kwargs)
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+
+        action_representation_dim = get_action_representation_dim(env.action_space, encoder_kwargs)
+
+        kwargs_updates = {'target_pair_constructor_kwargs': {'mode': 'dynamics'},
+                          'encoder_kwargs': {'action_space': env.action_space, 'stochastic': True},
+                          'decoder_kwargs': {'observation_space': env.observation_space,
+                                             'encoder_arch_key': encoder_cls_key,
+                                             'action_representation_dim': action_representation_dim},
+                          'preprocess_extra_context': False}
+        kwargs = self.validate_and_update_kwargs(kwargs, kwargs_updates=kwargs_updates)
         super().__init__(env=env,
                          log_dir=log_dir,
-                         encoder=MomentumEncoder,
-                         decoder=BYOLProjectionHead,
-                         loss_calculator=MSELoss,
-                         augmenter=AugmentContextAndTarget,
-                         target_pair_constructor=IdentityPairConstructor,
-                         **kwargs)
-
-
-class CEB(RepresentationLearner):
-    """
-    CEB with variance that is learned by StochasticEncoder
-    """
-    def __init__(self, env, log_dir, **kwargs):
-        kwargs = self.validate_and_update_kwargs(kwargs)
-        super().__init__(env=env,
-                         log_dir=log_dir,
-                         encoder=StochasticEncoder,
-                         decoder=NoOp,
-                         loss_calculator=CEBLoss,
+                         encoder=TargetStoringActionEncoder,
+                         decoder=PixelDecoder,
+                         loss_calculator=VAELoss,
                          augmenter=NoAugmentation,
-                         target_pair_constructor=TemporalOffsetPairConstructor,
-                         **kwargs)
-
-
-class FixedVarianceCEB(RepresentationLearner):
-    """
-    CEB with fixed rather than learned variance
-    """
-    def __init__(self, env, log_dir, **kwargs):
-        kwargs = self.validate_and_update_kwargs(kwargs)
-        super().__init__(env=env,
-                         log_dir=log_dir,
-                         encoder=DeterministicEncoder,
-                         decoder=NoOp,
-                         loss_calculator=CEBLoss,
-                         augmenter=AugmentContextAndTarget,
-                         target_pair_constructor=TemporalOffsetPairConstructor,
-                         **kwargs)
-
-
-class FixedVarianceTargetProjectedCEB(RepresentationLearner):
-    """
-    CEB with a fixed (rather than learned) variance that also has a projection layer
-    to more closely mimic a learned bilinear loss
-    """
-    def __init__(self, env, log_dir, **kwargs):
-        kwargs = self.validate_and_update_kwargs(kwargs)
-        super().__init__(env=env,
-                         log_dir=log_dir,
-                         encoder=DeterministicEncoder,
-                         decoder=TargetProjection,
-                         loss_calculator=CEBLoss,
-                         augmenter=AugmentContextAndTarget,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
 
