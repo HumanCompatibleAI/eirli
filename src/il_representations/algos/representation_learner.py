@@ -37,8 +37,11 @@ def to_dict(kwargs_element):
 
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, *,
-                 log_dir, encoder, decoder, loss_calculator,
-                 target_pair_constructor,
+                 log_dir,
+                 encoder=None,
+                 decoder=None,
+                 loss_calculator=None,
+                 target_pair_constructor=None,
                  augmenter=AugmentContextOnly,
                  batch_extender=IdentityBatchExtender,
                  optimizer=torch.optim.Adam,
@@ -62,6 +65,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  unit_test_max_train_steps=None):
 
         super(RepresentationLearner, self).__init__(env)
+        for el in (encoder, decoder, loss_calculator, target_pair_constructor):
+            assert el is not None
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
         logger.configure(log_dir, ["stdout", "csv", "tensorboard"])

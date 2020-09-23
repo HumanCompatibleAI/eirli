@@ -281,50 +281,49 @@ class Encoder(nn.Module):
         return x
 
 
-class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, scale_constant=1, **kwargs):
+class BaseEncoder(Encoder):
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
+                 stochastic=False, latent_dim=None, scale_constant=1):
         """
-        :param obs_space: The observation space that this Encoder will be used on
-        :param representation_dim: The number of dimensions of the representation that will be learned
-        :param obs_encoder_cls: An internal architecture implementing `forward` to return a single vector
-        representing the mean representation z of a fixed-variance representation distribution
-        """
-        super().__init__(**kwargs)
+                :param obs_space: The observation space that this Encoder will be used on
+                :param representation_dim: The number of dimensions of the representation that will be learned
+                :param obs_encoder_cls: An internal architecture implementing `forward` to return a single vector
+                representing the mean representation z of a fixed-variance representation distribution (in the
+                deterministic case), or a latent dimension, in the stochastic case.  This is expected NOT to end in
+                a ReLU (i.e. final layer should be linear).
+                :param latent_dim: Dimension of the latents that feed into mean and std networks (default:
+                        representation_dim * 2).
+         """
+        super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        self.network = obs_encoder_cls(obs_space, representation_dim)
-        self.scale_constant = scale_constant
+        self.stochastic = stochastic
+        if self.stochastic:
+            if latent_dim is None:
+                latent_dim = representation_dim * 2
+            self.network = obs_encoder_cls(obs_space, latent_dim)
+            self.mean_layer = nn.Linear(latent_dim, representation_dim)
+            self.scale_layer = nn.Linear(latent_dim, representation_dim)
+        else:
+            self.network = obs_encoder_cls(obs_space, representation_dim)
+            self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
-        features = self.network(x)
-        return independent_multivariate_normal(mean=features,
-                                               stddev=self.scale_constant)
+        if self.stochastic:
+            return self.forward_stochastic(x, traj_info)
+        else:
+            return self.forward_deterministic(x, traj_info)
 
-
-class StochasticEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, **kwargs):
-        """
-        :param obs_space: The observation space that this Encoder will be used on
-        :param representation_dim: The number of dimensions of the representation that will be learned
-        :param obs_encoder_cls: An internal architecture implementing `forward` to return a single
-            vector. This is expected NOT to end in a ReLU (i.e. final layer should be linear).
-        :param latent_dim: Dimension of the latents that feed into mean and std networks (default:
-            representation_dim * 2).
-        two vectors, representing the mean AND learned standard deviation of a representation distribution
-        """
-        super().__init__(**kwargs)
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        if latent_dim is None:
-            latent_dim = representation_dim * 2
-        self.network = obs_encoder_cls(obs_space, latent_dim)
-        self.mean_layer = nn.Linear(latent_dim, representation_dim)
-        self.scale_layer = nn.Linear(latent_dim, representation_dim)
-
-    def forward(self, x, traj_info):
+    def forward_stochastic(self, x, traj_info):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
         return independent_multivariate_normal(mean=mean,
                                                stddev=scale)
+
+    def forward_deterministic(self, x, traj_info):
+        features = self.network(x)
+        return independent_multivariate_normal(mean=features,
+                                               stddev=self.scale_constant)
 
 
 def infer_action_shape_info(action_space, action_embedding_dim):
@@ -354,14 +353,16 @@ def infer_action_shape_info(action_space, action_embedding_dim):
     return processed_action_dim, action_shape, action_processor
 
 
-class ActionEncodingEncoder(DeterministicEncoder):
+class ActionEncodingEncoder(BaseEncoder):
     """
     An encoder that uses DeterministicEncoder logic for encoding the `context` and `target` pixel frames,
     but which encodes an `extra_context` object containing actions into a vector form
     """
-    def __init__(self, obs_space, representation_dim, action_space, obs_encoder_cls=None, action_encoding_dim=48,
-                 action_encoder_layers=1, action_embedding_dim=5, use_lstm=False):
-        super().__init__(obs_space, representation_dim, obs_encoder_cls)
+    def __init__(self, obs_space, representation_dim, action_space, stochastic=False,
+                 obs_encoder_cls=None, action_encoding_dim=48, action_encoder_layers=1,
+                 action_embedding_dim=5, use_lstm=False):
+
+        super().__init__(obs_space, representation_dim, obs_encoder_cls, stochastic=stochastic)
 
         self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
                                                                                        action_embedding_dim)
@@ -404,13 +405,15 @@ class ActionEncodingEncoder(DeterministicEncoder):
         return Delta(action_encoding_vector)
 
 
-class VAEEncoder(StochasticEncoder):
+class VAEEncoder(BaseEncoder):
     """
     An encoder that uses StochasticEncoder's logic for encoding
     context, but for target, just returns a delta distribution
     around ground truth pixels, since we don't want to vector-encode
     them.
     """
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None):
+        super().__init__(obs_space, representation_dim, obs_encoder_cls, stochastic=True, latent_dim=latent_dim)
 
     def encode_context(self, x, traj_info):
         # Context here is the current frame, which should be vector-encoded
@@ -421,12 +424,12 @@ class VAEEncoder(StochasticEncoder):
         # So we just create a Dirac Delta distribution around the pixel values
         return Delta(x)
 
-
-class DynamicsEncoder(ActionEncodingEncoder):
+class TargetStoringActionEncoder(ActionEncodingEncoder):
     """
     Identical to VAE encoder, but inherits from ActionEncodingEncoder,
     so we get that class's additional implementation
-    of `encode_extra_context`.
+    of `encode_extra_context`. If being used for Dynamics, can use with stochastic=False. If being used
+    for TemporalVAE, use stochastic=True
     """
 
     def encode_context(self, x, traj_info):
@@ -439,7 +442,7 @@ class DynamicsEncoder(ActionEncodingEncoder):
         return Delta(x)
 
 
-class InverseDynamicsEncoder(DeterministicEncoder):
+class InverseDynamicsEncoder(BaseEncoder):
     def encode_extra_context(self, x, traj_info):
         # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
         return self.forward(x, traj_info)
@@ -453,16 +456,12 @@ class InverseDynamicsEncoder(DeterministicEncoder):
         return self.forward(x, traj_info)
 
 
-class MomentumEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, learn_scale=False,
+class MomentumEncoder(BaseEncoder):
+    def __init__(self, obs_shape, representation_dim, stochastic=False,
                  momentum_weight=0.999, obs_encoder_cls=None, **kwargs):
         super().__init__(**kwargs)
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        if learn_scale:
-            inner_encoder_cls = StochasticEncoder
-        else:
-            inner_encoder_cls = DeterministicEncoder
-        self.query_encoder = inner_encoder_cls(obs_shape, representation_dim, obs_encoder_cls)
+        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, stochastic=stochastic)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
@@ -499,7 +498,7 @@ class RecurrentEncoder(Encoder):
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
-        self.single_frame_encoder = DeterministicEncoder(obs_shape, self.single_frame_repr_dim,
+        self.single_frame_encoder = BaseEncoder(obs_shape, self.single_frame_repr_dim,
                                                          obs_encoder_cls)
         self.context_rnn = nn.LSTM(self.single_frame_repr_dim, rnn_output_dim,
                                    self.num_recurrent_layers, batch_first=True)

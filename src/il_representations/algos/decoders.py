@@ -174,7 +174,6 @@ class ActionPredictionHead(LossDecoder):
             for k in self.param_mappings:
                 self.param_mappings[k] = self.param_mappings[k].to(torch.device('cuda'))
 
-
     def decode_context(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
