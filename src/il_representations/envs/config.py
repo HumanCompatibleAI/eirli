@@ -1,4 +1,5 @@
 """Common config utilities for all benchmarks."""
+import os
 
 from sacred import Ingredient
 
@@ -16,9 +17,12 @@ def bench_defaults():
     # this should be a number of trajectories to return, or None if returning
     # all available trajectories is okay
     n_traj = None
-    # root directory for data; useful when script is being run under Ray Tune,
-    # which changes the working directory
-    data_root = '.'
+    # Root directory for data; useful when script is being run under Ray Tune,
+    # which changes the working directory. The default tries to point at the
+    # root of the repo, which should contain a symlink to the data directory.
+    _this_file_dir = os.path.dirname(os.path.abspath(__file__))
+    data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
+    del _this_file_dir
 
     # ########################
     # MAGICAL config variables
