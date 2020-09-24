@@ -672,6 +672,10 @@ def cfg_base_3seed_4cpu_pt3gpu():
                                cpu=5,
                                gpu=0.32,
                            ))
+    ray_init_kwargs = {
+        # to avoid overwhelming the main driver when we have a big cluster
+        'log_to_driver': False,
+    }
 
     _ = locals()
     del _
@@ -685,8 +689,11 @@ def cfg_base_3seed_1cpu_pt2gpu():
     tune_run_kwargs = dict(num_samples=3,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.19,
+                               gpu=0.199,
                            ))
+    ray_init_kwargs = {
+        'log_to_driver': False,
+    }
 
     _ = locals()
     del _

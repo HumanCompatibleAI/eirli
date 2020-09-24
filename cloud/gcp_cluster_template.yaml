@@ -3,9 +3,7 @@
 
 
 # Unique identifier for head node and workers of this cluster
-# (should be unique to you, so that we don't all start GCP instances with the
-# same names)
-cluster_name: il-rep-XXX-CUSTOMIZE-THIS-XXX
+cluster_name: il-rep-sam-test
 
 
 
@@ -14,14 +12,14 @@ cluster_name: il-rep-XXX-CUSTOMIZE-THIS-XXX
 # The minimum number of workers nodes to run in addition to the head
 min_workers: 1
 # The maximum number of workers nodes to run in addition to the head
-max_workers: 5
+max_workers: 4
 # Number of workers to launch at cluster startup, in addition to the head
 initial_workers: 1
 # Can be changed to autoscale more aggressively.
 autoscaling_mode: default
 # The autoscaler will scale up the cluster to this target fraction of resource
 # usage (0.0 means always upscale, 1.0 means never upscale even at 100% usage)
-target_utilization_fraction: 0.8
+target_utilization_fraction: 0.9
 # If a node is idle for this many minutes, it will be removed.
 idle_timeout_minutes: 5
 
@@ -32,7 +30,7 @@ idle_timeout_minutes: 5
 # Execute docker commands & open necessary ports.
 docker:
   # the image below is taken from .circleci/config.yml
-  image: "humancompatibleai/il-representations:2020.09.22-r1"
+  image: "humancompatibleai/il-representations:2020.09.23-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
@@ -71,7 +69,7 @@ head_node:
       initializeParams:
         diskSizeGb: 50
         # See https://cloud.google.com/compute/docs/images for more images
-        sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu110
+        sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu101
         # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
 
   # This is not strictly needed (it just means that we kill the head node
@@ -82,7 +80,7 @@ head_node:
     - onHostMaintenance: TERMINATE
 
   guestAccelerators:
-    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-k80
+    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-v100
       acceleratorCount: 1
   metadata:
     items:
@@ -95,7 +93,7 @@ head_node:
 worker_nodes:
   # As above: you'll want to change the machine type on the workers to be
   # something more useful (possibly the same type as the head node).
-  machineType: n1-standard-8  # XXX-CUSTOMIZE-THIS-XXX
+  machineType: n1-standard-32  # XXX-CUSTOMIZE-THIS-XXX
   disks:
     - boot: true
       autoDelete: true
@@ -103,7 +101,7 @@ worker_nodes:
       initializeParams:
         diskSizeGb: 50
         # See https://cloud.google.com/compute/docs/images for more images
-        sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu110
+        sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu101
         # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
   # Run workers on preemtible instance by default.
   # Comment this out to use on-demand.
@@ -112,8 +110,8 @@ worker_nodes:
     - onHostMaintenance: TERMINATE
 
   guestAccelerators:
-    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-k80
-      acceleratorCount: 1
+    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-v100
+      acceleratorCount: 4
   metadata:
     items:
       - key: install-nvidia-driver
@@ -148,10 +146,15 @@ initialization_commands:
   # consider baking IPs etc. into some separate config file instead.)
   - >-
     sudo bash /tmp/ray-init-scripts/nfs_mount.sh
-    && nfs_server_ip="$(mount | grep nfs | head -n 1 | cut -d : -f 1)"
+    && nfs_server_ip="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d : -f 1)"
     && docker volume create --driver local --opt type=nfs \
       --opt "o=addr=${nfs_server_ip},rw" --opt device=:/vol1 \
       project-data-volume
+  # Update nvidia driver to version 450 (needed for Torch)
+  - >-
+    nfs_mount_path="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d ' ' -f 3)"
+    && nv_driver_major_version="$(nvidia-smi -q | grep 'Driver Version.*:.*' | cut -d : -f 2- | sed 's/\s//g' | cut -d . -f 1)"
+    && ( [ "$nv_driver_major_version" -ge 450 ] || sudo sh "${nfs_mount_path}/driver/NVIDIA-Linux-x86_64-450.51.06.run" -s )
 # List of shell commands to run to set up nodes (both head and worker).
 setup_commands:
   # Set up SSH key
@@ -167,7 +170,9 @@ setup_commands:
   # StrictHostKeyChecking=no hack. If it's any consolation, Ray is at least
   # MITM-vulnerable too, so connection to Github is not our weakest link...)
   - >-
-      clone --depth 1 -b branch-name-XXX-CUSTOMIZE-THIS-XXX \
+    test -e ~/il-rep
+    || git -c core.sshCommand="ssh -v -i /root/.ssh/ssh_deploy_key -o StrictHostKeyChecking=no" \
+      clone --depth 1 -b gcp \
       git@github.com:HumanCompatibleAI/il-representations.git ~/il-rep
   # Dependencies are baked into the Docker image, but we pip install
   # requirements.txt just in case there are any new ones pip can easily add.
@@ -227,7 +232,6 @@ head_start_ray_commands:
     --port=6379
     --object-manager-port=8076
     --autoscaling-config=~/ray_bootstrap_config.yaml
-    --block & disown
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
   - ray stop
@@ -236,4 +240,3 @@ worker_start_ray_commands:
     ray start
     --address=$RAY_HEAD_IP:6379
     --object-manager-port=8076
-    --block & disown
