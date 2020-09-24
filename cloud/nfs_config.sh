@@ -12,8 +12,17 @@ CLIENT_MOUNT_POINT="/data/il-representations/"
 get_server_ip() {
     # get the IP address of NFS server at ${SERVER_NAME}
     gcloud filestore instances describe "$SERVER_NAME" \
-           --zone="$ZONE" --format text \
-    | grep '^networks\[0\].ipAddresses\[0\]:' \
-    | tr -d ' ' \
-    | cut -d : -f 2-
+           --zone "$ZONE" --format text \
+        | grep '^networks\[0\].ipAddresses\[0\]:' \
+        | tr -d ' ' \
+        | cut -d : -f 2-
+}
+
+get_client_external_ip() {
+    # get external IP address of NFS client
+    gcloud compute instances describe "$CLIENT_NAME" \
+           --zone "$ZONE" --format text \
+        | grep '^networkInterfaces\[0\].accessConfigs\[0\].natIP:' \
+        | tr -d ' ' \
+        | cut -d : -f 2-
 }
