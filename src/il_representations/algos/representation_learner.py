@@ -227,7 +227,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         for epoch in range(training_epochs):
 
             loss_meter = AverageMeter()
-            dataiter = iter(dataloader)
 
             # Set encoder and decoder to be in training mode
             self.encoder.train(True)
@@ -236,7 +235,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader, start=1):
 
                 # Construct batch (currently just using Torch's default batch-creator)
-                batch = next(dataiter)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
                 # Use an algorithm-specific augmentation strategy to augment either
