@@ -14,7 +14,7 @@ exit 1
 
 BRINGUP_MAX_RETRIES=10
 THISDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source "${THISDIR}/nfs_config.sh"
+source "${THISDIR}/../nfs_config.sh"
 
 echo "Creating server '$SERVER_NAME' with HD size $NFS_CAP in zone '$ZONE'"
 gcloud beta filestore instances create "$SERVER_NAME" --zone="$ZONE" \
