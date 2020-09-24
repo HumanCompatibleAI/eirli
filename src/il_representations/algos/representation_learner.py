@@ -13,7 +13,7 @@ from gym.spaces import Box
 import torch
 import inspect
 import imitation.util.logger as logger
-
+import logging
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
 
@@ -137,8 +137,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 if hardcoded_param not in user_kwargs_copy:
                     continue
                 if user_kwargs_copy[hardcoded_param] != default_args[hardcoded_param]:
-                    raise ValueError(f"You passed in a non-default value for parameter {hardcoded_param} "
-                                     f"hardcoded by {self.__class__.__name__}")
+                    raise ValueError(f"You passed in a value {user_kwargs_copy[hardcoded_param]} for parameter {hardcoded_param} that is normally "
+                                    f"hardcoded by {self.__class__.__name__}")
                 del user_kwargs_copy[hardcoded_param]
 
         if kwargs_updates is not None:
@@ -292,7 +292,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if self.scheduler is not None:
                 self.scheduler.step()
 
-            loss_record.append(loss_meter.avg.cpu().item())
+            loss_record.append(loss_meter.avg)
 
             # set the encoder and decoder to test mode
             self.encoder.eval()

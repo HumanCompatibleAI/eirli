@@ -1,8 +1,9 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, infer_action_shape_info
-from il_representations.algos.decoders import ProjectionHead, NoOp, MomentumProjectionHead, \
-    BYOLProjectionHead, ActionConditionedVectorDecoder, TargetProjection, ActionPredictionHead, PixelDecoder
+from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
+    BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
+    AsymmetricProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
     QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss
 
@@ -24,12 +25,13 @@ class SimCLR(RepresentationLearner):
      of target with all other contexts.
     """
     def __init__(self, env, log_dir, **kwargs):
+        kwargs_updates = {}
         kwargs = self.validate_and_update_kwargs(kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=BaseEncoder,
-                         decoder=ProjectionHead,
+                         decoder=SymmetricProjectionHead,
                          loss_calculator=SymmetricContrastiveLoss,
                          augmenter=AugmentContextAndTarget,
                          target_pair_constructor=IdentityPairConstructor,
@@ -49,7 +51,7 @@ class TemporalCPC(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=BaseEncoder,
-                         decoder=NoOp,
+                         decoder=SymmetricProjectionHead,
                          loss_calculator=BatchAsymmetricContrastiveLoss,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
@@ -70,7 +72,7 @@ class RecurrentCPC(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=RecurrentEncoder,
-                         decoder=NoOp,
+                         decoder=SymmetricProjectionHead,
                          loss_calculator=BatchAsymmetricContrastiveLoss,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
@@ -87,7 +89,7 @@ class MoCo(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=MomentumEncoder,
-                         decoder=NoOp,
+                         decoder=MomentumProjectionHead,
                          loss_calculator=QueueAsymmetricContrastiveLoss,
                          augmenter=AugmentContextAndTarget,
                          target_pair_constructor=TemporalOffsetPairConstructor,
@@ -145,7 +147,7 @@ class CEB(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=BaseEncoder,
-                         decoder=NoOp,
+                         decoder=SymmetricProjectionHead,
                          loss_calculator=CEBLoss,
                          augmenter=NoAugmentation,
                          target_pair_constructor=TemporalOffsetPairConstructor,
@@ -162,7 +164,7 @@ class FixedVarianceCEB(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=BaseEncoder,
-                         decoder=NoOp,
+                         decoder=SymmetricProjectionHead,
                          loss_calculator=CEBLoss,
                          augmenter=AugmentContextAndTarget,
                          target_pair_constructor=TemporalOffsetPairConstructor,
@@ -179,7 +181,7 @@ class FixedVarianceTargetProjectedCEB(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=BaseEncoder,
-                         decoder=TargetProjection,
+                         decoder=AsymmetricProjectionHead,
                          loss_calculator=CEBLoss,
                          augmenter=AugmentContextAndTarget,
                          target_pair_constructor=TemporalOffsetPairConstructor,
