@@ -8,7 +8,7 @@ from imitation.augment import StandardAugmentations
 from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, Logger
-from il_representations.algos.augmenters import AugmentContextOnly
+from il_representations.algos.augmenters import AugmentContextOnly, NoAugmentation
 from gym.spaces import Box
 import torch
 import inspect
@@ -42,7 +42,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder=None,
                  loss_calculator=None,
                  target_pair_constructor=None,
-                 augmenter=AugmentContextOnly,
+                 augmenter=NoAugmentation,
                  batch_extender=IdentityBatchExtender,
                  optimizer=torch.optim.Adam,
                  scheduler=None,
