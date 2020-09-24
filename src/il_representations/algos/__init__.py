@@ -248,7 +248,7 @@ class VariationalAutoencoder(RepresentationLearner):
     z distribution and a normal prior
     """
     def __init__(self, env, log_dir, **kwargs):
-        pair_constructor = kwargs.get('target_pair_constructor', IdentityPairConstructor)
+        pair_constructor = kwargs.get('target_pair_constructor') or IdentityPairConstructor
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
