@@ -456,10 +456,10 @@ class InverseDynamicsEncoder(BaseEncoder):
         return self.forward(x, traj_info)
 
 
-class MomentumEncoder(BaseEncoder):
+class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, stochastic=False,
-                 momentum_weight=0.999, obs_encoder_cls=None, **kwargs):
-        super().__init__(**kwargs)
+                 momentum_weight=0.999, obs_encoder_cls=None):
+        super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, stochastic=stochastic)
         self.momentum_weight = momentum_weight
@@ -491,8 +491,8 @@ class MomentumEncoder(BaseEncoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64, **kwargs):
-        super().__init__(**kwargs)
+                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64):
+        super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
