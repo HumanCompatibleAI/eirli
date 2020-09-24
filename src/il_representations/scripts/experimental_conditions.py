@@ -23,10 +23,13 @@ def condition_two_temporal_cpc():
     del _
 
 
-# @represent_ex.named_config
-# def condition_three_augmentation_cpc():
-#     # TODO figure out how this is different from MoCo
-
+@represent_ex.named_config
+def condition_three_augmentation_cpc():
+    # TODO figure out how this is different from MoCo
+    algo = 'SimCLR'
+    use_random_rollouts = False
+    _ = locals()
+    del _
 
 # Is this just MoCO?
 
