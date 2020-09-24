@@ -8,7 +8,7 @@
 set -e
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-source "${THIS_DIR}/nfs_config.sh"
+source "${THIS_DIR}/../nfs_config.sh"
 
 if [ -e "${HOME}/google-cloud-sdk/" ]; then
     # for running under Docker + GCP with Ray autoscaler
