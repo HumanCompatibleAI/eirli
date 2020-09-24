@@ -224,16 +224,18 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         loss_record = []
         global_step = 0
+        num_batches_per_epoch = int(len(dataset)/self.batch_size)
+
         for epoch in range(training_epochs):
 
             loss_meter = AverageMeter()
-
+            dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
             self.encoder.train(True)
             self.decoder.train(True)
 
-            for step, batch in enumerate(dataloader, start=1):
-
+            for step in range(1, num_batches_per_epoch):
+                batch = next(dataiter)
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
