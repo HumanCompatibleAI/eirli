@@ -274,75 +274,10 @@ def base_config():
     spec = {
         # DO NOT UPDATE THESE DEFAULTS WITHOUT ALSO UPDATING CHAIN_CONFIG IN
         # test_support/configuration.py. They will affect unit tests!
-        'repl': {
-            'algo':
-                tune.grid_search([
-                    # 'MoCo'
-                    # 'MoCoWithProjection',
-                    # 'SimCLR',
-                    # 'TemporalCPC',
-                    # 'CEB',
-                    # 'DynamicsPrediction',
-                    # 'BYOL',
-                    'ActionConditionedTemporalCPC',
-                    # 'RecurrentCPC'
-                ]),
-            # 'pretrain_epochs': tune.grid_search([250, 400]),
-            'pretrain_epochs': 250,
-            'algo_params': {
-                'batch_size': tune.grid_search([128]),
-                'optimizer_kwargs': {
-                    'lr': tune.grid_search([1e-3])
-                },
-                'representation_dim': tune.grid_search([128, 256]),
-                'encoder_kwargs': {
-                    'obs_encoder_cls': tune.grid_search(['BasicCNN', 'MAGICALCNN']),
-                    # 'rnn_output_dim': 64
-                    # 'momentum_weight': 0.98,
-                },
-            },
-        },
-        'il_train': {
-            'algo': tune.grid_search(['bc']),
-            'freeze_encoder': tune.grid_search([True, False])
-        },
+        'repl': {},
+        'il_train': {},
         'il_test': {},
-        'benchmark':
-            # Example grid search config for benchmark:
-            tune.grid_search(
-            #     # MAGICAL configs
-            #     [{
-            #         'benchmark_name': 'magical',
-            #         'magical_env_prefix': magical_env_name,
-            #         'magical_remove_null_actions': True,
-            #     } for magical_env_name in [
-            #         'MoveToCorner',
-            #         'MoveToRegion',
-            #         'MatchRegions',
-            #         'FixColour',
-            #         'FindDupe',
-            #         # 'MakeLine',
-            #         # 'ClusterColour',
-            #         # 'ClusterShape',
-            #     ]]
-            #     # dm_control configs
-            #     +  # (+ on a separate line for ease of commenting-out)
-                [{
-                    'benchmark_name': 'dm_control',
-                    'dm_control_env': dm_control_env_name
-                } for dm_control_env_name in [
-                    'reacher-easy',
-                    'finger-spin',
-                    'cheetah-run',
-                    'walker-walk',
-                    'cartpole-swingup',
-                    'ball-in-cup-catch',
-                ]]
-            #     # ATARI configs (TODO)
-            #     +  # separate line for + again
-            #     [],
-            )
-
+        'benchmark': {},
     }
     # "use_skopt" will use scikit-optimize. This will ignore the 'spec' dict
     # above; instead, you need to declare an appropriate skopt_space. Use this
