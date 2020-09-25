@@ -341,6 +341,9 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         action_encoding_vector = self.get_vector(extra_context)
+        # Concatenate context representation and action representation and map to a merged representation
+        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
+                                                                  f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)

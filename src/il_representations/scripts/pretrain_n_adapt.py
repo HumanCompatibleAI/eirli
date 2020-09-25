@@ -275,59 +275,10 @@ def base_config():
     spec = {
         # DO NOT UPDATE THESE DEFAULTS WITHOUT ALSO UPDATING CHAIN_CONFIG IN
         # test_support/configuration.py. They will affect unit tests!
-        'repl': {
-            'algo':
-            tune.grid_search([
-                'MoCoWithProjection',
-                # 'SimCLR',
-                # 'ActionConditionedTemporalCPC',
-                # 'CEB',
-                # 'DynamicsPrediction',
-                # 'BYOL',
-                # 'ActionConditionedTemporalCPC',
-            ]),
-        },
-        'il_train': {
-            'algo': tune.grid_search(['bc']),
-            'freeze_encoder': tune.grid_search([True, False])
-        },
+        'repl': {},
+        'il_train': {},
         'il_test': {},
         'benchmark': {},
-        # Example grid search config for benchmark:
-        # tune.grid_search(
-        #     # MAGICAL configs
-        #     [{
-        #         'benchmark_name': 'magical',
-        #         'magical_env_prefix': magical_env_name,
-        #         'magical_remove_null_actions': True,
-        #     } for magical_env_name in [
-        #         'MoveToCorner',
-        #         'MoveToRegion',
-        #         'MatchRegions',
-        #         'FixColour',
-        #         'FindDupe',
-        #         # 'MakeLine',
-        #         # 'ClusterColour',
-        #         # 'ClusterShape',
-        #     ]]
-        #     # dm_control configs
-        #     +  # (+ on a separate line for ease of commenting-out)
-        #     [{
-        #         'benchmark_name': 'dm_control',
-        #         'dm_control_env': dm_control_env_name
-        #     } for dm_control_env_name in [
-        #         'reacher-easy',
-        #         'finger-spin',
-        #         'cheetah-run',
-        #         'walker-walk',
-        #         'cartpole-swingup',
-        #         'reacher-easy',
-        #         'ball-in-cup-catch',
-        #     ]]
-        #     # ATARI configs (TODO)
-        #     +  # separate line for + again
-        #     [],
-        # )
     }
     # "use_skopt" will use scikit-optimize. This will ignore the 'spec' dict
     # above; instead, you need to declare an appropriate skopt_space. Use this
@@ -347,7 +298,7 @@ def base_config():
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0,
+                               gpu=0.32,
                            ))
                            # queue_trials=True)
     ray_init_kwargs = dict(
@@ -399,7 +350,7 @@ def cfg_tune_moco():
     use_skopt = True
     skopt_search_mode = 'min'
     metric = 'repl_loss'
-    stages_to_run = StagesToRun.REPL_ONLY
+    stages_to_run = StagesToRun.REPL_AND_IL
 
     # the following settings are algorithm-specific
     repl = {
@@ -411,6 +362,7 @@ def cfg_tune_moco():
         'pretrain_epochs': 250,
 
     }
+
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
     skopt_space = collections.OrderedDict([
@@ -431,39 +383,18 @@ def cfg_tune_moco():
         ('repl:algo_params:batch_size', (64, 512)),
         ('repl:algo_params:encoder_kwargs:momentum_weight', (0.95, 0.999,
                                                              'log-uniform')),
-        # ('repl:algo_params:decoder_kwargs:momentum_weight', (0.95, 0.999,
-        #                                                      'log-uniform')),
         ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
-        # ('repl:algo_params:projection_dim', (64, 256)),
         ('repl:algo_params:representation_dim', (8, 512)),
+        ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
 
-        ('repl:algo_params:optimizer_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
+        ('il_train:freeze_encoder', [True, False]),
     ])
-    skopt_ref_configs = [
-        # we include the default config as a reference
+    if repl['algo'] == 'MoCoWithProjection':
+        skopt_space['repl:algo_params:decoder_kwargs:momentum_weight'] = (0.95, 0.999, 'log-uniform')
+        skopt_space['repl:algo_params:projection_dim'] = (64, 256)
 
-        # MoCoWithProjection
-        # {
-        #     'repl:algo_params:augmenter_kwargs:augmenter_spec':
-        #     "translate,rotate,gaussian_blur",
-        #     'repl:algo_params:batch_size':
-        #     512,
-        #     'repl:algo_params:decoder_kwargs:momentum_weight':
-        #     0.99,
-        #     'repl:algo_params:encoder_kwargs:momentum_weight':
-        #     0.999,
-        #     'repl:algo_params:optimizer_kwargs:lr':
-        #     3e-5,
-        #     'repl:algo_params:projection_dim':
-        #     64,
-        #     'repl:algo_params:representation_dim':
-        #     128,
-        #     'repl:encoder_kwargs:obs_encoder_cls':
-        #     'BasicCNN',
-        # }
-
-        # MoCo
-        {
+    if repl['algo'] == 'MoCo':
+        skopt_ref_configs = [{
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
                 "translate,rotate,gaussian_blur",
             'repl:algo_params:batch_size':
@@ -474,15 +405,43 @@ def cfg_tune_moco():
                 3e-5,
             'repl:algo_params:representation_dim':
                 128,
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls':
+                'BasicCNN',
+            'il_train:freeze_encoder':
+                True,
+            'il_test:n_rollouts':
+                10
+            }
+        ]
+    elif repl['algo'] == 'MoCoWithProjection':
+        skopt_ref_configs = [{
+            'repl:algo_params:augmenter_kwargs:augmenter_spec':
+                "translate,rotate,gaussian_blur",
+            'repl:algo_params:batch_size':
+                512,
+            'repl:algo_params:decoder_kwargs:momentum_weight':
+                0.99,
+            'repl:algo_params:encoder_kwargs:momentum_weight':
+                0.999,
+            'repl:algo_params:optimizer_kwargs:lr':
+                3e-5,
+            'repl:algo_params:projection_dim':
+                64,
+            'repl:algo_params:representation_dim':
+                128,
             'repl:encoder_kwargs:obs_encoder_cls':
                 'BasicCNN',
-        }
-    ]
+            'il_train:freeze_encoder':
+                True,
+            'il_test:n_rollouts':
+                10
+            }
+        ]
     # do up to 200 runs of hyperparameter tuning
     # WARNING: This may require customisation on the command line. You want the
     # number to be high enough that the script will keep running for at least a
     # few days.
-    tune_run_kwargs = dict(num_samples=2)
+    tune_run_kwargs = dict(num_samples=50)
 
     _ = locals()
     del _
@@ -492,18 +451,18 @@ def cfg_tune_moco():
 def cfg_tune_cpc():
     # these settings will be the same for all rep learning tune runs
     use_skopt = True
-    skopt_search_mode = 'min'
-    metric = 'repl_loss'
-    stages_to_run = StagesToRun.REPL_ONLY
+    skopt_search_mode = 'max'
+    metric = 'return_mean'
+    stages_to_run = StagesToRun.REPL_AND_IL
 
     # the following settings are algorithm-specific
     repl = {
-        'algo': 'ActionConditionedTemporalCPC',
+        'algo': 'TemporalCPC',
         'use_random_rollouts': False,
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250,
+        'pretrain_epochs': 1,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -511,55 +470,63 @@ def cfg_tune_cpc():
         ('repl:algo_params:batch_size', (64, 512)),
         ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
         ('repl:algo_params:representation_dim', (8, 512)),
-        ('repl:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
-
-        # RecurrentCPC params:
-        # ('repl:algo_params:encoder_kwargs:rnn_output_dim', (8, 256)),
-
-        # ActionConditionedTemporalCPC params:
-        ('repl:algo_params:decoder_kwargs:action_encoding_dim', (64, 512)),
-        ('repl:algo_params:decoder_kwargs:action_embedding_dim', (5, 30)),
+        ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
 
         ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
             "translate,rotate,gaussian_blur", "translate,rotate",
             "translate,rotate,flip_ud,flip_lr"
         ]),
-    ])
-    skopt_ref_configs = [
-        # we include the default config as a reference
+        ('il_train:freeze_encoder', [True, False]),
 
-        # TemporalCPC
-        {
+        # This doesn't change the default settings in il_test, but it is important to include some
+        # config of il_test so Ray tune doesn't complain
+        ('il_test:n_rollouts', [10])
+    ])
+
+    if repl['algo'] == 'ActionConditionedTemporalCPC':
+        skopt_space['repl:algo_params:decoder_kwargs:action_encoding_dim'] = (64, 512)
+        skopt_space['repl:algo_params:decoder_kwargs:action_embedding_dim'] = (5, 30)
+    elif repl['algo'] == 'RecurrentCPC':
+        skopt_space['repl:algo_params:encoder_kwargs:rnn_output_dim'] = (8, 256)
+
+    if repl['algo'] == 'TemporalCPC':
+        skopt_ref_configs = [{
             'repl:algo_params:batch_size':
             64,
             'repl:algo_params:optimizer_kwargs:lr':
             0.0003,
             'repl:algo_params:representation_dim':
             512,
-            'repl:encoder_kwargs:obs_encoder_cls':
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls':
             'BasicCNN',
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
             "translate,rotate,gaussian_blur",
-        },
-
-        # ActionConditionedCPC
-        # {
-        #     'repl:algo_params:batch_size':
-        #         128,
-        #     'repl:algo_params:representation_dim':
-        #         128,
-        #     'repl:algo_params:optimizer_kwargs:lr':
-        #         1e-3,
-        #     'repl:encoder_kwargs:obs_encoder_cls':
-        #         'BasicCNN',
-        #     'repl:algo_params:decoder_kwargs:action_encoding_dim': 128,
-        #     'repl:algo_params:decoder_kwargs:action_embedding_dim': 5,
-        #     'repl:algo_params:augmenter_kwargs:augmenter_spec':
-        #         "translate,rotate,gaussian_blur",
-        # }
-
-        # RecurrentCPC
-        {
+            'il_train:freeze_encoder':
+                True,
+            'il_test:n_rollouts':
+                10
+        }]
+    elif repl['algo'] == 'ActionConditionedTemporalCPC':
+        skopt_ref_configs = [{
+            'repl:algo_params:batch_size':
+                128,
+            'repl:algo_params:representation_dim':
+                128,
+            'repl:algo_params:optimizer_kwargs:lr':
+                1e-3,
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls':
+                'BasicCNN',
+            'repl:algo_params:decoder_kwargs:action_encoding_dim': 128,
+            'repl:algo_params:decoder_kwargs:action_embedding_dim': 5,
+            'repl:algo_params:augmenter_kwargs:augmenter_spec':
+                "translate,rotate,gaussian_blur",
+            'il_train:freeze_encoder':
+                True,
+            'il_test:n_rollouts':
+                10
+        }]
+    elif repl['algo'] == 'RecurrentCPC':
+        skopt_ref_configs = [{
             'repl:algo_params:batch_size':
                 128,
             'repl:algo_params:encoder_kwargs:rnn_output_dim':
@@ -568,17 +535,23 @@ def cfg_tune_cpc():
                 0.001,
             'repl:algo_params:representation_dim':
                 128,
-            'repl:encoder_kwargs:obs_encoder_cls':
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls':
                 'BasicCNN',
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
                 "translate,rotate,gaussian_blur",
-        }
-    ]
+            'il_train:freeze_encoder':
+                True,
+            'il_test:n_rollouts':
+                10
+        }]
+    else:
+        raise NotImplementedError(f"{repl['algo']} not implemented!")
+
     # do up to 200 runs of hyperparameter tuning
     # WARNING: This may require customisation on the command line. You want the
     # number to be high enough that the script will keep running for at least a
     # few days.
-    tune_run_kwargs = dict(num_samples=200)
+    tune_run_kwargs = dict(num_samples=15)
 
     _ = locals()
     del _
