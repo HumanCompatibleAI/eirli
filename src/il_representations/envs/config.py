@@ -9,7 +9,7 @@ benchmark_ingredient = Ingredient('benchmark')
 @benchmark_ingredient.config
 def bench_defaults():
     # set this to "atari", "magical", "dm_control"
-    benchmark_name = 'magical'
+    benchmark_name = 'dm_control'
     # should venvs be parallel?
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
@@ -77,7 +77,7 @@ def bench_defaults():
         'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
         'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
-    dm_control_env = 'reacher-easy'
+    dm_control_env = 'finger-spin'
 
     # ###########################
     # Atari config variables

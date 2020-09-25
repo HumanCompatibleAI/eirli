@@ -170,16 +170,24 @@ class ActionPredictionHead(LossDecoder):
         else:
             self.param_mappings['action_logits'] = latents_to_dist_params
 
+        if torch.cuda.is_available():
+            for k in self.param_mappings:
+                self.param_mappings[k] = self.param_mappings[k].to(torch.device('cuda'))
+
+
     def decode_context(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
+
         # concatenate current and future frames together
         z_merged = torch.cat([z, z_future], dim=1)
         if 'action_logits' in self.param_mappings:
-            self.action_dist.proba_distribution(self.param_mappings['action_logits'](z_merged))
+            action_logits = self.param_mappings['action_logits'](z_merged)
+            self.action_dist.proba_distribution(action_logits)
         elif 'mean_actions' in self.param_mappings:
-            self.action_dist.proba_distribution(self.param_mappings['mean_actions'](z_merged),
+            mean_actions = self.param_mappings['mean_actions'](z_merged)
+            self.action_dist.proba_distribution(mean_actions,
                                                 self.param_mappings['log_std'])
 
         return self.action_dist
@@ -333,6 +341,9 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         action_encoding_vector = self.get_vector(extra_context)
+        # Concatenate context representation and action representation and map to a merged representation
+        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
+                                                                  f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_projection(merged_vector)
         scale = self.scale_projection(merged_vector)
