@@ -220,6 +220,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         action_encoding_vector = self.get_vector(extra_context)
+        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
+                                                                  f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_mean(merged_vector)
         scale = self.action_conditioned_stddev(merged_vector)
@@ -388,43 +390,4 @@ class PixelDecoder(LossDecoder):
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
-
-
-
-class ActionConditionedVectorDecoder(LossDecoder):
-    """
-    A decoder that concatenates the frame representation
-    and the action representation, and predicts a vector from it
-    for use in contrastive losses
-    """
-    def __init__(self, representation_dim, projection_shape, sample=False, action_representation_dim=128,
-                 learn_scale=False):
-        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
-        self.learn_scale = learn_scale
-
-        # Machinery for mapping a concatenated (context representation, action representation) into a projection
-        self.action_conditioned_projection = nn.Linear(representation_dim + action_representation_dim, projection_shape)
-
-        # If learning scale/std deviation parameter, declare a layer for that, otherwise, return a unit-constant vector
-        if self.learn_scale:
-            self.scale_projection = nn.Linear(representation_dim + action_representation_dim, projection_shape)
-        else:
-            self.scale_projection = self.ones_like_projection_dim
-
-    def decode_target(self, z_dist, traj_info, extra_context=None):
-        return z_dist
-
-    def decode_context(self, z_dist, traj_info, extra_context=None):
-        # Get a single vector out of the the distribution object passed in by the
-        # encoder (either via sampling or taking the mean)
-        z = self.get_vector(z_dist)
-        action_encoding_vector = self.get_vector(extra_context)
-        # Concatenate context representation and action representation and map to a merged representation
-        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
-                                                                  f"action vector shape {action_encoding_vector.shape}"
-        merged_vector = torch.cat([z, action_encoding_vector], dim=1)
-        mean_projection = self.action_conditioned_projection(merged_vector)
-        scale = self.scale_projection(merged_vector)
-        return independent_multivariate_normal(mean=mean_projection,
-                                               stddev=scale)
 
