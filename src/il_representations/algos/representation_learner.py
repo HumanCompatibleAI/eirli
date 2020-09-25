@@ -15,7 +15,8 @@ import inspect
 import imitation.util.logger as logger
 import logging
 
-DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
+DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
+                            'batch_extender']
 
 
 def get_default_args(func):

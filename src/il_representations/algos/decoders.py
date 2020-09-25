@@ -306,7 +306,7 @@ class PixelDecoder(LossDecoder):
         # Computes the number of dimensions that will come out of the final
         # (channels, shape, shape) output of the convolutional network, after flattening
         flattened_input_dim, self.full_input_shape = compute_decoder_input_shape_from_encoder(observation_space,
-                                                                                          self.encoder_arch)
+                                                                                              self.encoder_arch)
         logging.debug(f"Decoder input dims: {flattened_input_dim}")
         reversed_architecture = list(reversed(self.encoder_arch))
 
