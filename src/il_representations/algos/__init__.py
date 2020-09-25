@@ -49,7 +49,7 @@ class TemporalCPC(RepresentationLearner):
         By default, augments only the context, but can be modified to augment both context and target.
         """
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
-                                     decoder=SymmetricProjectionHead,
+                                     decoder=NoOp,
                                      loss_calculator=AsymmetricContrastiveLoss,
                                      augmenter=NoAugmentation,
                                      batch_extender=IdentityBatchExtender,
@@ -88,12 +88,12 @@ class RecurrentCPC(RepresentationLearner):
 
 class MoCo(RepresentationLearner):
     """
-    Implementation of MoCo: Momentum Contrast for Unsupervised Visual Representation Learning
+    Implementation of MoCo: Momentum Contrast for Unsupervised Visual Representation Learning.
     https://arxiv.org/abs/1911.05722
     """
     def __init__(self, env, log_dir, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=MomentumEncoder,
-                                     decoder=MomentumProjectionHead,
+                                     decoder=NoOp,
                                      batch_extender=QueueBatchExtender,
                                      augmenter=AugmentContextAndTarget,
                                      loss_calculator=QueueAsymmetricContrastiveLoss,
