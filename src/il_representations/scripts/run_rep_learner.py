@@ -25,7 +25,7 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
+    algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     n_envs = 1
     demo_timesteps = 5000
