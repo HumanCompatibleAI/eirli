@@ -205,10 +205,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
         else:
             hidden = torch.mean(processed_actions, dim=1)
 
-        if len(z.shape) == len(hidden.shape):
-            action_encoding_vector = hidden
-        else:
-            action_encoding_vector = torch.squeeze(hidden)
+        action_encoding_vector = hidden
+        assert len(z.shape) == len(hidden.shape)
         assert action_encoding_vector.shape[0] == batch_dim, \
             action_encoding_vector.shape
 

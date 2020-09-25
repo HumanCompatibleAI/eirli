@@ -300,10 +300,6 @@ def base_config():
                     # 'rnn_output_dim': 64
                     # 'momentum_weight': 0.98,
                 },
-                'decoder_kwargs': {
-                    'action_encoding_dim': 128,
-                    'action_embedding_dim': 5
-                }
             },
         },
         'il_train': {
