@@ -9,7 +9,7 @@ from il_representations.algos.losses import SymmetricContrastiveLoss, Asymmetric
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
-from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
 
@@ -24,8 +24,8 @@ class SimCLR(RepresentationLearner):
     (target, context) similarity against similarity of context with all other targets, and also similarity
      of target with all other contexts.
     """
+    # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, env, log_dir, **kwargs):
-        kwargs_updates = {}
         kwargs = self.validate_and_update_kwargs(kwargs)
 
         super().__init__(env=env,
@@ -51,8 +51,9 @@ class TemporalCPC(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=BaseEncoder,
-                         decoder=SymmetricProjectionHead,
-                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         decoder=MomentumProjectionHead,
+                         batch_extender=QueueBatchExtender,
+                         loss_calculator=QueueAsymmetricContrastiveLoss,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
 
@@ -72,8 +73,9 @@ class RecurrentCPC(RepresentationLearner):
         super().__init__(env=env,
                          log_dir=log_dir,
                          encoder=RecurrentEncoder,
-                         decoder=SymmetricProjectionHead,
-                         loss_calculator=BatchAsymmetricContrastiveLoss,
+                         decoder=MomentumProjectionHead,
+                         batch_extender=QueueBatchExtender,
+                         loss_calculator=QueueAsymmetricContrastiveLoss,
                          target_pair_constructor=TemporalOffsetPairConstructor,
                          **kwargs)
 
