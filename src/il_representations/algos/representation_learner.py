@@ -49,6 +49,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  shuffle_batches=True,
                  batch_size=256,
                  preprocess_extra_context=True,
+                 preprocess_target=True,
                  save_interval=100,
                  optimizer_kwargs=None,
                  target_pair_constructor_kwargs=None,
@@ -75,6 +76,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
+        self.preprocess_target = preprocess_target
         self.save_interval = save_interval
         #self._make_channels_first()
         self.unit_test_max_train_steps = unit_test_max_train_steps
@@ -238,9 +240,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
-                contexts, targets = self._preprocess(contexts), self._preprocess(targets)
+                contexts = self._preprocess(contexts)
+                if self.preprocess_target:
+                    targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
+
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
