@@ -17,6 +17,12 @@ fi
 mount_path="$1"
 shift
 
+# Authenticate the first time. If we have not authenticated from this machine
+# before, then this part will trigger some logic that pushes our SSH key to the
+# client machine.
+echo "Checking that we can authenticate with GCP"
+gcloud compute ssh --zone "$ZONE" "$CLIENT_NAME" --command "echo Auth success"
+
 echo "Getting SSH info from GCP"
 # get the ssh command used by 'gcloud compute ssh', but strip out the -t flag
 # (which allocates a tty) and the username/machine
