@@ -2,7 +2,7 @@
 
 set -e
 
-base_cfgs="cfg_base_3seed_1cpu_pt2gpu"
+base_cfgs="cfg_base_3seed_1cpu_pt2gpu_2envs"
 cluster_cfg_path="./gcp_cluster_sam.yaml"
 
 for repl in cfg_repl_{none,simclr,moco,ceb,temporal_cpc}; do

@@ -608,6 +608,8 @@ def cfg_tune_dynamics():
         include_dashboard=False,
     )
 
+    _ = locals()
+    del _
 
 
 @chain_ex.named_config
@@ -675,17 +677,20 @@ def cfg_base_3seed_4cpu_pt3gpu():
 
 
 @chain_ex.named_config
-def cfg_base_3seed_1cpu_pt2gpu():
+def cfg_base_3seed_1cpu_pt2gpu_2envs():
     """Another config that uses only one CPU per run, and .2 of a GPU. Good for
     running GPU-intensive algorithms (repL, BC) on GCP."""
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.199,
+                               gpu=0.2,
                            ))
     ray_init_kwargs = {
         'log_to_driver': False,
+    }
+    benchmark = {
+        'n_envs': 2,
     }
 
     _ = locals()
@@ -759,7 +764,7 @@ def cfg_repl_moco():
         'algo': 'MoCoWithProjection',
         'use_random_rollouts': False,
         'ppo_finetune': False,
-        'pretrain_epochs': 2000,
+        'pretrain_epochs': 1500,
     }
 
     _ = locals()
@@ -773,7 +778,7 @@ def cfg_repl_simclr():
         'algo': 'SimCLR',
         'use_random_rollouts': False,
         'ppo_finetune': False,
-        'pretrain_epochs': 2000,
+        'pretrain_epochs': 1500,
     }
 
     _ = locals()
@@ -787,8 +792,11 @@ def cfg_repl_temporal_cpc():
         'algo': 'TemporalCPC',
         'use_random_rollouts': False,
         'ppo_finetune': False,
-        'pretrain_epochs': 2000,
+        'pretrain_epochs': 1500,
     }
+
+    _ = locals()
+    del _
 
 
 @chain_ex.named_config
@@ -798,7 +806,7 @@ def cfg_repl_ceb():
         'algo': 'CEB',
         'use_random_rollouts': False,
         'ppo_finetune': False,
-        'pretrain_epochs': 2000,
+        'pretrain_epochs': 1500,
     }
 
     _ = locals()
