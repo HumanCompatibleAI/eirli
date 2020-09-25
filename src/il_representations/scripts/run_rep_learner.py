@@ -26,7 +26,7 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
+    algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     torch_num_threads = 1
     n_envs = 1
