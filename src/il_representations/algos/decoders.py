@@ -306,6 +306,9 @@ class PixelDecoder(LossDecoder):
             std_pixels = torch.exp(self.std_layer(decoded_latents))
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
+            if torch.cuda.is_available():
+                std_pixels = std_pixels.to(torch.device('cuda'))
+
         return independent_multivariate_normal(mean=mean_pixels,
                                                stddev=std_pixels)
 
