@@ -3,7 +3,7 @@
 
 
 # Unique identifier for head node and workers of this cluster
-cluster_name: il-rep-sam-test
+cluster_name: il-rep-XXX-CUSTOMIZE-THIS-XXX
 
 
 
@@ -61,7 +61,8 @@ head_node:
   # n1-standard-2 is a cheap default machine for testing the cluster, but
   # you'll probably need something much beefier (possibly something with GPUs)
   # for real experiments.
-  machineType: n1-standard-8  # XXX-CUSTOMIZE-THIS-XXX
+  # machineType: n1-standard-8
+  machineType: custom-12-49152
   disks:
     - boot: true
       autoDelete: true
@@ -93,7 +94,8 @@ head_node:
 worker_nodes:
   # As above: you'll want to change the machine type on the workers to be
   # something more useful (possibly the same type as the head node).
-  machineType: n1-standard-32  # XXX-CUSTOMIZE-THIS-XXX
+  # machineType: n1-standard-32
+  machineType: custom-48-167936
   disks:
     - boot: true
       autoDelete: true
@@ -172,7 +174,7 @@ setup_commands:
   - >-
     test -e ~/il-rep
     || git -c core.sshCommand="ssh -v -i /root/.ssh/ssh_deploy_key -o StrictHostKeyChecking=no" \
-      clone --depth 1 -b gcp \
+      clone --depth 1 -b XXX-CUSTOMIZE-THIS-XXX \
       git@github.com:HumanCompatibleAI/il-representations.git ~/il-rep
   # Dependencies are baked into the Docker image, but we pip install
   # requirements.txt just in case there are any new ones pip can easily add.
@@ -225,8 +227,11 @@ worker_setup_commands: []
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
   - ray stop
+  # see https://github.com/ray-project/ray/issues/9368 for an explanation of the
+  # AUTOSCALER_MAX_NUM_FAILURES line.
   - >-
     ulimit -n 65536;
+    export AUTOSCALER_MAX_NUM_FAILURES=100;
     ray start
     --head
     --port=6379
@@ -237,6 +242,7 @@ worker_start_ray_commands:
   - ray stop
   - >-
     ulimit -n 65536;
+    export AUTOSCALER_MAX_NUM_FAILURES=100;
     ray start
     --address=$RAY_HEAD_IP:6379
     --object-manager-port=8076
