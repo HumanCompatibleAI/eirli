@@ -265,13 +265,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-
-                loss_meter.update(loss)
-
+                loss_item = loss.item()
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                logger.record('loss', loss.item())
+                del loss  # just to make sure we don't use it again
+
+                loss_meter.update(loss_item)
+                logger.record('loss', loss_item)
                 logger.record('epoch', epoch)
                 logger.record('within_epoch_step', step)
                 logger.dump(step=global_step)
