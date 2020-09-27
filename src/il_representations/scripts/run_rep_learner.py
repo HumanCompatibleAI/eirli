@@ -69,6 +69,12 @@ def ceb_breakout():
     del _
 
 @represent_ex.named_config
+def expert():
+    use_random_rollouts=False
+    _ = locals()
+    del _
+
+@represent_ex.named_config
 def tiny_epoch():
     demo_timesteps=5000
     _ = locals()
