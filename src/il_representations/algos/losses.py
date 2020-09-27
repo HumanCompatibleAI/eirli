@@ -278,7 +278,7 @@ class VAELoss(RepresentationLoss):
         log_prob_x_given_z = decoded_context_dist.log_prob(ground_truth_pixels)
 
         prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +
-                                                       encoded_context_dist.event_shape),
+                                                       encoded_context_dist.event_shape).to(self.device),
                                            self.prior_scale)
         independent_prior = torch.distributions.Independent(prior,
                                                             len(encoded_context_dist.event_shape))
