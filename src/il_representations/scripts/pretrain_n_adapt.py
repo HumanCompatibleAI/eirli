@@ -750,6 +750,59 @@ def cfg_bench_short_sweep_dm_control():
 
 
 @chain_ex.named_config
+def cfg_bench_micro_sweep_magical():
+    """Tiny sweep over dm_control configs, both of which are "not too hard",
+    but still provide interesting generalisation challenges."""
+    spec = dict(benchmark=tune.grid_search(
+        [
+            {
+                'benchmark_name': 'magical',
+                'magical_env_prefix': magical_env_name,
+                'magical_remove_null_actions': True,
+            } for magical_env_name in ['MoveToRegion', 'MatchRegions']
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_micro_sweep_dm_control():
+    """Tiny sweep over two dm_control configs (finger-spin is really easy for
+    RL, and cheetah-run is really hard for RL)."""
+    spec = dict(benchmark=tune.grid_search(
+        [
+            {
+                'benchmark_name': 'dm_control',
+                'dm_control_env': dm_control_env_name
+            } for dm_control_env_name in ['finger-spin', 'cheetah-run']
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_base_repl_1500():
+    repl = {
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        'pretrain_epochs': 1500,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_force_use_repl():
+    stages_to_run = StagesToRun.REPL_AND_IL
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_repl_none():
     stages_to_run = StagesToRun.IL_ONLY
 
@@ -762,9 +815,6 @@ def cfg_repl_moco():
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
         'algo': 'MoCoWithProjection',
-        'use_random_rollouts': False,
-        'ppo_finetune': False,
-        'pretrain_epochs': 1500,
     }
 
     _ = locals()
@@ -776,9 +826,6 @@ def cfg_repl_simclr():
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
         'algo': 'SimCLR',
-        'use_random_rollouts': False,
-        'ppo_finetune': False,
-        'pretrain_epochs': 1500,
     }
 
     _ = locals()
@@ -790,9 +837,6 @@ def cfg_repl_temporal_cpc():
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
         'algo': 'TemporalCPC',
-        'use_random_rollouts': False,
-        'ppo_finetune': False,
-        'pretrain_epochs': 1500,
     }
 
     _ = locals()
@@ -804,9 +848,6 @@ def cfg_repl_ceb():
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
         'algo': 'CEB',
-        'use_random_rollouts': False,
-        'ppo_finetune': False,
-        'pretrain_epochs': 1500,
     }
 
     _ = locals()
@@ -836,6 +877,9 @@ def cfg_il_bc_freeze():
         },
         'freeze_encoder': True,
     }
+
+    _ = locals()
+    del _
 
 # TODO(sam): GAIL configs
 
