@@ -8,14 +8,15 @@ from imitation.augment import StandardAugmentations
 from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter, Logger
-from il_representations.algos.augmenters import AugmentContextOnly
+from il_representations.algos.augmenters import AugmentContextOnly, NoAugmentation
 from gym.spaces import Box
 import torch
 import inspect
 import imitation.util.logger as logger
+import logging
 
-
-DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
+DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
+                            'batch_extender']
 
 
 def get_default_args(func):
@@ -37,10 +38,13 @@ def to_dict(kwargs_element):
 
 class RepresentationLearner(BaseEnvironmentLearner):
     def __init__(self, env, *,
-                 log_dir, encoder, decoder, loss_calculator,
-                 target_pair_constructor,
-                 augmenter=AugmentContextOnly,
-                 batch_extender=IdentityBatchExtender,
+                 log_dir,
+                 encoder=None,
+                 decoder=None,
+                 loss_calculator=None,
+                 target_pair_constructor=None,
+                 augmenter=None,
+                 batch_extender=None,
                  optimizer=torch.optim.Adam,
                  scheduler=None,
                  representation_dim=512,
@@ -62,6 +66,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  unit_test_max_train_steps=None):
 
         super(RepresentationLearner, self).__init__(env)
+        for el in (encoder, decoder, loss_calculator, target_pair_constructor):
+            assert el is not None
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
         logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
@@ -118,35 +124,27 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
-    def validate_and_update_kwargs(self, user_kwargs, kwargs_updates=None,
-                                   hardcoded_params=None, params_cleaned=False):
+    def validate_and_update_kwargs(self, user_kwargs, algo_hardcoded_kwargs=None):
         # return a copy instead of updating in-place to avoid inconsistent state
         # after a failed update
-        user_kwargs_copy = user_kwargs.copy()
-        if not params_cleaned:
-            default_args = get_default_args(RepresentationLearner.__init__)
-            if hardcoded_params is None:
-                hardcoded_params = DEFAULT_HARDCODED_PARAMS
 
-            for hardcoded_param in hardcoded_params:
-                if hardcoded_param not in user_kwargs_copy:
-                    continue
-                if user_kwargs_copy[hardcoded_param] != default_args[hardcoded_param]:
-                    raise ValueError(f"You passed in a non-default value for parameter {hardcoded_param} "
-                                     f"hardcoded by {self.__class__.__name__}")
-                del user_kwargs_copy[hardcoded_param]
+        # Now, algorithm_hardcoded_params contains all of the encoder, decoder, etc
 
-        if kwargs_updates is not None:
-            if not isinstance(kwargs_updates, dict):
-                raise TypeError("kwargs_updates must be passed in in the form of a dict ")
-            for kwarg_update_key in kwargs_updates.keys():
-                if kwarg_update_key in user_kwargs_copy and isinstance(user_kwargs_copy[kwarg_update_key], dict):
-                    user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(user_kwargs_copy[kwarg_update_key],
-                                                                                         kwargs_updates[kwarg_update_key],
-                                                                                         params_cleaned=True)
+        # Iterate over param value in algorithm_hardcoded_params. Check whether the user_kwargs value is different
+        # from the default, if so, use the user_kwargs value. Otherwise, use the algorithm_hardcoded value
+
+        kwargs_copy = user_kwargs.copy()
+        default_args = get_default_args(RepresentationLearner.__init__)
+        if algo_hardcoded_kwargs is not None:
+            for param_name, param_value in algo_hardcoded_kwargs.items():
+                if param_name in kwargs_copy and isinstance(kwargs_copy[param_name], dict):
+                    kwargs_copy[param_name] = self.validate_and_update_kwargs(kwargs_copy[param_name], param_value)
                 else:
-                    user_kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
-        return user_kwargs_copy
+                    # If the external kwargs are just set to default values, use hardcoded kwargs, otherwise default
+                    # to external
+                    if kwargs_copy[param_name] == default_args[param_name]:
+                        kwargs_copy[param_name] = algo_hardcoded_kwargs[param_name]
+        return kwargs_copy
 
     def _prep_tensors(self, tensors_or_arrays):
         """
@@ -215,23 +213,23 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Torch chokes when batch_size is a numpy int instead of a Python int,
         # so we need to wrap the batch size in int() in case we're running
         # under skopt (which uses numpy types).
-        dataloader = DataLoader(dataset, batch_size=int(self.batch_size), shuffle=self.shuffle_batches)
+        dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=False) #self.shuffle_batches
 
         loss_record = []
         global_step = 0
+        num_batches_per_epoch = int(len(dataset)/self.batch_size)
+
         for epoch in range(training_epochs):
 
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
-
             # Set encoder and decoder to be in training mode
             self.encoder.train(True)
             self.decoder.train(True)
 
-            for step, batch in enumerate(dataloader, start=1):
-
-                # Construct batch (currently just using Torch's default batch-creator)
+            for step in range(1, num_batches_per_epoch):
                 batch = next(dataiter)
+                # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
                 # Use an algorithm-specific augmentation strategy to augment either
@@ -287,7 +285,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if self.scheduler is not None:
                 self.scheduler.step()
 
-            loss_record.append(loss_meter.avg.cpu().item())
+            loss_record.append(loss_meter.avg)
 
             # set the encoder and decoder to test mode
             self.encoder.eval()
