@@ -191,7 +191,7 @@ class BYOLProjectionHead(MomentumProjectionHead):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return independent_multivariate_normal(F.normalize(prediction_dist.mean, dim=1),
-                                                   prediction_dist.variance)
+                                                   prediction_dist.stddev)
 
 
 class ActionConditionedVectorDecoder(LossDecoder):
