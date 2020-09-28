@@ -77,7 +77,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
-
         self.device = get_device("auto" if device is None else device)
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
