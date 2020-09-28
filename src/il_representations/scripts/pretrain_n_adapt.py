@@ -16,14 +16,12 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import skopt
 
-from il_representations.algos import batch_extenders, encoders, losses, \
-    decoders, augmenters, pair_constructors
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
-from il_representations.scripts import experimental_conditions
+from il_representations.scripts import experimental_conditions  # noqa: F401
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
