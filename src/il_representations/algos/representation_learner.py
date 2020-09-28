@@ -27,7 +27,6 @@ def get_default_args(func):
     }
 
 
-
 def to_dict(kwargs_element):
     # To get around not being able to have empty dicts as default values
     if kwargs_element is None:
@@ -50,7 +49,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  shuffle_batches=True,
                  batch_size=256,
                  preprocess_extra_context=True,
-                 save_interval=1,
+                 preprocess_target=True,
+                 save_interval=100,
                  optimizer_kwargs=None,
                  target_pair_constructor_kwargs=None,
                  augmenter_kwargs,
@@ -64,7 +64,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        logger.configure(log_dir, ["stdout", "tensorboard"])
+        logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
@@ -76,6 +76,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
+        self.preprocess_target = preprocess_target
         self.save_interval = save_interval
         #self._make_channels_first()
         self.unit_test_max_train_steps = unit_test_max_train_steps
@@ -139,7 +140,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if not isinstance(kwargs_updates, dict):
                 raise TypeError("kwargs_updates must be passed in in the form of a dict ")
             for kwarg_update_key in kwargs_updates.keys():
-                if isinstance(user_kwargs_copy[kwarg_update_key], dict):
+                if kwarg_update_key in user_kwargs_copy and isinstance(user_kwargs_copy[kwarg_update_key], dict):
                     user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(user_kwargs_copy[kwarg_update_key],
                                                                                          kwargs_updates[kwarg_update_key],
                                                                                          params_cleaned=True)
@@ -211,15 +212,22 @@ class RepresentationLearner(BaseEnvironmentLearner):
         """
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
-        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle_batches)
-        # Set encoder and decoder to be in training mode
-        self.encoder.train(True)
-        self.decoder.train(True)
+        # Torch chokes when batch_size is a numpy int instead of a Python int,
+        # so we need to wrap the batch size in int() in case we're running
+        # under skopt (which uses numpy types).
+        dataloader = DataLoader(dataset, batch_size=int(self.batch_size), shuffle=self.shuffle_batches)
 
         loss_record = []
+        global_step = 0
         for epoch in range(training_epochs):
+
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
+
+            # Set encoder and decoder to be in training mode
+            self.encoder.train(True)
+            self.decoder.train(True)
+
             for step, batch in enumerate(dataloader, start=1):
 
                 # Construct batch (currently just using Torch's default batch-creator)
@@ -232,9 +240,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
-                contexts, targets = self._preprocess(contexts), self._preprocess(targets)
+                contexts = self._preprocess(contexts)
+                if self.preprocess_target:
+                    targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
+
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
@@ -265,7 +276,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('loss', loss.item())
                 logger.record('epoch', epoch)
                 logger.record('within_epoch_step', step)
-                logger.dump()
+                logger.dump(step=global_step)
+                global_step += 1
 
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:
@@ -274,9 +286,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             if self.scheduler is not None:
                 self.scheduler.step()
+
             loss_record.append(loss_meter.avg.cpu().item())
-            self.encoder.train(False)
-            self.decoder.train(False)
-            if epoch % self.save_interval == 0:
+
+            # set the encoder and decoder to test mode
+            self.encoder.eval()
+            self.decoder.eval()
+
+            if epoch % self.save_interval == 0 or epoch == training_epochs - 1:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+
+        return loss_record
