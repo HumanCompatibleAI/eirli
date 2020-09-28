@@ -36,7 +36,7 @@ echo "Will mount '${user_host}:${CLIENT_MOUNT_POINT}' on '$mount_path' "\
 "using ssh command '$ssh_cmd'"
 
 mkdir -p "$mount_path"
-sshfs -o reconnect,follow_symlinks -o ssh_command="$ssh_cmd" \
+sshfs -o reconnect,follow_symlinks,allow_other -o ssh_command="$ssh_cmd" \
     "${user_host}:${CLIENT_MOUNT_POINT}" "$mount_path"
 
 echo "Done, user \"fusermount -uz '$mount_path'\" to unmount."
