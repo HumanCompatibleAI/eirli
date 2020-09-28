@@ -28,6 +28,7 @@ RUN apt-get update -q \
     libxtst6 \
     libegl1-mesa  \
     xvfb \
+    rsync \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

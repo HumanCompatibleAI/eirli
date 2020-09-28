@@ -52,7 +52,6 @@ def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
                             n_envs=n_envs,
                             parallel=venv_parallel)
     elif benchmark_name == 'atari':
-        assert not venv_parallel, "currently does not support parallel kwarg"
         raw_atari_env = make_vec_env(gym_env_name,
                                      n_envs=n_envs,
                                      parallel=venv_parallel,
