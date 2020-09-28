@@ -21,7 +21,7 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
-from il_representations.scripts import experimental_conditions
+
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -780,5 +780,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
 
 if __name__ == '__main__':
+    from il_representations.scripts import experimental_conditions
     chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
     chain_ex.run_commandline()
