@@ -349,7 +349,7 @@ def cfg_use_dm_control():
 def cfg_tune_augmentations():
     # Don't appear to be able to specify REPL named configs here
     use_skopt = True
-    skopt_search_mode = 'min'
+    skopt_search_mode = 'max'
     metric = 'return_mean'
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
@@ -379,7 +379,7 @@ def cfg_tune_augmentations():
 def cfg_tune_vae_learning_rate():
     # Don't appear to be able to specify REPL named configs here
     use_skopt = True
-    skopt_search_mode = 'min'
+    skopt_search_mode = 'max'
     metric = 'return_mean'
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
@@ -397,7 +397,6 @@ def cfg_tune_vae_learning_rate():
     ])
 
     tune_run_kwargs = dict(num_samples=50) #5 seeds per setting, in expectation
-
     _ = locals()
     del _
 
