@@ -346,6 +346,63 @@ def cfg_use_dm_control():
 
 
 @chain_ex.named_config
+def cfg_tune_augmentations():
+    # Don't appear to be able to specify REPL named configs here
+    use_skopt = True
+    skopt_search_mode = 'min'
+    metric = 'return_mean'
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 250, # TODO unsure if this is too many
+
+    }
+
+    skopt_space = collections.OrderedDict([
+
+        ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
+            "translate,rotate,gaussian_blur", "translate,rotate",
+            "translate", "translate, gaussian_blur",
+            "translate,rotate,flip_ud,flip_lr"
+        ])
+    ])
+
+    tune_run_kwargs = dict(num_samples=25) #5 seeds per setting, in expectation
+
+    _ = locals()
+    del _
+
+@chain_ex.named_config
+def cfg_tune_vae_learning_rate():
+    # Don't appear to be able to specify REPL named configs here
+    use_skopt = True
+    skopt_search_mode = 'min'
+    metric = 'return_mean'
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 250, # TODO unsure if this is too many
+
+    }
+
+    skopt_space = collections.OrderedDict([
+
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform'))
+    ])
+
+    tune_run_kwargs = dict(num_samples=50) #5 seeds per setting, in expectation
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_tune_moco():
     # these settings will be the same for all rep learning tune runs
     use_skopt = True
