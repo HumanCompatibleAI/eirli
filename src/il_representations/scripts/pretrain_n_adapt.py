@@ -21,6 +21,7 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
+from il_representations.scripts import experimental_conditions
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -298,7 +299,7 @@ def base_config():
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.32,
+                               gpu=0, # TODO change back to 0.32?
                            ))
                            # queue_trials=True)
     ray_init_kwargs = dict(
