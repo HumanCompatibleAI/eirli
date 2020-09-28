@@ -8,7 +8,8 @@ python -m il_representations.scripts.pretrain_n_adapt with cfg_tune_augmentation
 
 
 # Run set 2 -> Final run over different seeds of baseline TemporalCPC, over all environments
-python -m il_representations.scripts.pretrain_n_adapt with repl.condition_one_temporal_cpc repl.stooke_contrastive_hyperparams_dmc
+python -m il_representations.scripts.pretrain_n_adapt with repl.condition_one_temporal_cpc\
+repl.stooke_contrastive_hyperparams_dmc
 
 
 # Run set 3 -> Final run over different seeds of TemporalCPC with momentum, over all environments
