@@ -50,7 +50,7 @@ class TemporalCPC(RepresentationLearner):
         """
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=NoOp,
-                                     loss_calculator=AsymmetricContrastiveLoss,
+                                     loss_calculator=QueueAsymmetricContrastiveLoss,
                                      augmenter=NoAugmentation,
                                      batch_extender=IdentityBatchExtender,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
@@ -77,7 +77,7 @@ class RecurrentCPC(RepresentationLearner):
                                      decoder=SymmetricProjectionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
-                                     loss_calculator=AsymmetricContrastiveLoss,
+                                     loss_calculator=QueueAsymmetricContrastiveLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
 
         kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
