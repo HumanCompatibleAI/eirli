@@ -40,7 +40,6 @@ def default_config():
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
     ppo_finetune = False
-    batch_size = 256
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
