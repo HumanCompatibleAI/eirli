@@ -1013,7 +1013,16 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
 
 def main(argv=None):
-    # this function is here because it gets called from other scripts
+    # This function is here because it gets called from other scripts. Please
+    # don't delete!
+
+    # FIXME(sam): the import is here so that the configs in
+    # experimental_conditions actually get imported, without inducing circular
+    # imports. We should fix our dependency structure so that we can put this
+    # at the top level instead.
+
+    import il_representations.scripts.experimental_conditions  # noqa: F401
+
     chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
     chain_ex.run_commandline(argv)
 
