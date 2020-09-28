@@ -16,6 +16,8 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import skopt
 
+from il_representations.algos import batch_extenders, encoders, losses, \
+    decoders, augmenters, pair_constructors
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
@@ -785,7 +787,6 @@ def cfg_bench_micro_sweep_dm_control():
 @chain_ex.named_config
 def cfg_base_repl_1500():
     repl = {
-        'use_random_rollouts': False,
         'ppo_finetune': False,
         'pretrain_epochs': 1500,
     }
@@ -878,6 +879,159 @@ def cfg_il_bc_freeze():
         'freeze_encoder': True,
     }
 
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_one_temporal_cpc():
+    # Baseline Temporal CPC with expert demonstrations
+    repl = {
+        'algo': 'TemporalCPC',
+        'use_random_rollouts': False,
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_two_temporal_cpc_momentum():
+    # Baseline Temporal CPC with momentum added
+    repl = {
+        'algo': 'TemporalCPC',
+        'use_random_rollouts': False,
+        'algo_params': {
+            'batch_extender': batch_extenders.QueueBatchExtender,
+            'encoder': encoders.MomentumEncoder,
+            'loss_calculator': losses.QueueAsymmetricContrastiveLoss
+        },
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_three_temporal_cpc_sym_proj():
+    # Baseline Temporal CPC with a symmetric projection head
+    repl = {
+        'algo': 'TemporalCPC',
+        'use_random_rollouts': False,
+        'algo_params': {'decoder': decoders.SymmetricProjectionHead},
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_four_temporal_cpc_asym_proj():
+    # Baseline Temporal CPC with an asymmetric projection head
+    repl = {
+        'algo': 'TemporalCPC',
+        'use_random_rollouts': False,
+        'algo_params': {'decoder': decoders.AsymmetricProjectionHead},
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_five_temporal_cpc_augment_both():
+    # Baseline Temporal CPC with augmentation of both context and target
+    repl = {
+        'algo': 'TemporalCPC',
+        'use_random_rollouts': False,
+        'algo_params': {'augmenter': augmenters.AugmentContextAndTarget},
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_eight_temporal_autoencoder():
+    # A variational autoencoder with weight on KLD loss set to 0, and temporal offset
+    # between encoded image and target image
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'use_random_rollouts': False,
+        'algo_params': {
+            'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
+            'loss_calculator_kwargs': {'beta': 0},
+        }
+    }
+    _ = locals()
+    del _
+
+
+
+@chain_ex.named_config
+def condition_nine_autoencoder():
+    # A variational autoencoder with weight on KLD loss set to 0
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'use_random_rollouts': False,
+        'algo_params': {
+            'loss_calculator_kwargs': {'beta': 0},
+        },
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_ten_vae():
+    # A variational autoencoder with weight on KLD loss set to 1.0
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'use_random_rollouts': False,
+        'algo_params': {
+            # TODO What is a good default beta here?
+            'loss_calculator_kwargs': {'beta': 1.0},
+        },
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_thirteen_temporal_vae_lowbeta():
+    # A variational autoencoder with weight on KLD loss set to 0.01, and temporal offset
+    # between encoded image and target image
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'algo_params': {
+            'loss_calculator_kwargs': {'beta': 0.01},
+            'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
+        },
+        'use_random_rollouts': False,
+    }
+    _ = locals()
+    del _
+
+@chain_ex.named_config
+def condition_fourteen_temporal_vae_highbeta():
+    # A variational autoencoder with weight on KLD loss set to 1.0, and temporal offset
+    # between encoded image and target image
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'algo_params': {
+            'loss_calculator_kwargs': {'beta': 1.0},
+            'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
+        },
+        'use_random_rollouts': False,
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def condition_eighteen_ac_temporal_vae_lowbeta():
+    # An action-conditioned variational autoencoder with weight on KLD loss set to 0.01, and temporal offset
+    # between encoded image and target image
+    repl = {
+        'algo': 'ActionConditionedTemporalVAE',
+        'algo_params': {'loss_calculator_kwargs': {'beta': 0.01}},
+        'use_random_rollouts': False,
+    }
     _ = locals()
     del _
 
