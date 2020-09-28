@@ -7,15 +7,18 @@ benchmark_ingredient = Ingredient('benchmark')
 
 @benchmark_ingredient.config
 def bench_defaults():
-    # set this to "magical" or "dm_control"
-    benchmark_name = 'magical'
+    # set this to "atari", "magical", "dm_control"
+    benchmark_name = 'dm_control'
     # should venvs be parallel?
-    venv_parallel = False
+    venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
-    n_envs = 2
+    n_envs = 8
     # this should be a number of trajectories to return, or None if returning
     # all available trajectories is okay
     n_traj = None
+    # root directory for data; useful when script is being run under Ray Tune,
+    # which changes the working directory
+    data_root = '.'
 
     # ########################
     # MAGICAL config variables
@@ -42,8 +45,11 @@ def bench_defaults():
         'ClusterColour': 'data/magical/cluster-colour/',
         'ClusterShape': 'data/magical/cluster-shape/',
     }
-    magical_env_prefix = 'MoveToCorner'
+    magical_env_prefix = 'MoveToRegion'
     magical_preproc = 'LoResCHW4E'
+    # this should probably be True for all BC runs, False for GAIL runs
+    # (although TBH it doesn't really matter for GAIL)
+    magical_remove_null_actions = False
 
     # ###########################
     # dm_control config variables
@@ -60,14 +66,14 @@ def bench_defaults():
         'ball-in-cup-catch': 'DMC-Ball-In-Cup-Catch-v0',
     }
     dm_control_demo_patterns = {
-        'finger-spin': 'data/dm_control/walker-walk-*.pkl.gz',
+        'finger-spin': 'data/dm_control/finger-spin-*.pkl.gz',
         'cheetah-run': 'data/dm_control/cheetah-run-*.pkl.gz',
         'walker-walk': 'data/dm_control/walker-walk-*.pkl.gz',
         'cartpole-swingup': 'data/dm_control/cartpole-swingup-*.pkl.gz',
         'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
         'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
-    dm_control_env = 'reacher-easy'
+    dm_control_env = 'finger-spin'
 
     # ###########################
     # Atari config variables
@@ -78,5 +84,5 @@ def bench_defaults():
         'BreakoutNoFrameskip-v4':
         "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
         'PongNoFrameskip-v4':
-        "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+        "data/atari/pong.npz",
     }
