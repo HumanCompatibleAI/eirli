@@ -34,6 +34,7 @@ def bc_defaults():
     n_epochs = 1000  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
     log_interval = 500  # noqa: F841
+    batch_size = 32  # noqa: F841
 
 
 gail_ingredient = Ingredient('gail')
@@ -148,6 +149,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         action_space=venv_chans_first.action_space,
         policy_class=lambda **kwargs: policy,
         policy_kwargs=None,
+        batch_size=bc['batch_size'],
         expert_data=dataset,
         device=device_name,
         augmentation_fn=augmenter,
@@ -249,6 +251,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()
     dataset = TransitionsMinimalDataset(dataset_dict)
+    del dataset_dict  # save RAM
 
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
