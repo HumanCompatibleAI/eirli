@@ -13,7 +13,7 @@ def bench_defaults():
     # should venvs be parallel?
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
-    n_envs = 8
+    n_envs = 2
     # this should be a number of trajectories to return, or None if returning
     # all available trajectories is okay
     n_traj = None
