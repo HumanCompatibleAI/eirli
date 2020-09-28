@@ -7,13 +7,16 @@ from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 from imitation.augment import StandardAugmentations
 import imitation.util.logger as imitation_logger
+import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
 import torch as th
+from torch import nn
 
+from il_representations.algos.encoders import DeterministicEncoder
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
@@ -28,8 +31,9 @@ bc_ingredient = Ingredient('bc')
 @bc_ingredient.config
 def bc_defaults():
     # number of passes to make through dataset
-    n_epochs = 250  # noqa: F841
+    n_epochs = 1000  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
+    log_interval = 500  # noqa: F841
 
 
 gail_ingredient = Ingredient('gail')
@@ -61,6 +65,7 @@ def gail_defaults():
     ppo_adv_clip = 0.05  # noqa: F841
 
 
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_train_ex = Experiment('il_train', ingredients=[
     benchmark_ingredient, bc_ingredient, gail_ingredient,
 ])
@@ -87,9 +92,14 @@ def default_config():
         venv_parallel=True,
         n_envs=16,
     )
+    encoder_kwargs = dict(  # noqa: F841
+        obs_encoder_cls='BasicCNN',
+        representation_dim=128,
+    )
 
 
-def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=None):
+@il_train_ex.capture
+def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs, lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
@@ -107,21 +117,19 @@ def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=No
     }
     if encoder_or_path is not None:
         if isinstance(encoder_or_path, str):
-            encoder_key = 'encoder_path'
+            encoder = th.load(encoder_or_path)
         else:
-            encoder_key = 'encoder'
-        policy_kwargs = {
-            'features_extractor_class': EncoderFeatureExtractor,
-            'features_extractor_kwargs': {
-                encoder_key: encoder_or_path
-            },
-            **common_policy_kwargs,
-        }
+            encoder = encoder_or_path
+        assert isinstance(encoder, nn.Module)
     else:
-        policy_kwargs = {
-            # don't pass a representation learner; we'll just use the default
-            **common_policy_kwargs,
-        }
+        encoder = DeterministicEncoder(observation_space, **encoder_kwargs)
+    policy_kwargs = {
+        'features_extractor_class': EncoderFeatureExtractor,
+        'features_extractor_kwargs': {
+            "encoder": encoder,
+        },
+        **common_policy_kwargs,
+    }
     policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
     return policy
 
@@ -129,9 +137,12 @@ def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=No
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
                    device_name, final_pol_name):
-    policy = make_policy(venv_chans_first.observation_space, venv_chans_first.action_space, encoder)
+    policy = make_policy(
+        observation_space=venv_chans_first.observation_space,
+        action_space=venv_chans_first.action_space, encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
+    augmenter = StandardAugmentations.from_string_spec(
+        bc['augs'], stack_color_space=color_space)
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
@@ -140,10 +151,14 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         expert_data=dataset,
         device=device_name,
         augmentation_fn=augmenter,
+        optimizer_cls=th.optim.SGD,
+        optimizer_kwargs=dict(lr=1e-3, momentum=0.1),
+        ent_weight=1e-3,
+        l2_weight=1e-5,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'])
+    trainer.train(n_epochs=bc['n_epochs'], log_interval=bc['log_interval'])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
@@ -172,7 +187,9 @@ def do_training_gail(
         """Construct a policy with the right LR schedule (since PPO will
         actually use it, unlike BC)."""
         assert not use_sde
-        return make_policy(observation_space, action_space, encoder, lr_schedule)
+        return make_policy(
+            observation_space=observation_space, action_space=action_space,
+            encoder_or_path=encoder, lr_schedule=lr_schedule)
 
     ppo_algo = PPO(
         policy=policy_constructor,
@@ -200,7 +217,7 @@ def do_training_gail(
         ppo_algo,
         disc_batch_size=gail['disc_batch_size'],
         disc_minibatch_size=gail['disc_minibatch_size'],
-        discrim_kwargs=dict(discrim_net=discrim_net),
+        discrim_kwargs=dict(discrim_net=discrim_net, scale=True),
         obs_norm=False,
         rew_norm=True,
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
@@ -216,15 +233,16 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(seed, algo, benchmark, encoder_path, freeze_encoder, _config):
+def train(seed, algo, benchmark, encoder_path, freeze_encoder,
+          _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
     # actually know the right way to write log files continuously in Sacred.
-    log_dir = il_train_ex.observers[0].dir
-    imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
+    log_dir = os.path.abspath(il_train_ex.observers[0].dir)
+    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     venv = auto_env.load_vec_env()
     dataset_dict = auto_env.load_dataset()
@@ -235,7 +253,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, _config):
         encoder = th.load(encoder_path)
         if freeze_encoder:
             freeze_params(encoder)
-            assert len(encoder.parameters()) == 0
+            assert len(list(encoder.parameters())) == 0
     else:
         logging.info("No encoder provided, will init from scratch")
         encoder = None
@@ -243,16 +261,16 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, _config):
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        do_training_bc(dataset=dataset,
-                       venv_chans_first=venv,
-                       out_dir=log_dir,
-                       encoder=encoder)
+        final_path = do_training_bc(dataset=dataset,
+                                    venv_chans_first=venv,
+                                    out_dir=log_dir,
+                                    encoder=encoder)
 
     elif algo == 'gail':
-        do_training_gail(dataset=dataset,
-                         venv_chans_first=venv,
-                         out_dir=log_dir,
-                         encoder=encoder)
+        final_path = do_training_gail(dataset=dataset,
+                                      venv_chans_first=venv,
+                                      out_dir=log_dir,
+                                      encoder=encoder)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
@@ -261,9 +279,9 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, _config):
     # exception after creating it (could use try/catch or a context manager)
     venv.close()
 
-    return log_dir
+    return {'model_path': os.path.abspath(final_path)}
 
 
 if __name__ == '__main__':
-    il_train_ex.observers.append(FileStorageObserver('il_train_runs'))
+    il_train_ex.observers.append(FileStorageObserver('runs/il_train_runs'))
     il_train_ex.run_commandline()

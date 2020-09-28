@@ -1,7 +1,8 @@
-rep_learning_runs
-il_train_runs
-il_test_runs
+runs
 test_observer
+tests
+output
+*_runs
 *.pyc
 *.egg-info
 # data/ is used to set up symlinks to datasets
@@ -15,3 +16,4 @@ test_observer
 .idea
 *.xml
 *.iml
+.ipynb_checkpoints
