@@ -134,8 +134,7 @@ def stooke_contrastive_hyperparams_dmc():
     # TODO add in augmentations once determined via hyperparameter search
     algo_params = {'representation_dim': 128,
                    'batch_size': 256,
-                   'optimizer_kwargs': {'lr': 1.0E-3},
-                   'scheduler': CosineAnnealingLR}
+                   'optimizer_kwargs': {'lr': 1.0E-3}}
     _ = locals()
     del _
 
