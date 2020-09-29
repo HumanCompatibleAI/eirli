@@ -720,6 +720,9 @@ def cfg_base_3seed_4cpu_pt3gpu():
     0.3 of a GPU. Reasonable idea for, e.g., GAIL on svm/perceptron."""
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
+                           # retry on (node) failure
+                           max_failures=5,
+                           fail_fast=False,
                            resources_per_trial=dict(
                                cpu=5,
                                gpu=0.32,
