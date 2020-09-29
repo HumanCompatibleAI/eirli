@@ -14,6 +14,8 @@ import torch
 import inspect
 import imitation.util.logger as logger
 import logging
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
                             'batch_extender']
@@ -117,10 +119,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
                                    **to_dict(optimizer_kwargs))
 
-        if scheduler is not None:
-            self.scheduler = scheduler(self.optimizer, **to_dict(scheduler_kwargs))
-        else:
-            self.scheduler = None
+        self.scheduler_cls = scheduler
+        self.scheduler = None
+        self.scheduler_kwargs = scheduler_kwargs or {}
+
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
     def validate_and_update_kwargs(self, user_kwargs, algo_hardcoded_kwargs=None):
@@ -217,6 +219,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
         loss_record = []
         global_step = 0
         num_batches_per_epoch = int(len(dataset)/self.batch_size)
+
+        if self.scheduler_cls is not None:
+            if isinstance(self.scheduler_cls, CosineAnnealingLR):
+                self.scheduler_kwargs['T_max'] = training_epochs
+            self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
+
         assert num_batches_per_epoch > 0, \
             f"y u no train??? len(ds)={len(dataset)}, bs={self.batch_size}"
 
