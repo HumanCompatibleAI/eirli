@@ -131,6 +131,8 @@ def condition_eighteen_ac_temporal_vae_lowbeta():
 @represent_ex.named_config
 def stooke_contrastive_hyperparams_dmc():
     # To be used with contrastive algorithms that do not use momentum
+    # Currently doesn't contain CosineAnnealing, despite being in Stooke,
+    # because it's too hard to debug last minute
     # TODO add in augmentations once determined via hyperparameter search
     algo_params = {'representation_dim': 128,
                    'batch_size': 256,
