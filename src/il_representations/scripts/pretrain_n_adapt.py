@@ -808,7 +808,7 @@ def cfg_bench_short_sweep_dm_control():
 
 @chain_ex.named_config
 def cfg_bench_micro_sweep_magical():
-    """Tiny sweep over dm_control configs, both of which are "not too hard",
+    """Tiny sweep over MAGICAL configs, both of which are "not too hard",
     but still provide interesting generalisation challenges."""
     spec = dict(benchmark=tune.grid_search(
         [
@@ -834,6 +834,31 @@ def cfg_bench_micro_sweep_dm_control():
                 'dm_control_env': dm_control_env_name
             } for dm_control_env_name in ['finger-spin', 'cheetah-run']
         ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_one_task_magical():
+    """Just one simple MAGICAL config."""
+    benchmark = {
+        'benchmark_name': 'magical',
+        'magical_env_prefix': 'MatchRegions',
+        'magical_remove_null_actions': True,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_one_task_dm_control():
+    """Just one simple dm_control config."""
+    benchmark = {
+        'benchmark_name': 'dm_control',
+        'dm_control_env': 'cheetah-run',
+    }
 
     _ = locals()
     del _
