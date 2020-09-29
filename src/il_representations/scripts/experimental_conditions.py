@@ -122,7 +122,7 @@ def condition_eighteen_ac_temporal_vae_lowbeta():
     # An action-conditioned variational autoencoder with weight on KLD loss set to 0.1, and temporal offset
     # between encoded image and target image
     algo = 'ActionConditionedTemporalVAE'
-    algo_params = {'loss_calculator_kwargs': {'beta': 0.1}},
+    algo_params = {'loss_calculator_kwargs': {'beta': 0.1}}
     use_random_rollouts = False
     _ = locals()
     del _
