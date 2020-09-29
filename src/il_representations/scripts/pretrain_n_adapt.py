@@ -362,7 +362,6 @@ def cfg_tune_augmentations():
     }
 
     skopt_space = collections.OrderedDict([
-
         ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
             "translate,rotate,gaussian_blur", "translate,rotate",
             "translate", "translate, gaussian_blur",
@@ -374,6 +373,7 @@ def cfg_tune_augmentations():
 
     _ = locals()
     del _
+
 
 @chain_ex.named_config
 def cfg_tune_vae_learning_rate():
