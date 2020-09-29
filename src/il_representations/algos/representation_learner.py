@@ -221,7 +221,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         num_batches_per_epoch = int(len(dataset)/self.batch_size)
 
         if self.scheduler_cls is not None:
-            if isinstance(self.scheduler_cls, CosineAnnealingLR):
+            if self.scheduler_cls is CosineAnnealingLR:
                 self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
             else:
                 self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
