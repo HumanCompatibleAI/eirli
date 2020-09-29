@@ -1022,6 +1022,21 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
         config = expand_dict_keys(config)
+
+        # add empty update dicts if necessary to avoid crashing
+        # FIXME(sam): decide whether this is the appropriate defensive thing to
+        # do. It would be nice if we caught errors where the user tries to,
+        # e.g., tune repL, but does not specify anything to tune _over_.
+        if stages_to_run == StagesToRun.REPL_AND_IL:
+            keys_to_add = ['benchmark', 'il_train', 'il_test', 'repl']
+        if stages_to_run == StagesToRun.IL_ONLY:
+            keys_to_add = ['benchmark', 'il_train', 'il_test']
+        if stages_to_run == StagesToRun.REPL_ONLY:
+            keys_to_add = ['benchmark', 'repl']
+        for key in keys_to_add:
+            if key not in config:
+                config[key] = {}
+
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(rep_ex_config, il_train_ex_config,
                             il_test_ex_config, benchmark_config, config,
