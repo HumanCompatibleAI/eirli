@@ -242,6 +242,7 @@ class NegativeLogLikelihood(RepresentationLoss):
         # Negative log likelihood loss. Using this rather than torch.nn.NLLLoss() so I can work directly
         # with Torch distribution objects
         ground_truth = torch.squeeze(target_dist.mean)
+        import pdb; pdb.set_trace()
         log_probas = decoded_context_dist.log_prob(ground_truth)
         return torch.mean(-1*log_probas)
 
@@ -275,18 +276,19 @@ class VAELoss(RepresentationLoss):
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         ground_truth_pixels = self.get_vector_forms(target_dist)[0]
-        log_prob_x_given_z = decoded_context_dist.log_prob(ground_truth_pixels)
+        predicted_pixels = decoded_context_dist.mean
+        reconstruction_loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
 
         prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +
                                                        encoded_context_dist.event_shape),
                                            self.prior_scale)
         independent_prior = torch.distributions.Independent(prior,
                                                             len(encoded_context_dist.event_shape))
-        kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
+        kld = torch.mean(torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior))
         # KL divergence of z dist from prior contributes to loss,
         # log probability of ground truth pixels subtracts from it
-        loss = self.beta*kld - log_prob_x_given_z
-        return torch.mean(loss)
+        loss = self.beta*kld + reconstruction_loss
+        return loss
 
 
 class CEBLoss(RepresentationLoss):
