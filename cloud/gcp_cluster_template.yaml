@@ -205,7 +205,7 @@ setup_commands:
     && source ./cloud/nfs_config.sh
     && mkdir -p "${CLIENT_MOUNT_POINT}/il-demos/"
     && ( test -e data || ln -vs "${CLIENT_MOUNT_POINT}/il-demos/" data )
-    && cluster_name="cluster-$(date -Iminutes | date -uIminutes | sed 's/+00:00$//')Z"
+    && cluster_name="cluster-XXX-CUSTOMIZE-THIS-XXX"
     && runs_path="${CLIENT_MOUNT_POINT}/cluster-data/${cluster_name}"
     && ( test -e runs || ( mkdir -p "$runs_path" && ln -vs "$runs_path" runs ) )
   # Set up MuJoCo
