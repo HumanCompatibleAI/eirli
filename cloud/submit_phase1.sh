@@ -42,7 +42,7 @@ for repl in \
     "cfg_tune_vae_learning_rate repl.condition_ten_vae repl.stooke_vae_hyperparams_dmc" \
     ; do
     for il in cfg_il_bc_nofreeze; do
-        for bench in cfg_bench_one_task_magical cfg_bench_micro_sweep_dm_control; do
+        for bench in cfg_bench_one_task_magical cfg_bench_one_task_dm_control; do
             ray submit --tmux "$cluster_cfg_path" \
                 ./submit_pretrain_n_adapt.py \
                 -- $base_cfgs $bench cfg_force_use_repl $il $repl
