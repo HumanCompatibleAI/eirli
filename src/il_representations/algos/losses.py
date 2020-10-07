@@ -278,6 +278,7 @@ class VAELoss(RepresentationLoss):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         ground_truth_pixels = self.get_vector_forms(target_dist)[0]
         predicted_pixels = decoded_context_dist.mean
+
         recon_loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
 
         prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +

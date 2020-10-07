@@ -16,7 +16,7 @@ from stable_baselines3.ppo import PPO
 import torch as th
 from torch import nn
 
-from il_representations.algos.encoders import DeterministicEncoder
+from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
@@ -122,7 +122,7 @@ def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs
             encoder = encoder_or_path
         assert isinstance(encoder, nn.Module)
     else:
-        encoder = DeterministicEncoder(observation_space, **encoder_kwargs)
+        encoder = BaseEncoder(observation_space, **encoder_kwargs)
     policy_kwargs = {
         'features_extractor_class': EncoderFeatureExtractor,
         'features_extractor_kwargs': {
