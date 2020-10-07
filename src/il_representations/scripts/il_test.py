@@ -30,9 +30,12 @@ def default_config():
     # being tested
     run_id = 'test'
 
+    _ = locals()
+    del _
+
 
 @il_test_ex.main
-def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
+def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)

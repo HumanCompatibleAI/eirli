@@ -80,3 +80,6 @@ def bench_defaults():
         'PongNoFrameskip-v4':
         "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
     }
+
+    _ = locals()
+    del _

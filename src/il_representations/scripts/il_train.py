@@ -31,6 +31,9 @@ def bc_defaults():
     n_epochs = 250  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
 
+    _ = locals()
+    del _
+
 
 gail_ingredient = Ingredient('gail')
 
@@ -60,6 +63,9 @@ def gail_defaults():
     ppo_ent = 1e-5  # noqa: F841
     ppo_adv_clip = 0.05  # noqa: F841
 
+    _ = locals()
+    del _
+
 
 il_train_ex = Experiment('il_train', ingredients=[
     benchmark_ingredient, bc_ingredient, gail_ingredient,
@@ -87,6 +93,9 @@ def default_config():
         venv_parallel=True,
         n_envs=16,
     )
+
+    _ = locals()
+    del _
 
 
 def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=None):
