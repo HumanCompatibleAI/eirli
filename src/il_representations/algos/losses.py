@@ -244,7 +244,6 @@ class NegativeLogLikelihood(RepresentationLoss):
         # Negative log likelihood loss. Using this rather than torch.nn.NLLLoss() so I can work directly
         # with Torch distribution objects
         ground_truth = torch.squeeze(target_dist.mean)
-        import pdb; pdb.set_trace()
         log_probas = decoded_context_dist.log_prob(ground_truth)
         return torch.mean(-1*log_probas)
 
