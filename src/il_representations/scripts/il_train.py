@@ -20,6 +20,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
+from il_representations.utils import freeze_params
 
 bc_ingredient = Ingredient('bc')
 
@@ -78,6 +79,8 @@ def default_config():
     encoder_path = None  # noqa: F841
     # file name for final policy
     final_pol_name = 'policy_final.pt'  # noqa: F841
+    # should we freeze waits of the encoder?
+    freeze_encoder = False  # noqa: F841
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
     benchmark = dict(  # noqa: F841
@@ -86,21 +89,20 @@ def default_config():
     )
 
 
-@il_train_ex.capture
-def make_policy(venv, encoder_or_path):
+def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
-    # so that it can be configured in the same way, with the same defaults,
-    # etc.
+    # so that it can be configured in the same way, with the same default
+    # encoder architecture & kwargs.
     common_policy_kwargs = {
-        'observation_space': venv.observation_space,
-        'action_space': venv.action_space,
+        'observation_space': observation_space,
+        'action_space': action_space,
         # SB3 policies require a learning rate for the embedded optimiser. BC
         # should not use that optimiser, though, so we set the LR to some
         # insane value that is guaranteed to cause problems if the optimiser
         # accidentally is used for something (using infinite or non-numeric
         # values fails initial validation, so we need an insane-but-finite
         # number).
-        'lr_schedule': lambda _: 1e100,
+        'lr_schedule': (lambda _: 1e100) if lr_schedule is None else lr_schedule,
         'ortho_init': False,
     }
     if encoder_or_path is not None:
@@ -127,10 +129,9 @@ def make_policy(venv, encoder_or_path):
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
                    device_name, final_pol_name):
-    policy = make_policy(venv_chans_first, encoder)
+    policy = make_policy(venv_chans_first.observation_space, venv_chans_first.action_space, encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        bc['augs'], stack_color_space=color_space)
+    augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
@@ -147,6 +148,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
     trainer.save_policy(final_path)
+    return final_path
 
 
 @il_train_ex.capture
@@ -159,22 +161,21 @@ def do_training_gail(
     final_pol_name,
     gail,
 ):
-    # Supporting encoder init requires:
-    # - Thinking more about how to handle LR of the optimiser stuffed inside
-    #   the policy (at the moment we just set an insane default LR because BC
-    #   doesn't use it, but PPO actually will use it).
-    # - Thinking about how to init the discriminator as well (GAIL
-    #   discriminators are incredibly finicky, so that's probably where most
-    #   of the value of representation learning will come from in GAIL).
-    assert encoder is None, "encoder not yet supported"
-
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
+        encoder=encoder,
     )
+
+    def policy_constructor(observation_space, action_space, lr_schedule, use_sde=False):
+        """Construct a policy with the right LR schedule (since PPO will
+        actually use it, unlike BC)."""
+        assert not use_sde
+        return make_policy(observation_space, action_space, encoder, lr_schedule)
+
     ppo_algo = PPO(
-        policy=sb3_pols.ActorCriticCnnPolicy,
+        policy=policy_constructor,
         env=venv_chans_first,
         # verbose=1 and tensorboard_log=False is a hack to work around SB3
         # issue #109.
@@ -211,10 +212,11 @@ def do_training_gail(
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final GAIL policy to {final_path}")
     th.save(ppo_algo.policy, final_path)
+    return final_path
 
 
 @il_train_ex.main
-def train(seed, algo, benchmark, encoder_path, _config):
+def train(seed, algo, benchmark, encoder_path, freeze_encoder, _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -231,6 +233,9 @@ def train(seed, algo, benchmark, encoder_path, _config):
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
         encoder = th.load(encoder_path)
+        if freeze_encoder:
+            freeze_params(encoder)
+            assert len(encoder.parameters()) == 0
     else:
         logging.info("No encoder provided, will init from scratch")
         encoder = None

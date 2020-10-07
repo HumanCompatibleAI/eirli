@@ -1,17 +1,31 @@
 import os
 import torch
-import numpy as np
-from collections import Counter
 from stable_baselines3.common.preprocessing import preprocess_obs
+from stable_baselines3.common.utils import get_device
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from imitation.augment import StandardAugmentations
-from il_representations.algos.batch_extenders import IdentityBatchExtender
+from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, save_model, Logger
+from il_representations.algos.utils import AverageMeter, Logger
 from il_representations.algos.augmenters import AugmentContextOnly
-import itertools
 from gym.spaces import Box
+import torch
+import inspect
+import imitation.util.logger as logger
+
+
+DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
+
+
+def get_default_args(func):
+    signature = inspect.signature(func)
+    return {
+        k: v.default
+        for k, v in signature.parameters.items()
+        if v.default is not inspect.Parameter.empty
+    }
+
 
 
 def to_dict(kwargs_element):
@@ -50,18 +64,20 @@ class RepresentationLearner(BaseEnvironmentLearner):
         super(RepresentationLearner, self).__init__(env)
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
-        self.logger = Logger(log_dir)
+        logger.configure(log_dir, ["stdout", "tensorboard"])
 
-        if device is None:
-            # FIXME(sam): we can use SB3's get_device() for this instead
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        else:
-            self.device = device
+        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
+        os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
+        self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
+        os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
+
+        self.device = get_device("auto" if device is None else device)
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.save_interval = save_interval
+        #self._make_channels_first()
         self.unit_test_max_train_steps = unit_test_max_train_steps
 
         if projection_dim is None:
@@ -72,21 +88,23 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.augmenter = augmenter(**augmenter_kwargs)
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
-        self.encoder = encoder(self.observation_space, representation_dim, **to_dict(encoder_kwargs)).to(self.device)
+        encoder_kwargs = to_dict(encoder_kwargs)
+        self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
+
+        if batch_extender is QueueBatchExtender:
+            # TODO maybe clean this up?
+            batch_extender_kwargs = batch_extender_kwargs or {}
+            batch_extender_kwargs['queue_dim'] = projection_dim
+            batch_extender_kwargs['device'] = self.device
 
         if batch_extender_kwargs is None:
             # Doing this to avoid having batch_extender() take an optional kwargs dict
             self.batch_extender = batch_extender()
         else:
-            if batch_extender_kwargs.get('queue_size') is not None:
-                # Doing this slightly awkward updating of kwargs to avoid having
-                # the superclass of BatchExtender accept queue_dim as an argument
-                batch_extender_kwargs['queue_dim'] = projection_dim
-
             self.batch_extender = batch_extender(**batch_extender_kwargs)
 
-        self.loss_calculator = loss_calculator(device=self.device, **to_dict(loss_calculator_kwargs))
+        self.loss_calculator = loss_calculator(self.device, **to_dict(loss_calculator_kwargs))
 
         trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
         trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
@@ -98,39 +116,70 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             self.scheduler = None
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
-        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
-        os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
-        self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
-        os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
-    def log_info(self, loss, step, epoch_ind, training_epochs):
-        self.writer.add_scalar('loss', loss, step)
-        lr = self.optimizer.param_groups[0]['lr']
-        self.writer.add_scalar('learning_rate', lr, step)
-        self.logger.log(f"Pretrain Epoch [{epoch_ind+1}/{training_epochs}], step {step}, "
-                        f"lr {lr}, "
-                        f"loss {loss}")
+    def validate_and_update_kwargs(self, user_kwargs, kwargs_updates=None,
+                                   hardcoded_params=None, params_cleaned=False):
+        # return a copy instead of updating in-place to avoid inconsistent state
+        # after a failed update
+        user_kwargs_copy = user_kwargs.copy()
+        if not params_cleaned:
+            default_args = get_default_args(RepresentationLearner.__init__)
+            if hardcoded_params is None:
+                hardcoded_params = DEFAULT_HARDCODED_PARAMS
+
+            for hardcoded_param in hardcoded_params:
+                if hardcoded_param not in user_kwargs_copy:
+                    continue
+                if user_kwargs_copy[hardcoded_param] != default_args[hardcoded_param]:
+                    raise ValueError(f"You passed in a non-default value for parameter {hardcoded_param} "
+                                     f"hardcoded by {self.__class__.__name__}")
+                del user_kwargs_copy[hardcoded_param]
+
+        if kwargs_updates is not None:
+            if not isinstance(kwargs_updates, dict):
+                raise TypeError("kwargs_updates must be passed in in the form of a dict ")
+            for kwarg_update_key in kwargs_updates.keys():
+                if isinstance(user_kwargs_copy[kwarg_update_key], dict):
+                    user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(user_kwargs_copy[kwarg_update_key],
+                                                                                         kwargs_updates[kwarg_update_key],
+                                                                                         params_cleaned=True)
+                else:
+                    user_kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
+        return user_kwargs_copy
 
     def _prep_tensors(self, tensors_or_arrays):
         """
-        :param tensors_or_arrays: A list of Torch tensors or numpy arrays
+        :param tensors_or_arrays: A list of Torch tensors or numpy arrays (or None)
         :return: A torch tensor moved to the device associated with this
             learner, and converted to float
         """
-        if tensors_or_arrays.ndim == 4:
-            # if the tensors_or_arrays look like images, we check that they
-            # also seem like they're NCHW
+        if tensors_or_arrays is None:
+            # sometimes we get passed optional arguments with default value
+            # None; we can ignore them & return None in response
+            return
+        if not torch.is_tensor(tensors_or_arrays):
+            tensor_list = [torch.as_tensor(tens) for tens in tensors_or_arrays]
+            batch_tensor = torch.stack(tensor_list, dim=0)
+        else:
+            batch_tensor = tensors_or_arrays
+        if batch_tensor.ndim == 4:
+            # if the batch_tensor looks like images, we check that it's also NCHW
             is_nchw_heuristic = \
-                tensors_or_arrays.shape[1] < tensors_or_arrays.shape[2] \
-                and tensors_or_arrays.shape[1] < tensors_or_arrays.shape[3]
+                batch_tensor.shape[1] < batch_tensor.shape[2] \
+                and batch_tensor.shape[1] < batch_tensor.shape[3]
             if not is_nchw_heuristic:
                 raise ValueError(
-                    f"Batch tensor axes {tensors_or_arrays.shape} do not look "
+                    f"Batch tensor axes {batch_tensor.shape} do not look "
                     "like they're in NCHW order. Did you accidentally pass in "
                     "a channels-last tensor?")
-        tensor_list = [torch.as_tensor(tens) for tens in tensors_or_arrays]
-        batch_tensor = torch.stack(tensor_list, dim=0)
-        return batch_tensor.to(self.device, torch.float)
+        if torch.is_floating_point(batch_tensor):
+            # cast double to float for perf reasons (also drops half-precision)
+            dtype = torch.float
+        else:
+            # otherwise use whatever the input type was (typically uint8 or
+            # int64, but presumably original dtype was fine whatever it was)
+            dtype = None
+        return batch_tensor.to(self.device, dtype=dtype)
 
     def _preprocess(self, input_data):
         # SB will normalize to [0,1]
@@ -154,7 +203,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return batch['context'], batch['target'], batch['traj_ts_ids'], None
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
-
 
     def learn(self, dataset, training_epochs):
         """
@@ -181,6 +229,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
+                extra_context = self._prep_tensors(extra_context)
+                traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
                 contexts, targets = self._preprocess(contexts), self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
@@ -204,13 +254,18 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific loss function. Typically this only requires decoded_contexts and
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
+
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
+
                 loss_meter.update(loss)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.log_info(loss, step, epoch, training_epochs)
+                logger.record('loss', loss.item())
+                logger.record('epoch', epoch)
+                logger.record('within_epoch_step', step)
+                logger.dump()
 
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:

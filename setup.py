@@ -28,7 +28,7 @@ setup(
         "pytest-flake8~=1.0.6",
         "pytest-isort~=1.1.0",
 
-        # imitation needs special branch as of 2020-08-20
+        # imitation needs special branch as of 2020-10-07
         ("imitation @ git+git://github.com/HumanCompatibleAI/imitation"
          "@image-env-changes#egg=imitation"),
         ("stable_baselines3 @ git+https://github.com/HumanCompatibleAI/stable-baselines3.git"

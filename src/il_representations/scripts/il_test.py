@@ -64,10 +64,17 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
         # display to stdout
         logging.info("Evaluation finished, results:\n" +
                      eval_data_frame.to_string())
-        with tempfile.NamedTemporaryFile('w') as fp:
-            eval_data_frame.to_csv(fp)
-            fp.flush()
-            il_test_ex.add_artifact(fp.name, 'eval.csv')
+        final_stats_dict = {
+            'demo_env_name': demo_env_name,
+            'policy_path': policy_path,
+            'seed': seed,
+            'ntraj': n_rollouts,
+            'full_data': json.loads(eval_data_frame.to_json(orient='records')),
+            # return_mean is included for hyperparameter tuning; we also get
+            # the same value for other environments (dm_control, Atari). (in
+            # MAGICAL, it averages across all test environments)
+            'return_mean': eval_data_frame['mean_score'].mean(),
+        }
 
     elif (benchmark['benchmark_name'] == 'dm_control'
           or benchmark['benchmark_name'] == 'atari'):
@@ -92,22 +99,23 @@ def test(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
                                for key, value in stats.items())
         logging.info(f"Evaluation stats on '{full_env_name}': {kv_message}")
 
-        # save to a .json file
-        with tempfile.NamedTemporaryFile('w') as fp:
-            full_stats_dict = collections.OrderedDict([
-                ('full_env_name', full_env_name),
-                ('policy_path', policy_path),
-                ('seed', seed),
-                *stats.items(),
-            ])
-            json.dump(full_stats_dict, fp, indent=2, sort_keys=False)
-            fp.flush()
-            il_test_ex.add_artifact(fp.name, 'eval.json')
+        final_stats_dict = collections.OrderedDict([
+            ('full_env_name', full_env_name),
+            ('policy_path', policy_path),
+            ('seed', seed),
+            *stats.items(),
+        ])
 
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
                                   f"{benchmark['benchmark_name']!r} is not "
                                   "yet supported")
+
+    # save to a .json file
+    with tempfile.NamedTemporaryFile('w') as fp:
+        json.dump(final_stats_dict, fp, indent=2, sort_keys=False)
+        fp.flush()
+        il_test_ex.add_artifact(fp.name, 'eval.json')
 
 
 if __name__ == '__main__':
