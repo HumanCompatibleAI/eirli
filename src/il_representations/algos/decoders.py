@@ -55,54 +55,98 @@ class LossDecoder(nn.Module):
     def ones_like_projection_dim(self, x):
         return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
+    def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
+        z_vector = self.get_vector(z_dist)
+        mean = mean_layer(z_vector)
+        stddev = stdev_layer(z_dist.stddev)
+        return independent_multivariate_normal(mean, stddev)
+
+    def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
+        if learn_scale:
+            stddev_func = None
+        else:
+            stddev_func = self.ones_like_projection_dim
+
+        if architecture is None:
+            mean_func = nn.Sequential(nn.Linear(representation_dim, projection_dim))
+            if stddev_func is None:
+                stddev_func = nn.Sequential(nn.Linear(representation_dim, projection_dim))
+        else:
+            layers = []
+            input_dim = representation_dim
+            for layer_def in architecture[:-1]:
+                layers.append(nn.Linear(input_dim, layer_def['output_dim']))
+                input_dim = layer_def['output_dim']
+            layers.append(nn.Linear(input_dim, projection_dim))
+            mean_func = nn.Sequential(layers)
+            if stddev_func is None:
+                stddev_func = nn.Sequential(copy.deepcopy(layers))
+
+        return mean_func, stddev_func
+
 
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
 
 
-class TargetProjection(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
-        super(TargetProjection, self).__init__(representation_dim, projection_shape, sample)
+class AsymmetricProjectionHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, sample=False,
+                 projection_architecture=None, learn_scale=False):
+        super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
-        self.target_projection = nn.Sequential(nn.Linear(self.representation_dim, self.projection_dim))
+        self.context_mean, self.context_stddev = self.get_projection_modules(self.representation_dim,
+                                                                            self.projection_dim,
+                                                                            projection_architecture,
+                                                                            learn_scale)
+        self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
+                                                                          self.projection_dim,
+                                                                          projection_architecture,
+                                                                          learn_scale)
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+        return self._apply_projection_layer(z_dist, self.context_mean, self.context_stddev)
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
+
+
+class SymmetricProjectionHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, sample=False,
+                 projection_architecture=None, learn_scale=False):
+        super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+
+        self.symmetric_mean, self.symmetric_stddev = self.get_projection_modules(self.representation_dim,
+                                                                                self.projection_dim,
+                                                                                projection_architecture,
+                                                                                learn_scale)
+
+    def forward(self, z_dist, traj_info, extra_context=None):
+        return self._apply_projection_layer(z_dist, self.symmetric_mean, self.symmetric_stddev)
+
+
+class OnlyTargetProjectionHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, sample=False,
+                 projection_architecture=None, learn_scale=False):
+        super(OnlyTargetProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
+                                                                          self.projection_dim,
+                                                                          projection_architecture,
+                                                                          learn_scale)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return z_dist
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
-        z_vector = self.get_vector(z_dist)
-        mean = self.target_projection(z_vector)
-        return independent_multivariate_normal(mean, z_dist.stddev)
+        self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
 
-
-class ProjectionHead(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
-        super(ProjectionHead, self).__init__(representation_dim, projection_shape, sample)
-
-        self.shared_mlp = nn.Sequential(nn.Linear(self.representation_dim, 256),
-                                      nn.ReLU(),
-                                      nn.Linear(256, 256),
-                                      nn.ReLU())
-        self.mean_layer = nn.Linear(256, self.projection_dim)
-
-        if learn_scale:
-            self.scale_layer = nn.Linear(256, self.projection_dim)
-        else:
-            self.scale_layer = self.ones_like_projection_dim
-
-    def forward(self, z_dist, traj_info, extra_context=None):
-        z = self.get_vector(z_dist)
-        shared_repr = self.shared_mlp(z)
-        return independent_multivariate_normal(mean=self.mean_layer(shared_repr),
-                                               stddev=torch.exp(self.scale_layer(shared_repr)))
 
 
 class MomentumProjectionHead(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False, momentum_weight=0.99, learn_scale=False):
+    def __init__(self, representation_dim, projection_shape, sample=False,
+                 momentum_weight=0.99, inner_projection_head_cls=SymmetricProjectionHead):
         super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=sample)
-        self.context_decoder = ProjectionHead(representation_dim, projection_shape,
-                                              sample=sample, learn_scale=learn_scale)
+        self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape, sample=sample)
         self.target_decoder = copy.deepcopy(self.context_decoder)
         for param in self.target_decoder.parameters():
             param.requires_grad = False
@@ -131,10 +175,11 @@ class MomentumProjectionHead(LossDecoder):
 
 
 class BYOLProjectionHead(MomentumProjectionHead):
-    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99, sample=False):
+    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99, sample=False,
+                 inner_projection_head_cls=SymmetricProjectionHead):
         super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape,
                                                  sample=sample, momentum_weight=momentum_weight)
-        self.context_predictor = ProjectionHead(projection_shape, projection_shape)
+        self.context_predictor = inner_projection_head_cls(projection_shape, projection_shape)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
@@ -147,6 +192,41 @@ class BYOLProjectionHead(MomentumProjectionHead):
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return independent_multivariate_normal(F.normalize(prediction_dist.mean, dim=1),
                                                    prediction_dist.variance)
+
+
+class ActionConditionedVectorDecoder(LossDecoder):
+    """
+    A decoder that concatenates the frame representation
+    and the action representation, and predicts a vector from it
+    for use in contrastive losses
+    """
+    def __init__(self, representation_dim, projection_dim, sample=False, action_representation_dim=128,
+                 projection_architecture=None, learn_scale=False):
+        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_dim, sample=sample)
+        self.learn_scale = learn_scale
+
+        # Machinery for mapping a concatenated (context representation, action representation) into a projection
+
+        self.action_conditioned_mean, self.action_conditioned_stddev = self.get_projection_modules(self.representation_dim + action_representation_dim,
+                                                                                                  self.projection_dim,
+                                                                                                  projection_architecture,
+                                                                                                  learn_scale)
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+    def decode_context(self, z_dist, traj_info, extra_context=None):
+        # Get a single vector out of the the distribution object passed in by the
+        # encoder (either via sampling or taking the mean)
+        z = self.get_vector(z_dist)
+        action_encoding_vector = self.get_vector(extra_context)
+        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
+                                                                  f"action vector shape {action_encoding_vector.shape}"
+        merged_vector = torch.cat([z, action_encoding_vector], dim=1)
+        mean_projection = self.action_conditioned_mean(merged_vector)
+        scale = self.action_conditioned_stddev(merged_vector)
+        return independent_multivariate_normal(mean=mean_projection,
+                                               stddev=scale)
 
 
 class ActionPredictionHead(LossDecoder):
@@ -173,7 +253,6 @@ class ActionPredictionHead(LossDecoder):
         if torch.cuda.is_available():
             for k in self.param_mappings:
                 self.param_mappings[k] = self.param_mappings[k].to(torch.device('cuda'))
-
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
@@ -229,7 +308,7 @@ class PixelDecoder(LossDecoder):
         # Computes the number of dimensions that will come out of the final
         # (channels, shape, shape) output of the convolutional network, after flattening
         flattened_input_dim, self.full_input_shape = compute_decoder_input_shape_from_encoder(observation_space,
-                                                                                          self.encoder_arch)
+                                                                                              self.encoder_arch)
         logging.debug(f"Decoder input dims: {flattened_input_dim}")
         reversed_architecture = list(reversed(self.encoder_arch))
 
@@ -314,42 +393,4 @@ class PixelDecoder(LossDecoder):
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
-
-
-class ActionConditionedVectorDecoder(LossDecoder):
-    """
-    A decoder that concatenates the frame representation
-    and the action representation, and predicts a vector from it
-    for use in contrastive losses
-    """
-    def __init__(self, representation_dim, projection_shape, sample=False, action_representation_dim=128,
-                 learn_scale=False):
-        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_shape, sample=sample)
-        self.learn_scale = learn_scale
-
-        # Machinery for mapping a concatenated (context representation, action representation) into a projection
-        self.action_conditioned_projection = nn.Linear(representation_dim + action_representation_dim, projection_shape)
-
-        # If learning scale/std deviation parameter, declare a layer for that, otherwise, return a unit-constant vector
-        if self.learn_scale:
-            self.scale_projection = nn.Linear(representation_dim + action_representation_dim, projection_shape)
-        else:
-            self.scale_projection = self.ones_like_projection_dim
-
-    def decode_target(self, z_dist, traj_info, extra_context=None):
-        return z_dist
-
-    def decode_context(self, z_dist, traj_info, extra_context=None):
-        # Get a single vector out of the the distribution object passed in by the
-        # encoder (either via sampling or taking the mean)
-        z = self.get_vector(z_dist)
-        action_encoding_vector = self.get_vector(extra_context)
-        # Concatenate context representation and action representation and map to a merged representation
-        assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
-                                                                  f"action vector shape {action_encoding_vector.shape}"
-        merged_vector = torch.cat([z, action_encoding_vector], dim=1)
-        mean_projection = self.action_conditioned_projection(merged_vector)
-        scale = self.scale_projection(merged_vector)
-        return independent_multivariate_normal(mean=mean_projection,
-                                               stddev=scale)
 
