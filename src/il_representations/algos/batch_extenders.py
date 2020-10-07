@@ -1,14 +1,17 @@
+"""
+BatchExtenders are used in situations where you want to pass a batch forward
+for loss that is different than the batch seen by your encoder. The currently
+implemented situation where this is the case is Momentum, where you want to
+pass forward a bunch of negatives from prior encoding runs to increase the
+difficulty of your prediction task. One might also imagine this being useful
+for doing trajectory-mixing in a RNN case where batches naturally need to be
+all from a small number of trajectories, but this isn't yet implemented.
+"""
 from abc import ABC, abstractmethod
+
 import torch
-from torch.distributions import Normal
+
 from il_representations.algos.utils import independent_multivariate_normal
-"""
-BatchExtenders are used in situations where you want to pass a batch forward for loss that is different than the 
-batch seen by your encoder. The currently implemented situation where this is the case is Momentum, where you want 
-to pass forward a bunch of negatives from prior encoding runs to increase the difficulty of your prediction task. 
-One might also imagine this being useful for doing trajectory-mixing in a RNN case where batches naturally need 
-to be all from a small number of trajectories, but this isn't yet implemented. 
-"""
 
 
 class BatchExtender(ABC):
@@ -34,18 +37,22 @@ class QueueBatchExtender(BatchExtender):
         self.queue_ptr = 0
 
     def __call__(self, context_dist, target_dist):
-        # Call up current contents of the queue, duplicate. Add targets to the queue,
-        # potentially overriding old information in the process. Return targets concatenated to contents of queue
+        # Call up current contents of the queue, duplicate. Add targets to the
+        # queue, potentially overriding old information in the process. Return
+        # targets concatenated to contents of queue
         targets_loc = target_dist.loc
         targets_covariance = target_dist.covariance_matrix
 
-        # Pull out the diagonals of our MultivariateNormal covariance matrices, so we don't store all the extra 0s
-        targets_scale = torch.stack([batch_element_matrix.diag() for batch_element_matrix in targets_covariance])
+        # Pull out the diagonals of our MultivariateNormal covariance matrices,
+        # so we don't store all the extra 0s
+        targets_scale = torch.stack(
+            [batch_element_matrix.diag() for batch_element_matrix in targets_covariance])
 
         batch_size = targets_loc.shape[0]
         queue_targets_scale = (self.queue_scale.clone().detach()).to(self.device)
         queue_targets_loc = (self.queue_loc.clone().detach()).to(self.device)
-        # TODO: Currently requires the queue size to be a multiple of the batch size. Don't require that.
+        # TODO: Currently requires the queue size to be a multiple of the batch
+        # size. Don't require that.
         self.queue_loc[self.queue_ptr:self.queue_ptr + batch_size] = targets_loc
         self.queue_scale[self.queue_ptr:self.queue_ptr + batch_size] = targets_scale
         self.queue_ptr = (self.queue_ptr + batch_size) % self.queue_size

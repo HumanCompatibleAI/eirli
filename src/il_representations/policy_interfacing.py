@@ -1,11 +1,18 @@
-import torch
 from stable_baselines3.common.policies import BaseFeaturesExtractor
+import torch
+
 from il_representations.algos.encoders import compute_rep_shape_encoder
 
 
 class EncoderFeatureExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space, features_dim=None, encoder=None, encoder_path=None, finetune=True):
-        # Allow user to either pass in an existing encoder, or a path from which to load a pickled encoder
+    def __init__(self,
+                 observation_space,
+                 features_dim=None,
+                 encoder=None,
+                 encoder_path=None,
+                 finetune=True):
+        # Allow user to either pass in an existing encoder, or a path from
+        # which to load a pickled encoder
         assert encoder is not None or encoder_path is not None, \
             "You must pass in either an encoder object or a path to an encoder"
         assert not (encoder is not None and encoder_path is not None), \
@@ -34,8 +41,15 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
 
 
 class EncoderSimplePolicyHead(EncoderFeatureExtractor):
-    # Not actually a FeatureExtractor for SB use, but a very simple Policy for use in Cynthia's BC code
-    def __init__(self, observation_space, features_dim, action_size, encoder=None, encoder_path=None, finetune=True):
+    # Not actually a FeatureExtractor for SB use, but a very simple Policy for
+    # use in Cynthia's BC code
+    def __init__(self,
+                 observation_space,
+                 features_dim,
+                 action_size,
+                 encoder=None,
+                 encoder_path=None,
+                 finetune=True):
         super().__init__(observation_space, features_dim, encoder, encoder_path, finetune)
         self.action_layer = torch.nn.Linear(encoder.representation_dim, action_size)
         self.softmax = torch.nn.Softmax(dim=-1)

@@ -1,31 +1,29 @@
+import inspect
 import os
-import torch
+
+import imitation.util.logger as logger
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
+import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from imitation.augment import StandardAugmentations
-from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
-from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter, Logger
+
 from il_representations.algos.augmenters import AugmentContextOnly
-from gym.spaces import Box
-import torch
-import inspect
-import imitation.util.logger as logger
+from il_representations.algos.base_learner import BaseEnvironmentLearner
+from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
+from il_representations.algos.utils import AverageMeter
 
-
-DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor']
+DEFAULT_HARDCODED_PARAMS = [
+    'encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor'
+]
 
 
 def get_default_args(func):
     signature = inspect.signature(func)
     return {
         k: v.default
-        for k, v in signature.parameters.items()
-        if v.default is not inspect.Parameter.empty
+        for k, v in signature.parameters.items() if v.default is not inspect.Parameter.empty
     }
-
 
 
 def to_dict(kwargs_element):
@@ -37,8 +35,13 @@ def to_dict(kwargs_element):
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, *,
-                 log_dir, encoder, decoder, loss_calculator,
+    def __init__(self,
+                 env,
+                 *,
+                 log_dir,
+                 encoder,
+                 decoder,
+                 loss_calculator,
                  target_pair_constructor,
                  augmenter=AugmentContextOnly,
                  batch_extender=IdentityBatchExtender,
@@ -66,31 +69,35 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.log_dir = log_dir
         logger.configure(log_dir, ["stdout", "tensorboard"])
 
-        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
+        self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints',
+                                                     'representation_encoder')
         os.makedirs(self.encoder_checkpoints_path, exist_ok=True)
         self.decoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'loss_decoder')
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
-
 
         self.device = get_device("auto" if device is None else device)
         self.shuffle_batches = shuffle_batches
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.save_interval = save_interval
-        #self._make_channels_first()
+        # self._make_channels_first()
         self.unit_test_max_train_steps = unit_test_max_train_steps
 
         if projection_dim is None:
-            # If no projection_dim is specified, it will be assumed to be the same as representation_dim
-            # This doesn't have any meaningful effect unless you specify a projection head.
+            # If no projection_dim is specified, it will be assumed to be the
+            # same as representation_dim This doesn't have any meaningful
+            # effect unless you specify a projection head.
             projection_dim = representation_dim
 
         self.augmenter = augmenter(**augmenter_kwargs)
-        self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
+        self.target_pair_constructor = target_pair_constructor(
+            **to_dict(target_pair_constructor_kwargs))
 
         encoder_kwargs = to_dict(encoder_kwargs)
-        self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
-        self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
+        self.encoder = encoder(self.observation_space, representation_dim,
+                               **encoder_kwargs).to(self.device)
+        self.decoder = decoder(representation_dim, projection_dim,
+                               **to_dict(decoder_kwargs)).to(self.device)
 
         if batch_extender is QueueBatchExtender:
             # TODO maybe clean this up?
@@ -115,10 +122,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.scheduler = scheduler(self.optimizer, **to_dict(scheduler_kwargs))
         else:
             self.scheduler = None
-        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
+        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'),
+                                    flush_secs=15)
 
-    def validate_and_update_kwargs(self, user_kwargs, kwargs_updates=None,
-                                   hardcoded_params=None, params_cleaned=False):
+    def validate_and_update_kwargs(self,
+                                   user_kwargs,
+                                   kwargs_updates=None,
+                                   hardcoded_params=None,
+                                   params_cleaned=False):
         # return a copy instead of updating in-place to avoid inconsistent state
         # after a failed update
         user_kwargs_copy = user_kwargs.copy()
@@ -131,8 +142,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 if hardcoded_param not in user_kwargs_copy:
                     continue
                 if user_kwargs_copy[hardcoded_param] != default_args[hardcoded_param]:
-                    raise ValueError(f"You passed in a non-default value for parameter {hardcoded_param} "
-                                     f"hardcoded by {self.__class__.__name__}")
+                    raise ValueError(
+                        f"You passed in a non-default value for parameter {hardcoded_param} "
+                        f"hardcoded by {self.__class__.__name__}")
                 del user_kwargs_copy[hardcoded_param]
 
         if kwargs_updates is not None:
@@ -140,9 +152,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 raise TypeError("kwargs_updates must be passed in in the form of a dict ")
             for kwarg_update_key in kwargs_updates.keys():
                 if isinstance(user_kwargs_copy[kwarg_update_key], dict):
-                    user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(user_kwargs_copy[kwarg_update_key],
-                                                                                         kwargs_updates[kwarg_update_key],
-                                                                                         params_cleaned=True)
+                    user_kwargs_copy[kwarg_update_key] = self.validate_and_update_kwargs(
+                        user_kwargs_copy[kwarg_update_key],
+                        kwargs_updates[kwarg_update_key],
+                        params_cleaned=True)
                 else:
                     user_kwargs_copy[kwarg_update_key] = kwargs_updates[kwarg_update_key]
         return user_kwargs_copy
@@ -168,10 +181,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 batch_tensor.shape[1] < batch_tensor.shape[2] \
                 and batch_tensor.shape[1] < batch_tensor.shape[3]
             if not is_nchw_heuristic:
-                raise ValueError(
-                    f"Batch tensor axes {batch_tensor.shape} do not look "
-                    "like they're in NCHW order. Did you accidentally pass in "
-                    "a channels-last tensor?")
+                raise ValueError(f"Batch tensor axes {batch_tensor.shape} do not look "
+                                 "like they're in NCHW order. Did you accidentally pass in "
+                                 "a channels-last tensor?")
         if torch.is_floating_point(batch_tensor):
             # cast double to float for perf reasons (also drops half-precision)
             dtype = torch.float
@@ -183,8 +195,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def _preprocess(self, input_data):
         # SB will normalize to [0,1]
-        return preprocess_obs(input_data, self.observation_space,
-                              normalize_images=True)
+        return preprocess_obs(input_data, self.observation_space, normalize_images=True)
 
     def _preprocess_extra_context(self, extra_context):
         if extra_context is None or not self.preprocess_extra_context:
@@ -194,9 +205,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
     # TODO maybe make static?
     def unpack_batch(self, batch):
         """
-        :param batch: A batch that may contain a numpy array of extra context, but may also simply have an
-        empty list as a placeholder value for the `extra_context` key. If the latter, return None for extra_context,
-        rather than an empty list (Torch data loaders can only work with lists and arrays, not None types)
+        :param batch: A batch that may contain a numpy array of extra context,
+            but may also simply have an empty list as a placeholder value for
+            the `extra_context` key. If the latter, return None for
+            extra_context, rather than an empty list (Torch data loaders can
+            only work with lists and arrays, not None types)
         :return:
         """
         if len(batch['extra_context']) == 0:
@@ -231,29 +244,37 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
-                # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
+                # Note: preprocessing might be better to do on CPU if, in
+                # future, we can parallelize doing so
                 contexts, targets = self._preprocess(contexts), self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
 
-                # These will typically just use the forward() function for the encoder, but can optionally
-                # use a specific encode_context and encode_target if one is implemented
+                # These will typically just use the forward() function for the
+                # encoder, but can optionally use a specific encode_context and
+                # encode_target if one is implemented
                 encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
                 encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
                 # Typically the identity function
                 extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
 
-                # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
-                # As with encode, these will typically just use forward()
-                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
-                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
+                # Use an algorithm-specific decoder to "decode" the
+                # representations into a loss-compatible tensor As with encode,
+                # these will typically just use forward()
+                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info,
+                                                               extra_context)
+                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info,
+                                                             extra_context)
 
-                # Optionally add to the batch before loss. By default, this is an identity operation, but
-                # can also implement momentum queue logic
-                decoded_contexts, decoded_targets = self.batch_extender(decoded_contexts, decoded_targets)
+                # Optionally add to the batch before loss. By default, this is
+                # an identity operation, but can also implement momentum queue
+                # logic
+                decoded_contexts, decoded_targets = self.batch_extender(
+                    decoded_contexts, decoded_targets)
 
-                # Use an algorithm-specific loss function. Typically this only requires decoded_contexts and
-                # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
+                # Use an algorithm-specific loss function. Typically this only
+                # requires decoded_contexts and decoded_targets, but VAE
+                # requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
 
@@ -278,5 +299,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             self.encoder.train(False)
             self.decoder.train(False)
             if epoch % self.save_interval == 0:
-                torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
-                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+                torch.save(self.encoder,
+                           os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+                torch.save(self.decoder,
+                           os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))

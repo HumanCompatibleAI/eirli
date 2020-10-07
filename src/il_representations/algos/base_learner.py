@@ -1,4 +1,5 @@
 import gym
+
 from il_representations.algos.utils import set_global_seeds
 
 
@@ -13,12 +14,10 @@ class BaseEnvironmentLearner:
         # if EncoderSimplePolicyHead is refactored.
         if isinstance(self.action_space, gym.spaces.Discrete):
             self.action_size = env.action_space.n
-        elif (isinstance(self.action_space, gym.spaces.Box)
-              and len(self.action_space.shape) == 1):
+        elif (isinstance(self.action_space, gym.spaces.Box) and len(self.action_space.shape) == 1):
             self.action_size, = self.action_space.shape
         else:
-            raise NotImplementedError(
-                f"can't handle action space {self.action_space}")
+            raise NotImplementedError(f"can't handle action space {self.action_space}")
 
     def set_random_seed(self, seed):
         if seed is None:

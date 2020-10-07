@@ -13,16 +13,13 @@ class TransitionsMinimalDataset(il_datasets.Dataset):
     def __init__(self, data_map):
         req_keys = {'obs', 'acts', 'next_obs', 'dones'}
         assert req_keys <= data_map.keys()
-        self.dict_dataset = il_datasets.RandomDictDataset(
-            {k: data_map[k]
-             for k in req_keys})
+        self.dict_dataset = il_datasets.RandomDictDataset({k: data_map[k] for k in req_keys})
 
     def sample(self, n_samples):
         dict_samples = self.dict_dataset.sample(n_samples)
         # we don't have infos dicts, so we insert some fake ones to make
         # TransitionsMinimal happy
-        dummy_infos = np.asarray([{} for _ in range(n_samples)],
-                                 dtype='object')
+        dummy_infos = np.asarray([{} for _ in range(n_samples)], dtype='object')
         result = il_types.Transitions(infos=dummy_infos, **dict_samples)
         assert len(result) == n_samples
         return result

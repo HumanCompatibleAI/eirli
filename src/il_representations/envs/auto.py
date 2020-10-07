@@ -3,15 +3,13 @@ Sacred configuration."""
 
 from imitation.util.util import make_vec_env
 from stable_baselines3.common.atari_wrappers import AtariWrapper
-from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
-                                              VecFrameStack, VecTransposeImage)
+from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
 
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
-from il_representations.envs.magical_envs import (get_env_name_magical,
-                                                  load_dataset_magical)
+from il_representations.envs.magical_envs import get_env_name_magical, load_dataset_magical
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark['benchmark_name']!r}"
 
@@ -30,8 +28,7 @@ def load_dataset(benchmark_name):
 
 
 @benchmark_ingredient.capture
-def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
-                     dm_control_env):
+def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names, dm_control_env):
     if benchmark_name == 'magical':
         return get_env_name_magical()
     elif benchmark_name == 'dm_control':
@@ -42,15 +39,13 @@ def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
 
 
 @benchmark_ingredient.capture
-def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
-                 dm_control_env, venv_parallel, n_envs):
+def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names, dm_control_env,
+                 venv_parallel, n_envs):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     gym_env_name = get_gym_env_name()
     if benchmark_name in ('magical', 'dm_control'):
-        return make_vec_env(gym_env_name,
-                            n_envs=n_envs,
-                            parallel=venv_parallel)
+        return make_vec_env(gym_env_name, n_envs=n_envs, parallel=venv_parallel)
     elif benchmark_name == 'atari':
         assert not venv_parallel, "currently does not support parallel kwarg"
         raw_atari_env = make_vec_env(gym_env_name,

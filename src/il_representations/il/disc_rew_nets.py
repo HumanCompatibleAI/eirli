@@ -1,9 +1,10 @@
 """Custom discriminator/reward networks for `imitation`."""
 
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 import torch as th
 from torch import nn
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim
-from il_representations.algos.encoders import compute_rep_shape_encoder, DeterministicEncoder
+
+from il_representations.algos.encoders import DeterministicEncoder, compute_rep_shape_encoder
 
 
 class ImageDiscrimNet(nn.Module):
@@ -32,7 +33,8 @@ class ImageDiscrimNet(nn.Module):
                 encoder_cls = DeterministicEncoder
             if encoder_kwargs is None:
                 encoder_kwargs = {}
-            self.obs_encoder = encoder_cls(obs_space=observation_space, representation_dim=fc_dim,
+            self.obs_encoder = encoder_cls(obs_space=observation_space,
+                                           representation_dim=fc_dim,
                                            **encoder_kwargs)
             obs_out_dim = fc_dim
 

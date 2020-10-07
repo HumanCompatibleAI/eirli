@@ -1,13 +1,13 @@
 """Utilities for working with Atari environments and demonstrations."""
-import numpy as np
 import random
+
+import numpy as np
 
 from il_representations.envs.config import benchmark_ingredient
 
 
 @benchmark_ingredient.capture
-def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj,
-                       chans_first=True):
+def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj, chans_first=True):
     # load trajectories from disk
     full_rollouts_path = atari_demo_paths[atari_env_id]
     trajs_or_file = np.load(full_rollouts_path, allow_pickle=True)
@@ -33,10 +33,7 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj,
         merged_trajectories['next_obs'] += traj['states'][1:]
         merged_trajectories['acts'] += traj['actions'][:-1]
         merged_trajectories['dones'] += traj['dones'][:-1]
-    dataset_dict = {
-        key: np.stack(values, axis=0)
-        for key, values in merged_trajectories.items()
-    }
+    dataset_dict = {key: np.stack(values, axis=0) for key, values in merged_trajectories.items()}
 
     if chans_first:
         # In Gym Atari envs, channels are last; chans_first will transpose data

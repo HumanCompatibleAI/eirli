@@ -1,5 +1,4 @@
 from glob import glob
-import inspect
 import logging
 import os
 
@@ -16,8 +15,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
-represent_ex = Experiment('representation_learning',
-                          ingredients=[benchmark_ingredient])
+represent_ex = Experiment('representation_learning', ingredients=[benchmark_ingredient])
 
 
 @represent_ex.config
@@ -54,9 +52,16 @@ def default_config():
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
-    algo_params = {"scheduler": LinearWarmupCosine, "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}}
+    algo_params = {
+        "scheduler": LinearWarmupCosine,
+        "scheduler_kwargs": {
+            'warmup_epoch': 2,
+            'T_max': 10
+        }
+    }
     _ = locals()
     del _
+
 
 @represent_ex.named_config
 def ceb_breakout():
@@ -69,17 +74,20 @@ def ceb_breakout():
     _ = locals()
     del _
 
+
 @represent_ex.named_config
 def tiny_epoch():
-    demo_timesteps=5000
+    demo_timesteps = 5000
     _ = locals()
     del _
+
 
 @represent_ex.named_config
 def target_projection():
     algo = algos.FixedVarianceTargetProjectedCEB
     _ = locals()
     del _
+
 
 @represent_ex.capture
 def get_random_traj(env, demo_timesteps):
@@ -96,8 +104,9 @@ def get_random_traj(env, demo_timesteps):
 
 
 def initialize_non_features_extractor(sb3_model):
-    # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
-    # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other
+    # This is a hack to get around the fact that you can't initialize only some
+    # of the components of a SB3 policy upon creation, and we in fact want to
+    # keep the loaded representation frozen, but orthogonally initalize other
     # components.
     sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
     sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)
@@ -106,12 +115,11 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts, algo, algo_params,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
+def run(benchmark, use_random_rollouts, algo, algo_params, ppo_timesteps, ppo_finetune,
+        pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
-
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -140,15 +148,18 @@ def run(benchmark, use_random_rollouts, algo, algo_params,
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        encoder_feature_extractor_kwargs = {'features_dim': algo_params["representation_dim"],
-                                            'encoder_path': latest_checkpoint}
+        encoder_feature_extractor_kwargs = {
+            'features_dim': algo_params["representation_dim"],
+            'encoder_path': latest_checkpoint
+        }
 
         # TODO figure out how to not have to set `ortho_init` to False for the whole policy
-        policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
-                         'features_extractor_kwargs': encoder_feature_extractor_kwargs,
-                         'ortho_init': False}
-        ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
-                        verbose=1, policy_kwargs=policy_kwargs)
+        policy_kwargs = {
+            'features_extractor_class': EncoderFeatureExtractor,
+            'features_extractor_kwargs': encoder_feature_extractor_kwargs,
+            'ortho_init': False
+        }
+        ppo_model = PPO(policy=ActorCriticPolicy, env=venv, verbose=1, policy_kwargs=policy_kwargs)
         ppo_model = initialize_non_features_extractor(ppo_model)
         ppo_model.learn(total_timesteps=ppo_timesteps)
 

@@ -1,26 +1,23 @@
-import torch
-import torch.nn as nn
+"""
+Encoders conceptually serve as the bit of the representation learning
+architecture that learns the representation itself (except in RNN cases, where
+encoders only learn the per-frame representation).
+
+The only real complex thing to note here is the MomentumEncoder architecture,
+which creates two CNNEncoders, and updates weights of one as a slowly moving
+average of the other. Note that this bit of momentum is separated from the
+creation and filling of a queue of representations, which is handled by the
+BatchExtender module
+"""
 import copy
-from torch.distributions import MultivariateNormal
-from functools import reduce
+
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
-from gym.spaces import Box
-from il_representations.algos.utils import independent_multivariate_normal
-
-import numpy as np
 import torch
 from torch import nn
+from torch.distributions import MultivariateNormal
 
-
-"""
-Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
-(except in RNN cases, where encoders only learn the per-frame representation). 
-
-The only real complex thing to note here is the MomentumEncoder architecture, which creates two CNNEncoders, 
-and updates weights of one as a slowly moving average of the other. Note that this bit of momentum is separated 
-from the creation and filling of a queue of representations, which is handled by the BatchExtender module 
-"""
+from il_representations.algos.utils import independent_multivariate_normal
 
 
 def compute_output_shape(observation_space, layers):
@@ -65,13 +62,28 @@ class BasicCNN(nn.Module):
 
         # first apply convolution layers + flattening
         conv_arch = [
-            {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
-            {'out_dim': 64, 'kernel_size': 4, 'stride': 2},
-            {'out_dim': 64, 'kernel_size': 3, 'stride': 1},
+            {
+                'out_dim': 32,
+                'kernel_size': 8,
+                'stride': 4
+            },
+            {
+                'out_dim': 64,
+                'kernel_size': 4,
+                'stride': 2
+            },
+            {
+                'out_dim': 64,
+                'kernel_size': 3,
+                'stride': 1
+            },
         ]
         for layer_spec in conv_arch:
-            shared_network_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
-                                                   kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+            shared_network_layers.append(
+                nn.Conv2d(self.input_channel,
+                          layer_spec['out_dim'],
+                          kernel_size=layer_spec['kernel_size'],
+                          stride=layer_spec['stride']))
             shared_network_layers.append(nn.ReLU())
             self.input_channel = layer_spec['out_dim']
         shared_network_layers.append(nn.Flatten())
@@ -80,7 +92,9 @@ class BasicCNN(nn.Module):
         dense_in_dim, = compute_output_shape(observation_space, shared_network_layers)
         dense_arch = [
             # this input size is accurate for Atari, but will be ovewritten for other envs
-            {'in_dim': 64*7*7},
+            {
+                'in_dim': 64 * 7 * 7
+            },
         ]
         dense_arch[0]['in_dim'] = dense_in_dim
         dense_arch[-1]['out_dim'] = representation_dim
@@ -102,30 +116,30 @@ class BasicCNN(nn.Module):
 
 class MAGICALCNN(nn.Module):
     """The CNN from the MAGICAL paper."""
-    def __init__(self,
-                 observation_space,
-                 representation_dim,
-                 # TODO(sam): enable BN by default once I'm sure that .train()
-                 # and .eval() are used correctly throughout the codebase.
-                 use_bn=False,
-                 use_ln=False,
-                 dropout=None,
-                 use_sn=False,
-                 width=2,
-                 fc_dim=128,
-                 ActivationCls=torch.nn.ReLU):
+    def __init__(
+            self,
+            observation_space,
+            representation_dim,
+            # TODO(sam): enable BN by default once I'm sure that .train()
+            # and .eval() are used correctly throughout the codebase.
+            use_bn=False,
+            use_ln=False,
+            dropout=None,
+            use_sn=False,
+            width=2,
+            fc_dim=128,
+            ActivationCls=torch.nn.ReLU):
         super().__init__()
 
         def conv_block(in_chans, out_chans, kernel_size, stride, padding):
             # We sometimes disable bias because batch norm has its own bias.
-            conv_layer = nn.Conv2d(
-                in_chans,
-                out_chans,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                bias=not use_bn,
-                padding_mode='zeros')
+            conv_layer = nn.Conv2d(in_chans,
+                                   out_chans,
+                                   kernel_size=kernel_size,
+                                   stride=stride,
+                                   padding=padding,
+                                   bias=not use_bn,
+                                   padding_mode='zeros')
 
             if use_sn:
                 # apply spectral norm if necessary
@@ -234,12 +248,19 @@ class Encoder(nn.Module):
 
 
 class DeterministicEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, scale_constant=1, **kwargs):
+    def __init__(self,
+                 obs_space,
+                 representation_dim,
+                 obs_encoder_cls=None,
+                 scale_constant=1,
+                 **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
-        :param representation_dim: The number of dimensions of the representation that will be learned
-        :param obs_encoder_cls: An internal architecture implementing `forward` to return a single vector
-        representing the mean representation z of a fixed-variance representation distribution
+        :param representation_dim: The number of dimensions of the
+            representation that will be learned
+        :param obs_encoder_cls: An internal architecture implementing `forward`
+            to return a single vector representing the mean representation z of
+            a fixed-variance representation distribution
         """
         super().__init__(**kwargs)
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
@@ -252,15 +273,23 @@ class DeterministicEncoder(Encoder):
 
 
 class StochasticEncoder(Encoder):
-    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, **kwargs):
+    def __init__(self,
+                 obs_space,
+                 representation_dim,
+                 obs_encoder_cls=None,
+                 latent_dim=None,
+                 **kwargs):
         """
         :param obs_space: The observation space that this Encoder will be used on
-        :param representation_dim: The number of dimensions of the representation that will be learned
+        :param representation_dim: The number of dimensions of the
+            representation that will be learned
         :param obs_encoder_cls: An internal architecture implementing `forward` to return a single
             vector. This is expected NOT to end in a ReLU (i.e. final layer should be linear).
         :param latent_dim: Dimension of the latents that feed into mean and std networks (default:
             representation_dim * 2).
-        two vectors, representing the mean AND learned standard deviation of a representation distribution
+
+        two vectors, representing the mean AND learned standard deviation of a
+        representation distribution
         """
         super().__init__(**kwargs)
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
@@ -289,8 +318,13 @@ class InverseDynamicsEncoder(DeterministicEncoder):
 
 
 class MomentumEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, obs_encoder_cls=None, **kwargs):
+    def __init__(self,
+                 obs_shape,
+                 representation_dim,
+                 learn_scale=False,
+                 momentum_weight=0.999,
+                 obs_encoder_cls=None,
+                 **kwargs):
         super().__init__(**kwargs)
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         if learn_scale:
@@ -308,35 +342,49 @@ class MomentumEncoder(Encoder):
 
     def encode_target(self, x, traj_info):
         """
-        Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-        a backwards hook, but seemed overly complex for an initial proof of concept
+        Encoder target/keys using momentum-updated key encoder. Had some
+        thought of making _momentum_update_key_encoder a backwards hook, but
+        seemed overly complex for an initial proof of concept
         :param x:
         :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
             z_dist = self.key_encoder(x, traj_info)
-            return MultivariateNormal(loc=z_dist.loc.detach(), covariance_matrix=z_dist.covariance_matrix.detach())
+            return MultivariateNormal(loc=z_dist.loc.detach(),
+                                      covariance_matrix=z_dist.covariance_matrix.detach())
 
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
         for param_q, param_k in zip(self.query_encoder.parameters(), self.key_encoder.parameters()):
-            param_k.data = param_k.data * self.momentum_weight + param_q.data * (1. - self.momentum_weight)
+            param_k.data = param_k.data * self.momentum_weight + param_q.data * (
+                1. - self.momentum_weight)
 
 
 class RecurrentEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64, **kwargs):
+    def __init__(self,
+                 obs_shape,
+                 representation_dim,
+                 learn_scale=False,
+                 num_recurrent_layers=2,
+                 single_frame_repr_dim=None,
+                 min_traj_size=5,
+                 obs_encoder_cls=None,
+                 rnn_output_dim=64,
+                 **kwargs):
         super().__init__(**kwargs)
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
-        self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
+        self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None \
+            else single_frame_repr_dim
         self.single_frame_encoder = DeterministicEncoder(obs_shape, self.single_frame_repr_dim,
                                                          obs_encoder_cls)
-        self.context_rnn = nn.LSTM(self.single_frame_repr_dim, rnn_output_dim,
-                                   self.num_recurrent_layers, batch_first=True)
+        self.context_rnn = nn.LSTM(self.single_frame_repr_dim,
+                                   rnn_output_dim,
+                                   self.num_recurrent_layers,
+                                   batch_first=True)
         self.mean_layer = nn.Linear(rnn_output_dim, self.representation_dim)
         if learn_scale:
             self.scale_layer = nn.Linear(rnn_output_dim, self.representation_dim)
@@ -344,31 +392,38 @@ class RecurrentEncoder(Encoder):
             self.scale_layer = self.ones_like_representation_dim
 
     def ones_like_representation_dim(self, x):
-        return torch.ones(size=(x.shape[0], self.representation_dim,), device=x.device)
+        return torch.ones(size=(
+            x.shape[0],
+            self.representation_dim,
+        ), device=x.device)
 
     def _reshape_and_stack(self, z, traj_info):
         batch_size = z.shape[0]
         input_shape = z.shape[1:]
         trajectory_id, timesteps = traj_info
         # We should have trajectory_id values for every element in the batch z
-        assert len(z) == len(trajectory_id), "Every element in z must have a trajectory ID in a RecurrentEncoder"
+        assert len(z) == len(
+            trajectory_id), "Every element in z must have a trajectory ID in a RecurrentEncoder"
         # A set of all distinct trajectory IDs
         trajectories = torch.unique(trajectory_id)
         padded_trajectories = []
         mask_lengths = []
         for trajectory in trajectories:
             traj_timesteps = timesteps[trajectory_id == trajectory]
-            assert list(traj_timesteps) == sorted(list(traj_timesteps)), "Batches must be sorted to use a RecurrentEncoder"
-            # Get all Z vectors associated with a trajectory, which have now been confirmed to be sorted timestep-wise
+            assert list(traj_timesteps) == sorted(
+                list(traj_timesteps)), "Batches must be sorted to use a RecurrentEncoder"
+            # Get all Z vectors associated with a trajectory, which have now
+            # been confirmed to be sorted timestep-wise
             traj_z = z[trajectory_id == trajectory]
             # Keep track of how many actual unpadded values were in the trajectory
             mask_lengths.append(traj_z.shape[0])
             pad_size = batch_size - traj_z.shape[0]
-            padding = torch.zeros((pad_size,) + input_shape).to(self.device)
+            padding = torch.zeros((pad_size, ) + input_shape).to(self.device)
             padded_z = torch.cat([traj_z, padding])
             padded_trajectories.append(padded_z)
-        assert np.mean(mask_lengths) > self.min_traj_size, f"Batches must contain trajectories with an average " \
-                                                           f"length above {self.min_traj_size}. Trajectories found: {traj_info}"
+        assert np.mean(mask_lengths) > self.min_traj_size, \
+            "Batches must contain trajectories with an average " \
+            "length above {self.min_traj_size}. Trajectories found: {traj_info}"
         stacked_trajectories = torch.stack(padded_trajectories, dim=0)
         return stacked_trajectories, mask_lengths
 
@@ -380,7 +435,8 @@ class RecurrentEncoder(Encoder):
         z = self.single_frame_encoder(x, traj_info).loc
         stacked_trajectories, mask_lengths = self._reshape_and_stack(z, traj_info)
         hiddens, final = self.context_rnn(stacked_trajectories)
-        # Pull out only the hidden states corresponding to actual non-padding inputs, and concat together
+        # Pull out only the hidden states corresponding to actual non-padding
+        # inputs, and concat together
         masked_hiddens = []
         for i, trajectory_length in enumerate(mask_lengths):
             masked_hiddens.append(hiddens[i][:trajectory_length])
@@ -389,4 +445,3 @@ class RecurrentEncoder(Encoder):
         mean = self.mean_layer(flattened_hiddens)
         scale = self.scale_layer(flattened_hiddens)
         return independent_multivariate_normal(loc=mean, scale=scale)
-

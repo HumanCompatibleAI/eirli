@@ -5,8 +5,8 @@ import json
 import logging
 import tempfile
 
-import imitation.util.logger as imitation_logger
 import imitation.data.rollout as il_rollout
+import imitation.util.logger as imitation_logger
 import numpy as np
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -14,8 +14,8 @@ from stable_baselines3.common.utils import get_device
 import torch as th
 
 from il_representations.algos.utils import set_global_seeds
-from il_representations.envs.config import benchmark_ingredient
 from il_representations.envs import auto
+from il_representations.envs.config import benchmark_ingredient
 
 il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 
@@ -43,8 +43,7 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
     imitation_logger.configure(log_dir, ["stdout", "tensorboard"])
 
     if policy_path is None:
-        raise ValueError(
-            "must pass a string-valued policy_path to this command")
+        raise ValueError("must pass a string-valued policy_path to this command")
     policy = th.load(policy_path)
 
     device = get_device(device_name)
@@ -65,8 +64,7 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
         )
         eval_data_frame = eval_protocol.do_eval(verbose=False)
         # display to stdout
-        logging.info("Evaluation finished, results:\n" +
-                     eval_data_frame.to_string())
+        logging.info("Evaluation finished, results:\n" + eval_data_frame.to_string())
         final_stats_dict = {
             'demo_env_name': demo_env_name,
             'policy_path': policy_path,
@@ -79,8 +77,7 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
             'return_mean': eval_data_frame['mean_score'].mean(),
         }
 
-    elif (benchmark['benchmark_name'] == 'dm_control'
-          or benchmark['benchmark_name'] == 'atari'):
+    elif (benchmark['benchmark_name'] == 'dm_control' or benchmark['benchmark_name'] == 'atari'):
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 
@@ -89,17 +86,17 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id):
 
         # sample some trajectories
         rng = np.random.RandomState(seed)
-        trajectories = il_rollout.generate_trajectories(
-            policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
+        trajectories = il_rollout.generate_trajectories(policy,
+                                                        vec_env,
+                                                        il_rollout.min_episodes(n_rollouts),
+                                                        rng=rng)
 
         # the "stats" dict has keys {return,len}_{min,max,mean,std}
         stats = il_rollout.rollout_stats(trajectories)
-        stats = collections.OrderedDict([(key, stats[key])
-                                         for key in sorted(stats)])
+        stats = collections.OrderedDict([(key, stats[key]) for key in sorted(stats)])
 
         # print it out
-        kv_message = '\n'.join(f"  {key}={value}"
-                               for key, value in stats.items())
+        kv_message = '\n'.join(f"  {key}={value}" for key, value in stats.items())
         logging.info(f"Evaluation stats on '{full_env_name}': {kv_message}")
 
         final_stats_dict = collections.OrderedDict([
