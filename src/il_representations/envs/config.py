@@ -45,7 +45,7 @@ def bench_defaults():
         'ClusterColour': 'data/magical/cluster-colour/',
         'ClusterShape': 'data/magical/cluster-shape/',
     }
-    magical_env_prefix = 'MatchRegions'
+    magical_env_prefix = 'MoveToRegion'
     magical_preproc = 'LoResCHW4E'
     # this should probably be True for all BC runs, False for GAIL runs
     # (although TBH it doesn't really matter for GAIL)
@@ -66,14 +66,14 @@ def bench_defaults():
         'ball-in-cup-catch': 'DMC-Ball-In-Cup-Catch-v0',
     }
     dm_control_demo_patterns = {
-        'finger-spin': 'tests/data/dm_control/walker-walk-*.pkl.gz',
-        'cheetah-run': 'tests/data/dm_control/cheetah-run-*.pkl.gz',
-        'walker-walk': 'tests/data/dm_control/walker-walk-*.pkl.gz',
-        'cartpole-swingup': 'tests/data/dm_control/cartpole-swingup-*.pkl.gz',
-        'reacher-easy': 'tests/data/dm_control/reacher-easy-*.pkl.gz',
-        'ball-in-cup-catch': 'tests/data/dm_control/ball-in-cup-catch-*.pkl.gz',
+        'finger-spin': 'data/dm_control/finger-spin-*.pkl.gz',
+        'cheetah-run': 'data/dm_control/cheetah-run-*.pkl.gz',
+        'walker-walk': 'data/dm_control/walker-walk-*.pkl.gz',
+        'cartpole-swingup': 'data/dm_control/cartpole-swingup-*.pkl.gz',
+        'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
+        'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
-    dm_control_env = 'reacher-easy'
+    dm_control_env = 'finger-spin'
 
     # ###########################
     # Atari config variables
@@ -84,5 +84,5 @@ def bench_defaults():
         'BreakoutNoFrameskip-v4':
         "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
         'PongNoFrameskip-v4':
-        "tests/data/atari/pong.npz",
+        "data/atari/pong.npz",
     }

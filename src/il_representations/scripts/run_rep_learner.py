@@ -25,7 +25,7 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
+    algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     n_envs = 1
     demo_timesteps = 5000
@@ -45,14 +45,8 @@ def default_config():
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
-    encoder_kwargs = {
-        # this is just the default, but we need to set it so that Sacred
-        # doesn't complain about unused values when we overwrite it later
-        'obs_encoder_cls': 'BasicCNN',
-    }
     _ = locals()
     del _
-
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():

@@ -36,13 +36,11 @@ class QueueBatchExtender(BatchExtender):
     def __call__(self, context_dist, target_dist):
         # Call up current contents of the queue, duplicate. Add targets to the queue,
         # potentially overriding old information in the process. Return targets concatenated to contents of queue
-        targets_loc = target_dist.loc
-        targets_covariance = target_dist.covariance_matrix
+        targets_mean = target_dist.mean
+        targets_stddev = target_dist.stddev
 
         # Pull out the diagonals of our MultivariateNormal covariance matrices, so we don't store all the extra 0s
-        targets_scale = torch.stack([batch_element_matrix.diag() for batch_element_matrix in targets_covariance])
-
-        batch_size = targets_loc.shape[0]
+        batch_size = targets_mean.shape[0]
         queue_targets_scale = (self.queue_scale.clone().detach()).to(self.device)
         queue_targets_loc = (self.queue_loc.clone().detach()).to(self.device)
 
@@ -62,15 +60,16 @@ class QueueBatchExtender(BatchExtender):
             # now overwrite the relevant elements using fresh data from the
             # target_* tensors
             self.queue_loc[self.queue_ptr:self.queue_ptr + n_inserted] \
-                = targets_loc[insert_ptr:insert_ptr + n_inserted]
+                = targets_mean[insert_ptr:insert_ptr + n_inserted]
             self.queue_scale[self.queue_ptr:self.queue_ptr + n_inserted] \
-                = targets_scale[insert_ptr:insert_ptr + n_inserted]
+                = targets_stddev[insert_ptr:insert_ptr + n_inserted]
 
             # advance pointers
             insert_ptr += n_inserted
             self.queue_ptr = (self.queue_ptr + n_inserted) % self.queue_size
 
-        merged_loc = torch.cat([targets_loc, queue_targets_loc], dim=0)
-        merged_scale = torch.cat([targets_scale, queue_targets_scale], dim=0)
-        merged_target_dist = independent_multivariate_normal(loc=merged_loc, scale=merged_scale)
+        merged_mean = torch.cat([targets_mean, queue_targets_loc], dim=0)
+        merged_stddev = torch.cat([targets_stddev, queue_targets_scale], dim=0)
+        merged_target_dist = independent_multivariate_normal(mean=merged_mean,
+                                                             stddev=merged_stddev)
         return context_dist, merged_target_dist
