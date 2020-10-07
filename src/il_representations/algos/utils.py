@@ -1,31 +1,30 @@
-import torch
-import numpy as np
-import random
-import gym
-import math
-from torch.optim.lr_scheduler import _LRScheduler
-import os
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime
-from PIL import Image
+import math
 from numbers import Number
+import os
+import random
+
+from PIL import Image
 import cv2
+import gym
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from torch.optim.lr_scheduler import _LRScheduler
 
 
 def independent_multivariate_normal(loc, scale):
     batch_dim = loc.shape[0]
     if isinstance(scale, Number):
         # If the scale was passed in as a scalar, convert it to the same shape as loc
-        scale = torch.ones(loc.shape, device=loc.device)*scale
+        scale = torch.ones(loc.shape, device=loc.device) * scale
 
     # Turn each <feature-dim>-length vector in the batch into a diagonal matrix, because we want an
     # independent multivariate normal
     merged_covariance_matrix = torch.stack([torch.diag(scale[i]) for i in range(batch_dim)])
-    return torch.distributions.MultivariateNormal(
-        loc=loc,
-        covariance_matrix=merged_covariance_matrix.to(loc.device))
+    return torch.distributions.MultivariateNormal(loc=loc,
+                                                  covariance_matrix=merged_covariance_matrix.to(
+                                                      loc.device))
 
 
 def add_noise(state, noise_std_dev):
@@ -51,7 +50,8 @@ def show_plt_image(img):
     plt.show()
 
 
-# TODO: Have the calls to savefig below save to the log directory (or at least make the output directory in case it doesn't exist)
+# TODO: Have the calls to savefig below save to the log directory (or at least
+# make the output directory in case it doesn't exist)
 def plot(arr, env_id, gap=1):
     fig = plt.figure()
     x = np.arange(len(arr.shape[1])) * gap
@@ -80,7 +80,8 @@ def plot_single(arr, label, msg):
 
 def save_model(model, env_id, save_path):
     os.makedirs(save_path, exist_ok=True)
-    torch.save(model.state_dict(), os.path.join(save_path, f'[{time_now(datetime.now())}]{env_id}.pth'))
+    torch.save(model.state_dict(),
+               os.path.join(save_path, f'[{time_now(datetime.now())}]{env_id}.pth'))
 
 
 def time_now(n):
@@ -90,7 +91,7 @@ def time_now(n):
 
 class Logger:
     def __init__(self, log_dir):
-        self.file = os.path.join(log_dir, f'train_log.txt')
+        self.file = os.path.join(log_dir, 'train_log.txt')
 
     def log(self, msg):
         t = datetime.now()
@@ -112,14 +113,17 @@ class LinearWarmupCosine(_LRScheduler):
         if self.warmup_epoch > 0:
             if self.last_epoch <= self.warmup_epoch:
                 return [base_lr / self.warmup_epoch * self.last_epoch for base_lr in self.base_lrs]
-        if ((self.last_epoch - self.warmup_epoch) - 1 - (self.T_max - self.warmup_epoch)) % (2 * (self.T_max - self.warmup_epoch)) == 0:
-            return [group['lr'] + (base_lr - self.eta_min) *
-                    (1 - math.cos(math.pi / (self.T_max - self.warmup_epoch))) / 2
-                    for base_lr, group in
-                    zip(self.base_lrs, self.optimizer.param_groups)]
+        cur_prog = self.last_epoch - self.warmup_epoch
+        max_prog = self.T_max - self.warmup_epoch
+        if (cur_prog - 1 - max_prog) % (2 * max_prog) == 0:
+            return [
+                group['lr'] + (base_lr - self.eta_min) *
+                (1 - math.cos(math.pi / (self.T_max - self.warmup_epoch))) / 2
+                for base_lr, group in zip(self.base_lrs, self.optimizer.param_groups)
+            ]
         else:
-            return [(1 + math.cos(math.pi * (self.last_epoch - self.warmup_epoch) / (self.T_max - self.warmup_epoch))) /
-                    (1 + math.cos(math.pi * ((self.last_epoch - self.warmup_epoch) - 1) / (self.T_max - self.warmup_epoch))) *
+            return [(1 + math.cos(math.pi * cur_prog / max_prog)) /
+                    (1 + math.cos(math.pi * (cur_prog - 1) / max_prog)) *
                     (group['lr'] - self.eta_min) + self.eta_min
                     for group in self.optimizer.param_groups]
 
@@ -138,7 +142,7 @@ def set_global_seeds(seed):
         gym.spaces.prng.seed(seed)
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1, )):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
     batch_size = target.size(0)

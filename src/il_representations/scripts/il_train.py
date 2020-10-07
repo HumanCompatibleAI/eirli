@@ -31,6 +31,9 @@ def bc_defaults():
     n_epochs = 250  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
 
+    _ = locals()
+    del _
+
 
 gail_ingredient = Ingredient('gail')
 
@@ -60,10 +63,16 @@ def gail_defaults():
     ppo_ent = 1e-5  # noqa: F841
     ppo_adv_clip = 0.05  # noqa: F841
 
+    _ = locals()
+    del _
 
-il_train_ex = Experiment('il_train', ingredients=[
-    benchmark_ingredient, bc_ingredient, gail_ingredient,
-])
+
+il_train_ex = Experiment('il_train',
+                         ingredients=[
+                             benchmark_ingredient,
+                             bc_ingredient,
+                             gail_ingredient,
+                         ])
 
 
 @il_train_ex.config
@@ -87,6 +96,9 @@ def default_config():
         venv_parallel=True,
         n_envs=16,
     )
+
+    _ = locals()
+    del _
 
 
 def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=None):
@@ -127,8 +139,7 @@ def make_policy(observation_space, action_space, encoder_or_path, lr_schedule=No
 
 
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
-                   device_name, final_pol_name):
+def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder, device_name, final_pol_name):
     policy = make_policy(venv_chans_first.observation_space, venv_chans_first.action_space, encoder)
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(bc['augs'], stack_color_space=color_space)
@@ -192,8 +203,8 @@ def do_training_gail(
         learning_rate=gail['ppo_learning_rate'],
     )
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        gail['disc_augs'], stack_color_space=color_space)
+    augmenter = StandardAugmentations.from_string_spec(gail['disc_augs'],
+                                                       stack_color_space=color_space)
     trainer = GAIL(
         venv_chans_first,
         dataset,
@@ -243,16 +254,10 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder, _config):
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        do_training_bc(dataset=dataset,
-                       venv_chans_first=venv,
-                       out_dir=log_dir,
-                       encoder=encoder)
+        do_training_bc(dataset=dataset, venv_chans_first=venv, out_dir=log_dir, encoder=encoder)
 
     elif algo == 'gail':
-        do_training_gail(dataset=dataset,
-                         venv_chans_first=venv,
-                         out_dir=log_dir,
-                         encoder=encoder)
+        do_training_gail(dataset=dataset, venv_chans_first=venv, out_dir=log_dir, encoder=encoder)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")

@@ -20,8 +20,8 @@ register_envs()
 
 
 def load_data(
-        pickle_paths: List[str],
-        preprocessor_name: str,
+    pickle_paths: List[str],
+    preprocessor_name: str,
 ) -> Tuple[str, il_datasets.Dataset]:
     """Load MAGICAL data from pickle files."""
 
@@ -37,9 +37,8 @@ def load_data(
             env_name = new_env_name
         else:
             if env_name != new_env_name:
-                raise ValueError(
-                    f"supplied trajectory paths contain demos for multiple "
-                    f"environments: {env_name}, {new_env_name} ")
+                raise ValueError(f"supplied trajectory paths contain demos for multiple "
+                                 f"environments: {env_name}, {new_env_name} ")
 
         demo_trajectories.append(demo_dict['trajectory'])
 
@@ -54,9 +53,7 @@ def load_data(
     # the new preprocessor name.
     if preprocessor_name:
         demo_trajectories = saved_trajectories.preprocess_demos_with_wrapper(
-            demo_trajectories,
-            orig_env_name=env_name,
-            preproc_name=preprocessor_name)
+            demo_trajectories, orig_env_name=env_name, preproc_name=preprocessor_name)
 
     # Finally we build a DictDataset for actions and observations.
     dataset_dict = collections.defaultdict(list)
@@ -93,29 +90,21 @@ def load_data(
 @benchmark_ingredient.capture
 def get_env_name_magical(magical_env_prefix, magical_preproc):
     orig_env_name = magical_env_prefix + '-Demo-v0'
-    gym_env_name = saved_trajectories.splice_in_preproc_name(
-        orig_env_name, magical_preproc)
+    gym_env_name = saved_trajectories.splice_in_preproc_name(orig_env_name, magical_preproc)
     return gym_env_name
 
 
 @benchmark_ingredient.capture
-def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc, n_traj):
+def load_dataset_magical(magical_demo_dirs, magical_env_prefix, magical_preproc, n_traj):
     demo_dir = magical_demo_dirs[magical_env_prefix]
-    logging.info(
-        f"Loading trajectory data for '{magical_env_prefix}' from "
-        f"'{demo_dir}'")
-    demo_paths = [
-        os.path.join(demo_dir, f) for f in os.listdir(demo_dir)
-        if f.endswith('.pkl.gz')
-    ]
+    logging.info(f"Loading trajectory data for '{magical_env_prefix}' from " f"'{demo_dir}'")
+    demo_paths = [os.path.join(demo_dir, f) for f in os.listdir(demo_dir) if f.endswith('.pkl.gz')]
     if not demo_paths:
         raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
     random.shuffle(demo_paths)
     if n_traj is not None:
         demo_paths = demo_paths[:n_traj]
-    dataset_dict, loaded_env_name = load_data(
-        demo_paths, preprocessor_name=magical_preproc)
+    dataset_dict, loaded_env_name = load_data(demo_paths, preprocessor_name=magical_preproc)
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
     return dataset_dict
@@ -145,11 +134,11 @@ class SB3EvaluationProtocol(EvaluationProtocol):
                                           seed=self.seed,
                                           parallel=venv_parallel)
         rng = np.random.RandomState(self.seed)
-        trajectories = il_rollout.generate_trajectories(
-            self.policy,
-            vec_env_chans_last,
-            sample_until=il_rollout.min_episodes(self.n_rollouts),
-            rng=rng)
+        trajectories = il_rollout.generate_trajectories(self.policy,
+                                                        vec_env_chans_last,
+                                                        sample_until=il_rollout.min_episodes(
+                                                            self.n_rollouts),
+                                                        rng=rng)
         scores = []
         for trajectory in trajectories[:self.n_rollouts]:
             scores.append(trajectory.infos[-1]['eval_score'])

@@ -20,7 +20,9 @@ def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
             'pretrain_epochs': 1,
             'batch_size': 7,
             'unit_test_max_train_steps': 2,
-            'algo_params': {'representation_dim': 3},
+            'algo_params': {
+                'representation_dim': 3
+            },
             'algo': MoCo,
             'use_random_rollouts': False,
             'benchmark': BENCHMARK_TEST_CONFIGS[0],
@@ -29,9 +31,7 @@ def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
 
     # train BC using learnt representation
     encoder_list = glob.glob(
-        os.path.join(
-            file_observer.dir,
-            'training_logs/checkpoints/representation_encoder/*.ckpt'))
+        os.path.join(file_observer.dir, 'training_logs/checkpoints/representation_encoder/*.ckpt'))
     policy_path = encoder_list[0]
     il_train_ex.run(
         config_updates={

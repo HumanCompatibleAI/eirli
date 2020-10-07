@@ -3,12 +3,9 @@ version: 2.1
 jobs:
   build-and-test:
     docker:
-      - image: humancompatibleai/il-representations:2020.08.03-r3
+      - image: humancompatibleai/il-representations:2020.10.07-r1
     steps:
       - checkout
-      - run:
-          command: pip install -r requirements.txt
-          name: Install dependencies
       - run:
           command: curl -so ~/.mujoco/mjkey.txt "${MUJOCO_KEY}"
           name: Set up MuJoCo

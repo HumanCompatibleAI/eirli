@@ -75,8 +75,9 @@ def bench_defaults():
 
     atari_env_id = 'PongNoFrameskip-v4'
     atari_demo_paths = {
-        'BreakoutNoFrameskip-v4':
-        "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
-        'PongNoFrameskip-v4':
-        "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+        'BreakoutNoFrameskip-v4': "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+        'PongNoFrameskip-v4': "data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
     }
+
+    _ = locals()
+    del _

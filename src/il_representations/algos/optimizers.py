@@ -26,22 +26,28 @@ class LARS(Optimizer):
         >>> loss_fn(model(input), target).backward()
         >>> optimizer.step()
     """
-    def __init__(self, params, lr=required, momentum=.9,
-                 weight_decay=.0005, eta=0.001, max_epoch=200):
+    def __init__(self,
+                 params,
+                 lr=required,
+                 momentum=.9,
+                 weight_decay=.0005,
+                 eta=0.001,
+                 max_epoch=200):
         if lr is not required and lr < 0.0:
             raise ValueError("Invalid learning rate: {}".format(lr))
         if momentum < 0.0:
             raise ValueError("Invalid momentum value: {}".format(momentum))
         if weight_decay < 0.0:
-            raise ValueError("Invalid weight_decay value: {}"
-                             .format(weight_decay))
+            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
         if eta < 0.0:
             raise ValueError("Invalid LARS coefficient value: {}".format(eta))
 
         self.epoch = 0
-        defaults = dict(lr=lr, momentum=momentum,
+        defaults = dict(lr=lr,
+                        momentum=momentum,
                         weight_decay=weight_decay,
-                        eta=eta, max_epoch=max_epoch)
+                        eta=eta,
+                        max_epoch=max_epoch)
         super(LARS, self).__init__(params, defaults)
 
     def step(self, epoch=None, closure=None):
@@ -79,7 +85,7 @@ class LARS(Optimizer):
                 grad_norm = torch.norm(d_p)
 
                 # Global LR computed on polynomial decay schedule
-                decay = (1 - float(epoch) / max_epoch) ** 2
+                decay = (1 - float(epoch) / max_epoch)**2
                 global_lr = lr * decay
 
                 # Compute local learning rate for this layer
@@ -91,7 +97,7 @@ class LARS(Optimizer):
 
                 if 'momentum_buffer' not in param_state:
                     buf = param_state['momentum_buffer'] = \
-                            torch.zeros_like(p.data)
+                        torch.zeros_like(p.data)
                 else:
                     buf = param_state['momentum_buffer']
                 buf.mul_(momentum).add_(actual_lr, d_p + weight_decay * p.data)
