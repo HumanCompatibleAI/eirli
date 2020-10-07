@@ -38,7 +38,7 @@ def base_config():
     # in Sacred's default observer folder. Otherwise they will be saved in the path specified by log_dir
     log_dir = "default"
     show_imgs = False
-    verbose = True
+    verbose = False
 
     # Interpret settings: Choose a method by setting it as "1 / True".
     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
@@ -73,18 +73,21 @@ class Network(nn.Module):
 
 
 @interp_ex.capture
-def prepare_network(venv, encoder_path, verbose, device=None):
-    encoder = torch.load(encoder_path, map_location=device)
-    if isinstance(encoder, ActorCriticCnnPolicy):
-        policy = encoder
-    else:
-        policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
-    network = Network(policy)
-    network.eval()
-    if verbose:
-        print('Network structure:')
-        print(network)
-    return network
+def prepare_network(venv, encoder_paths, verbose, device=None):
+    network_list = []
+    for encoder_path in encoder_paths:
+        encoder = torch.load(encoder_path, map_location=device)
+        if isinstance(encoder, ActorCriticCnnPolicy):
+            policy = encoder
+        else:
+            policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
+        network = Network(policy)
+        network.eval()
+        if verbose:
+            print('Network structure:')
+            print(network)
+        network_list.append(network)
+    return network_list
 
 
 @interp_ex.capture
@@ -351,41 +354,48 @@ def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_cond
         save_img(original_img, 'original_image', log_dir, show=show_imgs)
 
         if saliency:
-            saliency_(network, img, label, original_img, log_dir, show_imgs)
+            for network in networks:
+                saliency_(network, img, label, original_img, log_dir, show_imgs)
 
         if integrated_gradient:
-            integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
+            for network in networks:
+                integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
 
         if deep_lift:
-            deep_lift_(network, img, label, original_img, log_dir, show_imgs)
+            for network in networks:
+                deep_lift_(network, img, label, original_img, log_dir, show_imgs)
 
         if layer_conductance:
-            module, idx = layer_kwargs['layer_conductance']['module'], \
-                          layer_kwargs['layer_conductance']['layer_idx']
-            chosen_layer = choose_layer(network, module, idx)
-            layer_conductance_(network, chosen_layer, img, label, log_dir)
+            for network in networks:
+                module, idx = layer_kwargs['layer_conductance']['module'], \
+                              layer_kwargs['layer_conductance']['layer_idx']
+                chosen_layer = choose_layer(network, module, idx)
+                layer_conductance_(network, chosen_layer, img, label, log_dir)
 
         if layer_gradcam:
-            module, idx = layer_kwargs['layer_gradcam']['module'], \
-                          layer_kwargs['layer_gradcam']['layer_idx']
-            chosen_layer = choose_layer(network, module, idx)
-            assert isinstance(chosen_layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
-                                                              'convolutional layer in the network.'
-            layer_gradcam_(network, chosen_layer, img, label, original_img, log_dir, show_imgs)
+            for network in networks:
+                module, idx = layer_kwargs['layer_gradcam']['module'], \
+                              layer_kwargs['layer_gradcam']['layer_idx']
+                chosen_layer = choose_layer(network, module, idx)
+                assert isinstance(chosen_layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
+                                                                  'convolutional layer in the network.'
+                layer_gradcam_(network, chosen_layer, img, label, original_img, log_dir, show_imgs)
 
         if layer_gradxact:
-            module, idx = layer_kwargs['layer_gradxact']['module'], \
-                          layer_kwargs['layer_gradxact']['layer_idx']
-            chosen_layer = choose_layer(network, module, idx)
-            layer_act_(network, chosen_layer, LayerGradientXActivation, 'layer_GradXActivation',
-                       img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label})
+            for network in networks:
+                module, idx = layer_kwargs['layer_gradxact']['module'], \
+                              layer_kwargs['layer_gradxact']['layer_idx']
+                chosen_layer = choose_layer(network, module, idx)
+                layer_act_(network, chosen_layer, LayerGradientXActivation, 'layer_GradXActivation',
+                           img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label})
 
         if layer_activation:
-            module, idx = layer_kwargs['layer_activation']['module'], \
-                          layer_kwargs['layer_activation']['layer_idx']
-            chosen_layer = choose_layer(network, module, idx)
-            layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
-                       img, log_dir, show_imgs=show_imgs, attr_kwargs={})
+            for network in networks:
+                module, idx = layer_kwargs['layer_activation']['module'], \
+                              layer_kwargs['layer_activation']['layer_idx']
+                chosen_layer = choose_layer(network, module, idx)
+                layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
+                           img, log_dir, show_imgs=show_imgs, attr_kwargs={})
 
 
 if __name__ == '__main__':
