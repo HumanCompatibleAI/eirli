@@ -71,7 +71,7 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
     use_batch_neg=True.
     """
 
-    def __init__(self, device, sample=False, temp=0.1, use_batch_neg=False):
+    def __init__(self, device, sample=False, temp=0.1, use_batch_neg=True):
         super(QueueAsymmetricContrastiveLoss, self).__init__(device, sample)
 
         self.temp = temp
@@ -92,14 +92,22 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
         if self.use_batch_neg:
             # Dot product similarity with all other images in the batch
             logits_aa = torch.matmul(z_i, z_i.T)  # NxN
-
             # Values on the diagonal line are each image's similarity with itself
-            logits_aa = logits_aa - mask
 
             # Dot product similarity with all other augmented images in the batch
             logits_ab = torch.matmul(z_i, z_j.T)
+            logits = torch.cat([logits_ab, l_neg], dim=1)
 
-            logits = torch.cat([logits_ab, logits_aa, l_neg], dim=1)  # Nx(2N+K)
+            avg_self_similarity = logits_ab.diag().mean().item()
+            avg_queue_similarity = l_neg.mean().item()
+            logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+            avg_batch_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+
+            sb_logger.record('avg_self_similarity', avg_self_similarity)
+            sb_logger.record('avg_queue_similarity', avg_queue_similarity)
+            sb_logger.record('avg_batch_similarity', avg_batch_similarity)
+            sb_logger.record('self_queue_sim_delta', avg_self_similarity - avg_queue_similarity)
+            sb_logger.record('self_batch_sim_delta', avg_self_similarity - avg_batch_similarity)
 
             # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
             # represent(image_i) and represent(augmented_image_i).
@@ -108,7 +116,19 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
         else:
             # torch.einsum provides an elegant way to calculate vector dot products across a batch. Each entry on the
             # Nx1 returned tensor is a dot product of represent(image_i) and represent(augmented_image_i).
-            l_pos = torch.einsum('nc,nc->n', [z_i, z_j]).unsqueeze(-1)  # Nx1
+            logits_ab = torch.matmul(z_i, z_j.T)
+            l_pos = logits_ab.diag().unsqueeze(-1)
+            logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+            avg_batch_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+
+            avg_self_similarity = l_pos.mean().item()
+            avg_queue_similarity= l_neg.mean().item()
+
+            sb_logger.record('avg_self_similarity', avg_self_similarity)
+            sb_logger.record('avg_queue_similarity', avg_queue_similarity)
+            sb_logger.record('avg_batch_similarity', avg_batch_similarity)
+            sb_logger.record('self_queue_sim_delta', avg_self_similarity - avg_queue_similarity)
+            sb_logger.record('self_batch_sim_delta', avg_self_similarity - avg_batch_similarity)
 
             # The negative examples here only contain image representations in the queue.
             logits = torch.cat([l_pos, l_neg], dim=1)  # Nx(1+K)
@@ -146,6 +166,14 @@ class BatchAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
         logits_ab = torch.matmul(z_i, z_j.T)  # NxN
 
         logits = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
+
+        avg_self_similarity = logits_ab.diag().mean().item()
+        logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+
+        sb_logger.record('avg_self_similarity', avg_self_similarity)
+        sb_logger.record('avg_other_similarity', avg_other_similarity)
+        sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
 
         # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
         # represent(image_i) and represent(augmented_image_i).

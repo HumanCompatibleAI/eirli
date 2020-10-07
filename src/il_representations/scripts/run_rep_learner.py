@@ -12,6 +12,7 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
 
 from il_representations import algos
+from il_representations.algos import decoders, augmenters
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
 import il_representations.envs.auto as auto_env
@@ -22,13 +23,12 @@ sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
 
-
 @represent_ex.config
 def default_config():
     algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     n_envs = 1
-    demo_timesteps = 5000
+    demo_timesteps = None
     ppo_timesteps = 1000
     pretrain_epochs = 500
     algo_params = get_default_args(algos.RepresentationLearner)
@@ -44,6 +44,35 @@ def default_config():
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def condition_three_temporal_cpc_sym_proj():
+    # Baseline Temporal CPC with a symmetric projection head
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'decoder': decoders.SymmetricProjectionHead}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def condition_four_temporal_cpc_asym_proj():
+    # Baseline Temporal CPC with an asymmetric projection head
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'decoder': decoders.AsymmetricProjectionHead}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def condition_five_temporal_cpc_augment_both():
+    # Baseline Temporal CPC with augmentation of both context and target
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'augmenter': augmenters.AugmentContextAndTarget}
     _ = locals()
     del _
 
