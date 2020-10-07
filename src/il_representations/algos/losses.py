@@ -3,6 +3,8 @@ import torch
 import torch.nn.functional as F
 import stable_baselines3.common.logger as sb_logger
 from pyro.distributions import Delta
+import imitation.util.logger as logger
+
 
 class RepresentationLoss(ABC):
     def __init__(self, device, sample=False):
@@ -277,17 +279,20 @@ class VAELoss(RepresentationLoss):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         ground_truth_pixels = self.get_vector_forms(target_dist)[0]
         predicted_pixels = decoded_context_dist.mean
-        reconstruction_loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
+
+        recon_loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
 
         prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +
-                                                       encoded_context_dist.event_shape),
+                                                       encoded_context_dist.event_shape).to(self.device),
                                            self.prior_scale)
         independent_prior = torch.distributions.Independent(prior,
                                                             len(encoded_context_dist.event_shape))
-        kld = torch.mean(torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior))
-        # KL divergence of z dist from prior contributes to loss,
-        # log probability of ground truth pixels subtracts from it
-        loss = self.beta*kld + reconstruction_loss
+        kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
+
+        logger.record('loss_recon', recon_loss.item())
+        logger.record('loss_kld', torch.mean(kld).item())
+
+        loss = recon_loss + self.beta * torch.mean(kld)
         return loss
 
 
