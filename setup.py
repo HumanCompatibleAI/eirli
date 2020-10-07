@@ -35,7 +35,7 @@ setup(
          "@imitation#egg=stable-baselines3"),
 
         # environments
-        "magical @ git+https://github.com/qxcv/magical@master",
+        "magical @ git+https://github.com/qxcv/magical@pyglet1.5",
         "dm_control~=0.0.319497192",
         ("dmc2gym @ git+git://github.com/denisyarats/dmc2gym"
          "@6e34d8acf18e92f0ea0a38ecee9564bdf2549076"),
