@@ -40,7 +40,6 @@ def default_config():
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
     ppo_finetune = False
-    batch_size = 256
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
@@ -62,6 +61,12 @@ def ceb_breakout():
     pretrain_epochs = 5
     demo_timesteps = None
     ppo_finetune = False
+    _ = locals()
+    del _
+
+@represent_ex.named_config
+def expert():
+    use_random_rollouts=False
     _ = locals()
     del _
 
