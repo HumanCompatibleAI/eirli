@@ -21,6 +21,7 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
+from il_representations.scripts import experimental_conditions
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -298,7 +299,7 @@ def base_config():
     tune_run_kwargs = dict(num_samples=1,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.32,
+                               gpu=0, # TODO change back to 0.32?
                            ))
                            # queue_trials=True)
     ray_init_kwargs = dict(
@@ -340,6 +341,62 @@ def cfg_use_dm_control():
         'dm_control_env': 'reacher-easy',
     }
 
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_tune_augmentations():
+    # Don't appear to be able to specify REPL named configs here
+    use_skopt = True
+    skopt_search_mode = 'max'
+    metric = 'return_mean'
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 250, # TODO unsure if this is too many
+
+    }
+
+    skopt_space = collections.OrderedDict([
+        ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
+            "translate,rotate,gaussian_blur", "translate,rotate",
+            "translate", "translate, gaussian_blur",
+            "translate,rotate,flip_ud,flip_lr"
+        ])
+    ])
+
+    tune_run_kwargs = dict(num_samples=25) #5 seeds per setting, in expectation
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_tune_vae_learning_rate():
+    # Don't appear to be able to specify REPL named configs here
+    use_skopt = True
+    skopt_search_mode = 'max'
+    metric = 'return_mean'
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'use_random_rollouts': False,
+        'ppo_finetune': False,
+        # this isn't a lot of training, but should be enough to tell whether
+        # loss goes down quickly
+        'pretrain_epochs': 250, # TODO unsure if this is too many
+
+    }
+
+    skopt_space = collections.OrderedDict([
+
+        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform'))
+    ])
+
+    tune_run_kwargs = dict(num_samples=50) #5 seeds per setting, in expectation
     _ = locals()
     del _
 

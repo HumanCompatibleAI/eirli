@@ -3,7 +3,7 @@
 import torch as th
 from torch import nn
 from stable_baselines3.common.preprocessing import get_flattened_obs_dim
-from il_representations.algos.encoders import compute_rep_shape_encoder, DeterministicEncoder
+from il_representations.algos.encoders import compute_rep_shape_encoder, BaseEncoder
 
 
 class ImageDiscrimNet(nn.Module):
@@ -29,7 +29,7 @@ class ImageDiscrimNet(nn.Module):
             obs_out_dim, = compute_rep_shape_encoder(observation_space, self.obs_encoder)
         else:
             if encoder_cls is None:
-                encoder_cls = DeterministicEncoder
+                encoder_cls = BaseEncoder
             if encoder_kwargs is None:
                 encoder_kwargs = {}
             self.obs_encoder = encoder_cls(obs_space=observation_space, representation_dim=fc_dim,
