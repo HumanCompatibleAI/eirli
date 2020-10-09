@@ -190,7 +190,6 @@ def temporal_ceb_no_projection():
     del _
 
 
-
 @represent_ex.named_config
 def temporal_cpc_augment_both_magical():
     # Baseline Temporal CPC with augmentation of both context and target
