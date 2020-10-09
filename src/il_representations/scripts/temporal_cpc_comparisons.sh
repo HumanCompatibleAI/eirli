@@ -1,13 +1,16 @@
-# TemporalCPC
-python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
-repl.stooke_contrastive_hyperparams_dmc repl.condition_one_temporal_cpc
+## TemporalCPC - commented out if we don't want to re-run
+#python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
+#repl.stooke_contrastive_hyperparams_dmc repl.condition_one_temporal_cpc
 
+
+# TemporalCPC with augmentations
+python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
+repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_augment_both_magical
 
 # TemporalCPC with Action Conditioning
 python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
 repl.stooke_contrastive_hyperparams_dmc repl.algo=ActionConditionedTemporalCPC\
  repl.use_random_rollouts=False
-
 
 
  # Regular/Identity CPC
