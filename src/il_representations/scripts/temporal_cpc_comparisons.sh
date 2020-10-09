@@ -26,11 +26,11 @@ do
 
   # TemporalVAE
   python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
-  repl.stooke_contrastive_hyperparams_dmc repl.condition_thirteen_temporal_vae_lowbeta seed=$seed_var
+  repl.condition_thirteen_temporal_vae_lowbeta seed=$seed_var
 
 
   # VAE
   python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
-  repl.stooke_contrastive_hyperparams_dmc repl.condition_ten_vae seed=$seed_var
+  repl.condition_ten_vae seed=$seed_var
 
 done
