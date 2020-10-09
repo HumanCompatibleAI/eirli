@@ -191,3 +191,12 @@ def temporal_ceb_no_projection():
 
 
 
+@represent_ex.named_config
+def temporal_cpc_augment_both_magical():
+    # Baseline Temporal CPC with augmentation of both context and target
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
+    _ = locals()
+    del _
