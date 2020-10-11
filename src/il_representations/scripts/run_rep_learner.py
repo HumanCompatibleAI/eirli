@@ -26,6 +26,10 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None
+
     algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     torch_num_threads = 1
