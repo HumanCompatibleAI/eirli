@@ -269,6 +269,9 @@ def run_il_only_exp(il_train_ex_config, il_test_ex_config, benchmark_config,
 @chain_ex.config
 def base_config():
     exp_name = "grid_search"
+    # the repl, il_train and il_test experiments will have this value as their
+    # exp_ident settings
+    exp_ident = None
     # Name of the metric to optimise. By default, this will be automatically
     # selected based on the value of stages_to_run.
     metric = None
@@ -972,7 +975,7 @@ def cfg_il_bc_freeze():
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
-        skopt_search_mode, skopt_ref_configs, skopt_space):
+        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident):
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
@@ -981,6 +984,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     spec = sacred_copy(spec)
     stages_to_run = get_stages_to_run(stages_to_run)
     log_dir = os.path.abspath(chain_ex.observers[0].dir)
+
+    # set default exp_ident
+    if rep_ex_config['exp_ident'] is None:
+        rep_ex_config['exp_ident'] = exp_ident
+    if il_train_ex_config['exp_ident'] is None:
+        il_train_ex_config['exp_ident'] = exp_ident
+    if il_test_ex_config['exp_ident'] is None:
+        il_test_ex_config['exp_ident'] = exp_ident
 
     if metric is None:
         # choose a default metric depending on whether we're running

@@ -25,6 +25,9 @@ il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 
 @il_test_ex.config
 def default_config():
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None
     torch_num_threads = 1
     policy_path = None
     n_rollouts = 100

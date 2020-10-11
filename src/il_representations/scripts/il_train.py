@@ -74,6 +74,9 @@ il_train_ex = Experiment('il_train', ingredients=[
 
 @il_train_ex.config
 def default_config():
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None  # noqa: F841
     # manually set number of Torch threads
     torch_num_threads = 1  # noqa: F841
     # device to place all computations on
