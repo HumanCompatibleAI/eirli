@@ -171,3 +171,31 @@ def stooke_vae_hyperparams_dmc():
     del _
 
 
+
+@represent_ex.named_config
+def identity_cpc():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def temporal_ceb_no_projection():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'loss_calculator': losses.CEBLoss}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def temporal_cpc_augment_both_magical():
+    # Baseline Temporal CPC with augmentation of both context and target
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
+    _ = locals()
+    del _
