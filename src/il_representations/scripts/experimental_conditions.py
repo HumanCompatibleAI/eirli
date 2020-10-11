@@ -163,6 +163,20 @@ def stooke_momentum_hyperparams_dmc():
     _ = locals()
     del _
 
+
+@represent_ex.named_config
+def cody_momentum_bn():
+    algo_params = {
+        'encoder_kwargs': {
+            'momentum_weight': 0.995,
+        },
+        'loss_calculator_kwargs': {
+            'use_batch_neg': True,
+        }
+    }
+    _ = locals()
+    del _
+
 @represent_ex.named_config
 # TODO add learning rate once determined by hyperparameter search
 def stooke_vae_hyperparams_dmc():
