@@ -882,6 +882,17 @@ def cfg_base_repl_1500():
 
 
 @chain_ex.named_config
+def cfg_base_repl_500():
+    repl = {
+        'ppo_finetune': False,
+        'pretrain_epochs': 500,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_force_use_repl():
     stages_to_run = StagesToRun.REPL_AND_IL
 
