@@ -38,7 +38,7 @@ def bench_defaults():
         # done
         'MoveToCorner': 'data/magical/move-to-corner/',
         'MoveToRegion': 'data/magical/move-to-region/',
-        'MatchRegions': 'data/magical/match-regions-2020-05-18/',
+        'MatchRegions': 'data/magical/match-regions/',
         'MakeLine': 'data/magical/make-line/',
         'FixColour': 'data/magical/fix-colour/',
         'FindDupe': 'data/magical/find-dupe/',
