@@ -1,19 +1,14 @@
 import os
-import torch
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from imitation.augment import StandardAugmentations
-from il_representations.algos.batch_extenders import IdentityBatchExtender, QueueBatchExtender
+from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter, Logger
-from il_representations.algos.augmenters import AugmentContextOnly, NoAugmentation
-from gym.spaces import Box
+from il_representations.algos.utils import AverageMeter
 import torch
 import inspect
 import imitation.util.logger as logger
-import logging
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 
@@ -114,8 +109,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.loss_calculator = loss_calculator(self.device, **to_dict(loss_calculator_kwargs))
 
-        trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
-        trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
+        trainable_encoder_params, trainable_decoder_params = self._get_trainable_parameters()
         self.optimizer = optimizer(trainable_encoder_params + trainable_decoder_params,
                                    **to_dict(optimizer_kwargs))
 
@@ -146,6 +140,32 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     if kwargs_copy[param_name] == default_args[param_name]:
                         kwargs_copy[param_name] = algo_hardcoded_kwargs[param_name]
         return kwargs_copy
+
+    def _calculate_norms(self, norm_type=2):
+        """
+        :param norm_type: the order of the norm
+        :return: the norm of the gradient and the norm of the weights
+        """
+        norm_type = float(norm_type)
+
+        encoder_params, decoder_params = self._get_trainable_parameters()
+        trainable_params = encoder_params + decoder_params
+
+        stacked_gradient_norms = torch.stack([torch.norm(p.grad.detach(), norm_type).to(self.device) for p in trainable_params])
+        stacked_weight_norms = torch.stack([torch.norm(p.detach(), norm_type).to(self.device) for p in trainable_params])
+
+        gradient_norm = torch.norm(stacked_gradient_norms, norm_type)
+        weight_norm = torch.norm(stacked_weight_norms, norm_type)
+
+        return gradient_norm, weight_norm
+
+    def _get_trainable_parameters(self):
+        """
+        :return: the trainable encoder parameters and the trainable decoder parameters
+        """
+        trainable_encoder_params = [p for p in self.encoder.parameters() if p.requires_grad]
+        trainable_decoder_params = [p for p in self.decoder.parameters() if p.requires_grad]
+        return trainable_encoder_params, trainable_decoder_params
 
     def _prep_tensors(self, tensors_or_arrays):
         """
@@ -276,13 +296,20 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
                 loss_item = loss.item()
+
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                del loss  # just to make sure we don't use it again
+                del loss  # so we don't use again
 
+                gradient_norm, weight_norm = self._calculate_norms()
+
+                # FIXME(sam): don't plot this every batch, plot it every k
+                # batches (will make log files much smaller)
                 loss_meter.update(loss_item)
                 logger.record('loss', loss_item)
+                logger.record('gradient_norm', gradient_norm.item())
+                logger.record('weight_norm', weight_norm.item())
                 logger.record('epoch', epoch)
                 logger.record('within_epoch_step', step)
                 logger.dump(step=global_step)
