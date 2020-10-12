@@ -7,7 +7,7 @@ cluster_cfg_path="./gcp_cluster_sam.yaml"
 
 # running ALL THE REPL ALGORITHMS so that we know what works/what doesn't
 for il in cfg_il_bc_nofreeze; do
-    for bench in cfg_bench_micro_sweep_magical cfg_micro_bench_sweep_dm_control; do
+    for bench in cfg_bench_micro_sweep_magical cfg_bench_micro_sweep_dm_control; do
         # "control" config without repL
         ray submit --tmux "$cluster_cfg_path" \
             ./submit_pretrain_n_adapt.py \
