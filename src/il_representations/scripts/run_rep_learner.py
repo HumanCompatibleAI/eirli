@@ -25,7 +25,7 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
+    algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     n_envs = 1
     timesteps = None
@@ -42,19 +42,12 @@ def default_config():
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
     ppo_finetune = False
-    batch_size = 256
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
-    encoder_kwargs = {
-        # this is just the default, but we need to set it so that Sacred
-        # doesn't complain about unused values when we overwrite it later
-        'obs_encoder_cls': 'BasicCNN',
-    }
     _ = locals()
     del _
-
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
@@ -73,8 +66,14 @@ def ceb_breakout():
     del _
 
 @represent_ex.named_config
+def expert():
+    use_random_rollouts=False
+    _ = locals()
+    del _
+
+@represent_ex.named_config
 def tiny_dataset():
-    timesteps=5000
+    demo_timesteps=5000
     repl_num_traj=25
     _ = locals()
     del _
