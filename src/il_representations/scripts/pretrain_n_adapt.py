@@ -304,9 +304,11 @@ def base_config():
     benchmark = {}
 
     tune_run_kwargs = dict(num_samples=1,
+                           max_failures=3,
+                           fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0, # TODO change back to 0.32?
+                               gpu=0,  # TODO change back to 0.32?
                            ))
     ray_init_kwargs = dict(
         memory=None,
@@ -745,6 +747,9 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
     running GPU-intensive algorithms (repL, BC) on GCP."""
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
+                           # retry on node failure
+                           max_failures=5,
+                           fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
                                gpu=0.2,
