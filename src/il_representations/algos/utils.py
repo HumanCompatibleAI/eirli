@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('agg')
 import random
 import gym
 import math
