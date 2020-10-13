@@ -2,6 +2,7 @@ import torch
 import sacred
 import math
 import cv2
+import tkinter
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
@@ -17,8 +18,7 @@ from captum.attr import visualization as viz
 from stable_baselines3.common.policies import ActorCriticCnnPolicy
 
 from il_representations.scripts.il_train import make_policy
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, DynamicsEncoder, \
-    RecurrentEncoder, StochasticEncoder, DeterministicEncoder
+from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, RecurrentEncoder
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 
@@ -103,7 +103,6 @@ def process_data(imgs, device, benchmark):
         if isinstance(label, np.ndarray):
             label = np.argmax(label)
         img = torch.FloatTensor(img).to(device).unsqueeze(dim=0)
-        img = torch.Tensor(img).to(device).unsqueeze(dim=0)
         img.requires_grad = True
         label = int(label)
         img_list.append(img)
@@ -325,8 +324,6 @@ def choose_layer(network, module_name, layer_idx):
 
         if isinstance(rep_encoder, MomentumEncoder):
             module = rep_encoder.query_encoder.network.shared_network
-        elif isinstance(rep_encoder, (DeterministicEncoder, StochasticEncoder)):
-            module = rep_encoder.network.shared_network
         elif isinstance(rep_encoder, RecurrentEncoder):
             module = rep_encoder.single_frame_encoder.network.shared_network
         else:
@@ -342,7 +339,7 @@ def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_cond
         layer_activation, layer_kwargs):
     # Load the network and images
     venv = auto_env.load_vec_env()
-    network = prepare_network(venv)
+    networks = prepare_network(venv)
     images, labels = process_data()
 
     log_dir = interp_ex.observers[0].dir if log_dir == 'default' else log_dir
@@ -350,8 +347,8 @@ def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_cond
     for img, label in zip(images, labels):
         # Get policy prediction
         original_img = img[0].permute(1, 2, 0).detach().numpy()
-
         save_img(original_img, 'original_image', log_dir, show=show_imgs)
+
 
         if saliency:
             for network in networks:
