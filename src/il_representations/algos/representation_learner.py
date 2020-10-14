@@ -234,7 +234,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Torch chokes when batch_size is a numpy int instead of a Python int,
         # so we need to wrap the batch size in int() in case we're running
         # under skopt (which uses numpy types).
-        dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=False) #self.shuffle_batches
+        dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=self.shuffle_batches)
 
         loss_record = []
         global_step = 0
