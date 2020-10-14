@@ -144,7 +144,7 @@ class OnlyTargetProjectionHead(LossDecoder):
 
 class MomentumProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
-                 momentum_weight=0.99, inner_projection_head_cls=SymmetricProjectionHead):
+                 momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead):
         super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=sample)
         self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape, sample=sample)
         self.target_decoder = copy.deepcopy(self.context_decoder)
@@ -393,4 +393,3 @@ class PixelDecoder(LossDecoder):
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
-
