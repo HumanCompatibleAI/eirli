@@ -249,13 +249,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
         assert num_batches_per_epoch > 0, \
             f"y u no train??? len(ds)={len(dataset)}, bs={self.batch_size}"
 
+        self.encoder.train(True)
+        self.decoder.train(True)
+
         for epoch in range(training_epochs):
 
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
-            self.encoder.train(True)
-            self.decoder.train(True)
+
 
             for step in range(1, num_batches_per_epoch + 1):
                 batch = next(dataiter)
@@ -319,10 +321,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.scheduler.step()
 
             loss_record.append(loss_meter.avg)
-
-            # set the encoder and decoder to test mode
-            self.encoder.eval()
-            self.decoder.eval()
 
             if epoch % self.save_interval == 0 or epoch == training_epochs - 1:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
