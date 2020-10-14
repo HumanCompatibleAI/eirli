@@ -300,7 +300,9 @@ class PixelDecoder(LossDecoder):
         assert len(np.unique(observation_space.shape) == 2)
         # Mildly hacky; assumes that we have more square
         # dimensions in our pixel box than we do channels
-        square_dim = np.max(np.unique(observation_space.shape))
+        channels, height, width = observation_space.shape
+        assert height == width, "The image must be square"
+        square_dim = height
         super().__init__(representation_dim, projection_shape, sample)
         encoder_arch_key = encoder_arch_key or "BasicCNN"
         self.encoder_arch = NETWORK_ARCHITECTURE_DEFINITIONS[encoder_arch_key]
