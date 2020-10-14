@@ -96,9 +96,9 @@ class AsymmetricProjectionHead(LossDecoder):
         super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
         self.context_mean, self.context_stddev = self.get_projection_modules(self.representation_dim,
-                                                                            self.projection_dim,
-                                                                            projection_architecture,
-                                                                            learn_scale)
+                                                                             self.projection_dim,
+                                                                             projection_architecture,
+                                                                             learn_scale)
         self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
                                                                           self.projection_dim,
                                                                           projection_architecture,
@@ -191,7 +191,7 @@ class BYOLProjectionHead(MomentumProjectionHead):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return independent_multivariate_normal(F.normalize(prediction_dist.mean, dim=1),
-                                                   prediction_dist.variance)
+                                                   prediction_dist.stddev)
 
 
 class ActionConditionedVectorDecoder(LossDecoder):
