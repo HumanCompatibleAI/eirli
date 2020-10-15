@@ -124,6 +124,9 @@ class BYOL(RepresentationLearner):
                          log_dir=log_dir,
                          **kwargs)
 
+    def learn(self, dataset, training_epochs):
+        raise NotImplementedError("BYOL decoder currently has an unfixed issue with gradients being None ")
+
 
 class CEB(RepresentationLearner):
     """
@@ -131,6 +134,7 @@ class CEB(RepresentationLearner):
     """
     def __init__(self, env, log_dir, **kwargs):
         algo_hardcoded_kwargs = dict(encoder_kwargs=dict(stochastic=True),
+                                     decoder_kwargs=dict(learn_scale=True),
                                      encoder=BaseEncoder,
                                      decoder=SymmetricProjectionHead,
                                      batch_extender=IdentityBatchExtender,
@@ -347,4 +351,4 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                          **kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
-WIP_ALGOS = []
+WIP_ALGOS = [BYOL]

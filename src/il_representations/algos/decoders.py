@@ -28,7 +28,7 @@ bit of data that pair constructors can return, to be passed forward for use here
 
 #TODO change shape to dim throughout this file and the code
 
-DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 128}]
+DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -56,6 +56,9 @@ class LossDecoder(nn.Module):
     def ones_like_projection_dim(self, x):
         return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
+    def passthrough(self, x):
+        return x
+
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
@@ -66,7 +69,7 @@ class LossDecoder(nn.Module):
         if learn_scale:
             stddev_func = None
         else:
-            stddev_func = self.ones_like_projection_dim
+            stddev_func = self.passthrough
 
         if architecture is None:
             architecture = DEFAULT_PROJECTION_ARCHITECTURE
@@ -184,7 +187,7 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
         prediction_dist = self.context_predictor(internal_dist, traj_info, extra_context=None)
-        return independent_multivariate_normal(mean=F.normalize(prediction_dist.mean, dim=1),
+        return independent_multivariate_normal(mean=prediction_dist.mean,
                                                stddev=prediction_dist.stddev)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
@@ -224,7 +227,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
                                                                   f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_mean(merged_vector)
-        scale = self.action_conditioned_stddev(merged_vector)
+        scale = self.action_conditioned_stddev(z_dist.stddev)
         return independent_multivariate_normal(mean=mean_projection,
                                                stddev=scale)
 

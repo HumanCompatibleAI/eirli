@@ -150,7 +150,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         encoder_params, decoder_params = self._get_trainable_parameters()
         trainable_params = encoder_params + decoder_params
-
         stacked_gradient_norms = torch.stack([torch.norm(p.grad.detach(), norm_type).to(self.device) for p in trainable_params])
         stacked_weight_norms = torch.stack([torch.norm(p.detach(), norm_type).to(self.device) for p in trainable_params])
 
