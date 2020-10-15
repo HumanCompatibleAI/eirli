@@ -28,6 +28,7 @@ bit of data that pair constructors can return, to be passed forward for use here
 
 #TODO change shape to dim throughout this file and the code
 
+DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 128}]
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -68,19 +69,18 @@ class LossDecoder(nn.Module):
             stddev_func = self.ones_like_projection_dim
 
         if architecture is None:
-            mean_func = nn.Sequential(nn.Linear(representation_dim, projection_dim))
-            if stddev_func is None:
-                stddev_func = nn.Sequential(nn.Linear(representation_dim, projection_dim))
-        else:
-            layers = []
-            input_dim = representation_dim
-            for layer_def in architecture[:-1]:
-                layers.append(nn.Linear(input_dim, layer_def['output_dim']))
-                input_dim = layer_def['output_dim']
-            layers.append(nn.Linear(input_dim, projection_dim))
-            mean_func = nn.Sequential(layers)
-            if stddev_func is None:
-                stddev_func = nn.Sequential(copy.deepcopy(layers))
+            architecture = DEFAULT_PROJECTION_ARCHITECTURE
+        layers = []
+        input_dim = representation_dim
+        for layer_def in architecture:
+            layers.append(nn.Linear(input_dim, layer_def['output_dim']))
+            layers.append(nn.ReLU())
+            layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
+            input_dim = layer_def['output_dim']
+        layers.append(nn.Linear(input_dim, projection_dim))
+        mean_func = nn.Sequential(*layers)
+        if stddev_func is None:
+            stddev_func = nn.Sequential(*copy.deepcopy(layers))
 
         return mean_func, stddev_func
 
