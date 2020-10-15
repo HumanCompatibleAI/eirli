@@ -129,16 +129,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # from the default, if so, use the user_kwargs value. Otherwise, use the algorithm_hardcoded value
 
         kwargs_copy = user_kwargs.copy()
-        default_args = get_default_args(RepresentationLearner.__init__)
         if algo_hardcoded_kwargs is not None:
             for param_name, param_value in algo_hardcoded_kwargs.items():
                 if param_name in kwargs_copy and isinstance(kwargs_copy[param_name], dict):
                     kwargs_copy[param_name] = self.validate_and_update_kwargs(kwargs_copy[param_name], param_value)
+                elif param_name in kwargs_copy:
+                    raise Warning(f"Overwriting algorithm-hardcoded value {param_value} of param {param_name} with user value {kwargs_copy[param_name]}")
                 else:
-                    # If the external kwargs are just set to default values, use hardcoded kwargs, otherwise default
-                    # to external
-                    if kwargs_copy[param_name] == default_args[param_name]:
-                        kwargs_copy[param_name] = algo_hardcoded_kwargs[param_name]
+                    kwargs_copy[param_name] = algo_hardcoded_kwargs[param_name]
         return kwargs_copy
 
     def _calculate_norms(self, norm_type=2):
