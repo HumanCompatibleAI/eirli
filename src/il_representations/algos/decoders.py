@@ -211,9 +211,9 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
 
         self.action_conditioned_mean, self.action_conditioned_stddev = self.get_projection_modules(self.representation_dim + action_representation_dim,
-                                                                                                  self.projection_dim,
-                                                                                                  projection_architecture,
-                                                                                                  learn_scale)
+                                                                                                   self.projection_dim,
+                                                                                                   projection_architecture,
+                                                                                                   learn_scale)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
