@@ -1,4 +1,5 @@
 """Utilities for working with Atari environments and demonstrations."""
+import os
 import numpy as np
 import random
 
@@ -7,9 +8,9 @@ from il_representations.envs.config import benchmark_ingredient
 
 @benchmark_ingredient.capture
 def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj,
-                       chans_first=True):
+                       data_root, chans_first=True):
     # load trajectories from disk
-    full_rollouts_path = atari_demo_paths[atari_env_id]
+    full_rollouts_path = os.path.join(data_root, atari_demo_paths[atari_env_id])
     trajs_or_file = np.load(full_rollouts_path, allow_pickle=True)
     if isinstance(trajs_or_file, np.lib.npyio.NpzFile):
         # handle .npz files (several arrays, maybe compressed, but we assume

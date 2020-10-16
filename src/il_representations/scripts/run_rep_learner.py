@@ -1,9 +1,11 @@
 from glob import glob
-import inspect
 import logging
 import os
 
+from imitation.data import rollout
+from imitation.policies.base import RandomPolicy
 import numpy as np
+import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
@@ -16,19 +18,19 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
-represent_ex = Experiment('representation_learning',
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
 
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
+    algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_only = False
-    pretrain_epochs = 50
+    pretrain_epochs = 500
     algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
     algo_params["augmenter_kwargs"] = {
@@ -37,20 +39,13 @@ def default_config():
         # augmentations.
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
-    ppo_finetune = True
-    batch_size = 256
+    ppo_finetune = False
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
-    encoder_kwargs = {
-        # this is just the default, but we need to set it so that Sacred
-        # doesn't complain about unused values when we overwrite it later
-        'obs_encoder_cls': 'BasicCNN',
-    }
     _ = locals()
     del _
-
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
@@ -70,30 +65,31 @@ def ceb_breakout():
     del _
 
 @represent_ex.named_config
+def expert():
+    use_random_rollouts=False
+    _ = locals()
+    del _
+
+@represent_ex.named_config
 def tiny_epoch():
     demo_timesteps=5000
     _ = locals()
     del _
+
+@represent_ex.capture
+def get_random_traj(venv, demo_timesteps):
+    random_policy = RandomPolicy(venv.observation_space, venv.action_space)
+    trajectories = rollout.generate_trajectories(
+        random_policy, venv, rollout.min_timesteps(demo_timesteps))
+    flat_traj = rollout.flatten_trajectories(trajectories)
+    # "infos" and "next_obs" keys are also available
+    return {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}
 
 @represent_ex.named_config
 def target_projection():
     algo = algos.FixedVarianceTargetProjectedCEB
     _ = locals()
     del _
-
-@represent_ex.capture
-def get_random_traj(env, demo_timesteps):
-    # Currently not designed for VecEnvs with n>1
-    trajectory = {'obs': [], 'acts': [], 'dones': []}
-    obs = env.reset()
-    for i in range(demo_timesteps):
-        trajectory['obs'].append(obs.squeeze())
-        action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
-        obs, rew, dones, info = env.step(action)
-        trajectory['acts'].append(action[0])
-        trajectory['dones'].append(dones[0])
-    return trajectory
-
 
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
@@ -106,12 +102,10 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts, algo, algo_params,
+def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
     # TODO fix to not assume FileStorageObserver always present
-    log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
-    os.mkdir(log_dir)
-
+    log_dir = represent_ex.observers[0].dir
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -120,7 +114,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params,
     venv = auto_env.load_vec_env()
     color_space = auto_env.load_color_space()
     if use_random_rollouts:
-        dataset_dict = get_random_traj(env=venv)
+        dataset_dict = get_random_traj(venv=venv)
     else:
         # TODO be able to load a fixed number, `demo_timesteps`
         dataset_dict = auto_env.load_dataset()
@@ -135,13 +129,13 @@ def run(benchmark, use_random_rollouts, algo, algo_params,
     model = algo(venv, log_dir=log_dir, **algo_params)
 
     # setup model
-    model.learn(dataset_dict, pretrain_epochs)
+    loss_record = model.learn(dataset_dict, pretrain_epochs)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
         latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
         encoder_feature_extractor_kwargs = {'features_dim': algo_params["representation_dim"],
-                                            'encoder_path': latest_checkpoint}
+                                            'encoder_path': os.path.abspath(latest_checkpoint)}
 
         # TODO figure out how to not have to set `ortho_init` to False for the whole policy
         policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
@@ -154,7 +148,16 @@ def run(benchmark, use_random_rollouts, algo, algo_params,
 
     venv.close()
 
+    encoder_path = os.path.join(model.encoder_checkpoints_path,
+                                f'{pretrain_epochs-1}_epochs.ckpt')
+
+    return {
+        'encoder_path': encoder_path,
+        # return average loss from final epoch for HP tuning
+        'repl_loss': loss_record[-1],
+    }
+
 
 if __name__ == '__main__':
-    represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
+    represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs'))
     represent_ex.run_commandline()

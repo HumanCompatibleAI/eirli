@@ -1,6 +1,10 @@
 """Benchmark ingredient configurations for unit testing."""
 from os import path
 
+from ray import tune
+
+from il_representations import algos
+
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
@@ -49,5 +53,53 @@ FAST_IL_TRAIN_CONFIG = {
         'ppo_n_epochs': 1,
         'disc_minibatch_size': 2,
         'disc_batch_size': 2,
+    },
+}
+REPL_SMOKE_TEST_CONFIG = {
+    'pretrain_epochs': 1,
+    'demo_timesteps': 32,
+    'unit_test_max_train_steps': 2,
+    'algo_params': {'representation_dim': 3, 'batch_size': 7},
+    'use_random_rollouts': False,
+    'ppo_finetune': False,
+}
+CHAIN_CONFIG = {
+    'spec': {
+        'repl': {
+            'algo': tune.grid_search([algos.SimCLR]),
+        },
+        'il_train': {
+            # in practice we probably want to try GAIL too
+            # (I'd put this in the unit test if it wasn't so slow)
+            'algo': tune.grid_search(['bc']),
+            'freeze_encoder': tune.grid_search([False])
+        },
+        'benchmark': tune.grid_search([BENCHMARK_TEST_CONFIGS[0]]),
+    },
+    'tune_run_kwargs': {
+        'resources_per_trial': {
+            'cpu': 2,
+            'gpu': 0,
+        },
+        'num_samples': 1,
+    },
+    'ray_init_kwargs': {
+        # Ray has been mysteriously complaining about the amount of memory
+        # available on CircleCI, even though the machines have heaps of RAM.
+        # Setting sane defaults so this doesn't happen.
+        'memory': int(0.2*1e9),
+        'object_store_memory': int(0.2*1e9),
+    },
+    'il_train': {
+        'device_name': 'cpu',
+        **FAST_IL_TRAIN_CONFIG,
+    },
+    'il_test': {
+        'device_name': 'cpu',
+        'n_rollouts': 2,
+    },
+    'repl': {
+        'device': 'cpu',
+        **REPL_SMOKE_TEST_CONFIG,
     },
 }
