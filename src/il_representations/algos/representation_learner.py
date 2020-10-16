@@ -8,6 +8,7 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter
 import torch
 import inspect
+import numpy as np
 import imitation.util.logger as logger
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -150,7 +151,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         encoder_params, decoder_params = self._get_trainable_parameters()
         trainable_params = encoder_params + decoder_params
-
         stacked_gradient_norms = torch.stack([torch.norm(p.grad.detach(), norm_type).to(self.device) for p in trainable_params])
         stacked_weight_norms = torch.stack([torch.norm(p.detach(), norm_type).to(self.device) for p in trainable_params])
 
@@ -234,7 +234,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Torch chokes when batch_size is a numpy int instead of a Python int,
         # so we need to wrap the batch size in int() in case we're running
         # under skopt (which uses numpy types).
-        dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=False) #self.shuffle_batches
+        dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=self.shuffle_batches)
 
         loss_record = []
         global_step = 0
@@ -249,13 +249,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
         assert num_batches_per_epoch > 0, \
             f"y u no train??? len(ds)={len(dataset)}, bs={self.batch_size}"
 
+        self.encoder.train(True)
+        self.decoder.train(True)
+
         for epoch in range(training_epochs):
 
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
-            self.encoder.train(True)
-            self.decoder.train(True)
+
 
             for step in range(1, num_batches_per_epoch + 1):
                 batch = next(dataiter)
@@ -295,7 +297,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-
+                assert not np.isnan(loss.item()), "Loss is not NAN"
                 loss_meter.update(loss)
 
                 self.optimizer.zero_grad()
@@ -319,10 +321,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.scheduler.step()
 
             loss_record.append(loss_meter.avg)
-
-            # set the encoder and decoder to test mode
-            self.encoder.eval()
-            self.decoder.eval()
 
             if epoch % self.save_interval == 0 or epoch == training_epochs - 1:
                 torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
