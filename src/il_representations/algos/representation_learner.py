@@ -120,25 +120,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
-    def validate_and_update_kwargs(self, user_kwargs, algo_hardcoded_kwargs=None):
-        # return a copy instead of updating in-place to avoid inconsistent state
-        # after a failed update
-
-        # Now, algorithm_hardcoded_params contains all of the encoder, decoder, etc
-
-        # Iterate over param value in algorithm_hardcoded_params. Check whether the user_kwargs value is different
-        # from the default, if so, use the user_kwargs value. Otherwise, use the algorithm_hardcoded value
-
-        kwargs_copy = user_kwargs.copy()
-        if algo_hardcoded_kwargs is not None:
-            for param_name, param_value in algo_hardcoded_kwargs.items():
-                if param_name in kwargs_copy and isinstance(kwargs_copy[param_name], dict):
-                    kwargs_copy[param_name] = self.validate_and_update_kwargs(kwargs_copy[param_name], param_value)
-                elif param_name in kwargs_copy:
-                    raise Warning(f"Overwriting algorithm-hardcoded value {param_value} of param {param_name} with user value {kwargs_copy[param_name]}")
-                else:
-                    kwargs_copy[param_name] = algo_hardcoded_kwargs[param_name]
-        return kwargs_copy
 
     def _calculate_norms(self, norm_type=2):
         """

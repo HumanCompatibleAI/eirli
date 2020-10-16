@@ -304,6 +304,7 @@ class CEBLoss(RepresentationLoss):
         # TODO allow for beta functions
         self.beta = beta
         self.sample = sample
+        import pdb; pdb.set_trace()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         z = decoded_context_dist.rsample()
