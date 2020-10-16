@@ -12,7 +12,7 @@ from il_representations.algos.pair_constructors import IdentityPairConstructor, 
 from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
-
+import logging
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
     # return a copy instead of updating in-place to avoid inconsistent state
@@ -29,7 +29,7 @@ def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
             # If there's a shared non-dict param, warn that a param hardcoded by the algorithm
             # will be ignored and the user-input param used instead
             elif param_name in merged_kwargs:
-                raise Warning(
+                logging.warning(
                     f"Overwriting algorithm-hardcoded value {param_value} of "
                     f"param {param_name} with user value {merged_kwargs[param_name]}")
             # If there's no competing param in user-passed kwargs, add the hardcoded key and value
