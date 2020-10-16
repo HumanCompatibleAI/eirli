@@ -28,6 +28,7 @@ bit of data that pair constructors can return, to be passed forward for use here
 
 #TODO change shape to dim throughout this file and the code
 
+DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -55,32 +56,34 @@ class LossDecoder(nn.Module):
     def ones_like_projection_dim(self, x):
         return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
 
+    def passthrough(self, x):
+        return x
+
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
         stddev = stdev_layer(z_dist.stddev)
-        return independent_multivariate_normal(mean, stddev)
+        return independent_multivariate_normal(mean, torch.exp(stddev))
 
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
         if learn_scale:
             stddev_func = None
         else:
-            stddev_func = self.ones_like_projection_dim
+            stddev_func = self.passthrough
 
         if architecture is None:
-            mean_func = nn.Sequential(nn.Linear(representation_dim, projection_dim))
-            if stddev_func is None:
-                stddev_func = nn.Sequential(nn.Linear(representation_dim, projection_dim))
-        else:
-            layers = []
-            input_dim = representation_dim
-            for layer_def in architecture[:-1]:
-                layers.append(nn.Linear(input_dim, layer_def['output_dim']))
-                input_dim = layer_def['output_dim']
-            layers.append(nn.Linear(input_dim, projection_dim))
-            mean_func = nn.Sequential(layers)
-            if stddev_func is None:
-                stddev_func = nn.Sequential(copy.deepcopy(layers))
+            architecture = DEFAULT_PROJECTION_ARCHITECTURE
+        layers = []
+        input_dim = representation_dim
+        for layer_def in architecture:
+            layers.append(nn.Linear(input_dim, layer_def['output_dim']))
+            layers.append(nn.ReLU())
+            layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
+            input_dim = layer_def['output_dim']
+        layers.append(nn.Linear(input_dim, projection_dim))
+        mean_func = nn.Sequential(*layers)
+        if stddev_func is None:
+            stddev_func = nn.Sequential(*copy.deepcopy(layers))
 
         return mean_func, stddev_func
 
@@ -96,9 +99,9 @@ class AsymmetricProjectionHead(LossDecoder):
         super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
 
         self.context_mean, self.context_stddev = self.get_projection_modules(self.representation_dim,
-                                                                            self.projection_dim,
-                                                                            projection_architecture,
-                                                                            learn_scale)
+                                                                             self.projection_dim,
+                                                                             projection_architecture,
+                                                                             learn_scale)
         self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
                                                                           self.projection_dim,
                                                                           projection_architecture,
@@ -144,7 +147,7 @@ class OnlyTargetProjectionHead(LossDecoder):
 
 class MomentumProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
-                 momentum_weight=0.99, inner_projection_head_cls=SymmetricProjectionHead):
+                 momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead):
         super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=sample)
         self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape, sample=sample)
         self.target_decoder = copy.deepcopy(self.context_decoder)
@@ -184,14 +187,14 @@ class BYOLProjectionHead(MomentumProjectionHead):
     def forward(self, z_dist, traj_info, extra_context=None):
         internal_dist = super().forward(z_dist, traj_info, extra_context=extra_context)
         prediction_dist = self.context_predictor(internal_dist, traj_info, extra_context=None)
-        return independent_multivariate_normal(mean=F.normalize(prediction_dist.mean, dim=1),
+        return independent_multivariate_normal(mean=prediction_dist.mean,
                                                stddev=prediction_dist.stddev)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         with torch.no_grad():
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return independent_multivariate_normal(F.normalize(prediction_dist.mean, dim=1),
-                                                   prediction_dist.variance)
+                                                   prediction_dist.stddev)
 
 
 class ActionConditionedVectorDecoder(LossDecoder):
@@ -224,7 +227,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
                                                                   f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
         mean_projection = self.action_conditioned_mean(merged_vector)
-        scale = self.action_conditioned_stddev(merged_vector)
+        scale = self.action_conditioned_stddev(z_dist.stddev)
         return independent_multivariate_normal(mean=mean_projection,
                                                stddev=scale)
 
@@ -300,7 +303,9 @@ class PixelDecoder(LossDecoder):
         assert len(np.unique(observation_space.shape) == 2)
         # Mildly hacky; assumes that we have more square
         # dimensions in our pixel box than we do channels
-        square_dim = np.max(np.unique(observation_space.shape))
+        channels, height, width = observation_space.shape
+        assert height == width, "The image must be square"
+        square_dim = height
         super().__init__(representation_dim, projection_shape, sample)
         encoder_arch_key = encoder_arch_key or "BasicCNN"
         self.encoder_arch = NETWORK_ARCHITECTURE_DEFINITIONS[encoder_arch_key]
@@ -393,4 +398,3 @@ class PixelDecoder(LossDecoder):
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
-
