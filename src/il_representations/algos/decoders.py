@@ -63,7 +63,7 @@ class LossDecoder(nn.Module):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
         stddev = stdev_layer(z_dist.stddev)
-        return independent_multivariate_normal(mean, stddev)
+        return independent_multivariate_normal(mean, torch.exp(stddev))
 
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
         if learn_scale:
