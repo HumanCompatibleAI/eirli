@@ -8,6 +8,7 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.utils import AverageMeter
 import torch
 import inspect
+import numpy as np
 import imitation.util.logger as logger
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -294,7 +295,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-
+                assert not np.isnan(loss.item()), "Loss is not NAN"
                 loss_meter.update(loss)
 
                 self.optimizer.zero_grad()
