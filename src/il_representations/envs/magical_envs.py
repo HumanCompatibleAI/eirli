@@ -13,6 +13,7 @@ from imitation.util.util import make_vec_env
 from magical import register_envs, saved_trajectories
 from magical.evaluation import EvaluationProtocol
 import numpy as np
+import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
 
@@ -22,6 +23,7 @@ register_envs()
 def load_data(
         pickle_paths: List[str],
         preprocessor_name: str,
+        remove_null_actions: bool = False,
 ) -> Tuple[str, il_datasets.Dataset]:
     """Load MAGICAL data from pickle files."""
 
@@ -87,6 +89,12 @@ def load_data(
         for item_name, array_list in dataset_dict.items()
     }
 
+    if remove_null_actions:
+        # remove all "stay still" actions
+        chosen_mask = dataset_dict["acts"] != 0
+        for key in dataset_dict.keys():
+            dataset_dict[key] = dataset_dict[key][chosen_mask]
+
     return dataset_dict, env_name
 
 
@@ -100,8 +108,9 @@ def get_env_name_magical(magical_env_prefix, magical_preproc):
 
 @benchmark_ingredient.capture
 def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc, n_traj):
-    demo_dir = magical_demo_dirs[magical_env_prefix]
+                         magical_preproc, n_traj, magical_remove_null_actions,
+                         data_root):
+    demo_dir = os.path.join(data_root, magical_demo_dirs[magical_env_prefix])
     logging.info(
         f"Loading trajectory data for '{magical_env_prefix}' from "
         f"'{demo_dir}'")
@@ -115,7 +124,8 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
     if n_traj is not None:
         demo_paths = demo_paths[:n_traj]
     dataset_dict, loaded_env_name = load_data(
-        demo_paths, preprocessor_name=magical_preproc)
+        demo_paths, preprocessor_name=magical_preproc,
+        remove_null_actions=magical_remove_null_actions)
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
     return dataset_dict
@@ -125,11 +135,12 @@ class SB3EvaluationProtocol(EvaluationProtocol):
     """MAGICAL 'evaluation protocol' for Stable Baselines 3 policies."""
 
     # TODO: more docs, document __init__ in particular
-    def __init__(self, policy, run_id, seed, **kwargs):
+    def __init__(self, policy, run_id, seed, video_writer=None, **kwargs):
         super().__init__(**kwargs)
         self._run_id = run_id
         self.policy = policy
         self.seed = seed
+        self.video_writer = video_writer
 
     @property
     def run_id(self):
@@ -153,4 +164,10 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         scores = []
         for trajectory in trajectories[:self.n_rollouts]:
             scores.append(trajectory.infos[-1]['eval_score'])
+
+            # optionally write the (scored) trajectory to video output
+            if self.video_writer is not None:
+                for obs in trajectory.obs:
+                    self.video_writer.add_tensor(th.FloatTensor(obs) / 255.)
+
         return scores

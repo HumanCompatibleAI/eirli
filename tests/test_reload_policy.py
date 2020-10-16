@@ -9,7 +9,8 @@ from il_representations.test_support.configuration import (BENCHMARK_TEST_CONFIG
 
 
 @pytest.mark.parametrize("algo", ["bc", "gail"])
-def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
+@pytest.mark.parametrize("freeze_encoder", [False, True])
+def test_reload_policy(algo, freeze_encoder, represent_ex, il_train_ex, file_observer):
     """Test saving a policy with one specific representation learner, then loading
     it with the IL code.
 
@@ -18,9 +19,8 @@ def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
     represent_ex.run(
         config_updates={
             'pretrain_epochs': 1,
-            'batch_size': 7,
             'unit_test_max_train_steps': 2,
-            'algo_params': {'representation_dim': 3},
+            'algo_params': {'representation_dim': 3, 'batch_size': 7},
             'algo': MoCo,
             'use_random_rollouts': False,
             'benchmark': BENCHMARK_TEST_CONFIGS[0],
@@ -31,7 +31,7 @@ def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
     encoder_list = glob.glob(
         os.path.join(
             file_observer.dir,
-            'training_logs/checkpoints/representation_encoder/*.ckpt'))
+            'checkpoints/representation_encoder/*.ckpt'))
     policy_path = encoder_list[0]
     il_train_ex.run(
         config_updates={
@@ -41,5 +41,6 @@ def test_reload_policy(algo, represent_ex, il_train_ex, file_observer):
             # similar for all
             'benchmark': BENCHMARK_TEST_CONFIGS[0],
             'encoder_path': policy_path,
+            'freeze_encoder': freeze_encoder,
             **FAST_IL_TRAIN_CONFIG,
         })

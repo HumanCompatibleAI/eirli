@@ -74,10 +74,11 @@ def register_dmc_envs():
 
 @benchmark_ingredient.capture
 def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
-                            dm_control_demo_patterns, n_traj):
+                            dm_control_demo_patterns, n_traj, data_root):
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
-    data_paths = glob.glob(os.path.expanduser(data_pattern))
+    user_pattern = os.path.expanduser(data_pattern)
+    data_paths = glob.glob(os.path.join(data_root, user_pattern))
     loaded_trajs = []
     for data_path in data_paths:
         with gzip.GzipFile(data_path, 'rb') as fp:
@@ -97,6 +98,7 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         np.array([False] * (len(t.acts) - 1) + [True], dtype='bool')
         for t in loaded_trajs
     ]
+
     dataset_dict = {
         'obs':
         np.concatenate([t.obs[:-1] for t in loaded_trajs], axis=0),
