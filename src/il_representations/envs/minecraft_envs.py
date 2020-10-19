@@ -7,14 +7,15 @@ from gym import Wrapper, spaces, Env, register
 import time
 import logging
 
-mock_to_real_lookup = {
+MOCK_TO_REAL_LOOKUP = {
     'MinecraftTreechopMockEnv-v0': 'MineRLTreechopVectorObf-v0'
 }
+REAL_TO_MOCK_LOOKUP = {v:k for k,v in MOCK_TO_REAL_LOOKUP.items()}
 
 @benchmark_ingredient.capture
 def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, n_traj=None, timesteps=None, chunk_length=100):
     if 'Mock' in minecraft_env_id:
-        minecraft_env_id = mock_to_real_lookup[minecraft_env_id]
+        minecraft_env_id = MOCK_TO_REAL_LOOKUP[minecraft_env_id]
     data_iterator = minerl.data.make(environment=minecraft_env_id,
                                      data_dir=minecraft_data_root,
                                      max_recordings=n_traj)
@@ -26,6 +27,10 @@ def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, n_traj=None, t
         appended_trajectories['obs'].append(MinecraftVectorWrapper.transform_obs(current_state)[0])
         appended_trajectories['acts'].append(MinecraftVectorWrapper.extract_action(action)[0])
         appended_trajectories['dones'].append(done[0])
+    appended_trajectories['next_obs'] = appended_trajectories['obs'][1:]
+    appended_trajectories['obs'] = appended_trajectories['obs'][0:-1]
+    appended_trajectories['acts'] = appended_trajectories['acts'][0:-1]
+    appended_trajectories['dones'] = appended_trajectories['dones'][0:-1]
     end_time = time.time()
     logging.info(f"Minecraft trajectory collection took {round(end_time - start_time, 2)} seconds to complete")
     merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
@@ -99,7 +104,7 @@ class TestingEnvironment(Env):
         return self.observation_space.sample()
 
     def step(self, action):
-        return self.observation_space.sample()
+        return self.observation_space.sample(), 0, False, dict()
 
 
 def entry_point(**kwargs):

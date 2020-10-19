@@ -90,7 +90,8 @@ def bench_defaults():
     # ###########################
 
     minecraft_env_id = 'MineRLTreechopVectorObf-v0'
-    minecraft_data_root = 'data/minecraft/' #TODO fix this
+    minecraft_data_root = 'data/minecraft/'
+    mock_minecraft = False
 
 @benchmark_ingredient.named_config
 def minecraft_defaults():

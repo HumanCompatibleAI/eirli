@@ -90,8 +90,7 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
             'return_mean': eval_data_frame['mean_score'].mean(),
         }
 
-    elif (benchmark['benchmark_name'] == 'dm_control'
-          or benchmark['benchmark_name'] == 'atari'):
+    elif (benchmark['benchmark_name'] in ('dm_control', 'atari', 'minecraft')):
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 
