@@ -45,7 +45,7 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
-        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
 
         z_i = decoded_contexts
         z_j = targets
@@ -180,7 +180,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
-        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
         z_i = decoded_contexts
         z_j = targets
         batch_size = z_i.shape[0]
@@ -258,7 +258,7 @@ class MSELoss(RepresentationLoss):
         self.criterion = torch.nn.MSELoss()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
         return self.criterion(decoded_contexts, targets)
 
 
@@ -268,15 +268,13 @@ class VAELoss(RepresentationLoss):
     KL divergence between a Normal distribution prior on z and
     the conditioned-on-x z distribution
     """
-    def __init__(self, device, sample=True, beta=1.0, prior_scale=1.0):
+    def __init__(self, device, sample=False, beta=1.0, prior_scale=1.0):
         super().__init__(device, sample)
-        if not sample:
-            raise ValueError("The VAE loss as defined requires sampling to be set to True")
         self.beta = beta  # The relative weight on the KL Divergence/regularization loss, relative to reconstruction
         self.prior_scale = prior_scale  # The scale parameter used to construct prior used in KLD
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-        ground_truth_pixels = self.get_vector_forms(target_dist)[0]
+        (ground_truth_pixels,) = self.get_vector_forms(target_dist)
         predicted_pixels = decoded_context_dist.mean
 
         recon_loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
