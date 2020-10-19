@@ -14,14 +14,7 @@ COMMON_TEST_CONFIG = {
     'n_traj': 1,
 }
 BENCHMARK_TEST_CONFIGS = [
-    {
-        'benchmark_name': 'minecraft',
-        'minecraft_env_id': 'MineRLTreechopVectorObf-v0',
-        'venv_parallel': False,
-        'minecraft_data_root': path.join(TEST_DATA_DIR, 'minecraft'),
-        'n_envs': 1,
-        'mock_minecraft': True,
-    },
+
     {
         'benchmark_name': 'atari',
         'atari_env_id': 'PongNoFrameskip-v4',
@@ -48,6 +41,15 @@ BENCHMARK_TEST_CONFIGS = [
             path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
         },
         **COMMON_TEST_CONFIG,
+    },
+{
+        'benchmark_name': 'minecraft',
+        'minecraft_env_id': 'MineRLTreechopVectorObf-v0',
+        'venv_parallel': False,
+        'minecraft_data_root': path.join(TEST_DATA_DIR, 'minecraft'),
+        'n_envs': 1,
+        'mock_minecraft': True,
+    **COMMON_TEST_CONFIG
     },
 ]
 FAST_IL_TRAIN_CONFIG = {
