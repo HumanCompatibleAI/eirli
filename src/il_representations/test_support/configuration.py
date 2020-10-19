@@ -51,6 +51,7 @@ BENCHMARK_TEST_CONFIGS = [
     },
 ]
 FAST_IL_TRAIN_CONFIG = {
+    'n_traj': 1,
     'bc': {
         'n_epochs': 1,
     },

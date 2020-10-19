@@ -12,7 +12,7 @@ from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
-from il_representations.envs.minecraft_envs import load_dataset_minecraft, MinecraftVectorWrapper
+from il_representations.envs.minecraft_envs import load_dataset_minecraft, MinecraftVectorWrapper, REAL_TO_MOCK_LOOKUP
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
 import minerl
@@ -42,7 +42,7 @@ def load_dataset(benchmark_name, n_traj, timesteps):
 
 @benchmark_ingredient.capture
 def get_gym_env_name(benchmark_name, atari_env_id, minecraft_env_id, dm_control_full_env_names,
-                     dm_control_env):
+                     dm_control_env, mock_minecraft):
     if benchmark_name == 'magical':
         return get_env_name_magical()
     elif benchmark_name == 'dm_control':
@@ -50,7 +50,10 @@ def get_gym_env_name(benchmark_name, atari_env_id, minecraft_env_id, dm_control_
     elif benchmark_name == 'atari':
         return atari_env_id
     elif benchmark_name == 'minecraft':
-        return minecraft_env_id
+        if mock_minecraft:
+            return REAL_TO_MOCK_LOOKUP[minecraft_env_id]
+        else:
+            return minecraft_env_id
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
