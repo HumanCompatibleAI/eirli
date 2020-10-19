@@ -18,6 +18,7 @@ BENCHMARK_TEST_CONFIGS = [
         'benchmark_name': 'minecraft',
         'minecraft_env_id': 'MinecraftTreechopMockEnv-v0', #'MineRLTreechopVectorObf-v0',
         'venv_parallel': False,
+        'minecraft_data_root': path.join(TEST_DATA_DIR, 'minecraft'),
         'n_envs': 1
     },
     {

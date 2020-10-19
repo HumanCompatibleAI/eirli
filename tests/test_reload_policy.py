@@ -22,6 +22,7 @@ def test_reload_policy(algo, freeze_encoder, represent_ex, il_train_ex, file_obs
             'unit_test_max_train_steps': 2,
             'algo_params': {'representation_dim': 3, 'batch_size': 7},
             'algo': MoCo,
+            'n_traj': 1,
             'use_random_rollouts': False,
             'benchmark': BENCHMARK_TEST_CONFIGS[0],
             'ppo_finetune': False,
