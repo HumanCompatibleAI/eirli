@@ -14,28 +14,28 @@ from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
 import logging
 
+
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
     # return a copy instead of updating in-place to avoid inconsistent state
     # after a failed update
     merged_kwargs = user_kwargs.copy()
 
     # Check if there are algo_hardcoded_kwargs that we need to add to the user kwarg s
-    if algo_hardcoded_kwargs is not None:
-        for param_name, param_value in algo_hardcoded_kwargs.items():
-            # If there's a shared dict param in both user_kwargs and algo_hardcoded_kwargs,
-            # recursively call this method to merge them together
-            if param_name in merged_kwargs and isinstance(merged_kwargs[param_name], dict):
-                merged_kwargs[param_name] = validate_and_update_kwargs(merged_kwargs[param_name], param_value)
-            # If there's a shared non-dict param, warn that a param hardcoded by the algorithm
-            # will be ignored and the user-input param used instead
-            elif param_name in merged_kwargs:
-                logging.warning(
-                    f"Overwriting algorithm-hardcoded value {param_value} of "
-                    f"param {param_name} with user value {merged_kwargs[param_name]}")
-            # If there's no competing param in user-passed kwargs, add the hardcoded key and value
-            # to the merge kwargs dict
-            else:
-                merged_kwargs[param_name] = algo_hardcoded_kwargs[param_name]
+    for param_name, param_value in algo_hardcoded_kwargs.items():
+        # If there's a shared dict param in both user_kwargs and algo_hardcoded_kwargs,
+        # recursively call this method to merge them together
+        if param_name in merged_kwargs and isinstance(merged_kwargs[param_name], dict):
+            merged_kwargs[param_name] = validate_and_update_kwargs(merged_kwargs[param_name], param_value)
+        # If there's a shared non-dict param, warn that a param hardcoded by the algorithm
+        # will be ignored and the user-input param used instead
+        elif param_name in merged_kwargs:
+            logging.warning(
+                f"Overwriting algorithm-hardcoded value {param_value} of "
+                f"param {param_name} with user value {merged_kwargs[param_name]}")
+        # If there's no competing param in user-passed kwargs, add the hardcoded key and value
+        # to the merge kwargs dict
+        else:
+            merged_kwargs[param_name] = algo_hardcoded_kwargs[param_name]
     return merged_kwargs
 
 
