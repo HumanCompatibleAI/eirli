@@ -48,8 +48,14 @@ RUN mkdir -p /root/.mujoco \
 RUN touch /root/.mujoco/mjkey.txt
 ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
 
-# This is a simple init copied from Conda dockerfile. Zombie-reaping
-# capabilities are probably useful for any Dockerfile.
+# tini is a simple init which is used by the official Conda Dockerfile (among
+# other things). It can do stuff like reap zombie processes & forward signals
+# (e.g. from "docker stop") to subprocesses. This may be useful if our code
+# breaks in such a way that it creates lots of zombies or cannot easily be
+# killed (e.g. maybe a Python extension segfaults and doesn't wait on its
+# children, which keep running). That said, I (Sam) haven't yet run into a
+# situation where it was necessary with our il-representations code base, at
+# least as of October 2020.
 ENV TINI_VERSION v0.16.1
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
 RUN chmod +x /usr/bin/tini
@@ -71,5 +77,5 @@ RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requiremen
 # server is on the right port)
 ENV DISPLAY=:0
 
-# Always run under simple init
+# Always run under tini (see explanation above)
 ENTRYPOINT [ "/usr/bin/tini", "--" ]

@@ -22,9 +22,5 @@ else
         && Xvfb -screen 0 640x480x16 -nolisten tcp -auth ~/.Xauthority \
                 -maxclients 2048 :0 &
     disown
-    # I don't know whether these actually work under Ray. I guess I'm going to
-    # find out!
-    add_line ~/.bashrc "export DISPLAY=:0"
-    add_line ~/.profile "export DISPLAY=:0"
     echo 'Done, use display :0'
 fi
