@@ -159,6 +159,7 @@ class MomentumProjectionHead(LossDecoder):
         self.momentum_weight = momentum_weight
 
     def forward(self, z_dist, traj_info, extra_context=None):
+        # Only used for decode_context, since we override decode_target
         return self.context_decoder(z_dist, traj_info, extra_context=extra_context)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
