@@ -248,7 +248,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         num_batches_per_epoch = int(len(dataset)/self.batch_size)
 
         assert num_batches_per_epoch > 0, \
-            f"num_batches_per_epoch is incorectly 0: len(ds)={len(dataset)}, bs={self.batch_size}"
+            f"num_batches_per_epoch is incorrectly 0: len(ds)={len(dataset)}, bs={self.batch_size}"
         if training_batches is None:
             training_batches = num_batches_per_epoch*training_epochs
         if training_epochs is None:
