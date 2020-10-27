@@ -44,7 +44,8 @@ BENCHMARK_TEST_CONFIGS = [
 ]
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
-        'n_epochs': 1,
+        'n_epochs': None,
+        'n_batches': 1,
     },
     'gail': {
         'total_timesteps': 2,
@@ -56,7 +57,8 @@ FAST_IL_TRAIN_CONFIG = {
     },
 }
 REPL_SMOKE_TEST_CONFIG = {
-    'pretrain_epochs': 1,
+    'pretrain_epochs': None,
+    'pretrain_batches': 1,
     'demo_timesteps': 32,
     'unit_test_max_train_steps': 2,
     'algo_params': {'representation_dim': 3, 'batch_size': 7},

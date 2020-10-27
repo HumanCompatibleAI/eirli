@@ -19,7 +19,6 @@ from torch import nn
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-# from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
@@ -32,7 +31,12 @@ bc_ingredient = Ingredient('bc')
 @bc_ingredient.config
 def bc_defaults():
     # number of passes to make through dataset
-    n_epochs = 500  # noqa: F841
+    # TODO(sam): it would be ideal to have these both 'None' as the default,
+    # and store the *real* default elsewhere. That way users can specify
+    # 'n_epochs' or 'n_batches' elsewhere without first having to set the other
+    # config value to None.
+    n_epochs = None  # noqa: F841
+    n_batches = 5000  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
     log_interval = 500  # noqa: F841
     batch_size = 32  # noqa: F841
@@ -168,7 +172,8 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'], log_interval=bc['log_interval'])
+    trainer.train(n_epochs=bc['n_epochs'], n_batches=bc['n_batches'],
+                  log_interval=bc['log_interval'])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")

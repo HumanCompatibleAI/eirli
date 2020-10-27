@@ -24,7 +24,7 @@ for il in cfg_il_bc_nofreeze; do
             # Sam/Cody about this)
             ray submit --tmux "$cluster_cfg_path" \
                 ./submit_pretrain_n_adapt.py \
-                -- $base_cfgs $bench cfg_base_repl_500 cfg_force_use_repl $il $repl
+                -- $base_cfgs $bench cfg_base_repl_5000 cfg_force_use_repl $il $repl
         done
     done
 done

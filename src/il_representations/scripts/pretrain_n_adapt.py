@@ -364,7 +364,7 @@ def cfg_tune_augmentations():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250, # TODO unsure if this is too many
+        'pretrain_batches': 1000, # TODO unsure if this is too many
 
     }
 
@@ -394,7 +394,7 @@ def cfg_tune_vae_learning_rate():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250, # TODO unsure if this is too many
+        'pretrain_batches': 1000, # TODO unsure if this is too many
 
     }
 
@@ -423,7 +423,7 @@ def cfg_tune_moco():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250,
+        'pretrain_batches': 1000,
 
     }
 
@@ -526,7 +526,7 @@ def cfg_tune_cpc():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 1,
+        'pretrain_batches': 16,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -635,7 +635,7 @@ def cfg_tune_dynamics():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 100,
+        'pretrain_batches': 250,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -689,7 +689,7 @@ def cfg_tune_inverse_dynamics():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 100,
+        'pretrain_batches': 250,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -827,7 +827,7 @@ def cfg_bench_micro_sweep_magical():
                 'benchmark_name': 'magical',
                 'magical_env_prefix': magical_env_name,
                 'magical_remove_null_actions': True,
-            } for magical_env_name in ['MoveToRegion', 'MatchRegions']
+            } for magical_env_name in ['MoveToRegion', 'MatchRegions', 'MoveToCorner']
         ]))
 
     _ = locals()
@@ -843,7 +843,7 @@ def cfg_bench_micro_sweep_dm_control():
             {
                 'benchmark_name': 'dm_control',
                 'dm_control_env': dm_control_env_name
-            } for dm_control_env_name in ['finger-spin', 'cheetah-run']
+            } for dm_control_env_name in ['finger-spin', 'cheetah-run', 'reacher-easy']
         ]))
 
     _ = locals()
@@ -876,10 +876,11 @@ def cfg_bench_one_task_dm_control():
 
 
 @chain_ex.named_config
-def cfg_base_repl_1500():
+def cfg_base_repl_5000():
     repl = {
         'ppo_finetune': False,
-        'pretrain_epochs': 1500,
+        'pretrain_batches': None,
+        'pretrain_epochs': 5000,
     }
 
     _ = locals()
@@ -887,10 +888,11 @@ def cfg_base_repl_1500():
 
 
 @chain_ex.named_config
-def cfg_base_repl_500():
+def cfg_base_repl_10000():
     repl = {
         'ppo_finetune': False,
-        'pretrain_epochs': 500,
+        'pretrain_batches': 10000,
+        'pretrain_epochs': None,
     }
 
     _ = locals()
@@ -962,7 +964,7 @@ def cfg_il_bc_nofreeze():
     il_train = {
         'algo': 'bc',
         'bc': {
-            'n_epochs': 1000,
+            'n_batches': 5000,
         },
         'freeze_encoder': False,
     }
@@ -976,7 +978,7 @@ def cfg_il_bc_freeze():
     il_train = {
         'algo': 'bc',
         'bc': {
-            'n_epochs': 1000,
+            'n_batches': 5000,
         },
         'freeze_encoder': True,
     }

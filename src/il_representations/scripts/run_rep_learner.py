@@ -36,8 +36,8 @@ def default_config():
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_epochs = 500
-    pretrain_batches = None
+    pretrain_epochs = None
+    pretrain_batches = 10000
     algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
     algo_params["augmenter_kwargs"] = {
@@ -66,7 +66,8 @@ def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    pretrain_epochs = 5
+    pretrain_batches = None
+    pretrain_batches = 5
     demo_timesteps = None
     ppo_finetune = False
     _ = locals()
