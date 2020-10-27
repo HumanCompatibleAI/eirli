@@ -30,16 +30,15 @@ def default_config():
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_epochs = 500
     pretrain_batches = None
-    algo_params = get_default_args(algos.RepresentationLearner)
-    algo_params["representation_dim"] = 128
-    algo_params["augmenter_kwargs"] = {
-        # augmenter_spec is a comma-separated list of enabled augmentations.
-        # See `help(imitation.augment.StandardAugmentations)` for available
-        # augmentations.
-        "augmenter_spec": "translate,rotate,gaussian_blur",
-    }
+    pretrain_epochs = 500
+    algo_params = {'representation_dim': 128,
+                   'augmenter_kwargs': {
+                                        # augmenter_spec is a comma-separated list of enabled augmentations.
+                                        # See `help(imitation.augment.StandardAugmentations)` for available
+                                        # augmentations.
+                                        "augmenter_spec": "translate,rotate,gaussian_blur",
+                                    }}
     ppo_finetune = False
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
