@@ -306,3 +306,25 @@ new NFS volume, follow these steps:
    `bash mount_nfs_volume_as_sshfs.sh
    /scratch/sam/il-representations-gcp-volume` to mount an NFS volume on
    perceptron (likewise for svm and astar, IIRC).
+   
+## A brief explanation of Ray init scripts
+
+In addition to all the scripts described above, there's also a directory
+containing scripts that are used by the Ray autoscaler to bring up Ray nodes
+(specifically, `cloud/ray-init-scripts`). When the Ray autoscaler brings up a
+cluster, it copies the entire directory across to the cluster so that the
+scripts can be executed. It contains the following files:
+
+- `nfs_mount.sh`: used to mount the GCP volume. Was generated in the
+  `nfs_generate_mount_cmd.sh` step of the NFS setup.
+- `start_x_server.sh`: starts a persistent `Xvfb` server for use by MAGICAL and
+  other environments that need an X server. Using persistent Xvfb servers on
+  each node turns out to be _much_ easier than using `xvfb-run` when you are
+  dealing with a Ray cluster! Note that the `Dockerfile` has `DISPLAY=:0` baked
+  into the environment config so that programs know to connect to this specific
+  `Xvfb` server.
+- `ssh_deploy_key[.pub]`: a read-only GitHub deploy key for the
+  `il-representations` repo. This is copied over to the Ray cluster so that the
+  autoscaler can pull the code from GitHub. Unfortunately it is not easier to
+  copy code directly from your local machine to the Ray cluster, so using a
+  committed deploy key is the easiest approach for now.
