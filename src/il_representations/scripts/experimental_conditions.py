@@ -196,10 +196,31 @@ def identity_cpc():
 
 
 @represent_ex.named_config
+def identity_cpc_aug():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
+                   'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
 def temporal_ceb_no_projection():
     algo = 'TemporalCPC'
     use_random_rollouts = False
     algo_params = {'loss_calculator': losses.CEBLoss}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def temporal_ceb_no_projection_beta0():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'loss_calculator': losses.CEBLoss,
+                   'loss_calculator_kwargs': {'beta': 0.0}}
     _ = locals()
     del _
 
