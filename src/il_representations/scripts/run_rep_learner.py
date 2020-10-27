@@ -31,6 +31,7 @@ def default_config():
     demo_timesteps = 5000
     ppo_timesteps = 1000
     pretrain_epochs = 500
+    pretrain_batches = None
     algo_params = get_default_args(algos.RepresentationLearner)
     algo_params["representation_dim"] = 128
     algo_params["augmenter_kwargs"] = {
@@ -103,7 +104,7 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
+        ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
 
@@ -129,7 +130,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
     model = algo(venv, log_dir=log_dir, **algo_params)
 
     # setup model
-    loss_record = model.learn(dataset_dict, pretrain_epochs)
+    loss_record, most_recent_encoder_path = model.learn(dataset_dict, pretrain_epochs, pretrain_batches)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
@@ -147,12 +148,8 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_model.learn(total_timesteps=ppo_timesteps)
 
     venv.close()
-
-    encoder_path = os.path.join(model.encoder_checkpoints_path,
-                                f'{pretrain_epochs-1}_epochs.ckpt')
-
     return {
-        'encoder_path': encoder_path,
+        'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning
         'repl_loss': loss_record[-1],
     }
