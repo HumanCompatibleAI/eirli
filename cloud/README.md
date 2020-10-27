@@ -9,15 +9,15 @@ one or more (preemptible) worker nodes running on GCP. The intent behind our
 cluster setup is that each of us should be able to run our own "private" cluster
 and submit whatever jobs we want to that; the current cluster config does not
 make it easy for several users to submit jobs to the same running cluster. Thus,
-the typical usage patter for a cluster will look something like this:
+the typical usage pattern for a cluster will look something like this:
 
-1. Copy the base cluster config to your own config file and customize it.
+1. Copy the cluster config template to a new location and customize it.
 2. Spin up the cluster with the Ray autoscaler and set up some basic monitoring.
 3. Submit jobs to the cluster/interact with the cluster.
-4. Once the jobs are done, tear down the cluster. Importantly, this involves
-   both an automated teardown step that you can run with one command, and a
-   manual cleanup step where you remove stopped instances from the GCP cloud
-   console).
+4. Once the jobs are done, tear down the cluster (**this is important!**).
+   Tearing down the cluster involves both an automated teardown step that you
+   can run with one command, and a manual cleanup step where you remove stopped
+   instances from the GCP cloud console.
 
 Each of these steps is described separately in the following subsections.
 
@@ -100,15 +100,16 @@ This will do a few things:
    automatically be configured to have the project NFS volume mounted in the
    correct place, to have Docker installed, to have fresh drivers, etc. etc.
    This will take a few minutes.
-2. Set up an initial worker node. Worker nodes are preemptible, and can be shut
-   down at any time. The total number of worker nodes should automatically scale
-   up and down as you run more jobs. Worker nodes will be set up in almost
-   exactly the same way as head nodes, except they will connect to the running
-   Ray instance on the head node instead of starting their own.
+2. Set up an initial worker node. Worker nodes are *preemptible*, meaning that
+   Google is allowed to shut them down at any time (just like AWS spot
+   instances). The total number of worker nodes should automatically scale up
+   and down as you run more jobs. Worker nodes will be set up in almost exactly
+   the same way as head nodes, except they will connect to the running Ray
+   instance on the head node instead of starting their own.
 3. In addition to setting up the head and worker nodes, Ray will also start a
    _Docker container_ on each node using our standard project image. All
-   commands that you submit to the cluster later on will be run within the
-   version of this Docker container that exists on each machine.
+   commands that you submit to the cluster later on will be run within this
+   persistent Docker container.
 
 Once Ray finishes doing all of that, it will give you a helpful list of commands
 you can run to manage the machine. Of particular interest is the command that tails the logs on the head node, which will look like this:
@@ -222,7 +223,8 @@ ray submit --tmux /path/to/gcp_cluster_mine.yaml ./submit_pretrain_n_adapt.py \
 ```
 
 (this is a real example that I was using to run plain BC on MAGICAL, without any
-repL)
+repL; the `cfg_*` options are Sacred named configs defined in
+`pretrain_n_adapt.py`)
 
 The `--` after the path to `submit_pretrain_n_adapt.py` marks the remaining
 arguments to `ray submit` as arguments for `submit_pretrain_n_adapt.py` on the
@@ -234,7 +236,7 @@ Again, once you've started repL jobs, you can inspect their output in the same
 way as before: attach to the head node of the cluster, and then attach to one of
 the running tmux sessions.
 
-### Step 4: Spinning down the cluster
+### Step 4: Spinning down the cluster (THIS IS THE MOST IMPORTANT SECTION OF THIS FILE)
 
 Once you're done with the cluster, you can terminate it with:
 
@@ -300,12 +302,11 @@ new NFS volume, follow these steps:
    volume so they can be accessed by all Ray workers.
 5. If you want to be able to access the Filestore volume from outside GCP,
    you'll have to run `cloud/mount_nfs_volume_as_sshfs.sh` on each machine from
-   where you want to access the volume. This will create a new sshfs mount that
+   which you want to access the volume. This will create a new sshfs mount that
    proxies file requests to the Filestore volume via the GCP client instance
-   that we created in step (2). For instance, I ran
-   `bash mount_nfs_volume_as_sshfs.sh
-   /scratch/sam/il-representations-gcp-volume` to mount an NFS volume on
-   perceptron (likewise for svm and astar, IIRC).
+   that we created in step (2). For instance, I ran `bash
+   mount_nfs_volume_as_sshfs.sh /scratch/sam/il-representations-gcp-volume` to
+   mount an NFS volume on perceptron (likewise for svm and astar, IIRC).
    
 ## A brief explanation of Ray init scripts
 
@@ -325,6 +326,6 @@ scripts can be executed. It contains the following files:
   `Xvfb` server.
 - `ssh_deploy_key[.pub]`: a read-only GitHub deploy key for the
   `il-representations` repo. This is copied over to the Ray cluster so that the
-  autoscaler can pull the code from GitHub. Unfortunately it is not easier to
-  copy code directly from your local machine to the Ray cluster, so using a
-  committed deploy key is the easiest approach for now.
+  autoscaler can pull the code from GitHub. Unfortunately it is hard to make the
+  Ray autoscaler directly copy code from your local machine to the Ray cluster,
+  so using a committed deploy key is the easiest approach for now.
