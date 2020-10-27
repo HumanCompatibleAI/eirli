@@ -6,7 +6,6 @@ import logging
 from imitation.util.util import make_vec_env
 from stable_baselines3.common.atari_wrappers import AtariWrapper
 from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
-import numpy as np
 
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
@@ -29,10 +28,9 @@ def load_dataset(benchmark_name):
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
-    not_dones = np.logical_not(dataset_dict['dones'])
-    num_trajectories = not_dones.shape[0]
-    num_active_timesteps = not_dones.flatten().sum() + num_trajectories
-    logging.info(f'Loaded dataset with {num_trajectories} trajectories and {num_active_timesteps} active timesteps')
+    num_transitions = len(dataset_dict['dones'].flatten())
+    num_dones = dataset_dict['dones'].flatten().sum()
+    logging.info(f'Loaded dataset with {num_transitions} transitions. {num_dones} of these transitions have done == True')
 
     return dataset_dict
 
