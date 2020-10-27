@@ -964,7 +964,7 @@ def cfg_il_bc_nofreeze():
     il_train = {
         'algo': 'bc',
         'bc': {
-            'n_batches': 5000,
+            'n_batches': 15000,
         },
         'freeze_encoder': False,
     }
@@ -978,7 +978,7 @@ def cfg_il_bc_freeze():
     il_train = {
         'algo': 'bc',
         'bc': {
-            'n_batches': 5000,
+            'n_batches': 15000,
         },
         'freeze_encoder': True,
     }
