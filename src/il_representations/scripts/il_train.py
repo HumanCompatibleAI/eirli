@@ -6,6 +6,7 @@ import os
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 from imitation.augment import StandardAugmentations
+import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
 import sacred
 from sacred import Experiment, Ingredient
@@ -18,7 +19,7 @@ from torch import nn
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data import TransitionsMinimalDataset
+# from il_representations.data import TransitionsMinimalDataset
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
@@ -44,14 +45,8 @@ gail_ingredient = Ingredient('gail')
 def gail_defaults():
     # number of env time steps to perform during reinforcement learning
     total_timesteps = int(1e6)  # noqa: F841
-    # "gail_disc_batch_size" is how many samples we take from the expert and
-    # novice buffers to do a round of discriminator optimisation.
-    # "gail_disc_minibatch_size" controls the size of the minibatches that we
-    # divide that into. Thus, we do batch_size/minibatch_size minibatches of
-    # optimisation at each discriminator update. gail_disc_batch_size = 256.
-    # (this is a different naming convention to SB3 PPO)
-    disc_batch_size = 256  # noqa: F841
-    disc_minibatch_size = 32  # noqa: F841
+    disc_n_updates_per_round = 8  # noqa: F841
+    disc_batch_size = 32  # noqa: F841
     disc_lr = 1e-4  # noqa: F841
     disc_augs = "rotate,translate,noise"  # noqa: F841
     ppo_n_steps = 16  # noqa: F841
@@ -139,7 +134,7 @@ def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs
 
 
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
+def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
                    device_name, final_pol_name):
     policy = make_policy(
         observation_space=venv_chans_first.observation_space,
@@ -147,13 +142,23 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
         bc['augs'], stack_color_space=color_space)
+
+    # build dataset in the format required by imitation
+    dataset = il_types.TransitionsMinimal(
+        obs=dataset_dict['obs'], acts=dataset_dict['acts'],
+        infos=[{}] * len(dataset_dict['obs']))
+    del dataset_dict
+    data_loader = th.utils.data.DataLoader(
+        dataset, batch_size=bc['batch_size'], shuffle=True,
+        collate_fn=il_types.transitions_collate_fn)
+    del dataset
+
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
         policy_class=lambda **kwargs: policy,
         policy_kwargs=None,
-        batch_size=bc['batch_size'],
-        expert_data=dataset,
+        expert_data=data_loader,
         device=device_name,
         augmentation_fn=augmenter,
         optimizer_cls=th.optim.SGD,
@@ -174,7 +179,7 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
 @il_train_ex.capture
 def do_training_gail(
     venv_chans_first,
-    dataset,
+    dataset_dict,
     device_name,
     encoder,
     out_dir,
@@ -216,12 +221,25 @@ def do_training_gail(
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
         gail['disc_augs'], stack_color_space=color_space)
+
+    # build dataset in the format required by imitation
+    # (this time the dataset has more keys)
+    dataset = il_types.Transitions(
+        obs=dataset_dict['obs'], acts=dataset_dict['acts'],
+        next_obs=dataset_dict['next_obs'], dones=dataset_dict['dones'],
+        infos=[{}] * len(dataset_dict['obs']))
+    del dataset_dict
+    data_loader = th.utils.data.DataLoader(
+        dataset, batch_size=gail['disc_batch_size'], shuffle=True,
+        collate_fn=il_types.transitions_collate_fn)
+    del dataset
+
     trainer = GAIL(
-        venv_chans_first,
-        dataset,
-        ppo_algo,
-        disc_batch_size=gail['disc_batch_size'],
-        disc_minibatch_size=gail['disc_minibatch_size'],
+        venv=venv_chans_first,
+        expert_data=data_loader,
+        gen_algo=ppo_algo,
+        n_disc_updates_per_round=gail['disc_n_updates_per_round'],
+        expert_batch_size=gail['disc_batch_size'],
         discrim_kwargs=dict(discrim_net=discrim_net, scale=True),
         obs_norm=False,
         rew_norm=True,
@@ -252,9 +270,6 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
         th.set_num_threads(torch_num_threads)
 
     venv = auto_env.load_vec_env()
-    dataset_dict = auto_env.load_dataset()
-    dataset = TransitionsMinimalDataset(dataset_dict)
-    del dataset_dict  # save RAM
 
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
@@ -269,13 +284,13 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        final_path = do_training_bc(dataset=dataset,
+        final_path = do_training_bc(dataset_dict=auto_env.load_dataset(),
                                     venv_chans_first=venv,
                                     out_dir=log_dir,
                                     encoder=encoder)
 
     elif algo == 'gail':
-        final_path = do_training_gail(dataset=dataset,
+        final_path = do_training_gail(dataset_dict=auto_env.load_dataset(),
                                       venv_chans_first=venv,
                                       out_dir=log_dir,
                                       encoder=encoder)
