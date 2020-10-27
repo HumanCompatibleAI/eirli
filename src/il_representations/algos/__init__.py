@@ -12,6 +12,31 @@ from il_representations.algos.pair_constructors import IdentityPairConstructor, 
 from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
+import logging
+
+
+def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
+    # return a copy instead of updating in-place to avoid inconsistent state
+    # after a failed update
+    merged_kwargs = user_kwargs.copy()
+
+    # Check if there are algo_hardcoded_kwargs that we need to add to the user kwarg s
+    for param_name, param_value in algo_hardcoded_kwargs.items():
+        # If there's a shared dict param in both user_kwargs and algo_hardcoded_kwargs,
+        # recursively call this method to merge them together
+        if param_name in merged_kwargs and isinstance(merged_kwargs[param_name], dict):
+            merged_kwargs[param_name] = validate_and_update_kwargs(merged_kwargs[param_name], param_value)
+        # If there's a shared non-dict param, warn that a param hardcoded by the algorithm
+        # will be ignored and the user-input param used instead
+        elif param_name in merged_kwargs:
+            logging.warning(
+                f"Overwriting algorithm-hardcoded value {param_value} of "
+                f"param {param_name} with user value {merged_kwargs[param_name]}")
+        # If there's no competing param in user-passed kwargs, add the hardcoded key and value
+        # to the merge kwargs dict
+        else:
+            merged_kwargs[param_name] = algo_hardcoded_kwargs[param_name]
+    return merged_kwargs
 
 
 class SimCLR(RepresentationLearner):
@@ -33,7 +58,7 @@ class SimCLR(RepresentationLearner):
                                      target_pair_constructor=IdentityPairConstructor,
                                      batch_extender=IdentityBatchExtender)
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -53,7 +78,7 @@ class TemporalCPC(RepresentationLearner):
                                      augmenter=NoAugmentation,
                                      batch_extender=IdentityBatchExtender,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -79,7 +104,7 @@ class RecurrentCPC(RepresentationLearner):
                                      loss_calculator=QueueAsymmetricContrastiveLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -98,7 +123,7 @@ class MoCo(RepresentationLearner):
                                      loss_calculator=QueueAsymmetricContrastiveLoss,
                                      target_pair_constructor=IdentityPairConstructor)
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -118,7 +143,7 @@ class BYOL(RepresentationLearner):
                                      augmenter=AugmentContextAndTarget,
                                      loss_calculator=MSELoss,
                                      target_pair_constructor=IdentityPairConstructor)
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -140,7 +165,7 @@ class CEB(RepresentationLearner):
                                      augmenter=NoAugmentation,
                                      loss_calculator=CEBLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -158,7 +183,7 @@ class FixedVarianceCEB(RepresentationLearner):
                                      loss_calculator=CEBLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -176,7 +201,7 @@ class FixedVarianceTargetProjectedCEB(RepresentationLearner):
                                      augmenter=NoAugmentation,
                                      loss_calculator=CEBLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -232,7 +257,7 @@ class DynamicsPrediction(RepresentationLearner):
                                                          action_representation_dim=action_representation_dim),
                                      preprocess_extra_context=False)
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -259,7 +284,7 @@ class VariationalAutoencoder(RepresentationLearner):
                                                          encoder_arch_key=encoder_cls_key,
                                                          sample=True))
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -280,7 +305,7 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
                                      decoder_kwargs=dict(action_space=env.action_space),
                                      preprocess_target=False)
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
@@ -311,7 +336,7 @@ class ActionConditionedTemporalVAE(RepresentationLearner):
                                                          action_representation_dim=action_representation_dim),
                                      preprocess_extra_context=False)
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(env=env,
                          log_dir=log_dir,
                          **kwargs)
@@ -343,7 +368,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                      encoder_kwargs=dict(action_space=env.action_space),
                                      decoder_kwargs=dict(action_representation_dim=action_representation_dim))
 
-        kwargs = self.validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(env=env,
                          log_dir=log_dir,
