@@ -5,9 +5,8 @@ import collections
 import logging
 import os
 import random
-from typing import List, Tuple
+from typing import List
 
-import imitation.data.datasets as il_datasets
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
 from magical import register_envs, saved_trajectories
@@ -24,7 +23,7 @@ def load_data(
         pickle_paths: List[str],
         preprocessor_name: str,
         remove_null_actions: bool = False,
-) -> Tuple[str, il_datasets.Dataset]:
+):
     """Load MAGICAL data from pickle files."""
 
     # First we load pickles off disk and infer the env name from their content.
