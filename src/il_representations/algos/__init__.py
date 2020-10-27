@@ -46,7 +46,6 @@ class TemporalCPC(RepresentationLearner):
         Implementation of a non-recurrent version of CPC: Contrastive Predictive Coding
         https://arxiv.org/abs/1807.03748
 
-        By default, augments only the context, but can be modified to augment both context and target.
         """
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=NoOp,
