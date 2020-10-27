@@ -77,6 +77,7 @@ def bench_defaults():
         'reacher-easy': 'data/dm_control/reacher-easy-*.pkl.gz',
         'ball-in-cup-catch': 'data/dm_control/ball-in-cup-catch-*.pkl.gz',
     }
+    dm_control_frame_stack = 3
     dm_control_env = 'finger-spin'
 
     # ###########################
