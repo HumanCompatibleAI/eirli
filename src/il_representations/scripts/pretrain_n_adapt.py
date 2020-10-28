@@ -304,7 +304,7 @@ def base_config():
     benchmark = {}
 
     tune_run_kwargs = dict(num_samples=1,
-                           max_failures=3,
+                           max_failures=2,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
@@ -726,7 +726,7 @@ def cfg_base_3seed_4cpu_pt3gpu():
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on (node) failure
-                           max_failures=5,
+                           max_failures=2,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=5,
@@ -748,7 +748,7 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on node failure
-                           max_failures=5,
+                           max_failures=2,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
