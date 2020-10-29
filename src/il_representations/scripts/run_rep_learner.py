@@ -39,6 +39,8 @@ def default_config():
     pretrain_epochs = None
     pretrain_batches = 10000
     algo_params = {'representation_dim': 128,
+                   'optimizer': torch.optim.Adam,
+                   'optimizer_kwargs': {'lr': 1e-4},
                    'augmenter_kwargs': {
                                         # augmenter_spec is a comma-separated list of enabled augmentations.
                                         # See `help(imitation.augment.StandardAugmentations)` for available
