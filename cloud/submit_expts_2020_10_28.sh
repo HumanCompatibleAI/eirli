@@ -12,7 +12,7 @@ for il in cfg_il_bc_nofreeze cfg_il_bc_freeze; do
     froco="$([[ "$il" == *_nofreeze  ]] || echo '_froco')"
     for bench in cfg_bench_micro_sweep_magical cfg_bench_micro_sweep_dm_control; do
         # "control" config without repL
-        echo ray submit --tmux "$cluster_cfg_path" \
+        ray submit --tmux "$cluster_cfg_path" \
             ./submit_pretrain_n_adapt.py \
             -- $base_cfgs $bench cfg_repl_none $il exp_ident=control$froco
         for repl in \
@@ -27,7 +27,7 @@ for il in cfg_il_bc_nofreeze cfg_il_bc_freeze; do
             # all other options must come BEFORE repl.$repl_nc, because Sacred
             # has a bug in how it handles namedconfigs for ingredients (ask
             # Sam/Cody about this)
-            echo ray submit --tmux "$cluster_cfg_path" \
+            ray submit --tmux "$cluster_cfg_path" \
                 ./submit_pretrain_n_adapt.py \
                 -- $base_cfgs $bench cfg_base_repl_5000 cfg_force_use_repl $il $repl
         done
