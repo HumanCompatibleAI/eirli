@@ -8,6 +8,7 @@ import gym.spaces as spaces
 from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
 import math
+from functools import partial
 import logging
 
 """
@@ -29,6 +30,10 @@ bit of data that pair constructors can return, to be passed forward for use here
 #TODO change shape to dim throughout this file and the code
 
 DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
+
+
+def exp_sequential(x, sequential):
+    return torch.exp(sequential(x))
 
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape, sample=False):
@@ -63,11 +68,12 @@ class LossDecoder(nn.Module):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
         stddev = stdev_layer(z_dist.stddev)
-        return independent_multivariate_normal(mean, torch.exp(stddev))
+        return independent_multivariate_normal(mean, stddev)
 
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
         if learn_scale:
             stddev_func = None
+
         else:
             stddev_func = self.passthrough
 
@@ -83,7 +89,7 @@ class LossDecoder(nn.Module):
         layers.append(nn.Linear(input_dim, projection_dim))
         mean_func = nn.Sequential(*layers)
         if stddev_func is None:
-            stddev_func = nn.Sequential(*copy.deepcopy(layers))
+            stddev_func = partial(exp_sequential, sequential=nn.Sequential(*copy.deepcopy(layers)))
 
         return mean_func, stddev_func
 
@@ -391,7 +397,7 @@ class PixelDecoder(LossDecoder):
         # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
-            std_pixels = torch.exp(self.std_layer(decoded_latents))
+            std_pixels = torch.exp(self.std_layer(decoded_latents)) # TODO maybe remove exp?
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
             if torch.cuda.is_available():
