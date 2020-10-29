@@ -297,6 +297,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
+
                 assert not np.isnan(loss.item()), "Loss is not NAN"
                 loss_meter.update(loss)
 

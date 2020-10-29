@@ -317,6 +317,8 @@ class BaseEncoder(Encoder):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
+        if np.any(np.isinf(scale.detach().numpy())):
+            print(scale.detach().numpy())
         return independent_multivariate_normal(mean=mean,
                                                stddev=scale)
 
