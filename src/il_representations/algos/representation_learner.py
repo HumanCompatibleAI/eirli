@@ -288,14 +288,21 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-                assert not np.isnan(loss.item()), "Loss is not NAN"
-                loss_meter.update(loss)
+                loss_item = loss.item()
+                assert not np.isnan(loss_item), "Loss is not NAN"
+                loss_meter.update(loss_item)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+                del loss  # so we don't use again
+
                 gradient_norm, weight_norm = self._calculate_norms()
-                logger.record('loss', loss.item())
+
+                # FIXME(sam): don't plot this every batch, plot it every k
+                # batches (will make log files much smaller)
+                loss_meter.update(loss_item)
+                logger.record('loss', loss_item)
                 logger.record('gradient_norm', gradient_norm.item())
                 logger.record('weight_norm', weight_norm.item())
                 logger.record('epoch', epoch)
