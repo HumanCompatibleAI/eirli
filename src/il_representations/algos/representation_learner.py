@@ -93,8 +93,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
         encoder_kwargs = to_dict(encoder_kwargs)
+        decoder_kwargs = to_dict(decoder_kwargs)
+        duplicate_learn_scale = (encoder_kwargs.get('learn_scale', False) and
+                                 decoder_kwargs.get('learn_scale', False))
+        assert not duplicate_learn_scale, "learn_scale should be set on either " \
+                                          "the encoder or the decoder at one time"
         self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
-        self.decoder = decoder(representation_dim, projection_dim, **to_dict(decoder_kwargs)).to(self.device)
+        self.decoder = decoder(representation_dim, projection_dim, **decoder_kwargs).to(self.device)
 
         if batch_extender is QueueBatchExtender:
             # TODO maybe clean this up?

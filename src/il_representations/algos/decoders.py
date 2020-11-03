@@ -67,16 +67,13 @@ class LossDecoder(nn.Module):
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
-        stddev = stdev_layer(z_dist.stddev)
+        if stdev_layer is None:
+            stddev = z_dist.stddev
+        else:
+            stddev = stdev_layer(z_vector)
         return independent_multivariate_normal(mean, stddev)
 
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
-        if learn_scale:
-            stddev_func = None
-
-        else:
-            stddev_func = self.passthrough
-
         if architecture is None:
             architecture = DEFAULT_PROJECTION_ARCHITECTURE
         layers = []
@@ -88,8 +85,10 @@ class LossDecoder(nn.Module):
             input_dim = layer_def['output_dim']
         layers.append(nn.Linear(input_dim, projection_dim))
         mean_func = nn.Sequential(*layers)
-        if stddev_func is None:
+        if learn_scale:
             stddev_func = partial(exp_sequential, sequential=nn.Sequential(*copy.deepcopy(layers)))
+        else:
+            stddev_func = None
 
         return mean_func, stddev_func
 
@@ -236,8 +235,12 @@ class ActionConditionedVectorDecoder(LossDecoder):
         assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
                                                                   f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
+
         mean_projection = self.action_conditioned_mean(merged_vector)
-        scale = self.action_conditioned_stddev(z_dist.stddev)
+        if self.action_conditioned_stddev is None:
+            scale = z_dist.stddev
+        else:
+            scale = self.action_conditioned_stddev(merged_vector)
         return independent_multivariate_normal(mean=mean_projection,
                                                stddev=scale)
 
