@@ -7,7 +7,7 @@ from imitation.policies.base import RandomPolicy
 import numpy as np
 import sacred
 from sacred import Experiment
-from sacred.observers import FileStorageObserver, MongoObserver
+from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
 
@@ -159,5 +159,5 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
 
 
 if __name__ == '__main__':
-    represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs', priority=40))
+    represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs'))
     represent_ex.run_commandline()
