@@ -231,6 +231,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         'seed':
         rng.randint(1 << 31),
     })
+    print("Config updates performed inside end2end")
     il_test_result = run_single_exp(il_test_ex_config, benchmark_config,
                                     tune_config_updates, log_dir, 'il_test')
 

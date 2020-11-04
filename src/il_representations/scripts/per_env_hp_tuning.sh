@@ -12,10 +12,10 @@ declare -a magical_envs=("MatchRegions" "MoveToRegion" "MoveToCorner"
 for algo_config in ${tuning_configs[@]}; do
   for dmc_env in ${dmc_envs[@]}; do
     CUDA_VISIBLE_DEVICES="1" xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt\
-     with tuning cfg_use_dm_control $algo_config dm_control_env=$dmc_env
+     with tuning cfg_use_dm_control $algo_config benchmark.dm_control_env=$dmc_env
   end
   for magical_env in ${magical_envs[@]}; do
     CUDA_VISIBLE_DEVICES="1" xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt\
-    with tuning cfg_use_magical $algo_config magical_env_prefix=$magical_env
+    with tuning cfg_use_magical $algo_config benchmark.magical_env_prefix=$magical_env
   end
 end
