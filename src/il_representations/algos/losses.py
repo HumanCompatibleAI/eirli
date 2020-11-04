@@ -304,10 +304,6 @@ class CEBLoss(RepresentationLoss):
         # TODO allow for beta functions
         self.beta = 0 # TODO change this back
         self.sample = sample
-        self.loss_history = []
-        self.encoder_stddev_history = []
-        self.target_dist_proj_stddev_history = []
-        self.proj_stddev_history = []
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         z = decoded_context_dist.rsample()
@@ -321,11 +317,5 @@ class CEBLoss(RepresentationLoss):
         inds = (torch.arange(start=0, end=len(z))).to(self.device)
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
-        if np.isnan(loss.item()):
-            import pdb; pdb.set_trace()
-        self.loss_history.append(loss.item())
-        self.encoder_stddev_history.append(encoded_context_dist.stddev.detach().numpy())
-        self.proj_stddev_history.append(decoded_context_dist.stddev.detach().numpy())
-        self.target_dist_proj_stddev_history.append(target_dist.stddev.detach().numpy())
         return loss
 
