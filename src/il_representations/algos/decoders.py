@@ -400,7 +400,7 @@ class PixelDecoder(LossDecoder):
         # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
-            std_pixels = torch.exp(self.std_layer(decoded_latents)) # TODO maybe remove exp?
+            std_pixels = torch.exp(self.std_layer(decoded_latents))
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
             if torch.cuda.is_available():
