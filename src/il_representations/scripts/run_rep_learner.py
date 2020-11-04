@@ -10,6 +10,7 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
+import torch
 
 from il_representations import algos
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
@@ -25,25 +26,33 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None
+
     algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
+    torch_num_threads = 1
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_epochs = 500
-    algo_params = get_default_args(algos.RepresentationLearner)
-    algo_params["representation_dim"] = 128
-    algo_params["augmenter_kwargs"] = {
-        # augmenter_spec is a comma-separated list of enabled augmentations.
-        # See `help(imitation.augment.StandardAugmentations)` for available
-        # augmentations.
-        "augmenter_spec": "translate,rotate,gaussian_blur",
-    }
+    pretrain_epochs = None
+    pretrain_batches = 10000
+    algo_params = {'representation_dim': 128,
+                   'optimizer': torch.optim.Adam,
+                   'optimizer_kwargs': {'lr': 1e-4},
+                   'augmenter_kwargs': {
+                                        # augmenter_spec is a comma-separated list of enabled augmentations.
+                                        # See `help(imitation.augment.StandardAugmentations)` for available
+                                        # augmentations.
+                                        "augmenter_spec": "translate,rotate,gaussian_blur",
+                                    }}
     ppo_finetune = False
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
     unit_test_max_train_steps = None
+
     _ = locals()
     del _
 
@@ -58,7 +67,8 @@ def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    pretrain_epochs = 5
+    pretrain_batches = None
+    pretrain_batches = 5
     demo_timesteps = None
     ppo_finetune = False
     _ = locals()
@@ -103,9 +113,12 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, _config):
+        ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches,
+        torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
+    if torch_num_threads is not None:
+        torch.set_num_threads(torch_num_threads)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -129,7 +142,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
     model = algo(venv, log_dir=log_dir, **algo_params)
 
     # setup model
-    loss_record = model.learn(dataset_dict, pretrain_epochs)
+    loss_record, most_recent_encoder_path = model.learn(dataset_dict, pretrain_epochs, pretrain_batches)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
         encoder_checkpoint = model.encoder_checkpoints_path
         all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
@@ -147,12 +160,8 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_model.learn(total_timesteps=ppo_timesteps)
 
     venv.close()
-
-    encoder_path = os.path.join(model.encoder_checkpoints_path,
-                                f'{pretrain_epochs-1}_epochs.ckpt')
-
     return {
-        'encoder_path': encoder_path,
+        'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning
         'repl_loss': loss_record[-1],
     }

@@ -44,19 +44,21 @@ BENCHMARK_TEST_CONFIGS = [
 ]
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
-        'n_epochs': 1,
+        'n_epochs': None,
+        'n_batches': 1,
     },
     'gail': {
         'total_timesteps': 2,
         'ppo_n_steps': 1,
         'ppo_batch_size': 2,
         'ppo_n_epochs': 1,
-        'disc_minibatch_size': 2,
+        'disc_n_updates_per_round': 1,
         'disc_batch_size': 2,
     },
 }
 REPL_SMOKE_TEST_CONFIG = {
-    'pretrain_epochs': 1,
+    'pretrain_epochs': None,
+    'pretrain_batches': 200,
     'demo_timesteps': 32,
     'unit_test_max_train_steps': 2,
     'algo_params': {'representation_dim': 3, 'batch_size': 7},
@@ -89,6 +91,7 @@ CHAIN_CONFIG = {
         # Setting sane defaults so this doesn't happen.
         'memory': int(0.2*1e9),
         'object_store_memory': int(0.2*1e9),
+        'num_cpus': 2,
     },
     'il_train': {
         'device_name': 'cpu',
