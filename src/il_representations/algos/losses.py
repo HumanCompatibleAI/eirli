@@ -302,7 +302,7 @@ class CEBLoss(RepresentationLoss):
     def __init__(self, device, beta=.1, sample=True):
         super().__init__(device, sample=sample)
         # TODO allow for beta functions
-        self.beta = 0 # TODO change this back
+        self.beta = beta
         self.sample = sample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
