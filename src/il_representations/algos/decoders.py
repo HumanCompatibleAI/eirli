@@ -219,7 +219,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
     """
     def __init__(self, representation_dim, projection_dim, sample=False, action_representation_dim=128,
                  projection_architecture=None, learn_scale=False):
-        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_dim, sample=sample)
+        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_dim,
+                                                             sample=sample, learn_scale=learn_scale)
         self.learn_scale = learn_scale
 
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
@@ -256,8 +257,8 @@ class ActionPredictionHead(LossDecoder):
     (one in context, one in extra_context), and produces a prediction
     of the action taken in between the frames
     """
-    def __init__(self, representation_dim, projection_shape, action_space, sample=False):
-        super().__init__(representation_dim, projection_shape, sample)
+    def __init__(self, representation_dim, projection_shape, action_space, sample=False, learn_scale=False):
+        super().__init__(representation_dim, projection_shape, sample, learn_scale)
 
         # Use Stable Baseline's logic for constructing a SB action_dist from an action space
         self.action_dist = make_proba_distribution(action_space)
@@ -302,7 +303,8 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
     current_channels = observation_space.shape[0]
     for layer_spec in encoder_arch:
         mocked_layers.append(nn.Conv2d(current_channels, layer_spec['out_dim'],
-                                               kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+                                       kernel_size=layer_spec['kernel_size'],
+                                       stride=layer_spec['stride']))
         current_channels = layer_spec['out_dim']
     obs_shape = compute_output_shape(observation_space, mocked_layers)
     flattened_shape = np.prod(obs_shape)
