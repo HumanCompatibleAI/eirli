@@ -25,8 +25,11 @@ il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
 
 @il_test_ex.config
 def default_config():
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None
+    torch_num_threads = 1
     policy_path = None
-    seed = 42
     n_rollouts = 100
     device_name = 'auto'
     # run_id is written into the produced DataFrame to indicate what model is
@@ -40,12 +43,14 @@ def default_config():
 
 @il_test_ex.main
 def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
-        write_video, video_file_name):
+        write_video, video_file_name, torch_num_threads):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
     log_dir = il_test_ex.observers[0].dir
     imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
+    if torch_num_threads is not None:
+        th.set_num_threads(torch_num_threads)
 
     if policy_path is None:
         raise ValueError(

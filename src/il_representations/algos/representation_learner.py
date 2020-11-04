@@ -10,8 +10,9 @@ import torch
 import inspect
 import numpy as np
 import imitation.util.logger as logger
+import logging
 from torch.optim.lr_scheduler import CosineAnnealingLR
-
+import math
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
                             'batch_extender']
@@ -125,27 +126,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
 
-    def validate_and_update_kwargs(self, user_kwargs, algo_hardcoded_kwargs=None):
-        # return a copy instead of updating in-place to avoid inconsistent state
-        # after a failed update
-
-        # Now, algorithm_hardcoded_params contains all of the encoder, decoder, etc
-
-        # Iterate over param value in algorithm_hardcoded_params. Check whether the user_kwargs value is different
-        # from the default, if so, use the user_kwargs value. Otherwise, use the algorithm_hardcoded value
-
-        kwargs_copy = user_kwargs.copy()
-        default_args = get_default_args(RepresentationLearner.__init__)
-        if algo_hardcoded_kwargs is not None:
-            for param_name, param_value in algo_hardcoded_kwargs.items():
-                if param_name in kwargs_copy and isinstance(kwargs_copy[param_name], dict):
-                    kwargs_copy[param_name] = self.validate_and_update_kwargs(kwargs_copy[param_name], param_value)
-                else:
-                    # If the external kwargs are just set to default values, use hardcoded kwargs, otherwise default
-                    # to external
-                    if kwargs_copy[param_name] == default_args[param_name]:
-                        kwargs_copy[param_name] = algo_hardcoded_kwargs[param_name]
-        return kwargs_copy
 
     def _calculate_norms(self, norm_type=2):
         """
@@ -229,11 +209,18 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, dataset, training_epochs):
+    def learn(self, dataset, training_epochs=None, training_batches=None):
         """
         :param dataset:
         :return:
         """
+        assert training_epochs is not None or training_batches is not None, "One of " \
+                                                                            "training_epochs or " \
+                                                                            "training_batches must be " \
+                                                                            "specified"
+        assert not (training_epochs is not None and training_batches is not None), "Only one of training_epochs " \
+                                                                                   "or training_batches can be " \
+                                                                                   "specified"
         # Construct representation learning dataset of correctly paired (context, target) pairs
         dataset = self.target_pair_constructor(dataset)
         # Torch chokes when batch_size is a numpy int instead of a Python int,
@@ -242,8 +229,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
         dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=self.shuffle_batches)
 
         loss_record = []
-        global_step = 0
         num_batches_per_epoch = int(len(dataset)/self.batch_size)
+
+        assert num_batches_per_epoch > 0, \
+            f"num_batches_per_epoch is incorrectly 0: len(ds)={len(dataset)}, bs={self.batch_size}"
+        if training_batches is None:
+            training_batches = num_batches_per_epoch*training_epochs
+        if training_epochs is None:
+            training_epochs = math.ceil(training_batches/num_batches_per_epoch)
 
         if self.scheduler_cls is not None:
             if self.scheduler_cls is CosineAnnealingLR:
@@ -251,18 +244,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
             else:
                 self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
 
-        assert num_batches_per_epoch > 0, \
-            f"y u no train??? len(ds)={len(dataset)}, bs={self.batch_size}"
-
         self.encoder.train(True)
         self.decoder.train(True)
+        batches_trained = 0
+        most_recent_encoder_checkpoint = None
 
         for epoch in range(training_epochs):
 
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
-
 
             for step in range(1, num_batches_per_epoch + 1):
                 batch = next(dataiter)
@@ -302,25 +293,33 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-
-                assert not np.isnan(loss.item()), "Loss is not NAN"
-                loss_meter.update(loss)
-
+                loss_item = loss.item()
+                assert not np.isnan(loss_item), "Loss is not NAN"
+                loss_meter.update(loss_item)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+                del loss  # so we don't use again
+
                 gradient_norm, weight_norm = self._calculate_norms()
-                logger.record('loss', loss.item())
+
+                # FIXME(sam): don't plot this every batch, plot it every k
+                # batches (will make log files much smaller)
+                loss_meter.update(loss_item)
+                logger.record('loss', loss_item)
                 logger.record('gradient_norm', gradient_norm.item())
                 logger.record('weight_norm', weight_norm.item())
                 logger.record('epoch', epoch)
                 logger.record('within_epoch_step', step)
-                logger.dump(step=global_step)
-                global_step += 1
-
+                logger.dump(step=batches_trained)
+                batches_trained += 1
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:
                     # early exit
+                    break
+                if batches_trained >= training_batches:
+                    logging.info(f"Breaking out of training in epoch {epoch} because max batches "
+                                 f"value of {training_batches} has been reached")
                     break
 
             if self.scheduler is not None:
@@ -329,7 +328,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg)
 
             if epoch % self.save_interval == 0 or epoch == training_epochs - 1:
-                torch.save(self.encoder, os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+                most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt')
+                torch.save(self.encoder, most_recent_encoder_checkpoint_path)
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
 
-        return loss_record
+        return loss_record, most_recent_encoder_checkpoint_path
