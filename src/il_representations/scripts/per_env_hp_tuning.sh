@@ -1,0 +1,21 @@
+declare -a tuning_configs=("temporal_cpc_tune" "temporal_cpc_aug_tune"
+                           "ac_temporal_cpc_tune", "identity_cpc_aug_tune"
+                           "temporal_ceb_tune" "temporal_ceb_fixed_variance_tune"
+                           "vae_tune" "temporal_cpc_momentum_tune")
+
+declare -a dmc_envs=("DMC-Finger-Spin-v0" "DMC-Cheetah-Run-v0" "DMC-Walker-Walk-v0"
+                     "DMC-Cartpole-Swingup-v0" "DMC-Reacher-Easy-v0" "DMC-Ball-In-Cup-Catch-v0")
+
+declare -a magical_envs=("MatchRegions" "MoveToRegion" "MoveToCorner"
+                         "MakeLine" "FindDupe" "ClusterShape")
+
+for algo_config in ${tuning_configs[@]}; do
+  for dmc_env in ${dmc_envs[@]}; do
+    CUDA_VISIBLE_DEVICES="1" xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt\
+     with tuning cfg_use_dm_control $algo_config dm_control_env=$dmc_env
+  end
+  for magical_env in ${magical_envs[@]}; do
+    CUDA_VISIBLE_DEVICES="1" xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt\
+    with tuning cfg_use_magical $algo_config magical_env_prefix=$magical_env
+  end
+end
