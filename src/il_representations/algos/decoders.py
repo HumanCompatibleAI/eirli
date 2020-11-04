@@ -36,11 +36,13 @@ def exp_sequential(x, sequential):
     return torch.exp(sequential(x))
 
 class LossDecoder(nn.Module):
-    def __init__(self, representation_dim, projection_shape, sample=False):
+    def __init__(self, representation_dim, projection_shape,
+                 sample=False, learn_scale=False):
         super().__init__()
         self.representation_dim = representation_dim
         self.projection_dim = projection_shape
         self.sample = sample
+        self.learn_scale = learn_scale
 
     def forward(self, z, traj_info, extra_context=None):
         pass
@@ -101,16 +103,16 @@ class NoOp(LossDecoder):
 class AsymmetricProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
-        super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
         self.context_mean, self.context_stddev = self.get_projection_modules(self.representation_dim,
                                                                              self.projection_dim,
                                                                              projection_architecture,
                                                                              learn_scale)
         self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
-                                                                          self.projection_dim,
-                                                                          projection_architecture,
-                                                                          learn_scale)
+                                                                           self.projection_dim,
+                                                                           projection_architecture,
+                                                                           learn_scale)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return self(z_dist, self.context_mean, self.context_stddev)
@@ -125,12 +127,12 @@ class AsymmetricProjectionHead(LossDecoder):
 class SymmetricProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
-        super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
         self.symmetric_mean, self.symmetric_stddev = self.get_projection_modules(self.representation_dim,
-                                                                                self.projection_dim,
-                                                                                projection_architecture,
-                                                                                learn_scale)
+                                                                                 self.projection_dim,
+                                                                                 projection_architecture,
+                                                                                 learn_scale)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         return self._apply_projection_layer(z_dist, self.symmetric_mean, self.symmetric_stddev)
@@ -139,11 +141,11 @@ class SymmetricProjectionHead(LossDecoder):
 class OnlyTargetProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
-        super(OnlyTargetProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        super(OnlyTargetProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
         self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
-                                                                          self.projection_dim,
-                                                                          projection_architecture,
-                                                                          learn_scale)
+                                                                           self.projection_dim,
+                                                                           projection_architecture,
+                                                                           learn_scale)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -152,12 +154,15 @@ class OnlyTargetProjectionHead(LossDecoder):
         return self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
 
 
-
 class MomentumProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
-                 momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead):
-        super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=sample)
-        self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape, sample=sample)
+                 momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead,
+                 learn_scale=False):
+
+        super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape,
+                                                     sample=sample, learn_scale=learn_scale)
+        self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape,
+                                                         sample=sample, learn_scale=learn_scale)
         self.target_decoder = copy.deepcopy(self.context_decoder)
         for param in self.target_decoder.parameters():
             param.requires_grad = False
@@ -170,7 +175,7 @@ class MomentumProjectionHead(LossDecoder):
     def decode_target(self, z_dist, traj_info, extra_context=None):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-        a backwards hook, but seemed overly complex for an initial POC
+        a backwards hook, but seemed overly complex for an initial proof of concept
         :param x:
         :return:
         """
