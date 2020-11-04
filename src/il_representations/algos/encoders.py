@@ -24,7 +24,6 @@ from the creation and filling of a queue of representations, which is handled by
 """
 
 
-
 def compute_output_shape(observation_space, layers):
     """Compute the size of the output after passing an observation from
     `observation_space` through the given `layers`."""
@@ -286,13 +285,20 @@ class BaseEncoder(Encoder):
                  learn_scale=False, latent_dim=None, scale_constant=1):
         """
                 :param obs_space: The observation space that this Encoder will be used on
-                :param representation_dim: The number of dimensions of the representation that will be learned
-                :param obs_encoder_cls: An internal architecture implementing `forward` to return a single vector
-                representing the mean representation z of a fixed-variance representation distribution (in the
-                deterministic case), or a latent dimension, in the stochastic case.  This is expected NOT to end in
-                a ReLU (i.e. final layer should be linear).
-                :param latent_dim: Dimension of the latents that feed into mean and std networks (default:
-                        representation_dim * 2).
+                :param representation_dim: The number of dimensions of the representation
+                       that will be learned
+                :param obs_encoder_cls: An internal architecture implementing `forward`
+                       to return a single vector representing the mean representation z
+                       of a fixed-variance representation distribution (in the deterministic
+                       case), or a latent dimension, in the stochastic case. This is
+                       expected NOT to end in a ReLU (i.e. final layer should be linear).
+                :param learn_scale: A flag for whether we want to learn a parametrized
+                       standard deviation. If this is set to False, a constant value of
+                       <scale_constant> will be returned as the standard deviation
+                :param latent_dim: Dimension of the latents that feed into mean and std networks
+                       If not set, this defaults to representation_dim * 2.
+                :param scale_constant: The constant value that will be returned if learn_scale is
+                       set to False.
          """
         super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
