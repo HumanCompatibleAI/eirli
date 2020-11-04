@@ -160,5 +160,4 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
 
 if __name__ == '__main__':
     represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs', priority=40))
-    represent_ex.observers.append(MongoObserver(db_name='sacred_test'))
     represent_ex.run_commandline()
