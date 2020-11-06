@@ -1,5 +1,6 @@
 from glob import glob
 import logging
+logging.warning("Can I log from within these import statements?")
 import os
 
 from imitation.data import rollout
@@ -14,13 +15,14 @@ from stable_baselines3.ppo import PPO
 from il_representations import algos
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
-import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-
+import il_representations.envs.auto as auto_env
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+logging.warning("Set capture mode")
 represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
+logging.warning("Created experiment")
 
 
 @represent_ex.config
@@ -105,6 +107,7 @@ def initialize_non_features_extractor(sb3_model):
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches, _config):
     # TODO fix to not assume FileStorageObserver always present
+
     log_dir = represent_ex.observers[0].dir
 
     if isinstance(algo, str):
