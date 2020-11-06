@@ -879,8 +879,8 @@ def cfg_bench_one_task_dm_control():
 def cfg_base_repl_5000():
     repl = {
         'ppo_finetune': False,
-        'pretrain_batches': None,
-        'pretrain_epochs': 5000,
+        'pretrain_batches': 5000,
+        'pretrain_epochs': None,
     }
 
     _ = locals()
