@@ -243,6 +243,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder.train(True)
         batches_trained = 0
         most_recent_encoder_checkpoint = None
+        training_complete = False
+        print(f"Training with {training_epochs} epochs and {training_batches} batches")
+        print(f"Batch size is {self.batch_size}; dataset size is {len(dataset)}")
 
         for epoch in range(training_epochs):
 
@@ -312,10 +315,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 if self.unit_test_max_train_steps is not None \
                    and step >= self.unit_test_max_train_steps:
                     # early exit
+                    training_complete = True
                     break
                 if batches_trained >= training_batches:
                     logging.info(f"Breaking out of training in epoch {epoch} because max batches "
                                  f"value of {training_batches} has been reached")
+                    training_complete = True
                     break
 
             if self.scheduler is not None:
@@ -327,5 +332,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt')
                 torch.save(self.encoder, most_recent_encoder_checkpoint_path)
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
+            if training_complete:
+                break
 
         return loss_record, most_recent_encoder_checkpoint_path
