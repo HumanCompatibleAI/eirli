@@ -244,8 +244,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         batches_trained = 0
         most_recent_encoder_checkpoint = None
         training_complete = False
-        print(f"Training with {training_epochs} epochs and {training_batches} batches")
-        print(f"Batch size is {self.batch_size}; dataset size is {len(dataset)}")
+        logging.debug(f"Training with {training_epochs} epochs and {training_batches} batches")
+        logging.debug(f"Batch size is {self.batch_size}; dataset size is {len(dataset)}")
 
         for epoch in range(training_epochs):
 
