@@ -327,8 +327,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.scheduler.step()
 
             loss_record.append(loss_meter.avg)
-
-            if epoch % self.save_interval == 0 or epoch == training_epochs - 1:
+            should_save_checkpoint = (training_complete or
+                                      epoch % self.save_interval == 0 or
+                                      epoch == training_epochs - 1)
+            if should_save_checkpoint:
                 most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt')
                 torch.save(self.encoder, most_recent_encoder_checkpoint_path)
                 torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
