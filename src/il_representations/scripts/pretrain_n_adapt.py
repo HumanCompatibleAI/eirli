@@ -15,7 +15,6 @@ import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from skopt.optimizer import Optimizer
-
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
@@ -131,19 +130,23 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     """
     # we need to run the workaround in each raylet, so we do it at the start of run_single_exp
     sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-
-    from il_representations.scripts.il_test import il_test_ex
-    from il_representations.scripts.il_train import il_train_ex
+    logging.warning("Got inside run_single_exp")
     from il_representations.scripts.run_rep_learner import represent_ex
+    logging.warning("Successfully imported represent_ex")
+    # from il_representations.scripts.il_train import il_train_ex
+    # logging.warning("Successfully imported il_train_ex")
+    # from il_representations.scripts.il_test import il_test_ex
+    # logging.warning("Successfully imported il_test_ex")
 
-    if exp_name == 'repl':
-        inner_ex = represent_ex
-    elif exp_name == 'il_train':
-        inner_ex = il_train_ex
-    elif exp_name == 'il_test':
-        inner_ex = il_test_ex
-    else:
-        raise ValueError(f"cannot process exp type '{exp_name}'")
+    inner_ex = represent_ex
+    # if exp_name == 'repl':
+    #     inner_ex = represent_ex
+    # elif exp_name == 'il_train':
+    #     inner_ex = il_train_ex
+    # elif exp_name == 'il_test':
+    #     inner_ex = il_test_ex
+    # else:
+    #     raise ValueError(f"cannot process exp type '{exp_name}'")
 
     assert tune_config_updates.keys() <= {'repl', 'il_train', 'il_test', 'benchmark'}, \
             tune_config_updates.keys()
@@ -158,6 +161,7 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     merged_config = update(merged_config, dict(benchmark=tune_bench_updates))
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
+    logging.warning("Got to just before inner_ex.run")
     ret_val = inner_ex.run(config_updates=merged_config)
     return ret_val.result
 
@@ -205,6 +209,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         log_dir: The log directory of current chain experiment.
     """
     rng, tune_config_updates = setup_run(config)
+    logging.warning("Completed setup_run")
     del config  # I want a new name for it
 
     # Run representation learning
@@ -231,7 +236,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         'seed':
         rng.randint(1 << 31),
     })
-    print("Config updates performed inside end2end")
+    logging.warning("Config updates performed inside end2end")
     il_test_result = run_single_exp(il_test_ex_config, benchmark_config,
                                     tune_config_updates, log_dir, 'il_test')
 
@@ -408,6 +413,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
         config = expand_dict_keys(config)
+        logging.warning("Can log inside trainable_function at all")
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(rep_ex_config, il_train_ex_config,
                             il_test_ex_config, benchmark_config, config,
