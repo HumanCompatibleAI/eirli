@@ -51,7 +51,6 @@ def default_config():
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
-    unit_test_max_train_steps = None
 
     _ = locals()
     del _

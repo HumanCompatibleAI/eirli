@@ -61,8 +61,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 scheduler_kwargs=None,
-                 unit_test_max_train_steps=None):
+                 scheduler_kwargs=None):
 
         super(RepresentationLearner, self).__init__(env)
         for el in (encoder, decoder, loss_calculator, target_pair_constructor):
@@ -82,8 +81,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.preprocess_extra_context = preprocess_extra_context
         self.preprocess_target = preprocess_target
         self.save_interval = save_interval
-        #self._make_channels_first()
-        self.unit_test_max_train_steps = unit_test_max_train_steps
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -312,11 +309,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('within_epoch_step', step)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
-                if self.unit_test_max_train_steps is not None \
-                   and step >= self.unit_test_max_train_steps:
-                    # early exit
-                    training_complete = True
-                    break
                 if batches_trained >= training_batches:
                     logging.info(f"Breaking out of training in epoch {epoch} because max batches "
                                  f"value of {training_batches} has been reached")
