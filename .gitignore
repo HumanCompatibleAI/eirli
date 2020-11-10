@@ -9,6 +9,7 @@ output
 /data
 progress.csv
 params.json
+*.tgz
 
 # editor and devlopment tool cruft
 .pytype
