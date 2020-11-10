@@ -36,10 +36,10 @@ def make_hp_tuning_configs(experiment_obj):
             'ppo_finetune': False,
             # this isn't a lot of training, but should be enough to tell whether
             # loss goes down quickly
-            'pretrain_batches': 5,  # TODO testing value, change
+            'pretrain_batches': 1,  # TODO testing value, change
             'pretrain_epochs': None # TODO testing value, change
         }
-        tune_run_kwargs = dict(num_samples=2) # TODO testing value, change
+        tune_run_kwargs = dict(num_samples=1) # TODO testing value, change
         _ = locals()
         del _
 
