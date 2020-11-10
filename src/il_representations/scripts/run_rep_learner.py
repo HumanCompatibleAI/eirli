@@ -1,6 +1,5 @@
 from glob import glob
 import logging
-logging.warning("Can I log from within these import statements?")
 import os
 
 from imitation.data import rollout
@@ -19,10 +18,8 @@ from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 import il_representations.envs.auto as auto_env
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-logging.warning("Set capture mode")
 represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
-logging.warning("Created experiment")
 
 
 @represent_ex.config

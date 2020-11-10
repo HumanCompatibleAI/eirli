@@ -130,23 +130,18 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     """
     # we need to run the workaround in each raylet, so we do it at the start of run_single_exp
     sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-    logging.warning("Got inside run_single_exp")
     from il_representations.scripts.run_rep_learner import represent_ex
-    logging.warning("Successfully imported represent_ex")
-    # from il_representations.scripts.il_train import il_train_ex
-    # logging.warning("Successfully imported il_train_ex")
-    # from il_representations.scripts.il_test import il_test_ex
-    # logging.warning("Successfully imported il_test_ex")
+    from il_representations.scripts.il_train import il_train_ex
+    from il_representations.scripts.il_test import il_test_ex
 
-    inner_ex = represent_ex
-    # if exp_name == 'repl':
-    #     inner_ex = represent_ex
-    # elif exp_name == 'il_train':
-    #     inner_ex = il_train_ex
-    # elif exp_name == 'il_test':
-    #     inner_ex = il_test_ex
-    # else:
-    #     raise ValueError(f"cannot process exp type '{exp_name}'")
+    if exp_name == 'repl':
+        inner_ex = represent_ex
+    elif exp_name == 'il_train':
+        inner_ex = il_train_ex
+    elif exp_name == 'il_test':
+        inner_ex = il_test_ex
+    else:
+        raise ValueError(f"cannot process exp type '{exp_name}'")
 
     assert tune_config_updates.keys() <= {'repl', 'il_train', 'il_test', 'benchmark'}, \
             tune_config_updates.keys()
