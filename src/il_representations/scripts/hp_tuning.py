@@ -30,7 +30,7 @@ def make_hp_tuning_configs(experiment_obj):
         use_skopt = True
         skopt_search_mode = 'max'
         metric = 'return_mean'
-        stages_to_run = "REPL_ONLY"
+        stages_to_run = "REPL_AND_IL"
         repl = {
             'use_random_rollouts': False,
             'ppo_finetune': False,
