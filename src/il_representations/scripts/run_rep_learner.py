@@ -26,6 +26,7 @@ represent_ex = Experiment('repl',
 @represent_ex.config
 def default_config():
     algo = "ActionConditionedTemporalCPC"
+    exp_ident = ''
     use_random_rollouts = False
     n_envs = 1
     demo_timesteps = 5000
@@ -39,6 +40,8 @@ def default_config():
         # augmentations.
         "augmenter_spec": "translate,rotate,gaussian_blur",
     }
+    algo_params['scheduler'] = LinearWarmupCosine
+    algo_params['scheduler_kwargs'] = {'warmup_epoch': 30}
     ppo_finetune = False
     device = "auto"
     # this is useful for constructing tests where we want to truncate the

@@ -75,6 +75,7 @@ il_train_ex = Experiment('il_train', ingredients=[
 def default_config():
     # random seed for EVERYTHING
     seed = 42  # noqa: F841
+    exp_ident = ''
     # device to place all computations on
     device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'
@@ -151,8 +152,8 @@ def do_training_bc(venv_chans_first, dataset, out_dir, bc, encoder,
         expert_data=dataset,
         device=device_name,
         augmentation_fn=augmenter,
-        optimizer_cls=th.optim.SGD,
-        optimizer_kwargs=dict(lr=1e-3, momentum=0.1),
+        optimizer_cls=th.optim.Adam,
+        optimizer_kwargs=dict(lr=1e-4),
         ent_weight=1e-3,
         l2_weight=1e-5,
     )

@@ -122,7 +122,7 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
 
 class BasicCNN(nn.Module):
     """Similar to the CNN from the Nature DQN paper."""
-    def __init__(self, observation_space, representation_dim):
+    def __init__(self, observation_space, representation_dim, use_bn=True):
         super().__init__()
 
         self.input_channel = observation_space.shape[0]
@@ -134,6 +134,8 @@ class BasicCNN(nn.Module):
         for layer_spec in self.architecture_definition:
             conv_layers.append(nn.Conv2d(self.input_channel, layer_spec['out_dim'],
                                                    kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+            if use_bn:
+                conv_layers.append(nn.BatchNorm2d(layer_spec['out_dim']))
             conv_layers.append(nn.ReLU())
             self.input_channel = layer_spec['out_dim']
         self.convolution = nn.Sequential(*conv_layers)
