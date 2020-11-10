@@ -244,7 +244,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             if self.scheduler_cls is CosineAnnealingLR:
                 self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
             else:
-                self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
+                self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
 
         assert num_batches_per_epoch > 0, \
             f"y u no train??? len(ds)={len(dataset)}, bs={self.batch_size}"
