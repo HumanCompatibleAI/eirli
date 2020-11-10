@@ -156,7 +156,6 @@ def run_single_exp(inner_ex_config, benchmark_config, tune_config_updates,
     merged_config = update(merged_config, dict(benchmark=tune_bench_updates))
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
-    logging.warning("Got to just before inner_ex.run")
     ret_val = inner_ex.run(config_updates=merged_config)
     return ret_val.result
 
@@ -231,7 +230,6 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         'seed':
         rng.randint(1 << 31),
     })
-    logging.warning("Config updates performed inside end2end")
     il_test_result = run_single_exp(il_test_ex_config, benchmark_config,
                                     tune_config_updates, log_dir, 'il_test')
 
