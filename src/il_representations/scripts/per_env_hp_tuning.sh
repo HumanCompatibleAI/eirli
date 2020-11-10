@@ -3,8 +3,8 @@ declare -a tuning_configs=("temporal_cpc_tune" "temporal_cpc_aug_tune"
                            "temporal_ceb_tune" "temporal_ceb_fixed_variance_tune"
                            "vae_tune" "temporal_cpc_momentum_tune")
 
-declare -a dmc_envs=("DMC-Finger-Spin-v0" "DMC-Cheetah-Run-v0" "DMC-Walker-Walk-v0"
-                     "DMC-Cartpole-Swingup-v0" "DMC-Reacher-Easy-v0" "DMC-Ball-In-Cup-Catch-v0")
+declare -a dmc_envs=("finger-spin" "cheetah-run" "walker-walk"
+                     "cartpole-swingup" "reacher-easy" "ball-in-cup-catch")
 
 declare -a magical_envs=("MatchRegions" "MoveToRegion" "MoveToCorner"
                          "MakeLine" "FindDupe" "ClusterShape")
