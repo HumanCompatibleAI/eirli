@@ -39,7 +39,7 @@ def make_hp_tuning_configs(experiment_obj):
             'pretrain_batches': 5,  # TODO testing value, change
             'pretrain_epochs': None # TODO testing value, change
         }
-        il_train = {
+        bc = {
             'n_epochs': 2 # TODO testing value, change
         }
         tune_run_kwargs = dict(num_samples=2) # TODO testing value, change
