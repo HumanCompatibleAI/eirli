@@ -9,7 +9,7 @@ BASE_SKOPT_SPACE = collections.OrderedDict([
         ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN',
                                                              'MAGICALCNN']),
         ('il_train:freeze_encoder', [True, False]),
-        ('il_test:n_rollouts', [10])
+        ('il_test:n_rollouts', [2])
 ])
 
 BASE_REF_CONFIGS = [
@@ -19,7 +19,7 @@ BASE_REF_CONFIGS = [
          'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
          'repl:algo_params:augmenter_kwargs:augmenter_spec': "translate,rotate,gaussian_blur",
          'il_train:freeze_encoder':  True,
-         'il_test:n_rollouts':  50
+         'il_test:n_rollouts':  2 # TODO testing value, change
        }]
 
 
