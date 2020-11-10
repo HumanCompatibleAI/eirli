@@ -20,7 +20,6 @@ def test_reload_policy(algo, freeze_encoder, represent_ex, il_train_ex, file_obs
         config_updates={
             'pretrain_batches': 1,
             'pretrain_epochs': None,
-            'unit_test_max_train_steps': 2,
             'algo_params': {'representation_dim': 3, 'batch_size': 7},
             'algo': MoCo,
             'use_random_rollouts': False,

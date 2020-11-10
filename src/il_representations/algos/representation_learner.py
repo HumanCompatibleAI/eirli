@@ -221,10 +221,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
         dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=self.shuffle_batches)
 
         loss_record = []
-        num_batches_per_epoch = int(len(dataset)/self.batch_size)
-
+        num_batches_per_epoch = math.ceil(len(dataset)/self.batch_size)
+        assert len(dataloader) == num_batches_per_epoch, \
+            "num_batches_per_dataset doesn't represent actual length of dataloader"
         assert num_batches_per_epoch > 0, \
             f"num_batches_per_epoch is incorrectly 0: len(ds)={len(dataset)}, bs={self.batch_size}"
+
         if training_batches is None:
             training_batches = num_batches_per_epoch*training_epochs
         if training_epochs is None:
@@ -239,19 +241,17 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.encoder.train(True)
         self.decoder.train(True)
         batches_trained = 0
-        most_recent_encoder_checkpoint = None
+        epochs_trained = 0
         training_complete = False
         logging.debug(f"Training with {training_epochs} epochs and {training_batches} batches")
         logging.debug(f"Batch size is {self.batch_size}; dataset size is {len(dataset)}")
 
-        for epoch in range(training_epochs):
-
+        while not training_complete:
             loss_meter = AverageMeter()
             dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
 
-            for step in range(1, num_batches_per_epoch + 1):
-                batch = next(dataiter)
+            for step, batch in enumerate(dataiter):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
@@ -305,28 +305,32 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('loss', loss_item)
                 logger.record('gradient_norm', gradient_norm.item())
                 logger.record('weight_norm', weight_norm.item())
-                logger.record('epoch', epoch)
+                logger.record('epoch', epochs_trained)
                 logger.record('within_epoch_step', step)
+                logger.record('batches_trained', batches_trained)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
                 if batches_trained >= training_batches:
-                    logging.info(f"Breaking out of training in epoch {epoch} because max batches "
+                    logging.info(f"Breaking out of training in epoch {epochs_trained} because max batches "
                                  f"value of {training_batches} has been reached")
                     training_complete = True
                     break
 
             if self.scheduler is not None:
                 self.scheduler.step()
-
             loss_record.append(loss_meter.avg)
+
+            epochs_trained += 1
+            if epochs_trained >= training_epochs:
+                training_complete = True
+
             should_save_checkpoint = (training_complete or
-                                      epoch % self.save_interval == 0 or
-                                      epoch == training_epochs - 1)
+                                      epochs_trained % self.save_interval == 0)
             if should_save_checkpoint:
-                most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path, f'{epoch}_epochs.ckpt')
+                most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path,
+                                                                   f'{epochs_trained}_epochs.ckpt')
                 torch.save(self.encoder, most_recent_encoder_checkpoint_path)
-                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path, f'{epoch}_epochs.ckpt'))
-            if training_complete:
-                break
+                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path,
+                                                      f'{epochs_trained}_epochs.ckpt'))
 
         return loss_record, most_recent_encoder_checkpoint_path
