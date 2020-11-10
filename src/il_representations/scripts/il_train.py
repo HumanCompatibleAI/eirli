@@ -75,7 +75,6 @@ il_train_ex = Experiment('il_train', ingredients=[
 def default_config():
     # random seed for EVERYTHING
     seed = 42  # noqa: F841
-    exp_ident = ''
     # device to place all computations on
     device_name = 'auto'  # noqa: F841
     # choose between 'bc'/'gail'

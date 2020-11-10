@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 import torch
 import inspect
 import numpy as np
@@ -241,10 +241,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
         num_batches_per_epoch = int(len(dataset)/self.batch_size)
 
         if self.scheduler_cls is not None:
-            if self.scheduler_cls is CosineAnnealingLR:
+            if self.scheduler_cls in [CosineAnnealingLR, LinearWarmupCosine]:
                 self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
             else:
-                self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
+                self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
 
         assert num_batches_per_epoch > 0, \
             f"y u no train??? len(ds)={len(dataset)}, bs={self.batch_size}"
