@@ -149,7 +149,7 @@ def make_hp_tuning_configs(experiment_obj):
 
     @experiment_obj.named_config
     def vae_tune():
-        repl = {'algo': 'VAE'}
+        repl = {'algo': 'VariationalAutoencoder'}
         skopt_space = BASE_SKOPT_SPACE
         skopt_ref_configs = BASE_REF_CONFIGS
         skopt_space['repl:algo_params:loss_constructor_kwargs:beta'] = (0, 1)

@@ -203,7 +203,6 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         log_dir: The log directory of current chain experiment.
     """
     rng, tune_config_updates = setup_run(config)
-    logging.warning("Completed setup_run")
     del config  # I want a new name for it
 
     # Run representation learning
@@ -406,7 +405,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
         config = expand_dict_keys(config)
-        logging.warning("Can log inside trainable_function at all")
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(rep_ex_config, il_train_ex_config,
                             il_test_ex_config, benchmark_config, config,
@@ -466,7 +464,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         local_dir=ray_dir,
         **tune_run_kwargs,
     )
-    logging.info("Got to get_best_config")
     best_config = rep_run.get_best_config(metric=metric)
     logging.info(f"Best config is: {best_config}")
     logging.info("Results available at: ")
