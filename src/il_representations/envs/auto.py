@@ -49,14 +49,36 @@ def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
 
 @benchmark_ingredient.capture
 def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
-                 dm_control_env, venv_parallel, n_envs):
+                 dm_control_env, dm_control_frame_stack, venv_parallel,
+                 n_envs):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     gym_env_name = get_gym_env_name()
-    if benchmark_name in ('magical', 'dm_control'):
+    if benchmark_name == 'magical':
         return make_vec_env(gym_env_name,
                             n_envs=n_envs,
                             parallel=venv_parallel)
+    elif benchmark_name == 'dm_control':
+        raw_dmc_env = make_vec_env(gym_env_name,
+                                   n_envs=n_envs,
+                                   parallel=venv_parallel)
+        final_env = VecFrameStack(raw_dmc_env, n_stack=dm_control_frame_stack)
+        dmc_chans = raw_dmc_env.observation_space.shape[0]
+
+        # make sure raw env has 3 channels (should be RGB, IIRC)
+        assert dmc_chans == 3
+
+        # make sure stacked env has dmc_chans*frame_stack channels
+        expected_shape = (dm_control_frame_stack * dmc_chans, ) \
+            + raw_dmc_env.observation_space.shape[1:]
+        assert final_env.observation_space.shape == expected_shape, \
+            (final_env.observation_space.shape, expected_shape)
+
+        # make sure images are square
+        assert final_env.observation_space.shape[1:] \
+            == final_env.observation_space.shape[1:][::-1]
+
+        return final_env
     elif benchmark_name == 'atari':
         raw_atari_env = make_vec_env(gym_env_name,
                                      n_envs=n_envs,

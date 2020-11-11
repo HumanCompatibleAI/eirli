@@ -163,6 +163,20 @@ def stooke_momentum_hyperparams_dmc():
     _ = locals()
     del _
 
+
+@represent_ex.named_config
+def cody_momentum_bn():
+    algo_params = {
+        'encoder_kwargs': {
+            'momentum_weight': 0.995,
+        },
+        'loss_calculator_kwargs': {
+            'use_batch_neg': True,
+        }
+    }
+    _ = locals()
+    del _
+
 @represent_ex.named_config
 # TODO add learning rate once determined by hyperparameter search
 def stooke_vae_hyperparams_dmc():
@@ -182,10 +196,31 @@ def identity_cpc():
 
 
 @represent_ex.named_config
+def identity_cpc_aug():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
+                   'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
 def temporal_ceb_no_projection():
     algo = 'TemporalCPC'
     use_random_rollouts = False
     algo_params = {'loss_calculator': losses.CEBLoss}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def temporal_ceb_no_projection_beta0():
+    algo = 'TemporalCPC'
+    use_random_rollouts = False
+    algo_params = {'loss_calculator': losses.CEBLoss,
+                   'loss_calculator_kwargs': {'beta': 0.0}}
     _ = locals()
     del _
 
