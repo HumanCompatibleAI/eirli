@@ -11,6 +11,7 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
 import il_representations.envs.auto as auto_env
+import torch
 
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
@@ -24,14 +25,21 @@ represent_ex = Experiment('repl',
 
 @represent_ex.config
 def default_config():
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None
+
     algo = "ActionConditionedTemporalCPC"
     use_random_rollouts = False
+    torch_num_threads = 1
     n_envs = 1
     demo_timesteps = 5000
     ppo_timesteps = 1000
-    pretrain_batches = None
-    pretrain_epochs = 500
+    pretrain_epochs = None
+    pretrain_batches = 10000
     algo_params = {'representation_dim': 128,
+                   'optimizer': torch.optim.Adam,
+                   'optimizer_kwargs': {'lr': 1e-4},
                    'augmenter_kwargs': {
                                         # augmenter_spec is a comma-separated list of enabled augmentations.
                                         # See `help(imitation.augment.StandardAugmentations)` for available
@@ -42,7 +50,7 @@ def default_config():
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
-    unit_test_max_train_steps = None
+
     _ = locals()
     del _
 
@@ -57,7 +65,8 @@ def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    pretrain_epochs = 5
+    pretrain_batches = None
+    pretrain_batches = 5
     demo_timesteps = None
     ppo_finetune = False
     _ = locals()
@@ -102,10 +111,13 @@ def initialize_non_features_extractor(sb3_model):
 
 @represent_ex.main
 def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches, _config):
+        ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches,
+        torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
 
     log_dir = represent_ex.observers[0].dir
+    if torch_num_threads is not None:
+        torch.set_num_threads(torch_num_threads)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
