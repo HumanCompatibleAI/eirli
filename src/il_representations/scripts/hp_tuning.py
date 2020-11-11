@@ -9,7 +9,7 @@ BASE_SKOPT_SPACE = collections.OrderedDict([
         ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN',
                                                              'MAGICALCNN']),
         ('il_train:freeze_encoder', [True, False]),
-        ('il_test:n_rollouts', [2])
+        ('il_test:n_rollouts', [20])
 ])
 
 BASE_REF_CONFIGS = [
@@ -19,7 +19,7 @@ BASE_REF_CONFIGS = [
          'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
          'repl:algo_params:augmenter_kwargs:augmenter_spec': "translate,rotate,gaussian_blur",
          'il_train:freeze_encoder':  True,
-         'il_test:n_rollouts':  2 # TODO testing value, change
+         'il_test:n_rollouts': 20
        }]
 
 
@@ -36,10 +36,10 @@ def make_hp_tuning_configs(experiment_obj):
             'ppo_finetune': False,
             # this isn't a lot of training, but should be enough to tell whether
             # loss goes down quickly
-            'pretrain_batches': 1,  # TODO testing value, change
-            'pretrain_epochs': None # TODO testing value, change
+            'pretrain_batches': 10000,
+            'pretrain_epochs': None
         }
-        tune_run_kwargs = dict(num_samples=1) # TODO testing value, change
+        tune_run_kwargs = dict(num_samples=50)
         _ = locals()
         del _
 
