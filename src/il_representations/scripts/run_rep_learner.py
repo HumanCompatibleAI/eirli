@@ -10,13 +10,13 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
+import il_representations.envs.auto as auto_env
 
-from il_representations import algos
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
+from il_representations import algos
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-import il_representations.envs.auto as auto_env
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
