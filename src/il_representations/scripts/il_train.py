@@ -31,7 +31,7 @@ bc_ingredient = Ingredient('bc')
 @bc_ingredient.config
 def bc_defaults():
     # number of passes to make through dataset
-    n_epochs = 1  # noqa: F841 # TODO testing value, change
+    n_epochs = 1000  # noqa: F841
     augs = 'rotate,translate,noise'  # noqa: F841
     log_interval = 500  # noqa: F841
 
