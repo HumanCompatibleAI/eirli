@@ -14,14 +14,14 @@ from ray.tune.suggest.skopt import SkOptSearch
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from skopt.optimizer import Optimizer
+import skopt
 
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
-from il_representations.scripts import experimental_conditions
+from il_representations.scripts import experimental_conditions  # noqa: F401
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -269,13 +269,20 @@ def run_il_only_exp(il_train_ex_config, il_test_ex_config, benchmark_config,
 @chain_ex.config
 def base_config():
     exp_name = "grid_search"
+    # the repl, il_train and il_test experiments will have this value as their
+    # exp_ident settings
+    exp_ident = None
     # Name of the metric to optimise. By default, this will be automatically
     # selected based on the value of stages_to_run.
     metric = None
     stages_to_run = StagesToRun.REPL_ONLY
     spec = {
-        # DO NOT UPDATE THESE DEFAULTS WITHOUT ALSO UPDATING CHAIN_CONFIG IN
-        # test_support/configuration.py. They will affect unit tests!
+        # DO NOT ADD ANYTHING TO THESE BY DEFAULT.
+        # They will affect unit tests and also every other use of the script.
+        # If you really want to make a permanent change to a default, then
+        # change the `repl`, `il_train`, `il_test`, etc. dictionaries at the
+        # *top level of this config*, rather than within `spec` (which is
+        # *intended for Tune grid search).
         'repl': {},
         'il_train': {},
         'il_test': {},
@@ -297,13 +304,13 @@ def base_config():
     benchmark = {}
 
     tune_run_kwargs = dict(num_samples=1,
+                           max_failures=2,
+                           fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0, # TODO change back to 0.32?
+                               gpu=0,  # TODO change back to 0.32?
                            ))
-                           # queue_trials=True)
     ray_init_kwargs = dict(
-        num_cpus=2,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
@@ -357,7 +364,7 @@ def cfg_tune_augmentations():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250, # TODO unsure if this is too many
+        'pretrain_batches': 1000, # TODO unsure if this is too many
 
     }
 
@@ -387,7 +394,7 @@ def cfg_tune_vae_learning_rate():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250, # TODO unsure if this is too many
+        'pretrain_batches': 1000, # TODO unsure if this is too many
 
     }
 
@@ -416,7 +423,7 @@ def cfg_tune_moco():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 250,
+        'pretrain_batches': 1000,
 
     }
 
@@ -519,7 +526,7 @@ def cfg_tune_cpc():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 1,
+        'pretrain_batches': 16,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -528,7 +535,6 @@ def cfg_tune_cpc():
         ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
         ('repl:algo_params:representation_dim', (8, 512)),
         ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN', 'MAGICALCNN']),
-
         ('repl:algo_params:augmenter_kwargs:augmenter_spec', [
             "translate,rotate,gaussian_blur", "translate,rotate",
             "translate,rotate,flip_ud,flip_lr"
@@ -629,7 +635,7 @@ def cfg_tune_dynamics():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 100,
+        'pretrain_batches': 250,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -659,15 +665,14 @@ def cfg_tune_dynamics():
     # few days.
     tune_run_kwargs = dict(num_samples=200)
     ray_init_kwargs = dict(
-        num_cpus=10,
         memory=None,
         object_store_memory=None,
         include_dashboard=False,
     )
 
-
     _ = locals()
     del _
+
 
 @chain_ex.named_config
 def cfg_tune_inverse_dynamics():
@@ -684,7 +689,7 @@ def cfg_tune_inverse_dynamics():
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_epochs': 100,
+        'pretrain_batches': 250,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -713,10 +718,282 @@ def cfg_tune_inverse_dynamics():
     _ = locals()
     del _
 
+
+@chain_ex.named_config
+def cfg_base_3seed_4cpu_pt3gpu():
+    """Basic config that does three samples per config, using 5 CPU cores and
+    0.3 of a GPU. Reasonable idea for, e.g., GAIL on svm/perceptron."""
+    use_skopt = False
+    tune_run_kwargs = dict(num_samples=3,
+                           # retry on (node) failure
+                           max_failures=2,
+                           fail_fast=False,
+                           resources_per_trial=dict(
+                               cpu=5,
+                               gpu=0.32,
+                           ))
+    ray_init_kwargs = {
+        # to avoid overwhelming the main driver when we have a big cluster
+        'log_to_driver': False,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_base_3seed_1cpu_pt2gpu_2envs():
+    """Another config that uses only one CPU per run, and .2 of a GPU. Good for
+    running GPU-intensive algorithms (repL, BC) on GCP."""
+    use_skopt = False
+    tune_run_kwargs = dict(num_samples=3,
+                           # retry on node failure
+                           max_failures=2,
+                           fail_fast=False,
+                           resources_per_trial=dict(
+                               cpu=1,
+                               gpu=0.2,
+                           ))
+    ray_init_kwargs = {
+        'log_to_driver': False,
+    }
+    benchmark = {
+        'n_envs': 2,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_short_sweep_magical():
+    """Sweeps over four easiest MAGICAL instances."""
+    spec = dict(benchmark=tune.grid_search(
+        # MAGICAL configs
+        [
+            {
+                'benchmark_name': 'magical',
+                'magical_env_prefix': magical_env_name,
+                'magical_remove_null_actions': True,
+            } for magical_env_name in [
+                'MoveToCorner',
+                'MoveToRegion',
+                'FixColour',
+                'MatchRegions',
+                # 'FindDupe',
+                # 'MakeLine',
+                # 'ClusterColour',
+                # 'ClusterShape',
+            ]
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_short_sweep_dm_control():
+    """Sweeps over four easiest dm_control instances."""
+    spec = dict(benchmark=tune.grid_search(
+        # dm_control configs
+        [
+            {
+                'benchmark_name': 'dm_control',
+                'dm_control_env': dm_control_env_name
+            } for dm_control_env_name in [
+                # to gauge how hard these are, see
+                # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
+                'reacher-easy',
+                'finger-spin',
+                'ball-in-cup-catch',
+                'cartpole-swingup',
+                # 'cheetah-run',
+                # 'walker-walk',
+                # 'reacher-easy',
+            ]
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_micro_sweep_magical():
+    """Tiny sweep over MAGICAL configs, both of which are "not too hard",
+    but still provide interesting generalisation challenges."""
+    spec = dict(benchmark=tune.grid_search(
+        [
+            {
+                'benchmark_name': 'magical',
+                'magical_env_prefix': magical_env_name,
+                'magical_remove_null_actions': True,
+            } for magical_env_name in ['MoveToRegion', 'MatchRegions', 'MoveToCorner']
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_micro_sweep_dm_control():
+    """Tiny sweep over two dm_control configs (finger-spin is really easy for
+    RL, and cheetah-run is really hard for RL)."""
+    spec = dict(benchmark=tune.grid_search(
+        [
+            {
+                'benchmark_name': 'dm_control',
+                'dm_control_env': dm_control_env_name
+            } for dm_control_env_name in ['finger-spin', 'cheetah-run', 'reacher-easy']
+        ]))
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_one_task_magical():
+    """Just one simple MAGICAL config."""
+    benchmark = {
+        'benchmark_name': 'magical',
+        'magical_env_prefix': 'MatchRegions',
+        'magical_remove_null_actions': True,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_one_task_dm_control():
+    """Just one simple dm_control config."""
+    benchmark = {
+        'benchmark_name': 'dm_control',
+        'dm_control_env': 'cheetah-run',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_base_repl_5000():
+    repl = {
+        'ppo_finetune': False,
+        'pretrain_batches': None,
+        'pretrain_epochs': 5000,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_base_repl_10000():
+    repl = {
+        'ppo_finetune': False,
+        'pretrain_batches': 10000,
+        'pretrain_epochs': None,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_force_use_repl():
+    stages_to_run = StagesToRun.REPL_AND_IL
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_none():
+    stages_to_run = StagesToRun.IL_ONLY
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_moco():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'MoCoWithProjection',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_simclr():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'SimCLR',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_temporal_cpc():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'TemporalCPC',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_ceb():
+    stages_to_run = StagesToRun.REPL_AND_IL
+    repl = {
+        'algo': 'CEB',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_il_bc_nofreeze():
+    il_train = {
+        'algo': 'bc',
+        'bc': {
+            'n_batches': 15000,
+        },
+        'freeze_encoder': False,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_il_bc_freeze():
+    il_train = {
+        'algo': 'bc',
+        'bc': {
+            'n_batches': 15000,
+        },
+        'freeze_encoder': True,
+    }
+
+    _ = locals()
+    del _
+
+
+# TODO(sam): GAIL configs
+
+
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
-        skopt_search_mode, skopt_ref_configs, skopt_space):
+        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident):
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
@@ -725,6 +1002,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     spec = sacred_copy(spec)
     stages_to_run = get_stages_to_run(stages_to_run)
     log_dir = os.path.abspath(chain_ex.observers[0].dir)
+
+    # set default exp_ident
+    if rep_ex_config['exp_ident'] is None:
+        rep_ex_config['exp_ident'] = exp_ident
+    if il_train_ex_config['exp_ident'] is None:
+        il_train_ex_config['exp_ident'] = exp_ident
+    if il_test_ex_config['exp_ident'] is None:
+        il_test_ex_config['exp_ident'] = exp_ident
 
     if metric is None:
         # choose a default metric depending on whether we're running
@@ -769,6 +1054,21 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
         config = expand_dict_keys(config)
+
+        # add empty update dicts if necessary to avoid crashing
+        # FIXME(sam): decide whether this is the appropriate defensive thing to
+        # do. It would be nice if we caught errors where the user tries to,
+        # e.g., tune repL, but does not specify anything to tune _over_.
+        if stages_to_run == StagesToRun.REPL_AND_IL:
+            keys_to_add = ['benchmark', 'il_train', 'il_test', 'repl']
+        if stages_to_run == StagesToRun.IL_ONLY:
+            keys_to_add = ['benchmark', 'il_train', 'il_test']
+        if stages_to_run == StagesToRun.REPL_ONLY:
+            keys_to_add = ['benchmark', 'repl']
+        for key in keys_to_add:
+            if key not in config:
+                config[key] = {}
+
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(rep_ex_config, il_train_ex_config,
                             il_test_ex_config, benchmark_config, config,
@@ -800,8 +1100,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
         ])
-        skopt_optimiser = Optimizer(list(sorted_space.values()),
-                                    base_estimator='RF')
+        for k, v in list(sorted_space.items()):
+            # cast each value in sorted_space to a skopt Dimension object, then
+            # make the name of the Dimension object match the corresponding key
+            new_v = skopt.space.check_dimension(v)
+            new_v.name = k
+            sorted_space[k] = new_v
+        skopt_optimiser = skopt.optimizer.Optimizer([*sorted_space.values()],
+                                                    base_estimator='RF')
         algo = SkOptSearch(skopt_optimiser,
                            list(sorted_space.keys()),
                            metric=metric,
@@ -835,6 +1141,12 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     logging.info(rep_run._get_trial_paths())
 
 
-if __name__ == '__main__':
+def main(argv=None):
+    # This function is here because it gets called from other scripts. Please
+    # don't delete!
     chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
-    chain_ex.run_commandline()
+    chain_ex.run_commandline(argv)
+
+
+if __name__ == '__main__':
+    main()
