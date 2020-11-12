@@ -108,10 +108,13 @@ class AsymmetricProjectionHead(LossDecoder):
                                                                           learn_scale)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
-        return self._apply_projection_layer(z_dist, self.context_mean, self.context_stddev)
+        return self(z_dist, self.context_mean, self.context_stddev)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
-        return self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
+        return self(z_dist, self.target_mean, self.target_stddev)
+
+    def forward(self, z_dist, mean, stddev):
+        return self._apply_projection_layer(z_dist, mean, stddev)
 
 
 class SymmetricProjectionHead(LossDecoder):
@@ -140,8 +143,8 @@ class OnlyTargetProjectionHead(LossDecoder):
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return z_dist
 
-    def decode_target(self, z_dist, traj_info, extra_context=None):
-        self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
+    def forward(self, z_dist, traj_info, extra_context=None):
+        return self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
 
 
 
@@ -155,7 +158,8 @@ class MomentumProjectionHead(LossDecoder):
             param.requires_grad = False
         self.momentum_weight = momentum_weight
 
-    def decode_context(self, z_dist, traj_info, extra_context=None):
+    def forward(self, z_dist, traj_info, extra_context=None):
+        # Only used for decode_context, since we override decode_target
         return self.context_decoder(z_dist, traj_info, extra_context=extra_context)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
@@ -211,15 +215,15 @@ class ActionConditionedVectorDecoder(LossDecoder):
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
 
         self.action_conditioned_mean, self.action_conditioned_stddev = self.get_projection_modules(self.representation_dim + action_representation_dim,
-                                                                                                  self.projection_dim,
-                                                                                                  projection_architecture,
-                                                                                                  learn_scale)
+                                                                                                   self.projection_dim,
+                                                                                                   projection_architecture,
+                                                                                                   learn_scale)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist
 
-    def decode_context(self, z_dist, traj_info, extra_context=None):
-        # Get a single vector out of the the distribution object passed in by the
+    def forward(self, z_dist, traj_info, extra_context=None):
+        # Get a single vector out of the distribution object passed in by the
         # encoder (either via sampling or taking the mean)
         z = self.get_vector(z_dist)
         action_encoding_vector = self.get_vector(extra_context)
@@ -257,7 +261,7 @@ class ActionPredictionHead(LossDecoder):
             for k in self.param_mappings:
                 self.param_mappings[k] = self.param_mappings[k].to(torch.device('cuda'))
 
-    def decode_context(self, z_dist, traj_info, extra_context=None):
+    def forward(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
         z_future = self.get_vector(extra_context)
@@ -367,7 +371,7 @@ class PixelDecoder(LossDecoder):
                                                       kernel_size=3,
                                                       padding=1))
 
-    def decode_context(self, z_dist, traj_info, extra_context=None):
+    def forward(self, z_dist, traj_info, extra_context=None):
         z = self.get_vector(z_dist)
         batch_dim = z.shape[0]
 

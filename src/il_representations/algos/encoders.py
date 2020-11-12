@@ -381,6 +381,13 @@ class ActionEncodingEncoder(BaseEncoder):
             self.action_encoder = None
 
     def encode_extra_context(self, x, traj_info):
+        # Will be sent to forward
+        return self(x, traj_info, action=True)
+
+    def forward(self, x, traj_info, action=False):
+        if not action:
+            return super().forward(x, traj_info)
+
         actions = x
         assert actions.ndim >= 2, actions.shape
         assert actions.shape[2:] == self.action_shape, actions.shape
@@ -409,17 +416,13 @@ class ActionEncodingEncoder(BaseEncoder):
 
 class VAEEncoder(BaseEncoder):
     """
-    An encoder that uses StochasticEncoder's logic for encoding
+    An encoder that uses a stochastic encoder's logic for encoding
     context, but for target, just returns a delta distribution
     around ground truth pixels, since we don't want to vector-encode
     them.
     """
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None):
         super().__init__(obs_space, representation_dim, obs_encoder_cls, stochastic=True, latent_dim=latent_dim)
-
-    def encode_context(self, x, traj_info):
-        # Context here is the current frame, which should be vector-encoded
-        return self.forward(x, traj_info)
 
     def encode_target(self, x, traj_info):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
@@ -433,11 +436,6 @@ class TargetStoringActionEncoder(ActionEncodingEncoder):
     of `encode_extra_context`. If being used for Dynamics, can use with stochastic=False. If being used
     for TemporalVAE, use stochastic=True
     """
-
-    def encode_context(self, x, traj_info):
-        # Context here is the current frame, which should be vector-encoded
-        return self.forward(x, traj_info)
-
     def encode_target(self, x, traj_info):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
         # So we just create a Dirac Delta distribution around the pixel values
@@ -447,15 +445,11 @@ class TargetStoringActionEncoder(ActionEncodingEncoder):
 class InverseDynamicsEncoder(BaseEncoder):
     def encode_extra_context(self, x, traj_info):
         # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
-        return self.forward(x, traj_info)
+        return self.encode_context(x, traj_info)
 
     def encode_target(self, x, traj_info):
         # X here consists of the true actions, which is the "target" and thus doesn't get encoded
         return Delta(x)
-
-    def encode_context(self, x, traj_info):
-        # X here consists of the initial frame
-        return self.forward(x, traj_info)
 
 
 class MomentumEncoder(Encoder):
@@ -540,9 +534,12 @@ class RecurrentEncoder(Encoder):
         return stacked_trajectories, mask_lengths
 
     def encode_target(self, x, traj_info):
-        return self.single_frame_encoder(x, traj_info)
+        # Will be sent to forward
+        return self(x, traj_info, single=True)
 
-    def forward(self, x, traj_info):
+    def forward(self, x, traj_info, single=False):
+        if single:
+            return self.single_frame_encoder(x, traj_info)
         # Reshape the input z to be (some number of) batch_size-length trajectories
         z = self.single_frame_encoder(x, traj_info).mean
         stacked_trajectories, mask_lengths = self._reshape_and_stack(z, traj_info)

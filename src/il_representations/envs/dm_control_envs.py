@@ -73,8 +73,33 @@ def register_dmc_envs():
 
 
 @benchmark_ingredient.capture
+def _stack_obs_oldest_first(obs_arr, dm_control_frame_stack):
+    """Takes an array of shape [T, C, H, W] and stacks the entries to produce a
+    new array of shape [T, C*frame_stack, H, W] with frames stacked along the
+    channels axis. Frames at stacked oldest-first, and the first frame_stack-1
+    frames have zeros instead of older frames (because older frames don't
+    exist). This is meant to be compatible with VecFrameStack in SB3. Notably,
+    it is _not_ compatible with frame stacking in Gym, which repeats the first
+    frame instead of using zeroed frames."""
+    frame_accumulator = np.repeat(np.zeros_like(obs_arr[0][None]),
+                                  dm_control_frame_stack,
+                                  axis=0)
+    c, h, w = obs_arr.shape[1:]
+    out_sequence = []
+    for in_frame in obs_arr:
+        # drop the oldest frame, and append the new frame
+        frame_accumulator = np.concatenate(
+            [frame_accumulator[1:], in_frame[None]], axis=0)
+        out_sequence.append(frame_accumulator.reshape(
+            dm_control_frame_stack * c, h, w))
+    out_sequence = np.stack(out_sequence, axis=0)
+    return out_sequence
+
+
+@benchmark_ingredient.capture
 def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
-                            dm_control_demo_patterns, n_traj, data_root):
+                            dm_control_demo_patterns, dm_control_frame_stack,
+                            n_traj, data_root):
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
     user_pattern = os.path.expanduser(data_pattern)
@@ -99,19 +124,27 @@ def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
         for t in loaded_trajs
     ]
 
+    # do frame stacking on observations in each loaded trajectory sequence,
+    # then concatenate the frame-stacked trajectories together to make one big
+    # dataset
+    cat_obs = np.concatenate([
+        _stack_obs_oldest_first(t.obs[:-1]) for t in loaded_trajs], axis=0)
+    cat_nobs = np.concatenate([
+        _stack_obs_oldest_first(t.obs[1:]) for t in loaded_trajs], axis=0)
+    # the remaining entries don't need any special stacking, so we just
+    # concatenate them
+    cat_acts = np.concatenate([t.acts for t in loaded_trajs], axis=0)
+    cat_infos = np.concatenate([t.infos for t in loaded_trajs], axis=0)
+    cat_rews = np.concatenate([t.rews for t in loaded_trajs], axis=0)
+    cat_dones = np.concatenate(dones_lists, axis=0)
+
     dataset_dict = {
-        'obs':
-        np.concatenate([t.obs[:-1] for t in loaded_trajs], axis=0),
-        'acts':
-        np.concatenate([t.acts for t in loaded_trajs], axis=0),
-        'next_obs':
-        np.concatenate([t.obs[1:] for t in loaded_trajs], axis=0),
-        'infos':
-        np.concatenate([t.infos for t in loaded_trajs], axis=0),
-        'rews':
-        np.concatenate([t.rews for t in loaded_trajs], axis=0),
-        'dones':
-        np.concatenate(dones_lists, axis=0),
+        'obs': cat_obs,
+        'next_obs': cat_nobs,
+        'acts': cat_acts,
+        'infos': cat_infos,
+        'rews': cat_rews,
+        'dones': cat_dones,
     }
 
     return dataset_dict
