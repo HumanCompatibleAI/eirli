@@ -99,7 +99,7 @@ class Logger:
 
 
 class LinearWarmupCosine(_LRScheduler):
-    def __init__(self, optimizer, warmup_epoch, T_max, eta_min=0, last_epoch=-1):
+    def __init__(self, optimizer, T_max, warmup_epoch=30, eta_min=0, last_epoch=-1):
         self.T_max = T_max
         self.eta_min = eta_min
         self.warmup_epoch = warmup_epoch
