@@ -726,7 +726,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     if use_skopt:
         assert skopt_search_mode in {'min', 'max'}, \
             'skopt_search_mode must be "min" or "max", as appropriate for ' \
-            'the metric being optmised'
+            'the metric being optimised'
         assert len(skopt_space) > 0, "was passed an empty skopt_space"
 
         # do some sacred_copy() calls to ensure that we don't accidentally put
