@@ -1,5 +1,6 @@
 from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders
 import collections
+from copy import deepcopy
 
 
 BASE_SKOPT_SPACE = collections.OrderedDict([
@@ -47,8 +48,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def temporal_cpc_tune():
         repl = {'algo': 'TemporalCPC'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         _ = locals()
         del _
 
@@ -59,12 +60,12 @@ def make_hp_tuning_configs(experiment_obj):
                 'algo_params': {'augmenter': augmenters.AugmentContextAndTarget}
                 }
 
-        skopt_space = BASE_SKOPT_SPACE
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
         skopt_space[
             'repl:algo_params:augmenter_kwargs:augmenter_spec'] = ["translate,rotate,gaussian_blur",
                                                                    "translate,rotate",
                                                                    "translate,rotate,flip_ud,flip_lr"]
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_ref_configs[0][
             'repl:algo_params:augmenter_kwargs:augmenter_spec'] = "translate,rotate,gaussian_blur"
         _ = locals()
@@ -74,8 +75,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def ac_temporal_cpc_tune():
         repl = {'algo': 'ActionConditionedTemporalCPC'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space['repl:algo_params:decoder_kwargs:action_encoding_dim'] = (64, 512)
         skopt_space['repl:algo_params:decoder_kwargs:action_embedding_dim'] = (5, 30)
 
@@ -91,8 +92,8 @@ def make_hp_tuning_configs(experiment_obj):
                 'algo_params': {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
                                 'augmenter': augmenters.AugmentContextAndTarget}
                 }
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space[
             'repl:algo_params:augmenter_kwargs:augmenter_spec'] = ["translate,rotate,gaussian_blur",
                                                                    "translate,rotate",
@@ -107,8 +108,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def temporal_ceb_tune():
         repl = {'algo': 'CEB'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space['repl:algo_params:loss_constructor_kwargs:beta'] = (0, 0.1)
         skopt_ref_configs[0]['repl:algo_params:loss_constructor_kwargs:beta'] = 0.01
         _ = locals()
@@ -118,8 +119,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def temporal_ceb_fixed_variance_tune():
         repl = {'algo': 'FixedVarianceCEB'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space['repl:algo_params:loss_constructor_kwargs:beta'] = (0, 0.1)
         skopt_ref_configs[0]['repl:algo_params:loss_constructor_kwargs:beta'] = 0.01
         _ = locals()
@@ -132,8 +133,8 @@ def make_hp_tuning_configs(experiment_obj):
                 'algo_params': {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
                                 'augmenter': augmenters.AugmentContextAndTarget}
                 }
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space['repl:algo_params:loss_constructor_kwargs:beta'] = (0, 0.1)
         skopt_space[
             'repl:algo_params:augmenter_kwargs:augmenter_spec'] = ["translate,rotate,gaussian_blur",
@@ -150,8 +151,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def vae_tune():
         repl = {'algo': 'VariationalAutoencoder'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space['repl:algo_params:loss_constructor_kwargs:beta'] = (0, 1)
         skopt_ref_configs[0]['repl:algo_params:loss_constructor_kwargs:beta'] = 0.01
         _ = locals()
@@ -163,8 +164,8 @@ def make_hp_tuning_configs(experiment_obj):
                 'algo_params': {'batch_extender': batch_extenders.QueueBatchExtender,
                                 'encoder': encoders.MomentumEncoder,
                                 'loss_calculator': losses.QueueAsymmetricContrastiveLoss}}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space[
             'repl:algo_params:augmenter_kwargs:augmenter_spec'] = ["translate,rotate,gaussian_blur",
                                                                    "translate,rotate",
@@ -179,8 +180,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def dynamics_tune():
         repl = {'algo': 'DynamicsPrediction'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         skopt_space['repl:algo_params:encoder_kwargs:action_encoding_dim'] = (8, 128)
         skopt_space['repl:algo_params:encoder_kwargs:action_embedding_dim'] = (5, 30)
         skopt_ref_configs[0]['repl:algo_params:decoder_kwargs:action_encoding_dim'] = 64
@@ -191,8 +192,8 @@ def make_hp_tuning_configs(experiment_obj):
     @experiment_obj.named_config
     def inverse_dynamics_tune():
         repl = {'algo': 'InverseDynamicsPrediction'}
-        skopt_space = BASE_SKOPT_SPACE
-        skopt_ref_configs = BASE_REF_CONFIGS
+        skopt_space = deepcopy(BASE_SKOPT_SPACE)
+        skopt_ref_configs = deepcopy(BASE_REF_CONFIGS)
         _ = locals()
         del _
 
