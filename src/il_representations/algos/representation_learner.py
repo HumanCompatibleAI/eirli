@@ -36,7 +36,9 @@ def to_dict(kwargs_element):
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, *,
+    def __init__(self, *,
+                 observation_space,
+                 action_space,
                  log_dir,
                  encoder=None,
                  decoder=None,
@@ -50,6 +52,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  projection_dim=None,
                  device=None,
                  shuffle_batches=True,
+                 shuffle_buffer_size=1024,
                  batch_size=256,
                  preprocess_extra_context=True,
                  preprocess_target=True,
@@ -77,6 +80,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.device = get_device("auto" if device is None else device)
         self.shuffle_batches = shuffle_batches
+        self.shuffle_buffer_size = shuffle_buffer_size
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.preprocess_target = preprocess_target
@@ -206,15 +210,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
         :param dataset:
         :return:
         """
-        assert training_epochs is not None or training_batches is not None, "One of " \
-                                                                            "training_epochs or " \
-                                                                            "training_batches must be " \
-                                                                            "specified"
-        assert not (training_epochs is not None and training_batches is not None), "Only one of training_epochs " \
-                                                                                   "or training_batches can be " \
-                                                                                   "specified"
+        assert training_epochs is not None or training_batches is not None, \
+            "One of training_epochs or training_batches must be specified"
+        assert not (training_epochs is not None and training_batches is not None), \
+            "Only one of training_epochs or training_batches can be specified"
         # Construct representation learning dataset of correctly paired (context, target) pairs
-        dataset = self.target_pair_constructor(dataset)
+        dataset = dataset.pipe(self.target_pair_constructor)
+        if self.shuffle_batches:
+            dataset = dataset.shuffle(self.shuffle_buffer_size)
         # Torch chokes when batch_size is a numpy int instead of a Python int,
         # so we need to wrap the batch size in int() in case we're running
         # under skopt (which uses numpy types).

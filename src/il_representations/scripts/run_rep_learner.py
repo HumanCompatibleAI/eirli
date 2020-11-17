@@ -13,9 +13,10 @@ from stable_baselines3.ppo import PPO
 import torch
 
 from il_representations import algos
-from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
+from il_representations.algos.representation_learner import \
+    RepresentationLearner
 from il_representations.algos.utils import LinearWarmupCosine
-import il_representations.envs.auto as auto_env
+from il_representations.data.read_dataset import load_ilr_dataset
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
@@ -30,8 +31,10 @@ def default_config():
     # you identify runs in viskit.
     exp_ident = None
 
+    # FIXME(sam): refactor the config so that you have sensible defaults for
+    # this
+    data_path = None
     algo = "ActionConditionedTemporalCPC"
-    use_random_rollouts = False
     torch_num_threads = 1
     n_envs = 1
     demo_timesteps = 5000
@@ -74,12 +77,6 @@ def ceb_breakout():
     del _
 
 @represent_ex.named_config
-def expert():
-    use_random_rollouts=False
-    _ = locals()
-    del _
-
-@represent_ex.named_config
 def tiny_epoch():
     demo_timesteps=5000
     _ = locals()
@@ -111,9 +108,9 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches,
-        torch_num_threads, _config):
+def run(benchmark, data_path, algo, algo_params, seed, ppo_timesteps,
+        ppo_finetune, pretrain_epochs, pretrain_batches, torch_num_threads,
+        _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
@@ -123,13 +120,10 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         algo = getattr(algos, algo)
 
     # setup environment & dataset
-    venv = auto_env.load_vec_env()
-    color_space = auto_env.load_color_space()
-    if use_random_rollouts:
-        dataset_dict = get_random_traj(venv=venv)
-    else:
-        # TODO be able to load a fixed number, `demo_timesteps`
-        dataset_dict = auto_env.load_dataset()
+    webdataset = load_ilr_dataset(data_path)
+    color_space = webdataset.meta['color_space']
+    observation_space = webdataset.meta['observation_space']
+    action_space = webdataset.meta['action_space']
 
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
@@ -138,27 +132,36 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         **algo_params['augmenter_kwargs'],
     }
     logging.info(f"Running {algo} with parameters: {algo_params}")
-    model = algo(venv, log_dir=log_dir, **algo_params)
+    model = algo(
+        observation_space=observation_space,
+        action_space=action_space,
+        log_dir=log_dir,
+        **algo_params)
 
     # setup model
-    loss_record, most_recent_encoder_path = model.learn(dataset_dict, pretrain_epochs, pretrain_batches)
+    loss_record, most_recent_encoder_path = model.learn(
+        webdataset, pretrain_epochs, pretrain_batches)
     if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
-        encoder_checkpoint = model.encoder_checkpoints_path
-        all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
-        latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        encoder_feature_extractor_kwargs = {'features_dim': algo_params["representation_dim"],
-                                            'encoder_path': os.path.abspath(latest_checkpoint)}
+        raise NotImplementedError("PPO fine-tuning is not currently supported")
 
-        # TODO figure out how to not have to set `ortho_init` to False for the whole policy
-        policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
-                         'features_extractor_kwargs': encoder_feature_extractor_kwargs,
-                         'ortho_init': False}
-        ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
-                        verbose=1, policy_kwargs=policy_kwargs)
-        ppo_model = initialize_non_features_extractor(ppo_model)
-        ppo_model.learn(total_timesteps=ppo_timesteps)
+        # encoder_checkpoint = model.encoder_checkpoints_path
+        # all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
+        # latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
+        # encoder_feature_extractor_kwargs = {
+        #     'features_dim': algo_params["representation_dim"],
+        #     'encoder_path': os.path.abspath(latest_checkpoint)}
 
-    venv.close()
+        # # TODO figure out how to not have to set `ortho_init` to False for
+        # # the whole policy
+        # policy_kwargs = {
+        #     'features_extractor_class': EncoderFeatureExtractor,
+        #     'features_extractor_kwargs': encoder_feature_extractor_kwargs,
+        #     'ortho_init': False}
+        # ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
+        #                 verbose=1, policy_kwargs=policy_kwargs)
+        # ppo_model = initialize_non_features_extractor(ppo_model)
+        # ppo_model.learn(total_timesteps=ppo_timesteps)
+
     return {
         'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning

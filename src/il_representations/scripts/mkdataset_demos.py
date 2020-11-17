@@ -37,7 +37,6 @@ def run(out_file, seed, benchmark):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
 
-    # TODO(sam): actually write this
     dataset_dict = auto_env.load_dataset()
     n_items = len(dataset_dict['obs'])
     # keys in dataset_dict: 'obs', 'next_obs', 'acts', 'infos', 'rews', 'dones'
@@ -48,16 +47,25 @@ def run(out_file, seed, benchmark):
         logging.info(f"Creating output directory '{out_dir}'")
         os.makedirs(out_dir, exist_ok=True)
 
-    # TODO(sam): should figure out precisely what needs to be saved, and save
-    # no more than that. Really it should be limited to the data required to
-    # instantiate a new environment of the correct type.
-    meta_dict = benchmark
+    # TODO(sam): refactor the benchmark experiment so that it splits out the
+    # keys necessary to instantiate new environments from the keys necessary to
+    # load data (possibly even make a separate 'dataset' config ingredient for
+    # the latter). That way we can save just the env stuff in this function.
+    color_space = auto_env.load_color_space()
+    venv = auto_env.make_vec_env()
+    meta_dict = {
+        'benchmark_config': benchmark,
+        'action_space': venv.action_space,
+        'observation_space': venv.observation_space,
+        'color_space': color_space,
+    }
+    venv.close()
 
     logging.info(f"Will write {n_items} outputs to '{out_file}'")
     with webdataset.TarWriter(out_file, keep_meta=True, compress=True) \
          as writer:
-        # first write _metadata.json containing the benchmark config
-        writer.dwrite(key='_metadata', json=meta_dict)
+        # first write _metadata.meta.pickle containing the benchmark config
+        writer.dwrite(key='_metadata', meta_pickle=meta_dict)
 
         if os.isatty(sys.stdout.fileno()):
             range_iter = trange(n_items, desc='items')
@@ -65,14 +73,14 @@ def run(out_file, seed, benchmark):
             range_iter = range(n_items)
 
         for i in range_iter:
-            write_dict = {'__key__': 'frame_%03d' % i}
+            write_dict = {'__key__': 'frame_%03d' % i, 'frame.pyd': i}
             for key, array in dataset_dict.items():
                 if isinstance(array[0], (dict, numbers.Number, np.bool_)):
                     # dicts (e.g. for 'infos') get stored as pickles
                     # (same goes for basic numeric types)
                     assert isinstance(array[i], (dict, numbers.Number,
                                                  np.bool_))
-                    write_dict[key + '.pyd'] = array[i]
+                    write_dict[key + '.pickle'] = array[i]
                 else:
                     # everything else gets stored with minimal array format
                     # (the "tenbin" format from WebDataset)

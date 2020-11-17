@@ -360,7 +360,6 @@ def cfg_tune_augmentations():
     metric = 'return_mean'
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
-        'use_random_rollouts': False,
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
@@ -390,7 +389,6 @@ def cfg_tune_vae_learning_rate():
     metric = 'return_mean'
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
-        'use_random_rollouts': False,
         'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
