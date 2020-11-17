@@ -154,7 +154,7 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
     del dataset_dict
     data_loader = th.utils.data.DataLoader(
         dataset, batch_size=bc['batch_size'], shuffle=True,
-        collate_fn=il_types.transitions_collate_fn, persistent_workers=True)
+        collate_fn=il_types.transitions_collate_fn)
     del dataset
 
     trainer = BC(
@@ -236,7 +236,7 @@ def do_training_gail(
     del dataset_dict
     data_loader = th.utils.data.DataLoader(
         dataset, batch_size=gail['disc_batch_size'], shuffle=True,
-        collate_fn=il_types.transitions_collate_fn, persistent_workers=True)
+        collate_fn=il_types.transitions_collate_fn)
     del dataset
 
     trainer = GAIL(

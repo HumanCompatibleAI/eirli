@@ -12,7 +12,6 @@ import numpy as np
 import imitation.util.logger as logger
 import logging
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import math
 
 DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
                             'batch_extender']
@@ -66,7 +65,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  loss_calculator_kwargs=None,
                  scheduler_kwargs=None):
 
-        super(RepresentationLearner, self).__init__(env)
+        super(RepresentationLearner, self).__init__(
+            observation_space=observation_space, action_space=action_space)
         for el in (encoder, decoder, loss_calculator, target_pair_constructor):
             assert el is not None
         # TODO clean up this kwarg parsing at some point
@@ -221,22 +221,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # Torch chokes when batch_size is a numpy int instead of a Python int,
         # so we need to wrap the batch size in int() in case we're running
         # under skopt (which uses numpy types).
-        dataloader = DataLoader(dataset,
-                                batch_size=int(self.batch_size),
-                                shuffle=self.shuffle_batches,
-                                persistent_workers=True)
+        dataloader = DataLoader(dataset, batch_size=int(self.batch_size))
 
         loss_record = []
-        num_batches_per_epoch = math.ceil(len(dataset)/self.batch_size)
-        assert len(dataloader) == num_batches_per_epoch, \
-            "num_batches_per_dataset doesn't represent actual length of dataloader"
-        assert num_batches_per_epoch > 0, \
-            f"num_batches_per_epoch is incorrectly 0: len(ds)={len(dataset)}, bs={self.batch_size}"
-
-        if training_batches is None:
-            training_batches = num_batches_per_epoch*training_epochs
-        if training_epochs is None:
-            training_epochs = math.ceil(training_batches/num_batches_per_epoch)
 
         if self.scheduler_cls is not None:
             if self.scheduler_cls in [CosineAnnealingLR, LinearWarmupCosine]:
@@ -250,7 +237,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         epochs_trained = 0
         training_complete = False
         logging.debug(f"Training with {training_epochs} epochs and {training_batches} batches")
-        logging.debug(f"Batch size is {self.batch_size}; dataset size is {len(dataset)}")
+        logging.debug(f"Batch size is {self.batch_size}")
 
         while not training_complete:
             loss_meter = AverageMeter()
@@ -306,7 +293,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 gradient_norm, weight_norm = self._calculate_norms()
 
                 # FIXME(sam): don't plot this every batch, plot it every k
-                # batches (will make log files much smaller)
+                # batches (will make log files much smaller & let us stream
+                # them to head node on Ray cluster)
                 loss_meter.update(loss_item)
                 logger.record('loss', loss_item)
                 logger.record('gradient_norm', gradient_norm.item())
@@ -316,18 +304,25 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('batches_trained', batches_trained)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
-                if batches_trained >= training_batches:
+                if (training_batches is not None and batches_trained >= training_batches):
                     logging.info(f"Breaking out of training in epoch {epochs_trained} because max batches "
                                  f"value of {training_batches} has been reached")
                     training_complete = True
                     break
+
+            assert batches_trained > 0, \
+                "went through training loop with no batches---empty dataset?"
+            if epochs_trained == 0:
+                # we infer the size of the dataset from the number of
+                # iterations through the loop the first time
+                logging.debug(f"Dataset size is {batches_trained}")
 
             if self.scheduler is not None:
                 self.scheduler.step()
             loss_record.append(loss_meter.avg)
 
             epochs_trained += 1
-            if epochs_trained >= training_epochs:
+            if (training_epochs is not None and epochs_trained >= training_epochs):
                 training_complete = True
 
             should_save_checkpoint = (training_complete or

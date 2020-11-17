@@ -37,9 +37,10 @@ class ILRDataset(wds.Dataset):
             # *not* another _metadata.meta.pickle file (which would be weird).
             yield from data_iter
 
+        # this only supports one data source because I'm not sure how to handle
+        # inconsistent metadata between data sources
         assert len(urls) == 1, \
-            "for now this only supports one data source (need to devise way " \
-            "of handling inconsistent metadata within a dataset later on)"
+            f"for now this only supports one data source (urls={urls!r})"
 
         if initial_pipeline is None:
             # group_by_keys is part of the default initial pipeline, so we
@@ -82,6 +83,6 @@ def load_ilr_dataset(file_path):
     # looking for a file: prefix and then treating the rest of the string as a
     # file path.
     url = 'file:' + abs_path
-    return ILRDataset(url) \
-        .pipe(strip_extensions) \
-        .decode()
+    return ILRDataset([url]) \
+        .decode() \
+        .pipe(strip_extensions)

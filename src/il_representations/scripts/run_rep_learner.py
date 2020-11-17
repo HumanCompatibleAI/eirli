@@ -120,6 +120,11 @@ def run(benchmark, data_path, algo, algo_params, seed, ppo_timesteps,
         algo = getattr(algos, algo)
 
     # setup environment & dataset
+    if data_path is None:
+        raise ValueError(
+            "representation learner experiment was provided with "
+            "'data_path=None'. data_path should be a string pointing "
+            "to a .tgz archive")
     webdataset = load_ilr_dataset(data_path)
     color_space = webdataset.meta['color_space']
     observation_space = webdataset.meta['observation_space']
