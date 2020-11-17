@@ -13,6 +13,7 @@ import webdataset
 from il_representations.algos.utils import set_global_seeds
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import benchmark_ingredient
+from il_representations.scripts.utils import sacred_copy
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 mkdataset_demos_ex = Experiment('mkdataset_demos',
@@ -47,14 +48,15 @@ def run(out_file, seed, benchmark):
         logging.info(f"Creating output directory '{out_dir}'")
         os.makedirs(out_dir, exist_ok=True)
 
-    # TODO(sam): refactor the benchmark experiment so that it splits out the
-    # keys necessary to instantiate new environments from the keys necessary to
-    # load data (possibly even make a separate 'dataset' config ingredient for
-    # the latter). That way we can save just the env stuff in this function.
+    # TODO(sam): refactor the 'benchmark' Sacred experiment so that it splits
+    # out the keys necessary to instantiate new environments from the keys
+    # necessary to load data (possibly even make a separate 'dataset' config
+    # ingredient for the latter). That way we can save just the env stuff in
+    # this function.
     color_space = auto_env.load_color_space()
-    venv = auto_env.make_vec_env()
+    venv = auto_env.load_vec_env()
     meta_dict = {
-        'benchmark_config': benchmark,
+        'benchmark_config': sacred_copy(benchmark),
         'action_space': venv.action_space,
         'observation_space': venv.observation_space,
         'color_space': color_space,
@@ -83,9 +85,13 @@ def run(out_file, seed, benchmark):
                     write_dict[key + '.pickle'] = array[i]
                 else:
                     # everything else gets stored with minimal array format
-                    # (the "tenbin" format from WebDataset)
                     assert isinstance(array[i], np.ndarray), type(array[i])
-                    write_dict[key + '.ten'] = array[i]
+                    # write_dict[key + '.ten'] = array[i]
+                    # FIXME(sam): tenbin currently (as of 2020-11-16) seems to
+                    # decode every array as a singleton list of arrays (i.e. it
+                    # converts arr -> [arr]). I can't figure out why it's doing
+                    # this, so I'm going to save things as pickles for now.
+                    write_dict[key + '.pickle'] = array[i]
             writer.write(write_dict)
 
 

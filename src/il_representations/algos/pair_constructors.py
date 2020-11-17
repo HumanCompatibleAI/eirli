@@ -98,29 +98,28 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
         # peek at first item in data iterator to create circular buffer, then
         # 'put it back' so we will encounter it again
         first_dict = next(data_iter)
-        obs_queue = _CircularBuffer(self.k-1, first_dict['obs'])
-        act_queue = _CircularBuffer(self.k, first_dict['act'])
+        obs_queue = _CircularBuffer(self.k, first_dict['obs'])
+        act_queue = _CircularBuffer(self.k, first_dict['acts'])
         data_iter = itertools.chain([first_dict], data_iter)
 
         for step_dict in data_iter:
-            if self.mode is None:
-                if obs_queue.full:
+            assert obs_queue.full == act_queue.full
+            if obs_queue.full:
+                if self.mode is None:
                     yield {
                         'context': obs_queue.get_oldest(),
                         'target': step_dict['obs'],
                         'extra_context': [],
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
-            elif self.mode == 'dynamics':
-                if obs_queue.full and act_queue.full:
+                elif self.mode == 'dynamics':
                     yield {
                         'context': obs_queue.get_oldest(),
                         'target': step_dict['obs'],
                         'extra_context': act_queue.concat_all(),
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
-            elif self.mode == 'inverse_dynamics':
-                if obs_queue.full and act_queue.full:
+                elif self.mode == 'inverse_dynamics':
                     yield {
                         'context': obs_queue.get_oldest(),
                         'target': step_dict['obs'],
@@ -128,7 +127,7 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
 
-            if step_dict['done']:
+            if step_dict['dones']:
                 timestep = 0
                 trajectory_ind += 1
                 obs_queue.reset()
@@ -137,4 +136,4 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 trajectory_ind += 1
 
             obs_queue.append(step_dict['obs'])
-            act_queue.append(step_dict['act'])
+            act_queue.append(step_dict['acts'])
