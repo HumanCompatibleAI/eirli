@@ -22,7 +22,9 @@ from il_representations.utils import TensorFrameWriter
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_test_ex = Experiment('il_test',
-                        ingredients=[env_cfg_ingredient, venv_opts_ingredient])
+                        ingredients=[
+                            env_cfg_ingredient, venv_opts_ingredient
+                        ])
 
 
 @il_test_ex.config
