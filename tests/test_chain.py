@@ -6,7 +6,7 @@ from ray import tune
 
 from il_representations import algos
 from il_representations.test_support.configuration import (
-    BENCHMARK_TEST_CONFIGS, CHAIN_CONFIG)
+    ENV_CFG_TEST_CONFIGS, CHAIN_CONFIG)
 from il_representations.scripts.pretrain_n_adapt import StagesToRun
 
 
@@ -19,8 +19,8 @@ def test_chain(chain_ex, file_observer):
             ray.shutdown()
 
 
-@pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
-def test_all_benchmarks(chain_ex, file_observer, benchmark_cfg):
+@pytest.mark.parametrize("env_cfg", ENV_CFG_TEST_CONFIGS)
+def test_all_benchmarks(chain_ex, file_observer, env_cfg):
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     # don't search over representation learner
     chain_config['spec']['repl']['algo'] \
