@@ -14,16 +14,32 @@ VENV_OPTS_TEST_CONFIG = {
 }
 ENV_DATA_TEST_CONFIG = {
     'atari_demo_paths': {
-        'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari',
-                                        'pong.npz'),
+        'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
+    },
+    'atari_processed_data_dirs': {
+        'PongNoFrameskip-v4': {
+            'demos': path.join(TEST_DATA_DIR, 'processed', 'atari', 'pong'),
+        },
     },
     'magical_demo_dirs': {
-        'MoveToRegion': path.join(TEST_DATA_DIR, 'magical',
-                                    'move-to-region'),
+        'MoveToRegion': path.join(TEST_DATA_DIR, 'magical', 'move-to-region'),
+    },
+    'magical_processed_data_dirs': {
+        'MoveToRegion': {
+            'demos':
+            path.join(TEST_DATA_DIR, 'processed', 'magical', 'move-to-region'),
+        },
     },
     'dm_control_demo_patterns': {
         'reacher-easy':
         path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
+    },
+    'dm_control_processed_data_dirs': {
+        'reacher-easy': {
+            'demos':
+            path.join(TEST_DATA_DIR, 'processed', 'dm_control',
+                      'reacher-easy'),
+        },
     },
 }
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
@@ -41,7 +57,7 @@ ENV_CFG_TEST_CONFIGS = [
     },
     {
         'benchmark_name': 'dm_control',
-        'dm_control_env': 'reacher-easy',
+        'dm_control_env_name': 'reacher-easy',
     },
 ]
 FAST_IL_TRAIN_CONFIG = {
@@ -61,8 +77,10 @@ FAST_IL_TRAIN_CONFIG = {
 REPL_SMOKE_TEST_CONFIG = {
     'pretrain_epochs': None,
     'pretrain_batches': 2,
-    'algo_params': {'representation_dim': 3, 'batch_size': 7},
-    'use_random_rollouts': False,
+    'algo_params': {
+        'representation_dim': 3,
+        'batch_size': 7,
+    },
 }
 CHAIN_CONFIG = {
     'spec': {
@@ -88,8 +106,8 @@ CHAIN_CONFIG = {
         # Ray has been mysteriously complaining about the amount of memory
         # available on CircleCI, even though the machines have heaps of RAM.
         # Setting sane defaults so this doesn't happen.
-        'memory': int(0.2*1e9),
-        'object_store_memory': int(0.2*1e9),
+        'memory': int(0.2 * 1e9),
+        'object_store_memory': int(0.2 * 1e9),
         'num_cpus': 2,
     },
     'il_train': {

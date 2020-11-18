@@ -1,7 +1,5 @@
 import logging
 
-from imitation.data import rollout
-from imitation.policies.base import RandomPolicy
 import numpy as np
 import sacred
 from sacred import Experiment
@@ -12,7 +10,7 @@ from il_representations import algos
 from il_representations.algos.representation_learner import \
     RepresentationLearner
 from il_representations.algos.utils import LinearWarmupCosine
-from il_representations.data.read_dataset import load_ilr_dataset
+from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
 
@@ -27,9 +25,9 @@ def default_config():
     # you identify runs in viskit.
     exp_ident = None
 
-    # FIXME(sam): refactor the config so that you have sensible defaults for
-    # this
-    data_path = None
+    # see docs for `load_new_style_ilr_dataset()` for more information on
+    # syntax for dataset_configs.
+    dataset_configs = [{'type': 'demos'}]
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
     n_envs = 1
@@ -89,8 +87,8 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(data_path, algo, algo_params, seed, pretrain_epochs, pretrain_batches,
-        torch_num_threads, _config):
+def run(dataset_configs, algo, algo_params, seed, pretrain_epochs,
+        pretrain_batches, torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
@@ -100,12 +98,7 @@ def run(data_path, algo, algo_params, seed, pretrain_epochs, pretrain_batches,
         algo = getattr(algos, algo)
 
     # setup environment & dataset
-    if data_path is None:
-        raise ValueError(
-            "representation learner experiment was provided with "
-            "'data_path=None'. data_path should be a string pointing "
-            "to a .tgz archive")
-    webdataset = load_ilr_dataset(data_path)
+    webdataset = auto.load_new_style_ilr_dataset(configs=dataset_configs)
     color_space = webdataset.meta['color_space']
     observation_space = webdataset.meta['observation_space']
     action_space = webdataset.meta['action_space']

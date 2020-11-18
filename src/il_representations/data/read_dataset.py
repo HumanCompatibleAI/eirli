@@ -28,19 +28,20 @@ class ILRDataset(wds.Dataset):
             first_item_name, first_item_data = first_item
             if first_item_name != '_metadata.meta.pickle':
                 raise ValueError(
-                    "data archive does not have '_metadata.meta.pickle' as its "
-                    "first file; was it produced with one of the mkdataset_* "
-                    "scripts?")
+                    "data archive does not have '_metadata.meta.pickle' as "
+                    "its first file; was it produced with one of the "
+                    "mkdataset_* scripts?")
             metadata = pickle.loads(first_item_data)
             self._meta = metadata
             # TODO(sam): maybe add a check to ensure that each produced item is
             # *not* another _metadata.meta.pickle file (which would be weird).
-            yield from data_iter
+            for item in data_iter:
+                if item[0] == '_metadata.meta.pickle':
+                    # skip metadata files form here on
+                    continue
+                yield item
 
-        # this only supports one data source because I'm not sure how to handle
-        # inconsistent metadata between data sources
-        assert len(urls) == 1, \
-            f"for now this only supports one data source (urls={urls!r})"
+        assert len(urls) >= 1, "this requires at least one url"
 
         if initial_pipeline is None:
             # group_by_keys is part of the default initial pipeline, so we
@@ -77,12 +78,11 @@ def strip_extensions(dataset):
         yield new_item
 
 
-def load_ilr_dataset(file_path):
-    abs_path = os.path.abspath(file_path)
+def load_ilr_datasets(file_paths):
     # wds doesn't use standard URL parser for some reason. I think they're just
     # looking for a file: prefix and then treating the rest of the string as a
     # file path.
-    url = 'file:' + abs_path
-    return ILRDataset([url]) \
+    urls = ['file:' + os.path.abspath(p) for p in file_paths]
+    return ILRDataset(urls) \
         .decode() \
         .pipe(strip_extensions)

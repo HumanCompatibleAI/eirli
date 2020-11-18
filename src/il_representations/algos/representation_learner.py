@@ -1,20 +1,25 @@
+import inspect
+import logging
 import os
+
+import imitation.util.logger as logger
+import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 import torch
-import inspect
-import numpy as np
-import imitation.util.logger as logger
-import logging
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.utils.data.dataloader import DataLoader, default_collate
+from torch.utils.tensorboard import SummaryWriter
+import webdataset.filters as wds_filters
 
-DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
-                            'batch_extender']
+from il_representations.algos.base_learner import BaseEnvironmentLearner
+from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
+
+DEFAULT_HARDCODED_PARAMS = [
+    'encoder', 'decoder', 'loss_calculator', 'augmenter',
+    'target_pair_constructor', 'batch_extender'
+]
 
 
 def get_default_args(func):
@@ -63,6 +68,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
+                 dataset_max_workers=min(4, os.cpu_count()),
                  scheduler_kwargs=None):
 
         super(RepresentationLearner, self).__init__(
@@ -85,6 +91,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.preprocess_extra_context = preprocess_extra_context
         self.preprocess_target = preprocess_target
         self.save_interval = save_interval
+        self.dataset_max_workers = dataset_max_workers
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -214,14 +221,25 @@ class RepresentationLearner(BaseEnvironmentLearner):
             "One of training_epochs or training_batches must be specified"
         assert not (training_epochs is not None and training_batches is not None), \
             "Only one of training_epochs or training_batches can be specified"
-        # Construct representation learning dataset of correctly paired (context, target) pairs
-        dataset = dataset.pipe(self.target_pair_constructor)
+        # Construct representation learning dataset of correctly paired
+        # (context, target) pairs
+        dataset.pipe(self.target_pair_constructor)
         if self.shuffle_batches:
-            dataset = dataset.shuffle(self.shuffle_buffer_size)
-        # Torch chokes when batch_size is a numpy int instead of a Python int,
-        # so we need to wrap the batch size in int() in case we're running
-        # under skopt (which uses numpy types).
-        dataloader = DataLoader(dataset, batch_size=int(self.batch_size))
+            dataset.shuffle(self.shuffle_buffer_size)
+        dataset.pipe(wds_filters.batched(
+            batchsize=int(self.batch_size), partial=True,
+            collation_fn=default_collate))
+
+        # do not start more workers than the number of shards
+        wds_workers = min(len(dataset.urls), self.dataset_max_workers)
+        assert wds_workers > 0
+        # TODO(sam): this isn't guaranteed to interleave data from different
+        # shards randomly. The optimal solution is to write a new
+        # IterableDataset that joins several individual datasets by taking a
+        # random number of samples from each. (or we could just have tiny,
+        # one-trajectory shards)
+        dataloader = DataLoader(dataset, num_workers=wds_workers,
+                                batch_size=None)
 
         loss_record = []
 
@@ -241,10 +259,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         while not training_complete:
             loss_meter = AverageMeter()
-            dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
 
-            for step, batch in enumerate(dataiter):
+            for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 

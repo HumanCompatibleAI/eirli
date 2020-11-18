@@ -31,7 +31,7 @@ def env_cfg_defaults():
     # ###########################
 
     dm_control_frame_stack = 3
-    dm_control_env = 'finger-spin'
+    dm_control_env_name = 'finger-spin'
     # mapping from short dm_control env names to complete Gym env names
     # registered by dm_control_envs.py
     # FIXME(sam): maybe get rid of this eventually, it doesn't save much time
@@ -159,28 +159,28 @@ def env_data_defaults():
     }
     dm_control_processed_data_dirs = {
         'finger-spin': {
-            'demos': 'data/processed/dm_control/demos/',
-            'random': 'data/processed/dm_control/random/',
+            'demos': 'data/processed/dm_control/demos/finger-spin/',
+            'random': 'data/processed/dm_control/random/finger-spin/',
         },
         'cheetah-run': {
-            'demos': 'data/processed/dm_control/demos/',
-            'random': 'data/processed/dm_control/random/',
+            'demos': 'data/processed/dm_control/demos/cheetah-run/',
+            'random': 'data/processed/dm_control/random/cheetah-run/',
         },
         'walker-walk': {
-            'demos': 'data/processed/dm_control/demos/',
-            'random': 'data/processed/dm_control/random/',
+            'demos': 'data/processed/dm_control/demos/walker-walk/',
+            'random': 'data/processed/dm_control/random/walker-walk/',
         },
         'cartpole-swingup': {
-            'demos': 'data/processed/dm_control/demos/',
-            'random': 'data/processed/dm_control/random/',
+            'demos': 'data/processed/dm_control/demos/cartpole-swingup/',
+            'random': 'data/processed/dm_control/random/cartpole-swingup/',
         },
         'reacher-easy': {
-            'demos': 'data/processed/dm_control/demos/',
-            'random': 'data/processed/dm_control/random/',
+            'demos': 'data/processed/dm_control/demos/reacher-easy/',
+            'random': 'data/processed/dm_control/random/reacher-easy/',
         },
         'ball-in-cup-catch': {
-            'demos': 'data/processed/dm_control/demos/',
-            'random': 'data/processed/dm_control/random/',
+            'demos': 'data/processed/dm_control/demos/ball-in-cup-catch/',
+            'random': 'data/processed/dm_control/random/ball-in-cup-catch/',
         },
     }
 
@@ -190,9 +190,9 @@ def env_data_defaults():
 
     atari_demo_paths = {
         'BreakoutNoFrameskip-v4':
-        "data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz",
+        'data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
         'PongNoFrameskip-v4':
-        "data/atari/pong.npz",
+        'data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
     }
     atari_processed_data_dirs = {
         'BreakoutNoFrameskip-v4': {

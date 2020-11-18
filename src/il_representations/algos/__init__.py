@@ -236,7 +236,7 @@ class DynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
                                      encoder_kwargs=dict(action_space=kwargs['action_space'], stochastic=False),
-                                     decoder_kwargs=dict(observation_space=kwargs['action_space'],
+                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
                                                          encoder_arch_key=encoder_cls_key,
                                                          action_representation_dim=action_representation_dim),
                                      preprocess_extra_context=False)
@@ -299,7 +299,7 @@ class ActionConditionedTemporalVAE(RepresentationLearner):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
-        action_representation_dim = get_action_representation_dim(env.action_space, encoder_kwargs)
+        action_representation_dim = get_action_representation_dim(kwargs['action_space'], encoder_kwargs)
 
         algo_hardcoded_kwargs = dict(encoder=TargetStoringActionEncoder,
                                      decoder=PixelDecoder,
