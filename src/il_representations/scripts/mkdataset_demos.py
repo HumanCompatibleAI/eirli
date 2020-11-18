@@ -15,6 +15,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
+from il_representations.envs.utils import serialize_gym_space
 from il_representations.scripts.utils import sacred_copy
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
@@ -91,8 +92,8 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, custom_out_file_path,
     venv = auto_env.load_vec_env()
     meta_dict = {
         'env_cfg': env_cfg_stripped,
-        'action_space': venv.action_space,
-        'observation_space': venv.observation_space,
+        'action_space': serialize_gym_space(venv.action_space),
+        'observation_space': serialize_gym_space(venv.observation_space),
         'color_space': color_space,
     }
     venv.close()
