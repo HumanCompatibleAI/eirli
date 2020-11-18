@@ -349,7 +349,7 @@ def cfg_use_dm_control():
         # walker-walk is difficult relative to other dm-control tasks that we
         # use, but RL solves it quickly. Plateaus around 850-900 reward (see
         # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#).
-        'dm_control_env': 'reacher-easy',
+        'dm_control_env_name': 'reacher-easy',
     }
 
     _ = locals()
@@ -419,7 +419,6 @@ def cfg_tune_moco():
     # the following settings are algorithm-specific
     repl = {
         'algo': 'MoCo',
-        'use_random_rollouts': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 1000,
@@ -521,7 +520,6 @@ def cfg_tune_cpc():
     # the following settings are algorithm-specific
     repl = {
         'algo': 'TemporalCPC',
-        'use_random_rollouts': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 16,
@@ -629,7 +627,6 @@ def cfg_tune_dynamics():
     # the following settings are algorithm-specific
     repl = {
         'algo': 'DynamicsPrediction',
-        'use_random_rollouts': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 250,
@@ -682,7 +679,6 @@ def cfg_tune_inverse_dynamics():
     # the following settings are algorithm-specific
     repl = {
         'algo': 'InverseDynamicsPrediction',
-        'use_random_rollouts': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 250,
@@ -795,7 +791,7 @@ def cfg_bench_short_sweep_dm_control():
         [
             {
                 'benchmark_name': 'dm_control',
-                'dm_control_env': dm_control_env_name
+                'dm_control_env_name': dm_control_env_name
             } for dm_control_env_name in [
                 # to gauge how hard these are, see
                 # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
@@ -838,7 +834,7 @@ def cfg_bench_micro_sweep_dm_control():
         [
             {
                 'benchmark_name': 'dm_control',
-                'dm_control_env': dm_control_env_name
+                'dm_control_env_name': dm_control_env_name
             } for dm_control_env_name in ['finger-spin', 'cheetah-run', 'reacher-easy']
         ]))
 
@@ -864,7 +860,7 @@ def cfg_bench_one_task_dm_control():
     """Just one simple dm_control config."""
     benchmark = {
         'benchmark_name': 'dm_control',
-        'dm_control_env': 'cheetah-run',
+        'dm_control_env_name': 'cheetah-run',
     }
 
     _ = locals()

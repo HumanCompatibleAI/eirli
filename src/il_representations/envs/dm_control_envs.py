@@ -104,11 +104,11 @@ def _get_data_cfg(dm_control_demo_patterns, data_root):
 
 
 @env_cfg_ingredient.capture
-def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
+def load_dataset_dm_control(dm_control_env_name, dm_control_full_env_names,
                             dm_control_frame_stack, n_traj=None):
     dm_control_demo_patterns, data_root = _get_data_cfg()
     # load data from all relevant paths
-    data_pattern = dm_control_demo_patterns[dm_control_env]
+    data_pattern = dm_control_demo_patterns[dm_control_env_name]
     user_pattern = os.path.expanduser(data_pattern)
     data_paths = glob.glob(os.path.join(data_root, user_pattern))
     loaded_trajs = []

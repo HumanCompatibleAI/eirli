@@ -39,7 +39,7 @@ class IdentityPairConstructor:
                 'extra_context': [],
                 'traj_ts_ids': [traj_ind, timestep],
             }
-            if step_dict['done']:
+            if step_dict['dones']:
                 traj_ind += 1
                 timestep = 0
             else:
@@ -122,8 +122,8 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 elif self.mode == 'inverse_dynamics':
                     yield {
                         'context': obs_queue.get_oldest(),
-                        'target': step_dict['obs'],
-                        'extra_context': act_queue.concat_all(),
+                        'target': act_queue.concat_all(),
+                        'extra_context': step_dict['obs'],
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
                 else:
@@ -135,7 +135,7 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 obs_queue.reset()
                 act_queue.reset()
             else:
-                trajectory_ind += 1
+                timestep += 1
 
             obs_queue.append(step_dict['obs'])
             act_queue.append(step_dict['acts'])
