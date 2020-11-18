@@ -16,12 +16,14 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import skopt
 
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient,
+                                            venv_opts_ingredient)
+from il_representations.scripts import experimental_conditions  # noqa: F401
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
-from il_representations.scripts import experimental_conditions  # noqa: F401
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -31,7 +33,9 @@ chain_ex = Experiment(
         represent_ex,
         il_train_ex,
         il_test_ex,
-        benchmark_ingredient,
+        env_cfg_ingredient,
+        env_data_ingredient,
+        venv_opts_ingredient,
     ])
 cwd = os.getcwd()
 
@@ -360,10 +364,9 @@ def cfg_tune_augmentations():
     metric = 'return_mean'
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
-        'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 1000, # TODO unsure if this is too many
+        'pretrain_batches': 1000,  # TODO unsure if this is too many
 
     }
 
@@ -389,7 +392,6 @@ def cfg_tune_vae_learning_rate():
     metric = 'return_mean'
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
-        'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 1000, # TODO unsure if this is too many
@@ -418,7 +420,6 @@ def cfg_tune_moco():
     repl = {
         'algo': 'MoCo',
         'use_random_rollouts': False,
-        'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 1000,
@@ -521,7 +522,6 @@ def cfg_tune_cpc():
     repl = {
         'algo': 'TemporalCPC',
         'use_random_rollouts': False,
-        'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 16,
@@ -630,7 +630,6 @@ def cfg_tune_dynamics():
     repl = {
         'algo': 'DynamicsPrediction',
         'use_random_rollouts': False,
-        'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 250,
@@ -684,7 +683,6 @@ def cfg_tune_inverse_dynamics():
     repl = {
         'algo': 'InverseDynamicsPrediction',
         'use_random_rollouts': False,
-        'ppo_finetune': False,
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
         'pretrain_batches': 250,
@@ -876,7 +874,6 @@ def cfg_bench_one_task_dm_control():
 @chain_ex.named_config
 def cfg_base_repl_5000():
     repl = {
-        'ppo_finetune': False,
         'pretrain_batches': 5000,
         'pretrain_epochs': None,
     }
@@ -888,7 +885,6 @@ def cfg_base_repl_5000():
 @chain_ex.named_config
 def cfg_base_repl_10000():
     repl = {
-        'ppo_finetune': False,
         'pretrain_batches': 10000,
         'pretrain_epochs': None,
     }

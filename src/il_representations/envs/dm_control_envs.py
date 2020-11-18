@@ -10,7 +10,8 @@ import dmc2gym
 import gym
 import numpy as np
 
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient)
 
 IMAGE_SIZE = 100
 _REGISTERED = False
@@ -72,7 +73,7 @@ def register_dmc_envs():
                              frame_skip=8))
 
 
-@benchmark_ingredient.capture
+@env_cfg_ingredient.capture
 def _stack_obs_oldest_first(obs_arr, dm_control_frame_stack):
     """Takes an array of shape [T, C, H, W] and stacks the entries to produce a
     new array of shape [T, C*frame_stack, H, W] with frames stacked along the
@@ -96,10 +97,16 @@ def _stack_obs_oldest_first(obs_arr, dm_control_frame_stack):
     return out_sequence
 
 
-@benchmark_ingredient.capture
+@env_data_ingredient.capture
+def _get_data_cfg(dm_control_demo_patterns, data_root):
+    # workaround for Sacred issue #206
+    return dm_control_demo_patterns, data_root
+
+
+@env_cfg_ingredient.capture
 def load_dataset_dm_control(dm_control_env, dm_control_full_env_names,
-                            dm_control_demo_patterns, dm_control_frame_stack,
-                            n_traj, data_root):
+                            dm_control_frame_stack, n_traj=None):
+    dm_control_demo_patterns, data_root = _get_data_cfg()
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[dm_control_env]
     user_pattern = os.path.expanduser(data_pattern)
