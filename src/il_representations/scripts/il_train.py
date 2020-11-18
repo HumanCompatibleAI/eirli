@@ -20,7 +20,9 @@ from torch import nn
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
 import il_representations.envs.auto as auto_env
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient,
+                                            venv_opts_ingredient)
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
@@ -67,7 +69,8 @@ def gail_defaults():
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_train_ex = Experiment('il_train', ingredients=[
-    benchmark_ingredient, bc_ingredient, gail_ingredient,
+    env_cfg_ingredient, venv_opts_ingredient, env_data_ingredient,
+    bc_ingredient, gail_ingredient,
 ])
 
 
@@ -91,7 +94,7 @@ def default_config():
     freeze_encoder = False  # noqa: F841
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
-    benchmark = dict(  # noqa: F841
+    venv_opts = dict(  # noqa: F841
         venv_parallel=True,
         n_envs=16,
     )
@@ -261,8 +264,8 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(seed, algo, benchmark, encoder_path, freeze_encoder,
-          torch_num_threads, _config):
+def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
+          _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)

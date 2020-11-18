@@ -1,6 +1,4 @@
-from glob import glob
 import logging
-import os
 
 from imitation.data import rollout
 from imitation.policies.base import RandomPolicy
@@ -8,8 +6,6 @@ import numpy as np
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.ppo import PPO
 import torch
 
 from il_representations import algos
@@ -17,12 +13,12 @@ from il_representations.algos.representation_learner import \
     RepresentationLearner
 from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.data.read_dataset import load_ilr_dataset
-from il_representations.envs.config import benchmark_ingredient
-from il_representations.policy_interfacing import EncoderFeatureExtractor
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient)
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-represent_ex = Experiment('repl',
-                          ingredients=[benchmark_ingredient])
+represent_ex = Experiment(
+    'repl', ingredients=[env_cfg_ingredient, env_data_ingredient])
 
 
 @represent_ex.config
@@ -37,26 +33,26 @@ def default_config():
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
     n_envs = 1
-    demo_timesteps = 5000
-    ppo_timesteps = 1000
     pretrain_epochs = None
     pretrain_batches = 10000
-    algo_params = {'representation_dim': 128,
-                   'optimizer': torch.optim.Adam,
-                   'optimizer_kwargs': {'lr': 1e-4},
-                   'augmenter_kwargs': {
-                                        # augmenter_spec is a comma-separated list of enabled augmentations.
-                                        # See `help(imitation.augment.StandardAugmentations)` for available
-                                        # augmentations.
-                                        "augmenter_spec": "translate,rotate,gaussian_blur",
-                                    }}
-    ppo_finetune = False
+    algo_params = {
+        'representation_dim': 128,
+        'optimizer': torch.optim.Adam,
+        'optimizer_kwargs': {'lr': 1e-4},
+        'augmenter_kwargs': {
+            # augmenter_spec is a comma-separated list of enabled augmentations.
+            # See `help(imitation.augment.StandardAugmentations)` for available
+            # augmentations.
+            "augmenter_spec": "translate,rotate,gaussian_blur",
+        },
+    }
     device = "auto"
     # this is useful for constructing tests where we want to truncate the
     # dataset to be small
 
     _ = locals()
     del _
+
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
@@ -71,31 +67,16 @@ def ceb_breakout():
     algo = algos.FixedVarianceCEB
     pretrain_batches = None
     pretrain_batches = 5
-    demo_timesteps = None
-    ppo_finetune = False
     _ = locals()
     del _
 
-@represent_ex.named_config
-def tiny_epoch():
-    demo_timesteps=5000
-    _ = locals()
-    del _
-
-@represent_ex.capture
-def get_random_traj(venv, demo_timesteps):
-    random_policy = RandomPolicy(venv.observation_space, venv.action_space)
-    trajectories = rollout.generate_trajectories(
-        random_policy, venv, rollout.min_timesteps(demo_timesteps))
-    flat_traj = rollout.flatten_trajectories(trajectories)
-    # "infos" and "next_obs" keys are also available
-    return {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}
 
 @represent_ex.named_config
 def target_projection():
     algo = algos.FixedVarianceTargetProjectedCEB
     _ = locals()
     del _
+
 
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
@@ -108,9 +89,8 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, data_path, algo, algo_params, seed, ppo_timesteps,
-        ppo_finetune, pretrain_epochs, pretrain_batches, torch_num_threads,
-        _config):
+def run(data_path, algo, algo_params, seed, pretrain_epochs, pretrain_batches,
+        torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
@@ -146,26 +126,6 @@ def run(benchmark, data_path, algo, algo_params, seed, ppo_timesteps,
     # setup model
     loss_record, most_recent_encoder_path = model.learn(
         webdataset, pretrain_epochs, pretrain_batches)
-    if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
-        raise NotImplementedError("PPO fine-tuning is not currently supported")
-
-        # encoder_checkpoint = model.encoder_checkpoints_path
-        # all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
-        # latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        # encoder_feature_extractor_kwargs = {
-        #     'features_dim': algo_params["representation_dim"],
-        #     'encoder_path': os.path.abspath(latest_checkpoint)}
-
-        # # TODO figure out how to not have to set `ortho_init` to False for
-        # # the whole policy
-        # policy_kwargs = {
-        #     'features_extractor_class': EncoderFeatureExtractor,
-        #     'features_extractor_kwargs': encoder_feature_extractor_kwargs,
-        #     'ortho_init': False}
-        # ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
-        #                 verbose=1, policy_kwargs=policy_kwargs)
-        # ppo_model = initialize_non_features_extractor(ppo_model)
-        # ppo_model.learn(total_timesteps=ppo_timesteps)
 
     return {
         'encoder_path': most_recent_encoder_path,

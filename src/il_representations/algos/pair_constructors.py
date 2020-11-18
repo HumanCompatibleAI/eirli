@@ -126,6 +126,8 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                         'extra_context': act_queue.concat_all(),
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
+                else:
+                    assert False, f"mode {self.mode} not recognised"
 
             if step_dict['dones']:
                 timestep = 0

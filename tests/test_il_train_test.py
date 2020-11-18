@@ -2,17 +2,18 @@ import os
 
 import pytest
 
-from il_representations.test_support.configuration import (BENCHMARK_TEST_CONFIGS,
-                                                           FAST_IL_TRAIN_CONFIG)
+from il_representations.test_support.configuration import (
+    ENV_CFG_TEST_CONFIGS, ENV_DATA_VENV_OPTS_TEST_CONFIG, FAST_IL_TRAIN_CONFIG,
+    VENV_OPTS_TEST_CONFIG)
 
 
-@pytest.mark.parametrize("benchmark_cfg", BENCHMARK_TEST_CONFIGS)
+@pytest.mark.parametrize("env_cfg", ENV_CFG_TEST_CONFIGS)
 @pytest.mark.parametrize("algo", ["bc", "gail"])
-def test_il_train_test(benchmark_cfg, algo, il_train_ex, il_test_ex,
+def test_il_train_test(env_cfg, algo, il_train_ex, il_test_ex,
                        file_observer):
     """Simple smoke test for training/testing IL code."""
     common_cfg = {
-        'benchmark': benchmark_cfg,
+        'env_cfg': env_cfg,
         'device_name': 'cpu',
     }
 
@@ -23,6 +24,7 @@ def test_il_train_test(benchmark_cfg, algo, il_train_ex, il_test_ex,
         'final_pol_name': final_pol_name,
         # these defaults make training cheap
         **FAST_IL_TRAIN_CONFIG,
+        **ENV_DATA_VENV_OPTS_TEST_CONFIG,
         **common_cfg,
     })
     # FIXME(sam): same comment as elsewhere: should have a better way of
@@ -35,5 +37,6 @@ def test_il_train_test(benchmark_cfg, algo, il_train_ex, il_test_ex,
         config_updates={
             'n_rollouts': 2,
             'policy_path': policy_path,
+            'venv_opts': VENV_OPTS_TEST_CONFIG,
             **common_cfg,
         })

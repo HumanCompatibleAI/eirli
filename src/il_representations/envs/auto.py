@@ -9,7 +9,8 @@ from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
 
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.envs.atari_envs import load_dataset_atari
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            venv_opts_ingredient)
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
@@ -17,7 +18,7 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 ERROR_MESSAGE = "no support for benchmark_name={benchmark['benchmark_name']!r}"
 
 
-@benchmark_ingredient.capture
+@env_cfg_ingredient.capture
 def load_dataset(benchmark_name):
     if benchmark_name == 'magical':
         dataset_dict = load_dataset_magical()
@@ -30,12 +31,13 @@ def load_dataset(benchmark_name):
 
     num_transitions = len(dataset_dict['dones'].flatten())
     num_dones = dataset_dict['dones'].flatten().sum()
-    logging.info(f'Loaded dataset with {num_transitions} transitions. {num_dones} of these transitions have done == True')
+    logging.info(f'Loaded dataset with {num_transitions} transitions. '
+                 f'{num_dones} of these transitions have done == True')
 
     return dataset_dict
 
 
-@benchmark_ingredient.capture
+@env_cfg_ingredient.capture
 def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
                      dm_control_env):
     if benchmark_name == 'magical':
@@ -47,12 +49,19 @@ def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
-@benchmark_ingredient.capture
+@venv_opts_ingredient.capture
+def _get_venv_opts(n_envs, venv_parallel):
+    # helper to extract options from venv_opts, since we can't have two
+    # captures on one function (see Sacred issue #206)
+    return n_envs, venv_parallel
+
+
+@env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
-                 dm_control_env, dm_control_frame_stack, venv_parallel,
-                 n_envs):
+                 dm_control_env, dm_control_frame_stack):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
+    n_envs, venv_parallel = _get_venv_opts()
     gym_env_name = get_gym_env_name()
     if benchmark_name == 'magical':
         return make_vec_env(gym_env_name,
@@ -91,7 +100,7 @@ def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
-@benchmark_ingredient.capture
+@env_cfg_ingredient.capture
 def load_color_space(benchmark_name):
     color_spaces = {
         'magical': ColorSpace.RGB,
