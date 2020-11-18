@@ -1,6 +1,5 @@
 runs
 test_observer
-tests
 output
 *_runs
 *.pyc
