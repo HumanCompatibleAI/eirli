@@ -11,7 +11,7 @@ from tqdm import tqdm
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data.write_dataset import (get_meta_dict,
                                                    get_out_file_map,
-                                                   write_trajectories)
+                                                   write_frames)
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -19,9 +19,10 @@ from il_representations.envs.config import (env_cfg_ingredient,
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 mkdataset_demos_ex = Experiment('mkdataset_demos',
-                                ingredients=[env_cfg_ingredient,
-                                             env_data_ingredient,
-                                             venv_opts_ingredient])
+                                ingredients=[
+                                    env_cfg_ingredient, env_data_ingredient,
+                                    venv_opts_ingredient
+                                ])
 
 
 @mkdataset_demos_ex.config
@@ -60,19 +61,19 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
         # write trajectories in default order
         item_order = np.arange(n_items)
 
-    def traj_gen():
+    def frame_gen():
         for idx in item_order:
             sub_dict = {}
             for key, arr in dataset_dict.items():
                 sub_dict[key] = arr[idx]
             yield sub_dict
 
-    traj_iter = traj_gen()
+    frame_iter = frame_gen()
     if os.isatty(sys.stdout.fileno()):
-        traj_iter = tqdm(traj_iter, desc='steps', total=n_items)
+        frame_iter = tqdm(frame_iter, desc='steps', total=n_items)
 
-    logging.info(f"Will write {n_items} outputs to '{out_file_path}'")
-    write_trajectories(out_file_path, meta_dict, traj_iter)
+    logging.info(f"Will write {n_items} frames to '{out_file_path}'")
+    write_frames(out_file_path, meta_dict, frame_iter)
 
 
 if __name__ == '__main__':
