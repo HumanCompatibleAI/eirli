@@ -65,10 +65,7 @@ def get_meta_dict(benchmark_name, _config):
     return meta_dict
 
 
-def write_trajectories(out_file_path,
-                       meta_dict,
-                       trajectory_dicts,
-                       n_traj=None):
+def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None):
     out_dir = os.path.dirname(out_file_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
@@ -77,11 +74,11 @@ def write_trajectories(out_file_path,
         # first write _metadata.meta.pickle containing the benchmark config
         writer.dwrite(key='_metadata', meta_pickle=meta_dict)
         # now write each frame in each trajectory
-        for traj_num, traj_dict in enumerate(trajectory_dicts):
+        for frame_num, frame_dict in enumerate(frame_dicts):
             write_dict = {
-                '__key__': 'frame_%03d' % traj_num,
-                'frame.pickle': traj_num
+                '__key__': 'frame_%03d' % frame_num,
+                'frame.pickle': frame_num
             }
-            for key, array in traj_dict.items():
+            for key, array in frame_dict.items():
                 write_dict[key + '.pickle'] = array
             writer.write(write_dict)

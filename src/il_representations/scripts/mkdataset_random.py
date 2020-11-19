@@ -14,7 +14,7 @@ from tqdm import tqdm
 from il_representations.algos.utils import set_global_seeds
 from il_representations.data.write_dataset import (get_meta_dict,
                                                    get_out_file_map,
-                                                   write_trajectories)
+                                                   write_frames)
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -55,7 +55,7 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
     timestep_ctr = 0
     traj_ctr = 0
 
-    def traj_iter():
+    def frame_iter():
         nonlocal timestep_ctr, traj_ctr
         if os.isatty(sys.stdout.fileno()):
             prog_bar = tqdm(total=n_timesteps_min, desc='steps')
@@ -73,27 +73,29 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
                 obs = traj.obs[:-1]
                 next_obs = traj.obs[1:]
                 T = len(obs)
+                assert T > 0, "empty trajectory?"
                 dones = np.zeros((T, ), dtype='int64')
                 dones[-1] = 1
-                yield {
-                    'obs': obs,
-                    'next_obs': next_obs,
-                    'acts': traj.acts,
-                    'infos': traj.infos,
-                    'rews': traj.rews,
-                    'dones': dones,
-                }
+                for idx in range(T):
+                    yield {
+                        'obs': obs[idx],
+                        'next_obs': next_obs[idx],
+                        'acts': traj.acts[idx],
+                        'infos': traj.infos[idx],
+                        'rews': traj.rews[idx],
+                        'dones': dones[idx],
+                    }
 
-                assert T > 0  # to ensure forward progress
-                timestep_ctr += T
+                    timestep_ctr += 1
+                    if prog_bar is not None:
+                        prog_bar.update(1)
+
                 traj_ctr += 1
-                if prog_bar is not None:
-                    prog_bar.update(T)
 
     logging.info(
         f"Will write >={n_timesteps_min} timesteps to '{out_file_path}'")
     start = time.time()
-    write_trajectories(out_file_path, meta_dict, traj_iter())
+    write_frames(out_file_path, meta_dict, frame_iter())
     elapsed = time.time() - start
     logging.info(
         f'Done, wrote {timestep_ctr} timesteps and {traj_ctr} trajectories '
