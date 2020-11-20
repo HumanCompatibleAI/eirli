@@ -4,6 +4,7 @@ import os
 from sacred import Ingredient
 
 env_cfg_ingredient = Ingredient('env_cfg')
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control"}
 
 
 @env_cfg_ingredient.config
@@ -12,14 +13,14 @@ def env_cfg_defaults():
     Include environment names and benchmark-specific settings (e.g. observation
     preprocessing)."""
 
-    # set this to "atari", "magical", "dm_control"
+    # set this to one of the options in ALL_BENCHMARK_NAMES
     benchmark_name = 'dm_control'
     # format for env_name depends in benchmark:
     # - MAGICAL: use env name prefixes like MoveToRegion, ClusterShape, etc.
     # - dm_control: in dm_control parlance, use [domain name]-[task name], like
     #  'finger-spin', 'cheetah-run', etc.
     # - Atari: use fully qualified Gym names (e.g. PongNoFrameskip-v4)
-    env_name = 'finger-spin'
+    task_name = 'finger-spin'
 
     # #################################
     # MAGICAL-specific config variables

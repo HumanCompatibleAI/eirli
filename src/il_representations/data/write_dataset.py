@@ -5,7 +5,8 @@ import os
 import webdataset as wds
 
 import il_representations.envs.auto as auto_env
-from il_representations.envs.config import (env_cfg_ingredient,
+from il_representations.envs.config import (ALL_BENCHMARK_NAMES,
+                                            env_cfg_ingredient,
                                             env_data_ingredient)
 from il_representations.envs.utils import serialize_gym_space
 from il_representations.scripts.utils import sacred_copy
@@ -29,9 +30,8 @@ def get_out_file_map(benchmark_name, task_name):
 def get_meta_dict(benchmark_name, _config):
     # figure out what config keys to keep
     # (we remove keys for benchmarks other than the current one)
-    all_env_names = {'magical', 'dm_control', 'atari'}
-    other_env_names = all_env_names - {benchmark_name}
-    assert len(other_env_names) == len(all_env_names) - 1
+    other_env_names = ALL_BENCHMARK_NAMES - {benchmark_name}
+    assert len(other_env_names) == len(ALL_BENCHMARK_NAMES) - 1
     env_cfg_copy = sacred_copy(_config)
     env_cfg_stripped = {
         k: v
