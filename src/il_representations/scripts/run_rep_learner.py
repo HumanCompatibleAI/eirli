@@ -77,6 +77,20 @@ def ceb_breakout():
     del _
 
 
+@represent_ex.named_config
+def expert_demos():
+    dataset_configs = [{'type': 'demos'}]
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def random_demos():
+    dataset_configs = [{'type': 'random'}]
+    _ = locals()
+    del _
+
+
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
     # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other
