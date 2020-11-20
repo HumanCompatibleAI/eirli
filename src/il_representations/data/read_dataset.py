@@ -2,9 +2,10 @@
 
 import os
 import pickle
+import warnings
 
 import numpy as np
-from torch.utils.data import IterableDataset, get_worker_info
+from torch.utils.data import IterableDataset
 import webdataset as wds
 from webdataset.dataset import group_by_keys
 
@@ -18,7 +19,7 @@ class ILRDataset(wds.Dataset):
       useful for storing dataset-global metadata.
     - (possibly some other stuff, I haven't figured it out yet)
     """
-    _meta = None  # this will be set by __init__.new_pipeline
+    _meta = None  # this will be set by __init__.meta_pipeline
 
     def __init__(self, urls, *args, initial_pipeline=None, **kwargs):
         def meta_pipeline(data_iter):
@@ -35,11 +36,14 @@ class ILRDataset(wds.Dataset):
                     "mkdataset_* scripts?")
             metadata = pickle.loads(first_item_data)
             self._meta = metadata
-            # TODO(sam): maybe add a check to ensure that each produced item is
-            # *not* another _metadata.meta.pickle file (which would be weird).
             for item in data_iter:
                 if item[0] == '_metadata.meta.pickle':
                     # skip metadata files form here on
+                    new_meta = pickle.loads(item[1])
+                    if new_meta != self._meta:
+                        warnings.warn(
+                            "Dataset has second metadata object, not equal "
+                            "to first: {new_meta!r} != {self._meta!r}")
                     continue
                 yield item
 

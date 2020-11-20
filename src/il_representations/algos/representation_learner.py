@@ -217,14 +217,22 @@ class RepresentationLearner(BaseEnvironmentLearner):
         :param dataset:
         :return:
         """
+        # For each single-task dataset in the `datasets` list, we first apply a
+        # target pair constructor to create targets from the incoming stream of
+        # observations. We can then optionally apply a shuffler that retains a
+        # small pool of constructed targets in memory and yields
+        # randomly-selected items from that pool (this approximates
+        # full-dataset shuffling without having to read the whole dataset into
+        # memory).
         for sub_ds in datasets:
             # Construct representation learning dataset of correctly paired
             # (context, target) pairs
             sub_ds.pipe(self.target_pair_constructor)
             if self.shuffle_batches:
-                # TODO(sam): if we're low on memory due to shuffle buffer memory
-                # consumption, then consider shuffling *after* interleaving (more
-                # complicated, but also takes up less memory).
+                # TODO(sam): if we're low on memory due to shuffle buffer
+                # memory consumption, then consider shuffling *after*
+                # interleaving (more complicated, but also takes up less
+                # memory).
                 sub_ds.shuffle(self.shuffle_buffer_size)
 
         if not self.shuffle_batches:
@@ -262,6 +270,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
 
+            items_seen = 0
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
@@ -322,9 +331,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('batches_trained', batches_trained)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
+                items_seen += len(contexts)
 
             assert batches_trained > 0, \
                 "went through training loop with no batches---empty dataset?"
+            if epoch_num == 0:
+                logging.debug(f"Epoch yielded {items_seen} data points "
+                              f"({step + 1} batches)")
 
             if self.scheduler is not None:
                 self.scheduler.step()
