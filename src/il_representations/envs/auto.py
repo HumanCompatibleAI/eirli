@@ -43,14 +43,13 @@ def load_dataset(benchmark_name, n_traj=None):
 
 
 @env_cfg_ingredient.capture
-def get_gym_env_name(benchmark_name, atari_env_id, dm_control_full_env_names,
-                     dm_control_env_name):
+def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
     if benchmark_name == 'magical':
         return get_env_name_magical()
     elif benchmark_name == 'dm_control':
-        return dm_control_full_env_names[dm_control_env_name]
+        return dm_control_full_env_names[task_name]
     elif benchmark_name == 'atari':
-        return atari_env_id
+        return task_name
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -62,7 +61,7 @@ def _get_venv_opts(n_envs, venv_parallel):
 
 
 @env_cfg_ingredient.capture
-def load_vec_env(benchmark_name, atari_env_id, dm_control_full_env_names,
+def load_vec_env(benchmark_name, dm_control_full_env_names,
                  dm_control_frame_stack):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
@@ -125,9 +124,8 @@ def load_new_style_ilr_datasets(configs, processed_data_dirs):
           those defaults need to be overridden. For instance, if
           `env_cfg_ingredient` was configured with
           `benchmark_name="dm_control"`, then you could set `configs =
-          [{"type": "random", "env_cfg": {"dm_control_env_name":
-          "finger_spin"}}]` to use only rollouts from the `finger-spin`
-          environment.
+          [{"type": "random", "env_cfg": {"task_name": "finger_spin"}}]` to use
+          only rollouts from the `finger-spin` dm_control environment.
 
     (all other args are taken from env_data_ingredient)"""
     # by default we load demos for the configured base environment
@@ -150,17 +148,8 @@ def load_new_style_ilr_datasets(configs, processed_data_dirs):
         data_type = config['type']
         env_cfg = config['env_cfg']
         benchmark_name = env_cfg["benchmark_name"]
-
-        if benchmark_name == "magical":
-            dd_key = env_cfg['magical_env_prefix']
-        elif benchmark_name == "dm_control":
-            dd_key = env_cfg['dm_control_env_name']
-        elif benchmark_name == "atari":
-            dd_key = env_cfg['atari_env_id']
-        else:
-            raise NotImplementedError(f'cannot handle {benchmark_name}')
-
-        data_root = processed_data_dirs[benchmark_name][dd_key][data_type]
+        task_key = env_cfg['task_name']
+        data_root = processed_data_dirs[benchmark_name][task_key][data_type]
 
         tar_files = glob.glob(os.path.join(data_root, "*.tgz"))
         if len(tar_files) == 0:

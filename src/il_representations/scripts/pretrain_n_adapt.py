@@ -350,7 +350,7 @@ def cfg_use_magical():
         # MatchRegions is of intermediate difficulty
         # (TODO(sam): allow MAGICAL to load data from _all_ tasks at once, so
         # we can try multi-task repL)
-        'magical_env_prefix': 'MatchRegions',
+        'task_name': 'MatchRegions',
         # we really need magical_remove_null_actions=True for BC; for RepL it
         # shouldn't matter so much (for action-based RepL methods)
         'magical_remove_null_actions': False,
@@ -367,7 +367,7 @@ def cfg_use_dm_control():
         # walker-walk is difficult relative to other dm-control tasks that we
         # use, but RL solves it quickly. Plateaus around 850-900 reward (see
         # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#).
-        'dm_control_env_name': 'reacher-easy',
+        'task_name': 'reacher-easy',
     }
 
     _ = locals()
@@ -786,7 +786,7 @@ def cfg_bench_short_sweep_magical():
         [
             {
                 'benchmark_name': 'magical',
-                'magical_env_prefix': magical_env_name,
+                'task_name': magical_env_name,
                 'magical_remove_null_actions': True,
             } for magical_env_name in [
                 'MoveToCorner',
@@ -812,7 +812,7 @@ def cfg_bench_short_sweep_dm_control():
         [
             {
                 'benchmark_name': 'dm_control',
-                'dm_control_env_name': dm_control_env_name
+                'task_name': dm_control_env_name
             } for dm_control_env_name in [
                 # to gauge how hard these are, see
                 # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
@@ -838,7 +838,7 @@ def cfg_bench_micro_sweep_magical():
         [
             {
                 'benchmark_name': 'magical',
-                'magical_env_prefix': magical_env_name,
+                'task_name': magical_env_name,
                 'magical_remove_null_actions': True,
             } for magical_env_name in ['MoveToRegion', 'MatchRegions', 'MoveToCorner']
         ]))
@@ -855,7 +855,7 @@ def cfg_bench_micro_sweep_dm_control():
         [
             {
                 'benchmark_name': 'dm_control',
-                'dm_control_env_name': dm_control_env_name
+                'task_name': dm_control_env_name
             } for dm_control_env_name in ['finger-spin', 'cheetah-run', 'reacher-easy']
         ]))
 
@@ -868,7 +868,7 @@ def cfg_bench_one_task_magical():
     """Just one simple MAGICAL config."""
     env_cfg = {
         'benchmark_name': 'magical',
-        'magical_env_prefix': 'MatchRegions',
+        'task_name': 'MatchRegions',
         'magical_remove_null_actions': True,
     }
 
@@ -881,7 +881,7 @@ def cfg_bench_one_task_dm_control():
     """Just one simple dm_control config."""
     env_cfg = {
         'benchmark_name': 'dm_control',
-        'dm_control_env_name': 'cheetah-run',
+        'task_name': 'cheetah-run',
     }
 
     _ = locals()

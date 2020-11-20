@@ -14,24 +14,28 @@ def env_cfg_defaults():
 
     # set this to "atari", "magical", "dm_control"
     benchmark_name = 'dm_control'
+    # format for env_name depends in benchmark:
+    # - MAGICAL: use env name prefixes like MoveToRegion, ClusterShape, etc.
+    # - dm_control: in dm_control parlance, use [domain name]-[task name], like
+    #  'finger-spin', 'cheetah-run', etc.
+    # - Atari: use fully qualified Gym names (e.g. PongNoFrameskip-v4)
+    env_name = 'finger-spin'
 
     # #################################
     # MAGICAL-specific config variables
     # #################################
 
-    magical_env_prefix = 'MoveToRegion'
     magical_preproc = 'LoResCHW4E'
     # null actions should be ignored when computing losses
     # (this is useful for BC, to stop the agent from getting 'stuck' in some
     # position)
     magical_remove_null_actions = False
 
-    # ###########################
-    # dm_control config variables
-    # ###########################
+    # ####################################
+    # dm_control-specific config variables
+    # ####################################
 
     dm_control_frame_stack = 3
-    dm_control_env_name = 'finger-spin'
     # mapping from short dm_control env names to complete Gym env names
     # registered by dm_control_envs.py
     # FIXME(sam): maybe get rid of this eventually, it doesn't save much time
@@ -44,11 +48,10 @@ def env_cfg_defaults():
         'ball-in-cup-catch': 'DMC-Ball-In-Cup-Catch-v0',
     }
 
-    # ###########################
-    # Atari config variables
-    # ###########################
-
-    atari_env_id = 'PongNoFrameskip-v4'
+    # ###############################
+    # Atari-specific config variables
+    # (none currently present)
+    # ###############################
 
     _ = locals()
     del _

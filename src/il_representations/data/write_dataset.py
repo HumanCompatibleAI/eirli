@@ -18,20 +18,11 @@ def _get_env_data(_config):
 
 
 @env_cfg_ingredient.capture
-def get_out_file_map(benchmark_name, magical_env_prefix, dm_control_env_name,
-                     atari_env_id):
+def get_out_file_map(benchmark_name, task_name):
     """Retrieve dictionary telling us where demonstrations for the current
     environment should go."""
     env_data = _get_env_data()
-    if benchmark_name == 'magical':
-        dd_key = magical_env_prefix
-    elif benchmark_name == 'dm_control':
-        dd_key = dm_control_env_name
-    elif benchmark_name == 'atari':
-        dd_key = atari_env_id
-    else:
-        raise NotImplementedError(f'cannot handle {benchmark_name}')
-    return env_data['processed_data_dirs'][benchmark_name][dd_key]
+    return env_data['processed_data_dirs'][benchmark_name][task_name]
 
 
 @env_cfg_ingredient.capture

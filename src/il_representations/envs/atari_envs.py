@@ -15,12 +15,11 @@ def _get_atari_data_opts(data_root, atari_demo_paths):
 
 
 @env_cfg_ingredient.capture
-def load_dataset_atari(atari_env_id, n_traj=None, chans_first=True):
+def load_dataset_atari(task_name, n_traj=None, chans_first=True):
     data_root, atari_demo_paths = _get_atari_data_opts()
 
     # load trajectories from disk
-    full_rollouts_path = os.path.join(data_root,
-                                      atari_demo_paths[atari_env_id])
+    full_rollouts_path = os.path.join(data_root, atari_demo_paths[task_name])
     trajs_or_file = np.load(full_rollouts_path, allow_pickle=True)
     if isinstance(trajs_or_file, np.lib.npyio.NpzFile):
         # handle .npz files (several arrays, maybe compressed, but we assume
