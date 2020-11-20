@@ -111,10 +111,7 @@ def _get_default_env_cfg(_config):
 
 
 @env_data_ingredient.capture
-def load_new_style_ilr_datasets(configs,
-                                dm_control_processed_data_dirs,
-                                magical_processed_data_dirs,
-                                atari_processed_data_dirs):
+def load_new_style_ilr_datasets(configs, processed_data_dirs):
     """Load a new-style dataset for representation learning.
 
     Args:
@@ -152,19 +149,18 @@ def load_new_style_ilr_datasets(configs,
         config = dict_update(defaults, config)
         data_type = config['type']
         env_cfg = config['env_cfg']
+        benchmark_name = env_cfg["benchmark_name"]
 
-        if env_cfg["benchmark_name"] == "magical":
-            pfx = env_cfg['magical_env_prefix']
-            data_root = magical_processed_data_dirs[pfx][data_type]
-        elif env_cfg["benchmark_name"] == "dm_control":
-            ename = env_cfg['dm_control_env_name']
-            data_root = dm_control_processed_data_dirs[ename][data_type]
-        elif env_cfg["benchmark_name"] == "atari":
-            eid = env_cfg['atari_env_id']
-            data_root = atari_processed_data_dirs[eid][data_type]
+        if benchmark_name == "magical":
+            dd_key = env_cfg['magical_env_prefix']
+        elif benchmark_name == "dm_control":
+            dd_key = env_cfg['dm_control_env_name']
+        elif benchmark_name == "atari":
+            dd_key = env_cfg['atari_env_id']
         else:
-            raise NotImplementedError(
-                f'cannot handle {env_cfg["benchmark_name"]}')
+            raise NotImplementedError(f'cannot handle {benchmark_name}')
+
+        data_root = processed_data_dirs[benchmark_name][dd_key][data_type]
 
         tar_files = glob.glob(os.path.join(data_root, "*.tgz"))
         if len(tar_files) == 0:

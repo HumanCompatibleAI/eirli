@@ -13,33 +13,37 @@ VENV_OPTS_TEST_CONFIG = {
     'n_envs': 2,
 }
 ENV_DATA_TEST_CONFIG = {
+    'processed_data_dirs': {
+        'atari': {
+            'PongNoFrameskip-v4': {
+                'demos': path.join(TEST_DATA_DIR, 'processed', 'atari',
+                                   'pong'),
+            },
+        },
+        'magical': {
+            'MoveToRegion': {
+                'demos':
+                path.join(TEST_DATA_DIR, 'processed', 'magical',
+                          'move-to-region'),
+            },
+        },
+        'dm_control': {
+            'reacher-easy': {
+                'demos':
+                path.join(TEST_DATA_DIR, 'processed', 'dm_control',
+                          'reacher-easy'),
+            },
+        },
+    },
     'atari_demo_paths': {
         'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
-    },
-    'atari_processed_data_dirs': {
-        'PongNoFrameskip-v4': {
-            'demos': path.join(TEST_DATA_DIR, 'processed', 'atari', 'pong'),
-        },
     },
     'magical_demo_dirs': {
         'MoveToRegion': path.join(TEST_DATA_DIR, 'magical', 'move-to-region'),
     },
-    'magical_processed_data_dirs': {
-        'MoveToRegion': {
-            'demos':
-            path.join(TEST_DATA_DIR, 'processed', 'magical', 'move-to-region'),
-        },
-    },
     'dm_control_demo_patterns': {
         'reacher-easy':
         path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
-    },
-    'dm_control_processed_data_dirs': {
-        'reacher-easy': {
-            'demos':
-            path.join(TEST_DATA_DIR, 'processed', 'dm_control',
-                      'reacher-easy'),
-        },
     },
 }
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
