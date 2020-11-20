@@ -25,14 +25,12 @@ def default_config():
     # you identify runs in viskit.
     exp_ident = None
 
-    # see docs for `load_new_style_ilr_dataset()` for more information on
+    # See docs for `load_new_style_ilr_dataset()` for more information on
     # syntax for dataset_configs.
     dataset_configs = [{'type': 'demos'}]
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
     n_envs = 1
-    pretrain_epochs = None
-    pretrain_batches = 10000
     algo_params = {
         'representation_dim': 128,
         'optimizer': torch.optim.Adam,
@@ -45,8 +43,18 @@ def default_config():
         },
     }
     device = "auto"
-    # this is useful for constructing tests where we want to truncate the
-    # dataset to be small
+
+    # For repL, an 'epoch' is just a fixed number of batches, configured with
+    # batches_per_epoch.
+    #
+    # This makes it possible to balance data sources when we do multitask
+    # training. For instance, if the datasets for two different tasks are
+    # different lengths, then we truncate or repeat them so they are both of
+    # length `batches_per_epoch / 2`. If we did not truncate/repeat, then the
+    # shorter dataset would run out before the longer one, and the network
+    # would end up training on more samples from the longer dataset.
+    batches_per_epoch = 1000
+    n_epochs = 10
 
     _ = locals()
     del _
@@ -63,15 +71,8 @@ def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    pretrain_batches = None
-    pretrain_batches = 5
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def target_projection():
-    algo = algos.FixedVarianceTargetProjectedCEB
+    batches_per_epoch = 5
+    n_epochs = 1
     _ = locals()
     del _
 
@@ -87,8 +88,8 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(dataset_configs, algo, algo_params, seed, pretrain_epochs,
-        pretrain_batches, torch_num_threads, _config):
+def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
+        torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
@@ -98,10 +99,11 @@ def run(dataset_configs, algo, algo_params, seed, pretrain_epochs,
         algo = getattr(algos, algo)
 
     # setup environment & dataset
-    webdataset = auto.load_new_style_ilr_dataset(configs=dataset_configs)
-    color_space = webdataset.meta['color_space']
-    observation_space = webdataset.meta['observation_space']
-    action_space = webdataset.meta['action_space']
+    webdatasets, combined_meta = auto.load_new_style_ilr_datasets(
+        configs=dataset_configs)
+    color_space = combined_meta['color_space']
+    observation_space = combined_meta['observation_space']
+    action_space = combined_meta['action_space']
 
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
@@ -118,7 +120,9 @@ def run(dataset_configs, algo, algo_params, seed, pretrain_epochs,
 
     # setup model
     loss_record, most_recent_encoder_path = model.learn(
-        webdataset, pretrain_epochs, pretrain_batches)
+        datasets=webdatasets,
+        batches_per_epoch=batches_per_epoch,
+        n_epochs=n_epochs)
 
     return {
         'encoder_path': most_recent_encoder_path,

@@ -61,10 +61,9 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
             prog_bar = tqdm(total=n_timesteps_min, desc='steps')
         else:
             prog_bar = None
+        # keep generating trajectories until we meed or exceed the minimum time
+        # step count
         while timestep_ctr < n_timesteps_min:
-            # keys in dataset_dict: 'obs', 'next_obs', 'acts', 'infos', 'rews',
-            # 'dones'
-            # attributes of returned trajectories: obs, acts, infos, rews
             new_trajs = rollout.generate_trajectories(
                 policy,
                 venv,
@@ -76,8 +75,14 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
                 assert T > 0, "empty trajectory?"
                 dones = np.zeros((T, ), dtype='int64')
                 dones[-1] = 1
+                # yield a dictionary for each frame in the retrieved
+                # trajectories
                 for idx in range(T):
                     yield {
+                        # Keys in dataset_dict: 'obs', 'next_obs', 'acts',
+                        # 'infos', 'rews', 'dones'.
+                        # Attributes of returned trajectories: obs, acts,
+                        # infos, rews.
                         'obs': obs[idx],
                         'next_obs': next_obs[idx],
                         'acts': traj.acts[idx],

@@ -15,6 +15,7 @@ import webdataset.filters as wds_filters
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
+from il_representations.data.read_dataset import InterleavedDataset
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -68,7 +69,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 dataset_max_workers=min(4, os.cpu_count()),
+                 dataset_max_workers=1,
                  scheduler_kwargs=None):
 
         super(RepresentationLearner, self).__init__(
@@ -128,7 +129,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.scheduler_kwargs = scheduler_kwargs or {}
 
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
-
 
     def _calculate_norms(self, norm_type=2):
         """
@@ -212,52 +212,53 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, dataset, training_epochs=None, training_batches=None):
+    def learn(self, datasets, batches_per_epoch, n_epochs):
         """
         :param dataset:
         :return:
         """
-        assert training_epochs is not None or training_batches is not None, \
-            "One of training_epochs or training_batches must be specified"
-        assert not (training_epochs is not None and training_batches is not None), \
-            "Only one of training_epochs or training_batches can be specified"
-        # Construct representation learning dataset of correctly paired
-        # (context, target) pairs
-        dataset.pipe(self.target_pair_constructor)
-        if self.shuffle_batches:
-            dataset.shuffle(self.shuffle_buffer_size)
-        dataset.pipe(wds_filters.batched(
-            batchsize=int(self.batch_size), partial=True,
-            collation_fn=default_collate))
+        for sub_ds in datasets:
+            # Construct representation learning dataset of correctly paired
+            # (context, target) pairs
+            sub_ds.pipe(self.target_pair_constructor)
+            if self.shuffle_batches:
+                # TODO(sam): if we're low on memory due to shuffle buffer memory
+                # consumption, then consider shuffling *after* interleaving (more
+                # complicated, but also takes up less memory).
+                sub_ds.shuffle(self.shuffle_buffer_size)
+
+        if not self.shuffle_batches:
+            assert len(datasets) <= 1, \
+                "InterleavedDataset will intrinsically shuffle batches; do " \
+                "not use multi-task training if shuffle_batches=False is " \
+                f"required (got {len(datasets)} datasets)"
+            assert self.dataset_max_workers <= 1, \
+                "Using more than one dataset worker may shuffle the " \
+                "dataset; got dataset_max_workers={dataset_max_workers}"
+        interleaved_dataset = InterleavedDataset(
+            datasets, nominal_length=batches_per_epoch * self.batch_size)
 
         # do not start more workers than the number of shards
-        wds_workers = min(len(dataset.urls), self.dataset_max_workers)
-        assert wds_workers > 0
-        # TODO(sam): this isn't guaranteed to interleave data from different
-        # shards randomly. The optimal solution is to write a new
-        # IterableDataset that joins several individual datasets by taking a
-        # random number of samples from each. (or we could just have tiny,
-        # one-trajectory shards)
-        dataloader = DataLoader(dataset, num_workers=wds_workers,
-                                batch_size=None)
+        dataloader = DataLoader(interleaved_dataset,
+                                num_workers=self.dataset_max_workers,
+                                batch_size=int(self.batch_size))
 
         loss_record = []
 
         if self.scheduler_cls is not None:
             if self.scheduler_cls in [CosineAnnealingLR, LinearWarmupCosine]:
-                self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
+                self.scheduler = self.scheduler_cls(self.optimizer, n_epochs, **to_dict(self.scheduler_kwargs))
             else:
                 self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
 
         self.encoder.train(True)
         self.decoder.train(True)
         batches_trained = 0
-        epochs_trained = 0
-        training_complete = False
-        logging.debug(f"Training with {training_epochs} epochs and {training_batches} batches")
-        logging.debug(f"Batch size is {self.batch_size}")
+        logging.debug(
+            f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
+            f"batches (batch size {self.batch_size})")
 
-        while not training_complete:
+        for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
 
@@ -316,39 +317,29 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('loss', loss_item)
                 logger.record('gradient_norm', gradient_norm.item())
                 logger.record('weight_norm', weight_norm.item())
-                logger.record('epoch', epochs_trained)
+                logger.record('epoch', epoch_num)
                 logger.record('within_epoch_step', step)
                 logger.record('batches_trained', batches_trained)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
-                if (training_batches is not None and batches_trained >= training_batches):
-                    logging.info(f"Breaking out of training in epoch {epochs_trained} because max batches "
-                                 f"value of {training_batches} has been reached")
-                    training_complete = True
-                    break
 
             assert batches_trained > 0, \
                 "went through training loop with no batches---empty dataset?"
-            if epochs_trained == 0:
-                # we infer the size of the dataset from the number of
-                # iterations through the loop the first time
-                logging.debug(f"Dataset size is {batches_trained}")
 
             if self.scheduler is not None:
                 self.scheduler.step()
             loss_record.append(loss_meter.avg)
 
-            epochs_trained += 1
-            if (training_epochs is not None and epochs_trained >= training_epochs):
-                training_complete = True
-
-            should_save_checkpoint = (training_complete or
-                                      epochs_trained % self.save_interval == 0)
+            # save checkpoint on last epoch, or at regular interval
+            should_save_checkpoint = (epoch_num == n_epochs or
+                                      epoch_num % self.save_interval == 0)
             if should_save_checkpoint:
-                most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path,
-                                                                   f'{epochs_trained}_epochs.ckpt')
+                most_recent_encoder_checkpoint_path = os.path.join(
+                    self.encoder_checkpoints_path, f'{epoch_num}_epochs.ckpt')
                 torch.save(self.encoder, most_recent_encoder_checkpoint_path)
-                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path,
-                                                      f'{epochs_trained}_epochs.ckpt'))
+                torch.save(self.decoder, os.path.join(
+                    self.decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
+
+        assert should_save_checkpoint, "did not save checkpoint on last epoch"
 
         return loss_record, most_recent_encoder_checkpoint_path

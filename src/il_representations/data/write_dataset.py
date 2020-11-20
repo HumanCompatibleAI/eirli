@@ -1,10 +1,7 @@
 """Utilities for writing datasets in the new unified format."""
 
-import logging
 import os
-import sys
 
-from tqdm import tqdm
 import webdataset as wds
 
 import il_representations.envs.auto as auto_env

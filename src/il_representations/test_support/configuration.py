@@ -75,8 +75,8 @@ FAST_IL_TRAIN_CONFIG = {
     },
 }
 REPL_SMOKE_TEST_CONFIG = {
-    'pretrain_epochs': None,
-    'pretrain_batches': 2,
+    'batches_per_epoch': 2,
+    'n_epochs': 1,
     'algo_params': {
         'representation_dim': 3,
         'batch_size': 7,

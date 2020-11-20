@@ -384,8 +384,8 @@ def cfg_tune_augmentations():
     repl = {
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 1000,  # TODO unsure if this is too many
-
+        'batches_per_epoch': 1000,
+        'n_epochs': 1,
     }
 
     skopt_space = collections.OrderedDict([
@@ -412,8 +412,8 @@ def cfg_tune_vae_learning_rate():
     repl = {
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 1000,  # TODO unsure if this is too many
-
+        'batches_per_epoch': 1000,
+        'n_epochs': 1,
     }
 
     skopt_space = collections.OrderedDict([
@@ -439,8 +439,8 @@ def cfg_tune_moco():
         'algo': 'MoCo',
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 1000,
-
+        'batches_per_epoch': 1000,
+        'n_epochs': 1,
     }
 
     # this MUST be an ordered dict; skopt only looks at values (not k/v
@@ -540,7 +540,8 @@ def cfg_tune_cpc():
         'algo': 'TemporalCPC',
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 16,
+        'batches_per_epoch': 16,
+        'n_epochs': 1,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -647,7 +648,8 @@ def cfg_tune_dynamics():
         'algo': 'DynamicsPrediction',
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 250,
+        'batches_per_epoch': 250,
+        'n_epochs': 1,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -699,7 +701,8 @@ def cfg_tune_inverse_dynamics():
         'algo': 'InverseDynamicsPrediction',
         # this isn't a lot of training, but should be enough to tell whether
         # loss goes down quickly
-        'pretrain_batches': 250,
+        'batches_per_epoch': 250,
+        'n_epochs': 1,
     }
     # this MUST be an ordered dict; skopt only looks at values (not k/v
     # mappings), so we must preserve the order of both values and keys
@@ -886,10 +889,10 @@ def cfg_bench_one_task_dm_control():
 
 
 @chain_ex.named_config
-def cfg_base_repl_5000():
+def cfg_base_repl_5000_batches():
     repl = {
-        'pretrain_batches': 5000,
-        'pretrain_epochs': None,
+        'batches_per_epoch': 500,
+        'n_epochs': 10,
     }
 
     _ = locals()
@@ -897,10 +900,10 @@ def cfg_base_repl_5000():
 
 
 @chain_ex.named_config
-def cfg_base_repl_10000():
+def cfg_base_repl_10000_batches():
     repl = {
-        'pretrain_batches': 10000,
-        'pretrain_epochs': None,
+        'batches_per_epoch': 1000,
+        'n_epochs': 10,
     }
 
     _ = locals()
