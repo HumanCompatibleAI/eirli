@@ -75,7 +75,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
     if env_cfg['benchmark_name'] == 'magical':
         from il_representations.envs import magical_envs
-        env_prefix = env_cfg['magical_env_prefix']
+        env_prefix = env_cfg['task_name']
         env_preproc = env_cfg['magical_preproc']
         demo_env_name = f'{env_prefix}-Demo-{env_preproc}-v0'
         eval_protocol = magical_envs.SB3EvaluationProtocol(

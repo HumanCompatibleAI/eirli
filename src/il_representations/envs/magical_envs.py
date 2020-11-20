@@ -100,8 +100,10 @@ def load_data(
 
 
 @env_cfg_ingredient.capture
-def get_env_name_magical(magical_env_prefix, magical_preproc):
-    orig_env_name = magical_env_prefix + '-Demo-v0'
+def get_env_name_magical(task_name, magical_preproc):
+    # for MAGICAL, the 'task_name' is a prefix like MoveToCorner or
+    # ClusterShape
+    orig_env_name = task_name + '-Demo-v0'
     gym_env_name = saved_trajectories.splice_in_preproc_name(
         orig_env_name, magical_preproc)
     return gym_env_name
@@ -115,14 +117,14 @@ def _get_magical_data_cfg(magical_demo_dirs, data_root):
 
 @env_cfg_ingredient.capture
 def load_dataset_magical(
-        magical_env_prefix,
+        task_name,
         magical_preproc,
         magical_remove_null_actions,
         n_traj=None):
     magical_demo_dirs, data_root = _get_magical_data_cfg()
-    demo_dir = os.path.join(data_root, magical_demo_dirs[magical_env_prefix])
+    demo_dir = os.path.join(data_root, magical_demo_dirs[task_name])
     logging.info(
-        f"Loading trajectory data for '{magical_env_prefix}' from "
+        f"Loading trajectory data for '{task_name}' from "
         f"'{demo_dir}'")
     demo_paths = [
         os.path.join(demo_dir, f) for f in os.listdir(demo_dir)

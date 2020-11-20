@@ -53,15 +53,15 @@ ENV_DATA_VENV_OPTS_TEST_CONFIG = {
 ENV_CFG_TEST_CONFIGS = [
     {
         'benchmark_name': 'atari',
-        'atari_env_id': 'PongNoFrameskip-v4',
+        'task_name': 'PongNoFrameskip-v4',
     },
     {
         'benchmark_name': 'magical',
-        'magical_env_prefix': 'MoveToRegion',
+        'task_name': 'MoveToRegion',
     },
     {
         'benchmark_name': 'dm_control',
-        'dm_control_env_name': 'reacher-easy',
+        'task_name': 'reacher-easy',
     },
 ]
 FAST_IL_TRAIN_CONFIG = {
