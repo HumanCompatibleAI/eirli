@@ -25,5 +25,3 @@ class BaseEnvironmentLearner:
             return
         # Seed python, numpy and torch random generator
         set_global_seeds(seed)
-        # Seed the action space. Useful when selecting random actions
-        self.action_space.seed(seed)

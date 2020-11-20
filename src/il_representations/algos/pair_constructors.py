@@ -1,18 +1,31 @@
 """
-Pair Constructors turn an iterator of observations/actions/etc. into a dataset of `context`, `target`, and
-`extra_context` data elements, along with a metadata tensor containing the trajectory ID and timestep ID for each
-element in the dataset. The `context` element is conceptually thought of as the element you're using to do prediction,
-whereas the `target` is the ground truth or "positive" we're trying to predict from the context, though this prediction
-framework is admittedly a somewhat fuzzy match to the actual variety of techniques.
+Pair Constructors turn an iterator of temporally-ordered
+observations/actions/etc. into a dataset of `context`, `target`, and
+`extra_context` data elements, along with a metadata tensor containing the
+trajectory ID and timestep ID for each element in the dataset. The iterator
+should satisfy two invariants:
 
-- In temporal contrastive loss settings, context is generally the element at position (t), and target the element at
-position (t+k)
-- In pure-augmentation contrastive loss settings, context and target are the same element (which will be augmented
-in different ways)
-- In a VAE, context and target are also the same element. Context will be mapped into a representation and then decoded
-back out, whereas the target will "tag along" as ground truth pixels needed to calculate the loss.
-- In Dynamics modeling, context is the current state at time (t), target is the state at time (t+1) and extra context
-is the action taken at time (t)
+- First, it should yield observations and actions in the order they were
+  encountered in the environment (i.e. it should not interleave trajectories).
+- Second, each value it yields should be a dictionary with keys 'obs',
+  'acts', and 'dones'. The corresponding values should each be numpy arrays
+  representing the relevant object at a single timestep (e.g. 'acts' should be
+  just a single action, not a sequence of actions).
+
+The `context` element is conceptually thought of as the element you're using to
+do prediction, whereas the `target` is the ground truth or "positive" we're
+trying to predict from the context, though this prediction framework is
+admittedly a somewhat fuzzy match to the actual variety of techniques.
+
+- In temporal contrastive loss settings, context is generally the element at
+  position (t), and target the element at position (t+k)
+- In pure-augmentation contrastive loss settings, context and target are the
+  same element (which will be augmented in different ways)
+- In a VAE, context and target are also the same element. Context will be
+  mapped into a representation and then decoded back out, whereas the target
+  will "tag along" as ground truth pixels needed to calculate the loss.
+- In Dynamics modeling, context is the current state at time (t), target is the
+  state at time (t+1) and extra context is the action taken at time (t)
 """
 
 from abc import ABC, abstractmethod
@@ -25,6 +38,15 @@ class TargetPairConstructor(ABC):
 
     @abstractmethod
     def __call__(self, data_iter):
+        """Generator that transforms environment step data in data_iter.
+
+        Args:
+            data_iter: iterable yielding dictionaries with 'obs', 'acts', and
+                'dones' keys. Each dictionary represents a single time step.
+
+        Yields: dictionaries with keys 'context', 'target', 'extra_context',
+            and 'traj_ts_ids'. Types of values vary depending on the algorithm.
+        """
         pass
 
 
