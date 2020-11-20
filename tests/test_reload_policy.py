@@ -20,8 +20,8 @@ def test_reload_policy(algo, freeze_encoder, represent_ex, il_train_ex,
     because the process is roughly the same in all cases)"""
     represent_ex.run(
         config_updates={
-            'pretrain_batches': 1,
-            'pretrain_epochs': None,
+            'batches_per_epoch': 1,
+            'n_epochs': 1,
             'algo_params': {'representation_dim': 3, 'batch_size': 7},
             'algo': MoCo,
             'env_cfg': ENV_CFG_TEST_CONFIGS[0],

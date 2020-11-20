@@ -111,10 +111,10 @@ def _get_default_env_cfg(_config):
 
 
 @env_data_ingredient.capture
-def load_new_style_ilr_dataset(configs,
-                               dm_control_processed_data_dirs,
-                               magical_processed_data_dirs,
-                               atari_processed_data_dirs):
+def load_new_style_ilr_datasets(configs,
+                                dm_control_processed_data_dirs,
+                                magical_processed_data_dirs,
+                                atari_processed_data_dirs):
     """Load a new-style dataset for representation learning.
 
     Args:
@@ -138,7 +138,7 @@ def load_new_style_ilr_dataset(configs,
         'type': 'demos',
         'env_cfg': _get_default_env_cfg(),
     }
-    all_tar_files = []
+    all_datasets = []
 
     if len(configs) == 0:
         raise ValueError("no dataset configurations supplied")
@@ -171,9 +171,33 @@ def load_new_style_ilr_dataset(configs,
             raise IOError(
                 f"did not find any files in '{data_root}' (for dataset config "
                 f"'{orig_config}')")
-        all_tar_files.extend(tar_files)
+        all_datasets.append(load_ilr_datasets(tar_files))
 
-    return load_ilr_datasets(all_tar_files)
+    # get combined metadata for all datasets
+    color_space = all_datasets[0].meta['color_space']
+    observation_space = all_datasets[0].meta['observation_space']
+    action_space = all_datasets[0].meta['action_space']
+    for sub_dataset in all_datasets:
+        if sub_dataset.meta['color_space'] != color_space:
+            raise ValueError(
+                "was given datasets with mismatched color spaces: "
+                f"'{sub_dataset.meta['color_space']}' != '{color_space}'")
+        if sub_dataset.meta['observation_space'] != observation_space:
+            raise ValueError(
+                "was given datasets with mismatched observation spaces: "
+                f"'{sub_dataset.meta['observation_space']}' != "
+                f"'{observation_space}'")
+        if sub_dataset.meta['action_space'] != action_space:
+            raise ValueError(
+                "was given datasets with mismatched action spaces: "
+                f"'{sub_dataset.meta['action_space']}' != '{action_space}'")
+    combined_meta = {
+        'color_space': color_space,
+        'observation_space': observation_space,
+        'action_space': action_space,
+    }
+
+    return all_datasets, combined_meta
 
 
 @env_cfg_ingredient.capture

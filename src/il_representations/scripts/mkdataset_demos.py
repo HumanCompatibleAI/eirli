@@ -44,6 +44,8 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
 
+    # load existing demo dictionary directly, w/ same code used to handle data
+    # in il_train.py
     dataset_dict = auto_env.load_dataset(n_traj=n_traj_total)
     n_items = len(dataset_dict['obs'])
     # keys in dataset_dict: 'obs', 'next_obs', 'acts', 'infos', 'rews', 'dones'

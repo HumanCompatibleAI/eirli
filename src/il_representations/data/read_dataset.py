@@ -3,6 +3,8 @@
 import os
 import pickle
 
+import numpy as np
+from torch.utils.data import IterableDataset, get_worker_info
 import webdataset as wds
 from webdataset.dataset import group_by_keys
 
@@ -63,6 +65,38 @@ class ILRDataset(wds.Dataset):
                 "self._meta should be populated on first sample draw, " \
                 "but it was not (may be bug in this class, or empty dataset)"
         return self._meta
+
+
+class InterleavedDataset(IterableDataset):
+    """Randomly interleaves one or more IterableDatasets. Pretends that hte
+    resulting dataset has length `nominal_length`; underlying datasets are
+    looped as needed, like in WDS' ResizeDataset."""
+    def __init__(self, datasets, nominal_length, seed=None):
+        super().__init__()
+        self.rng = np.random.RandomState(seed)
+        self.nominal_length = nominal_length
+        self.datasets = list(datasets)
+        assert len(self.datasets) > 0
+        self.iterators = [None] * len(datasets)
+
+    def __iter__(self):
+        for _ in range(self.nominal_length):
+            chosen = self.rng.choice(len(self.datasets))
+            chosen_ds = self.datasets[chosen]
+            try:
+                # try to get next item
+                if self.iterators[chosen] is None:
+                    raise StopIteration()
+                next_item = next(self.iterators[chosen])
+            except StopIteration:
+                # refresh iterator if we fail
+                self.iterators[chosen] = iter(chosen_ds)
+                # if this next() fails then the dataset must be empty (!!)
+                next_item = next(self.iterators[chosen])
+            yield next_item
+
+    def __len__(self):
+        return self.nominal_length
 
 
 def strip_extensions(dataset):
