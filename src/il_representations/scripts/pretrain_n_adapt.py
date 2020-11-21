@@ -711,7 +711,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         for key in ingredient_configs_dict.keys():
             pkl_key = f"{key}_pickle"
             assert pkl_key in config, f"No pickled version of {key} found in config"
-            inflated_configs[key] = pickle.loads(config[pkl_key], 0)
+            inflated_configs[key] = pickle.loads(config[pkl_key])
             del config[pkl_key]
         # "config" argument is passed in by Ray Tune
         logging.warning(f"Config keys: {config.keys()}")
