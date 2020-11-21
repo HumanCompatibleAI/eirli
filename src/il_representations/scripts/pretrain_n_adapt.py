@@ -629,6 +629,10 @@ def cfg_il_bc_freeze():
 
 # TODO(sam): GAIL configs
 
+class SerializedConfig():
+    def __init__(self, config_dict):
+        self.config = config_dict
+
 
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
@@ -711,7 +715,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         for key in ingredient_configs_dict.keys():
             pkl_key = f"{key}_pickle"
             assert pkl_key in config, f"No pickled version of {key} found in config"
-            inflated_configs[key] = pickle.loads(config[pkl_key])
+            #inflated_configs[key] = pickle.loads(config[pkl_key])
+            inflated_configs[key] = config[pkl_key].config
             del config[pkl_key]
         # "config" argument is passed in by Ray Tune
         logging.warning(f"Config keys: {config.keys()}")
@@ -755,7 +760,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         metric = sacred_copy(metric)
 
         for ing_name, ing_config in ingredient_configs_dict.items():
-            pickled_string = pickle.dumps(ing_config, 0)
+            #pickled_string = pickle.dumps(ing_config, 0)
+            pickled_string = SerializedConfig(ing_config)
             skopt_space[f"{ing_name}_pickle"] = skopt.space.Categorical(categories=(pickled_string,))
             for ref_config in skopt_ref_configs:
                 ref_config[f"{ing_name}_pickle"] = pickled_string
