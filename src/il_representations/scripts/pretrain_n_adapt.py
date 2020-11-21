@@ -758,7 +758,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             pickled_string = pickle.dumps(ing_config, 0)
             skopt_space[ing_name] = skopt.space.Categorical(categories=(pickled_string,))
             for ref_config in skopt_ref_configs:
-                ref_config[ing_name] = pickled_string
+                ref_config[f"{ing_name}_pickle"] = pickled_string
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
