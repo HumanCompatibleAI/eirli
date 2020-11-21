@@ -756,9 +756,9 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
         for ing_name, ing_config in ingredient_configs_dict.items():
             pickled_string = pickle.dumps(ing_config, 0)
-            skopt_space[ing_name] = skopt.space.Categorical(categories=(pickled_string,))
+            skopt_space[f"{ing_name}_pickle"] = skopt.space.Categorical(categories=(pickled_string,))
             for ref_config in skopt_ref_configs:
-                ref_config[ing_name] = pickled_string
+                ref_config[f"{ing_name}_pickle"] = pickled_string
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
@@ -789,7 +789,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         spec = {}
     else:
         for ing_name, ing_config in ingredient_configs_dict.items():
-            spec[ing_name] = tune.grid_search([pickle.dumps(ing_config, 0)])
+            spec[f"{ing_name}_pickle"] = tune.grid_search([pickle.dumps(ing_config, 0)])
 
     rep_run = tune.run(
         trainable_function,
