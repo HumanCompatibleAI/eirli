@@ -699,6 +699,20 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         os.path.join(cwd, benchmark_config['data_root']))
 
     def trainable_function(config):
+
+        if stages_to_run == StagesToRun.REPL_AND_IL:
+            keys_to_add = ['benchmark', 'il_train', 'il_test', 'repl']
+        if stages_to_run == StagesToRun.IL_ONLY:
+            keys_to_add = ['benchmark', 'il_train', 'il_test']
+        if stages_to_run == StagesToRun.REPL_ONLY:
+            keys_to_add = ['benchmark', 'repl']
+
+        inflated_configs = {}
+        for key in ingredient_configs_dict.keys():
+            pkl_key = f"{key}_pickle"
+            assert pkl_key in config, f"No pickled version of {key} found in config"
+            inflated_configs[key] = pickle.loads(config[pkl_key])
+            del config[pkl_key]
         # "config" argument is passed in by Ray Tune
         config = expand_dict_keys(config)
 
@@ -706,21 +720,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         # FIXME(sam): decide whether this is the appropriate defensive thing to
         # do. It would be nice if we caught errors where the user tries to,
         # e.g., tune repL, but does not specify anything to tune _over_.
-        if stages_to_run == StagesToRun.REPL_AND_IL:
-            keys_to_add = ['benchmark', 'il_train', 'il_test', 'repl']
-        if stages_to_run == StagesToRun.IL_ONLY:
-            keys_to_add = ['benchmark', 'il_train', 'il_test']
-        if stages_to_run == StagesToRun.REPL_ONLY:
-            keys_to_add = ['benchmark', 'repl']
-        inflated_configs = {}
+
         for key in keys_to_add:
             if key not in config:
                 config[key] = {}
-            pkl_key = f"{key}_pickle"
-            assert pkl_key in config, f"No pickled version of {key} found in config"
-            inflated_configs[key] = pickle.loads(config[pkl_key])
-
-
 
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(inflated_configs['repl'], inflated_configs['il_train'],
