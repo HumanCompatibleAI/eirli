@@ -714,6 +714,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             inflated_configs[key] = pickle.loads(config[pkl_key])
             del config[pkl_key]
         # "config" argument is passed in by Ray Tune
+        logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
 
         # add empty update dicts if necessary to avoid crashing
