@@ -713,11 +713,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
         inflated_configs = {}
         for key in ingredient_configs_dict.keys():
-            pkl_key = f"{key}_pickle"
-            assert pkl_key in config, f"No pickled version of {key} found in config"
+            assert key in config, f"No version of {key} found in config"
             #inflated_configs[key] = pickle.loads(config[pkl_key])
-            inflated_configs[key] = config[pkl_key].config
-            del config[pkl_key]
+            inflated_configs[key] = config[key].config
+            del config[key]
         # "config" argument is passed in by Ray Tune
         logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
@@ -760,11 +759,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         metric = sacred_copy(metric)
 
         for ing_name, ing_config in ingredient_configs_dict.items():
-            #pickled_string = pickle.dumps(ing_config, 0)
-            pickled_string = SerializedConfig(ing_config)
-            skopt_space[f"{ing_name}_pickle"] = skopt.space.Categorical(categories=(pickled_string,))
+            frozen_config = SerializedConfig(ing_config)
+            skopt_space[ing_name] = skopt.space.Categorical(categories=(frozen_config,))
             for ref_config in skopt_ref_configs:
-                ref_config[f"{ing_name}_pickle"] = pickled_string
+                ref_config[ing_name] = frozen_config
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
@@ -795,7 +793,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         spec = {}
     else:
         for ing_name, ing_config in ingredient_configs_dict.items():
-            spec[f"{ing_name}_pickle"] = tune.grid_search([pickle.dumps(ing_config, 0)])
+            spec[ing_name] = tune.grid_search([SerializedConfig(ing_config)])
 
     rep_run = tune.run(
         trainable_function,
