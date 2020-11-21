@@ -5,6 +5,7 @@ import logging
 import os
 import os.path as osp
 import weakref
+import pickle
 
 import numpy as np
 import ray
@@ -650,6 +651,13 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
     if il_test_ex_config['exp_ident'] is None:
         il_test_ex_config['exp_ident'] = exp_ident
 
+    ingredient_configs_dict = {
+        'repl': rep_ex_config,
+        'il_train': il_train_ex_config,
+        'il_test': il_test_ex_config,
+        'benchmark': benchmark_config
+    }
+
     if metric is None:
         # choose a default metric depending on whether we're running
         # representation learning, IL, or both
@@ -704,19 +712,25 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             keys_to_add = ['benchmark', 'il_train', 'il_test']
         if stages_to_run == StagesToRun.REPL_ONLY:
             keys_to_add = ['benchmark', 'repl']
+        inflated_configs = {}
         for key in keys_to_add:
             if key not in config:
                 config[key] = {}
+            pkl_key = f"{key}_pickle"
+            assert pkl_key in config, f"No pickled version of {key} found in config"
+            inflated_configs[key] = pickle.loads(config[pkl_key])
+
+
 
         if stages_to_run == StagesToRun.REPL_AND_IL:
-            run_end2end_exp(rep_ex_config, il_train_ex_config,
-                            il_test_ex_config, benchmark_config, config,
+            run_end2end_exp(inflated_configs['repl'], inflated_configs['il_train'],
+                            inflated_configs['il_test'], inflated_configs['benchmark'], config,
                             log_dir)
         if stages_to_run == StagesToRun.IL_ONLY:
-            run_il_only_exp(il_train_ex_config, il_test_ex_config,
-                            benchmark_config, config, log_dir)
+            run_il_only_exp(inflated_configs['il_train'], inflated_configs['il_test'],
+                            inflated_configs['benchmark'], config, log_dir)
         if stages_to_run == StagesToRun.REPL_ONLY:
-            run_repl_only_exp(rep_ex_config, benchmark_config, config, log_dir)
+            run_repl_only_exp(inflated_configs['repl'], inflated_configs['benchmark'], config, log_dir)
 
     if detect_ec2():
         ray.init(address="auto", **ray_init_kwargs)
@@ -735,6 +749,12 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         skopt_search_mode = sacred_copy(skopt_search_mode)
         skopt_ref_configs = sacred_copy(skopt_ref_configs)
         metric = sacred_copy(metric)
+
+        for ing_name, ing_config in ingredient_configs_dict.items():
+            pickled_string = pickle.dumps(ing_config)
+            skopt_space[ing_name] = skopt.space.Categorical(categories=(pickled_string,))
+            for ref_config in skopt_ref_configs:
+                ref_config[ing_name] = pickled_string
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
@@ -764,7 +784,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
-        algo = None
+        for ing_name, ing_config in ingredient_configs_dict.items():
+            spec[ing_name] = tune.grid_search([pickle.dumps(ing_config)])
 
     rep_run = tune.run(
         trainable_function,
