@@ -712,21 +712,21 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         if stages_to_run == StagesToRun.REPL_ONLY:
             keys_to_add = ['benchmark', 'repl']
 
-        # inflated_configs = {}
-        # for key in ingredient_configs_dict.keys():
-        #     # Unwrap all wrapped ingredient baseline configs
-        #     # that were passed around as Ray parameters
-        #     assert key in config, f"No version of {key} found in config"
-        #
-        #     #Try passing in the actual object to see if that fixes test error
-        #     inflated_configs[key] = ingredient_configs_dict[key]
-        #     #inflated_configs[key] = pickle.loads(config[key])
-        #     #inflated_configs[key] = config[key].config_dict
-        #
-        #     # Delete the keys first because we will then call expand_dict_keys
-        #     # which will create new top-level ingredient dictionaries with
-        #     # variations to our configs specified on the level of Tune
-        #     del config[key]
+        inflated_configs = {}
+        for key in ingredient_configs_dict.keys():
+            # Unwrap all wrapped ingredient baseline configs
+            # that were passed around as Ray parameters
+            assert key in config, f"No version of {key} found in config"
+
+            #Try passing in the actual object to see if that fixes test error
+            # inflated_configs[key] = ingredient_configs_dict[key]
+            #inflated_configs[key] = pickle.loads(config[key])
+            #inflated_configs[key] = config[key].config_dict
+
+            # Delete the keys first because we will then call expand_dict_keys
+            # which will create new top-level ingredient dictionaries with
+            # variations to our configs specified on the level of Tune
+            del config[key]
         logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
 
