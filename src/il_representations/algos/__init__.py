@@ -251,7 +251,7 @@ class DynamicsPrediction(RepresentationLearner):
                                      loss_calculator=MSELoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
-                                     encoder_kwargs=dict(action_space=env.action_space, learn_scale=False),
+                                     encoder_kwargs=dict(action_space=env.action_space),
                                      decoder_kwargs=dict(observation_space=env.observation_space,
                                                          encoder_arch_key=encoder_cls_key,
                                                          action_representation_dim=action_representation_dim),
@@ -365,10 +365,8 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      preprocess_extra_context=False,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
-                                     encoder_kwargs=dict(action_space=env.action_space,
-                                                         learn_scale=False),
-                                     decoder_kwargs=dict(action_representation_dim=action_representation_dim,
-                                                         learn_scale=True))
+                                     encoder_kwargs=dict(action_space=env.action_space),
+                                     decoder_kwargs=dict(action_representation_dim=action_representation_dim))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
