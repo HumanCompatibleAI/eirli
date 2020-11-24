@@ -8,6 +8,7 @@ import gym.spaces as spaces
 from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
 import math
+from functools import partial
 import logging
 
 """
@@ -30,12 +31,18 @@ bit of data that pair constructors can return, to be passed forward for use here
 
 DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
+
+def exp_sequential(x, sequential):
+    return torch.exp(sequential(x))
+
 class LossDecoder(nn.Module):
-    def __init__(self, representation_dim, projection_shape, sample=False):
+    def __init__(self, representation_dim, projection_shape,
+                 sample=False, learn_scale=False):
         super().__init__()
         self.representation_dim = representation_dim
         self.projection_dim = projection_shape
         self.sample = sample
+        self.learn_scale = learn_scale
 
     def forward(self, z, traj_info, extra_context=None):
         pass
@@ -62,15 +69,13 @@ class LossDecoder(nn.Module):
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
-        stddev = stdev_layer(z_dist.stddev)
-        return independent_multivariate_normal(mean, torch.exp(stddev))
+        if stdev_layer is None:
+            stddev = z_dist.stddev
+        else:
+            stddev = stdev_layer(z_vector)
+        return independent_multivariate_normal(mean, stddev)
 
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
-        if learn_scale:
-            stddev_func = None
-        else:
-            stddev_func = self.passthrough
-
         if architecture is None:
             architecture = DEFAULT_PROJECTION_ARCHITECTURE
         layers = []
@@ -82,8 +87,10 @@ class LossDecoder(nn.Module):
             input_dim = layer_def['output_dim']
         layers.append(nn.Linear(input_dim, projection_dim))
         mean_func = nn.Sequential(*layers)
-        if stddev_func is None:
-            stddev_func = nn.Sequential(*copy.deepcopy(layers))
+        if learn_scale:
+            stddev_func = partial(exp_sequential, sequential=nn.Sequential(*copy.deepcopy(layers)))
+        else:
+            stddev_func = None
 
         return mean_func, stddev_func
 
@@ -96,16 +103,16 @@ class NoOp(LossDecoder):
 class AsymmetricProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
-        super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
         self.context_mean, self.context_stddev = self.get_projection_modules(self.representation_dim,
                                                                              self.projection_dim,
                                                                              projection_architecture,
                                                                              learn_scale)
         self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
-                                                                          self.projection_dim,
-                                                                          projection_architecture,
-                                                                          learn_scale)
+                                                                           self.projection_dim,
+                                                                           projection_architecture,
+                                                                           learn_scale)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return self(z_dist, self.context_mean, self.context_stddev)
@@ -120,12 +127,12 @@ class AsymmetricProjectionHead(LossDecoder):
 class SymmetricProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
-        super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
         self.symmetric_mean, self.symmetric_stddev = self.get_projection_modules(self.representation_dim,
-                                                                                self.projection_dim,
-                                                                                projection_architecture,
-                                                                                learn_scale)
+                                                                                 self.projection_dim,
+                                                                                 projection_architecture,
+                                                                                 learn_scale)
 
     def forward(self, z_dist, traj_info, extra_context=None):
         return self._apply_projection_layer(z_dist, self.symmetric_mean, self.symmetric_stddev)
@@ -134,11 +141,11 @@ class SymmetricProjectionHead(LossDecoder):
 class OnlyTargetProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
-        super(OnlyTargetProjectionHead, self).__init__(representation_dim, projection_shape, sample)
+        super(OnlyTargetProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
         self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
-                                                                          self.projection_dim,
-                                                                          projection_architecture,
-                                                                          learn_scale)
+                                                                           self.projection_dim,
+                                                                           projection_architecture,
+                                                                           learn_scale)
 
     def decode_context(self, z_dist, traj_info, extra_context=None):
         return z_dist
@@ -147,12 +154,15 @@ class OnlyTargetProjectionHead(LossDecoder):
         return self._apply_projection_layer(z_dist, self.target_mean, self.target_stddev)
 
 
-
 class MomentumProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
-                 momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead):
-        super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape, sample=sample)
-        self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape, sample=sample)
+                 momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead,
+                 learn_scale=False):
+
+        super(MomentumProjectionHead, self).__init__(representation_dim, projection_shape,
+                                                     sample=sample, learn_scale=learn_scale)
+        self.context_decoder = inner_projection_head_cls(representation_dim, projection_shape,
+                                                         sample=sample, learn_scale=learn_scale)
         self.target_decoder = copy.deepcopy(self.context_decoder)
         for param in self.target_decoder.parameters():
             param.requires_grad = False
@@ -165,7 +175,7 @@ class MomentumProjectionHead(LossDecoder):
     def decode_target(self, z_dist, traj_info, extra_context=None):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-        a backwards hook, but seemed overly complex for an initial POC
+        a backwards hook, but seemed overly complex for an initial proof of concept
         :param x:
         :return:
         """
@@ -209,7 +219,8 @@ class ActionConditionedVectorDecoder(LossDecoder):
     """
     def __init__(self, representation_dim, projection_dim, sample=False, action_representation_dim=128,
                  projection_architecture=None, learn_scale=False):
-        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_dim, sample=sample)
+        super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_dim,
+                                                             sample=sample, learn_scale=learn_scale)
         self.learn_scale = learn_scale
 
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
@@ -230,8 +241,12 @@ class ActionConditionedVectorDecoder(LossDecoder):
         assert len(z.shape) == len(action_encoding_vector.shape), f"z shape {z.shape}, " \
                                                                   f"action vector shape {action_encoding_vector.shape}"
         merged_vector = torch.cat([z, action_encoding_vector], dim=1)
+
         mean_projection = self.action_conditioned_mean(merged_vector)
-        scale = self.action_conditioned_stddev(z_dist.stddev)
+        if self.action_conditioned_stddev is None:
+            scale = z_dist.stddev
+        else:
+            scale = self.action_conditioned_stddev(merged_vector)
         return independent_multivariate_normal(mean=mean_projection,
                                                stddev=scale)
 
@@ -242,8 +257,8 @@ class ActionPredictionHead(LossDecoder):
     (one in context, one in extra_context), and produces a prediction
     of the action taken in between the frames
     """
-    def __init__(self, representation_dim, projection_shape, action_space, sample=False):
-        super().__init__(representation_dim, projection_shape, sample)
+    def __init__(self, representation_dim, projection_shape, action_space, sample=False, learn_scale=False):
+        super().__init__(representation_dim, projection_shape, sample, learn_scale)
 
         # Use Stable Baseline's logic for constructing a SB action_dist from an action space
         self.action_dist = make_proba_distribution(action_space)
@@ -288,7 +303,8 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
     current_channels = observation_space.shape[0]
     for layer_spec in encoder_arch:
         mocked_layers.append(nn.Conv2d(current_channels, layer_spec['out_dim'],
-                                               kernel_size=layer_spec['kernel_size'], stride=layer_spec['stride']))
+                                       kernel_size=layer_spec['kernel_size'],
+                                       stride=layer_spec['stride']))
         current_channels = layer_spec['out_dim']
     obs_shape = compute_output_shape(observation_space, mocked_layers)
     flattened_shape = np.prod(obs_shape)

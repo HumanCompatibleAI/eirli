@@ -24,7 +24,6 @@ from the creation and filling of a queue of representations, which is handled by
 """
 
 
-
 def compute_output_shape(observation_space, layers):
     """Compute the size of the output after passing an observation from
     `observation_space` through the given `layers`."""
@@ -283,21 +282,28 @@ class Encoder(nn.Module):
 
 class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
-                 stochastic=False, latent_dim=None, scale_constant=1):
+                 learn_scale=False, latent_dim=None, scale_constant=1):
         """
                 :param obs_space: The observation space that this Encoder will be used on
-                :param representation_dim: The number of dimensions of the representation that will be learned
-                :param obs_encoder_cls: An internal architecture implementing `forward` to return a single vector
-                representing the mean representation z of a fixed-variance representation distribution (in the
-                deterministic case), or a latent dimension, in the stochastic case.  This is expected NOT to end in
-                a ReLU (i.e. final layer should be linear).
-                :param latent_dim: Dimension of the latents that feed into mean and std networks (default:
-                        representation_dim * 2).
+                :param representation_dim: The number of dimensions of the representation
+                       that will be learned
+                :param obs_encoder_cls: An internal architecture implementing `forward`
+                       to return a single vector representing the mean representation z
+                       of a fixed-variance representation distribution (in the deterministic
+                       case), or a latent dimension, in the stochastic case. This is
+                       expected NOT to end in a ReLU (i.e. final layer should be linear).
+                :param learn_scale: A flag for whether we want to learn a parametrized
+                       standard deviation. If this is set to False, a constant value of
+                       <scale_constant> will be returned as the standard deviation
+                :param latent_dim: Dimension of the latents that feed into mean and std networks
+                       If not set, this defaults to representation_dim * 2.
+                :param scale_constant: The constant value that will be returned if learn_scale is
+                       set to False.
          """
         super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        self.stochastic = stochastic
-        if self.stochastic:
+        self.learn_scale = learn_scale
+        if self.learn_scale:
             if latent_dim is None:
                 latent_dim = representation_dim * 2
             self.network = obs_encoder_cls(obs_space, latent_dim)
@@ -308,15 +314,17 @@ class BaseEncoder(Encoder):
             self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
-        if self.stochastic:
-            return self.forward_stochastic(x, traj_info)
+        if self.learn_scale:
+            return self.forward_with_stddev(x, traj_info)
         else:
             return self.forward_deterministic(x, traj_info)
 
-    def forward_stochastic(self, x, traj_info):
+    def forward_with_stddev(self, x, traj_info):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
+        if np.any(np.isinf(scale.detach().numpy())):
+            print(scale.detach().numpy())
         return independent_multivariate_normal(mean=mean,
                                                stddev=scale)
 
@@ -358,11 +366,11 @@ class ActionEncodingEncoder(BaseEncoder):
     An encoder that uses DeterministicEncoder logic for encoding the `context` and `target` pixel frames,
     but which encodes an `extra_context` object containing actions into a vector form
     """
-    def __init__(self, obs_space, representation_dim, action_space, stochastic=False,
+    def __init__(self, obs_space, representation_dim, action_space, learn_scale=False,
                  obs_encoder_cls=None, action_encoding_dim=48, action_encoder_layers=1,
                  action_embedding_dim=5, use_lstm=False):
 
-        super().__init__(obs_space, representation_dim, obs_encoder_cls, stochastic=stochastic)
+        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
 
         self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
                                                                                        action_embedding_dim)
@@ -414,13 +422,13 @@ class ActionEncodingEncoder(BaseEncoder):
 
 class VAEEncoder(BaseEncoder):
     """
-    An encoder that uses a stochastic encoder's logic for encoding
-    context, but for target, just returns a delta distribution
+    An encoder that uses a normal encoder's logic for encoding
+    context (with learned stddev), but for target, just returns a delta distribution
     around ground truth pixels, since we don't want to vector-encode
     them.
     """
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None):
-        super().__init__(obs_space, representation_dim, obs_encoder_cls, stochastic=True, latent_dim=latent_dim)
+        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=True, latent_dim=latent_dim)
 
     def encode_target(self, x, traj_info):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
@@ -431,8 +439,8 @@ class TargetStoringActionEncoder(ActionEncodingEncoder):
     """
     Identical to VAE encoder, but inherits from ActionEncodingEncoder,
     so we get that class's additional implementation
-    of `encode_extra_context`. If being used for Dynamics, can use with stochastic=False. If being used
-    for TemporalVAE, use stochastic=True
+    of `encode_extra_context`. If being used for Dynamics, can use with learn_scale=False. If being used
+    for TemporalVAE, use learn_scale=True
     """
     def encode_target(self, x, traj_info):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
@@ -451,11 +459,11 @@ class InverseDynamicsEncoder(BaseEncoder):
 
 
 class MomentumEncoder(Encoder):
-    def __init__(self, obs_shape, representation_dim, stochastic=False,
+    def __init__(self, obs_shape, representation_dim, learn_scale=False,
                  momentum_weight=0.999, obs_encoder_cls=None):
         super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, stochastic=stochastic)
+        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
