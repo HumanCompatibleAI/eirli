@@ -717,7 +717,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             # Unwrap all wrapped ingredient baseline configs
             # that were passed around as Ray parameters
             assert key in config, f"No version of {key} found in config"
-            inflated_configs[key] = pickle.loads(config[key])
+
+            #Try passing in the actual object to see if that fixes test error
+            inflated_configs[key] = ingredient_configs_dict[key]
+            #inflated_configs[key] = pickle.loads(config[key])
             #inflated_configs[key] = config[key].config_dict
 
             # Delete the keys first because we will then call expand_dict_keys
