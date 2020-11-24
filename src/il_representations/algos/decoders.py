@@ -35,9 +35,32 @@ DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 def exp_sequential(x, sequential):
     return torch.exp(sequential(x))
 
+
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape,
                  sample=False, learn_scale=False):
+        """
+        A LossDecoder is a module that encapsulates any logic that comes
+        after the learned representation, but before the loss. This
+        can involve projections either into a learned metric space
+        (for contrastive losses) or into a pixel space (for reconstruction losses)
+
+        :param representation_dim: The dimension of the representation that the
+        decoder will take as input
+
+        :param projection_shape: The dimension of the projection the decoder will
+        produce as output
+
+        :param sample: A binary flag indicating whether the decoder should take as
+        input the mean of the encoded representation distribution (sample=False),
+        or a sample from that distribution (sample=True)
+
+        :param learn_scale: A binary flag indicating whether the decoder should
+        learn a parametric standard deviation for the decoded distribution
+        (learn_scale=True), or whether the standard deviation of the encoded
+        should be used as the standard deviation of the decoded
+        distribution (learn_scale=False)
+        """
         super().__init__()
         self.representation_dim = representation_dim
         self.projection_dim = projection_shape
@@ -101,7 +124,7 @@ class NoOp(LossDecoder):
 
 
 class AsymmetricProjectionHead(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False,
+    def __init__(self, representation_dim, projection_shape, *, sample=False,
                  projection_architecture=None, learn_scale=False):
         super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
@@ -125,7 +148,7 @@ class AsymmetricProjectionHead(LossDecoder):
 
 
 class SymmetricProjectionHead(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False,
+    def __init__(self, representation_dim, projection_shape, *, sample=False,
                  projection_architecture=None, learn_scale=False):
         super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
@@ -155,7 +178,7 @@ class OnlyTargetProjectionHead(LossDecoder):
 
 
 class MomentumProjectionHead(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, sample=False,
+    def __init__(self, representation_dim, projection_shape, *, sample=False,
                  momentum_weight=0.999, inner_projection_head_cls=SymmetricProjectionHead,
                  learn_scale=False):
 
@@ -192,7 +215,7 @@ class MomentumProjectionHead(LossDecoder):
 
 
 class BYOLProjectionHead(MomentumProjectionHead):
-    def __init__(self, representation_dim, projection_shape, momentum_weight=0.99, sample=False,
+    def __init__(self, representation_dim, projection_shape, *, momentum_weight=0.99, sample=False,
                  inner_projection_head_cls=SymmetricProjectionHead):
         super(BYOLProjectionHead, self).__init__(representation_dim, projection_shape,
                                                  sample=sample, momentum_weight=momentum_weight)
@@ -217,7 +240,7 @@ class ActionConditionedVectorDecoder(LossDecoder):
     and the action representation, and predicts a vector from it
     for use in contrastive losses
     """
-    def __init__(self, representation_dim, projection_dim, sample=False, action_representation_dim=128,
+    def __init__(self, representation_dim, projection_dim, *, sample=False, action_representation_dim=128,
                  projection_architecture=None, learn_scale=False):
         super(ActionConditionedVectorDecoder, self).__init__(representation_dim, projection_dim,
                                                              sample=sample, learn_scale=learn_scale)
@@ -257,7 +280,7 @@ class ActionPredictionHead(LossDecoder):
     (one in context, one in extra_context), and produces a prediction
     of the action taken in between the frames
     """
-    def __init__(self, representation_dim, projection_shape, action_space, sample=False, learn_scale=False):
+    def __init__(self, representation_dim, projection_shape, action_space, *, sample=False, learn_scale=False):
         super().__init__(representation_dim, projection_shape, sample, learn_scale)
 
         # Use Stable Baseline's logic for constructing a SB action_dist from an action space
@@ -312,8 +335,8 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
 
 
 class PixelDecoder(LossDecoder):
-    def __init__(self, representation_dim, projection_shape, observation_space,
-                 action_representation_dim=None,sample=False, encoder_arch_key=None,
+    def __init__(self, representation_dim, projection_shape, observation_space, *,
+                 action_representation_dim=None, sample=False, encoder_arch_key=None,
                  learn_scale=False, constant_stddev=0.1):
 
         assert isinstance(observation_space, spaces.Box)
