@@ -105,6 +105,7 @@ def initialize_non_features_extractor(sb3_model):
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
+
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
         torch.set_num_threads(torch_num_threads)
