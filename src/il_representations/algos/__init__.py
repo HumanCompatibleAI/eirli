@@ -157,7 +157,7 @@ class CEB(RepresentationLearner):
     CEB with variance that is learned by StochasticEncoder
     """
     def __init__(self, env, log_dir, **kwargs):
-        algo_hardcoded_kwargs = dict(encoder_kwargs=dict(stochastic=True),
+        algo_hardcoded_kwargs = dict(encoder_kwargs=dict(learn_scale=False),
                                      decoder_kwargs=dict(learn_scale=True),
                                      encoder=BaseEncoder,
                                      decoder=SymmetricProjectionHead,
@@ -251,7 +251,7 @@ class DynamicsPrediction(RepresentationLearner):
                                      loss_calculator=MSELoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
-                                     encoder_kwargs=dict(action_space=env.action_space, stochastic=False),
+                                     encoder_kwargs=dict(action_space=env.action_space, learn_scale=False),
                                      decoder_kwargs=dict(observation_space=env.observation_space,
                                                          encoder_arch_key=encoder_cls_key,
                                                          action_representation_dim=action_representation_dim),
@@ -314,7 +314,7 @@ class InverseDynamicsPrediction(RepresentationLearner):
 
 class ActionConditionedTemporalVAE(RepresentationLearner):
     """
-    Essentially the same as a DynamicsModel, but with learned standard deviation (stochastic=True) and
+    Essentially the same as a DynamicsModel, but with learned standard deviation (learn_scale=True) and
     VAELoss instead of MSELoss
     """
     def __init__(self, env, log_dir, **kwargs):
@@ -330,7 +330,7 @@ class ActionConditionedTemporalVAE(RepresentationLearner):
                                      loss_calculator=VAELoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
-                                     encoder_kwargs=dict(action_space=env.action_space, stochastic=True),
+                                     encoder_kwargs=dict(action_space=env.action_space, learn_scale=True),
                                      decoder_kwargs=dict(observation_space=env.observation_space,
                                                          encoder_arch_key=encoder_cls_key,
                                                          action_representation_dim=action_representation_dim),
@@ -365,8 +365,10 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      preprocess_extra_context=False,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
-                                     encoder_kwargs=dict(action_space=env.action_space),
-                                     decoder_kwargs=dict(action_representation_dim=action_representation_dim))
+                                     encoder_kwargs=dict(action_space=env.action_space,
+                                                         learn_scale=False),
+                                     decoder_kwargs=dict(action_representation_dim=action_representation_dim,
+                                                         learn_scale=True))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
