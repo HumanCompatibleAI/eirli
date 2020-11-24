@@ -716,7 +716,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         for key in ingredient_configs_dict.keys():
             # Unwrap all wrapped ingredient baseline configs
             # that were passed around as Ray parameters
-            assert key in config, f"No version of {key} found in config"
+            assert f"{key}_frozen" in config, f"No version of {key} config " \
+                                              f"(under {key}_frozen) found in config"
 
             #Try passing in the actual object to see if that fixes test error
             # inflated_configs[key] = ingredient_configs_dict[key]
