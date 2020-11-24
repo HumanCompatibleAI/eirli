@@ -5,7 +5,6 @@ import logging
 import os
 import os.path as osp
 import weakref
-import pickle
 
 import numpy as np
 import ray
@@ -629,7 +628,7 @@ def cfg_il_bc_freeze():
 
 # TODO(sam): GAIL configs
 
-class SerializedConfig():
+class WrappedConfig():
     def __init__(self, config_dict):
         self.config_dict = config_dict
 
@@ -703,6 +702,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         os.path.join(cwd, benchmark_config['data_root']))
 
     def trainable_function(config):
+        # "config" argument is passed in by Ray Tune
 
         if stages_to_run == StagesToRun.REPL_AND_IL:
             keys_to_add = ['benchmark', 'il_train', 'il_test', 'repl']
@@ -713,10 +713,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
 
         inflated_configs = {}
         for key in ingredient_configs_dict.keys():
+            # Unwrap all wrapped ingredient baseline configs
+            # that were passed around as Ray parameters
             assert key in config, f"No version of {key} found in config"
             inflated_configs[key] = config[key].config_dict
+            # Delete the keys first because we will then call expand_dict_keys
+            # which will create new top-level ingredient dictionaries with
+            # variations to our configs specified on the level of Tune
             del config[key]
-        # "config" argument is passed in by Ray Tune
         logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
 
@@ -757,8 +761,13 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         skopt_ref_configs = sacred_copy(skopt_ref_configs)
         metric = sacred_copy(metric)
 
+        # In addition to the actual spaces we're searching over, we also need to
+        # store the baseline config values in Ray to avoid Ray issue #12048
         for ing_name, ing_config in ingredient_configs_dict.items():
-            frozen_config = SerializedConfig(ing_config)
+            frozen_config = WrappedConfig(ing_config)
+            # Create a Categorical skopt search space with a single element:
+            # the frozen config. This means that Ray's config dictionary
+            # will contain the same `frozen_config` object on every trial
             skopt_space[ing_name] = skopt.space.Categorical(categories=(frozen_config,))
             for ref_config in skopt_ref_configs:
                 ref_config[ing_name] = frozen_config
@@ -791,8 +800,11 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
+        # In addition to the actual spaces we're searching over, we also need to
+        # store the baseline config values in Ray to avoid Ray issue #12048
+        # We create a grid search with a single value of the WrappedConfig object
         for ing_name, ing_config in ingredient_configs_dict.items():
-            spec[ing_name] = tune.grid_search([SerializedConfig(ing_config)])
+            spec[ing_name] = tune.grid_search([WrappedConfig(ing_config)])
 
     rep_run = tune.run(
         trainable_function,
