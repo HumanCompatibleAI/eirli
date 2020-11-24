@@ -631,7 +631,7 @@ def cfg_il_bc_freeze():
 
 class SerializedConfig():
     def __init__(self, config_dict):
-        self.config = config_dict
+        self.config_dict = config_dict
 
 
 @chain_ex.main
@@ -714,8 +714,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         inflated_configs = {}
         for key in ingredient_configs_dict.keys():
             assert key in config, f"No version of {key} found in config"
-            #inflated_configs[key] = pickle.loads(config[pkl_key])
-            inflated_configs[key] = config[key].config
+            inflated_configs[key] = config[key].config_dict
             del config[key]
         # "config" argument is passed in by Ray Tune
         logging.warning(f"Config keys: {config.keys()}")
