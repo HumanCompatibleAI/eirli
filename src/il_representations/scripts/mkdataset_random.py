@@ -12,9 +12,7 @@ from sacred import Experiment
 from tqdm import tqdm
 
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.write_dataset import (get_meta_dict,
-                                                   get_out_file_map,
-                                                   write_frames)
+from il_representations.data.write_dataset import get_meta_dict, write_frames
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -43,8 +41,10 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
     set_global_seeds(seed)
     logging.basicConfig(level=logging.INFO)
 
-    out_file_map = get_out_file_map()
-    out_file_path = os.path.join(out_file_map['random'], 'random.tgz')
+    out_file_path = os.path.join(
+        auto.get_data_dir(benchmark_name=env_cfg['benchmark_name'],
+                          task_key=env_cfg['task_name'],
+                          data_type='random'), 'random.tgz')
 
     venv = auto.load_vec_env()
     policy = policy_base.RandomPolicy(venv.observation_space,
@@ -61,7 +61,7 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
             prog_bar = tqdm(total=n_timesteps_min, desc='steps')
         else:
             prog_bar = None
-        # keep generating trajectories until we meed or exceed the minimum time
+        # keep generating trajectories until we meet or exceed the minimum time
         # step count
         while timestep_ctr < n_timesteps_min:
             new_trajs = rollout.generate_trajectories(

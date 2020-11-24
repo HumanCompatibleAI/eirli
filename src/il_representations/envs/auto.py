@@ -24,7 +24,10 @@ ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
 
 @env_cfg_ingredient.capture
-def load_dataset(benchmark_name, n_traj=None):
+def load_dict_dataset(benchmark_name, n_traj=None):
+    """Load a dict-type dataset. Also see load_wds_datasets, which instead
+    lods a set of datasets that have been stored in a webdataset-compatible
+    format."""
     if benchmark_name == 'magical':
         dataset_dict = load_dataset_magical(n_traj=n_traj)
     elif benchmark_name == 'dm_control':
@@ -110,8 +113,16 @@ def _get_default_env_cfg(_config):
 
 
 @env_data_ingredient.capture
-def load_new_style_ilr_datasets(configs, processed_data_dirs):
-    """Load a new-style dataset for representation learning.
+def get_data_dir(benchmark_name, task_key, data_type, processed_data_root):
+    """Get the data directory for a given benchmark ("magical", "dm_control",
+    etc.), task (e.g. "MoveToCorner", "finger-spin") and data type (e.g.
+    "demos", "random")."""
+    return os.path.join(processed_data_root, data_type, benchmark_name,
+                        task_key)
+
+
+def load_wds_datasets(configs):
+    """Load datasets in webdataset (wds) format.
 
     Args:
         configs ([dict]): list of dicts with the following keys:
@@ -149,7 +160,9 @@ def load_new_style_ilr_datasets(configs, processed_data_dirs):
         env_cfg = config['env_cfg']
         benchmark_name = env_cfg["benchmark_name"]
         task_key = env_cfg['task_name']
-        data_root = processed_data_dirs[benchmark_name][task_key][data_type]
+        data_root = get_data_dir(
+            benchmark_name=benchmark_name, task_key=task_key,
+            data_type=data_type)
 
         tar_files = glob.glob(os.path.join(data_root, "*.tgz"))
         if len(tar_files) == 0:

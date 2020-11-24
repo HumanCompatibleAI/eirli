@@ -13,28 +13,7 @@ VENV_OPTS_TEST_CONFIG = {
     'n_envs': 2,
 }
 ENV_DATA_TEST_CONFIG = {
-    'processed_data_dirs': {
-        'atari': {
-            'PongNoFrameskip-v4': {
-                'demos': path.join(TEST_DATA_DIR, 'processed', 'atari',
-                                   'pong'),
-            },
-        },
-        'magical': {
-            'MoveToRegion': {
-                'demos':
-                path.join(TEST_DATA_DIR, 'processed', 'magical',
-                          'move-to-region'),
-            },
-        },
-        'dm_control': {
-            'reacher-easy': {
-                'demos':
-                path.join(TEST_DATA_DIR, 'processed', 'dm_control',
-                          'reacher-easy'),
-            },
-        },
-    },
+    'processed_data_root': path.join(TEST_DATA_DIR, 'processed'),
     'atari_demo_paths': {
         'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
     },

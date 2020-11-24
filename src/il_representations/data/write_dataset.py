@@ -19,14 +19,6 @@ def _get_env_data(_config):
 
 
 @env_cfg_ingredient.capture
-def get_out_file_map(benchmark_name, task_name):
-    """Retrieve dictionary telling us where demonstrations for the current
-    environment should go."""
-    env_data = _get_env_data()
-    return env_data['processed_data_dirs'][benchmark_name][task_name]
-
-
-@env_cfg_ingredient.capture
 def get_meta_dict(benchmark_name, _config):
     # figure out what config keys to keep
     # (we remove keys for benchmarks other than the current one)
