@@ -45,7 +45,7 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
         layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
-    return nn.Sequential(layers)
+    return nn.Sequential(*layers)
 
 
 class LossDecoder(nn.Module):
