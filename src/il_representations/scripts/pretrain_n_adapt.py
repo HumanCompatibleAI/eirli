@@ -807,6 +807,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
+        algo = None
         # In addition to the actual spaces we're searching over, we also need to
         # store the baseline config values in Ray to avoid Ray issue #12048
         # We create a grid search with a single value of the WrappedConfig object
