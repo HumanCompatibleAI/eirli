@@ -5,11 +5,13 @@
 set -e
 
 gen_demos() {
-    xvfb-run -a python -m il_representations.scripts.mkdataset_demos with n_traj_total=1 $@
+    # use "with n_traj_total=N" to write fewer demos
+    xvfb-run -a python -m il_representations.scripts.mkdataset_demos run with n_traj_total=2 $@
 }
 
 gen_random() {
-    xvfb-run -a python -m il_representations.scripts.mkdataset_random with n_timesteps_min=64 $@
+    xvfb-run -a python -m il_representations.scripts.mkdataset_random run \
+        with venv_opts.venv_parallel=True venv_opts.n_envs=2 n_timesteps_min=16 $@
 }
 
 for mag_pfx in ClusterColour ClusterShape FixColour FindDupe MatchRegions MakeLine MoveToCorner MoveToRegion; do

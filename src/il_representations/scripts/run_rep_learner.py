@@ -114,7 +114,7 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         algo = getattr(algos, algo)
 
     # setup environment & dataset
-    webdatasets, combined_meta = auto.load_new_style_ilr_datasets(
+    webdatasets, combined_meta = auto.load_wds_datasets(
         configs=dataset_configs)
     color_space = combined_meta['color_space']
     observation_space = combined_meta['observation_space']

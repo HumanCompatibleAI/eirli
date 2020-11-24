@@ -218,9 +218,23 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
     def learn(self, datasets, batches_per_epoch, n_epochs):
-        """
-        :param dataset:
-        :return:
+        """Run repL training loop.
+
+        Args:
+            datasets ([wds.Dataset]): list of webdataset datasets which we will
+                sample from. Each one likely represents data from different
+                tasks, or different policies.
+            batches_per_epoch (int): each 'epoch' simply consists of a fixed
+                number of batches, with data drawn equally from the given
+                datasets (as opposed to each epoch consisting of a complete
+                cycle through all datasets).
+            n_epochs (int): the total number of 'epochs' of optimisation to
+                perform. Total number of updates will be `batches_per_epoch *
+                n_epochs`.
+
+        Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
+            `loss_record` is a list of average loss values encountered at each
+            epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
         # For each single-task dataset in the `datasets` list, we first apply a
         # target pair constructor to create targets from the incoming stream of
@@ -242,16 +256,17 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         if not self.shuffle_batches:
             assert len(datasets) <= 1, \
-                "InterleavedDataset will intrinsically shuffle batches; do " \
-                "not use multi-task training if shuffle_batches=False is " \
-                f"required (got {len(datasets)} datasets)"
+                "InterleavedDataset will intrinsically shuffle batches by " \
+                "randomly selecting which dataset to draw from at each " \
+                "iteration; do not use multi-task training if " \
+                f"shuffle_batches=False is required (got {len(datasets)}" \
+                "datasets)"
             assert self.dataset_max_workers <= 1, \
                 "Using more than one dataset worker may shuffle the " \
                 "dataset; got dataset_max_workers={dataset_max_workers}"
         interleaved_dataset = InterleavedDataset(
             datasets, nominal_length=batches_per_epoch * self.batch_size)
 
-        # do not start more workers than the number of shards
         dataloader = DataLoader(interleaved_dataset,
                                 num_workers=self.dataset_max_workers,
                                 batch_size=int(self.batch_size))
@@ -275,7 +290,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
 
-            items_seen = 0
+            samples_seen = 0
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
@@ -335,12 +350,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('batches_trained', batches_trained)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
-                items_seen += len(contexts)
+                samples_seen += len(contexts)
 
             assert batches_trained > 0, \
                 "went through training loop with no batches---empty dataset?"
             if epoch_num == 0:
-                logging.debug(f"Epoch yielded {items_seen} data points "
+                logging.debug(f"Epoch yielded {samples_seen} data points "
                               f"({step + 1} batches)")
 
             if self.scheduler is not None:

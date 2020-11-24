@@ -72,7 +72,7 @@ class ILRDataset(wds.Dataset):
 
 
 class InterleavedDataset(IterableDataset):
-    """Randomly interleaves one or more IterableDatasets. Pretends that hte
+    """Randomly interleaves one or more IterableDatasets. Pretends that the
     resulting dataset has length `nominal_length`; underlying datasets are
     looped as needed, like in WDS' ResizeDataset."""
     def __init__(self, datasets, nominal_length, seed=None):

@@ -89,78 +89,7 @@ def env_data_defaults():
     data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
     del _this_file_dir
 
-    processed_data_dirs = {
-        'magical': {
-            'MoveToCorner': {
-                'demos': 'data/processed/magical/demos/move-to-corner/',
-                'random': 'data/processed/magical/random/move-to-corner/',
-            },
-            'MoveToRegion': {
-                'demos': 'data/processed/magical/demos/move-to-region/',
-                'random': 'data/processed/magical/random/move-to-region/',
-            },
-            'MatchRegions': {
-                'demos': 'data/processed/magical/demos/match-regions/',
-                'random': 'data/processed/magical/random/match-regions/',
-            },
-            'MakeLine': {
-                'demos': 'data/processed/magical/demos/make-line/',
-                'random': 'data/processed/magical/random/make-line/',
-            },
-            'FixColour': {
-                'demos': 'data/processed/magical/demos/fix-colour/',
-                'random': 'data/processed/magical/random/fix-colour/',
-            },
-            'FindDupe': {
-                'demos': 'data/processed/magical/demos/find-dupe/',
-                'random': 'data/processed/magical/random/find-dupe/',
-            },
-            'ClusterColour': {
-                'demos': 'data/processed/magical/demos/cluster-colour/',
-                'random': 'data/processed/magical/random/cluster-colour/',
-            },
-            'ClusterShape': {
-                'demos': 'data/processed/magical/demos/cluster-shape/',
-                'random': 'data/processed/magical/random/cluster-shape/',
-            },
-        },
-        'dm_control': {
-            'finger-spin': {
-                'demos': 'data/processed/dm_control/demos/finger-spin/',
-                'random': 'data/processed/dm_control/random/finger-spin/',
-            },
-            'cheetah-run': {
-                'demos': 'data/processed/dm_control/demos/cheetah-run/',
-                'random': 'data/processed/dm_control/random/cheetah-run/',
-            },
-            'walker-walk': {
-                'demos': 'data/processed/dm_control/demos/walker-walk/',
-                'random': 'data/processed/dm_control/random/walker-walk/',
-            },
-            'cartpole-swingup': {
-                'demos': 'data/processed/dm_control/demos/cartpole-swingup/',
-                'random': 'data/processed/dm_control/random/cartpole-swingup/',
-            },
-            'reacher-easy': {
-                'demos': 'data/processed/dm_control/demos/reacher-easy/',
-                'random': 'data/processed/dm_control/random/reacher-easy/',
-            },
-            'ball-in-cup-catch': {
-                'demos': 'data/processed/dm_control/demos/ball-in-cup-catch/',
-                'random': 'data/processed/dm_control/random/ball-in-cup-catch/',
-            },
-        },
-        'atari': {
-            'BreakoutNoFrameskip-v4': {
-                'demos': "data/processed/atari/demos/breakout/",
-                'random': "data/processed/atari/random/breakout/",
-            },
-            'PongNoFrameskip-v4': {
-                'demos': "data/processed/atari/demos/pong/",
-                'random': "data/processed/atari/random/pong/",
-            },
-        },
-    }
+    processed_data_root = 'data/processed'
 
     # ########################
     # MAGICAL config variables

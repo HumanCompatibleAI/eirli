@@ -292,13 +292,13 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        final_path = do_training_bc(dataset_dict=auto_env.load_dataset(),
+        final_path = do_training_bc(dataset_dict=auto_env.load_dict_dataset(),
                                     venv_chans_first=venv,
                                     out_dir=log_dir,
                                     encoder=encoder)
 
     elif algo == 'gail':
-        final_path = do_training_gail(dataset_dict=auto_env.load_dataset(),
+        final_path = do_training_gail(dataset_dict=auto_env.load_dict_dataset(),
                                       venv_chans_first=venv,
                                       out_dir=log_dir,
                                       encoder=encoder)
