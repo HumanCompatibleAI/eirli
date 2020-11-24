@@ -36,6 +36,18 @@ def exp_sequential(x, sequential):
     return torch.exp(sequential(x))
 
 
+def get_sequential_from_architecture(architecture, representation_dim, projection_dim):
+    layers = []
+    input_dim = representation_dim
+    for layer_def in architecture:
+        layers.append(nn.Linear(input_dim, layer_def['output_dim']))
+        layers.append(nn.ReLU())
+        layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
+        input_dim = layer_def['output_dim']
+    layers.append(nn.Linear(input_dim, projection_dim))
+    return nn.Sequential(layers)
+
+
 class LossDecoder(nn.Module):
     def __init__(self, representation_dim, projection_shape,
                  sample=False, learn_scale=False):
@@ -98,20 +110,20 @@ class LossDecoder(nn.Module):
             stddev = stdev_layer(z_vector)
         return independent_multivariate_normal(mean, stddev)
 
+
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
         if architecture is None:
             architecture = DEFAULT_PROJECTION_ARCHITECTURE
-        layers = []
-        input_dim = representation_dim
-        for layer_def in architecture:
-            layers.append(nn.Linear(input_dim, layer_def['output_dim']))
-            layers.append(nn.ReLU())
-            layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
-            input_dim = layer_def['output_dim']
-        layers.append(nn.Linear(input_dim, projection_dim))
-        mean_func = nn.Sequential(*layers)
+
+        mean_func = get_sequential_from_architecture(architecture,
+                                                     representation_dim,
+                                                     projection_dim)
+
         if learn_scale:
-            stddev_func = partial(exp_sequential, sequential=nn.Sequential(*copy.deepcopy(layers)))
+            stddev_net = get_sequential_from_architecture(architecture,
+                                                          representation_dim,
+                                                          projection_dim)
+            stddev_func = partial(exp_sequential, sequential=stddev_net)
         else:
             stddev_func = None
 
