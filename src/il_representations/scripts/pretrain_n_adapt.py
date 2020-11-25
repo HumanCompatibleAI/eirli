@@ -4,7 +4,6 @@ import enum
 import logging
 import os
 import os.path as osp
-import pickle
 import weakref
 
 import numpy as np
@@ -719,14 +718,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
             assert f"{key}_frozen" in config, f"No version of {key} config " \
                                               f"(under {key}_frozen) found in config"
 
-            #Try passing in the actual object to see if that fixes test error
-            # inflated_configs[key] = ingredient_configs_dict[key]
-            # inflated_configs[key] = pickle.loads(config[f"{key}_frozen"])
+
             inflated_configs[key] = config[f"{key}_frozen"].config_dict
 
-            # Delete the keys first because we will then call expand_dict_keys
-            # which will create new top-level ingredient dictionaries with
-            # variations to our configs specified on the level of Tune
+            # Delete the keys for cleanliness' sake
             del config[f"{key}_frozen"]
         logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
@@ -773,7 +768,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         # store the baseline config values in Ray to avoid Ray issue #12048
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
-            # frozen_config = pickle.dumps(ing_config, 0)
+
             # Create a Categorical skopt search space with a single element:
             # the frozen config. This means that Ray's config dictionary
             # will contain the same `frozen_config` object on every trial
@@ -815,7 +810,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
         # We create a grid search with a single value of the WrappedConfig object
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
-            # frozen_config = pickle.dumps(ing_config, 0)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
 
     rep_run = tune.run(
