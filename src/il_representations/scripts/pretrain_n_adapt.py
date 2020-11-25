@@ -741,14 +741,15 @@ def run(exp_name, metric, spec, repl, il_train, il_test, benchmark,
                 config[key] = {}
 
         if stages_to_run == StagesToRun.REPL_AND_IL:
-            run_end2end_exp(ingredient_configs_dict['repl'], ingredient_configs_dict['il_train'],
-                            ingredient_configs_dict['il_test'], ingredient_configs_dict['benchmark'], config,
+            run_end2end_exp(inflated_configs['repl'], inflated_configs['il_train'],
+                            inflated_configs['il_test'], inflated_configs['benchmark'], config,
                             log_dir)
         if stages_to_run == StagesToRun.IL_ONLY:
-            run_il_only_exp(ingredient_configs_dict['il_train'], ingredient_configs_dict['il_test'],
-                            ingredient_configs_dict['benchmark'], config, log_dir)
+            run_il_only_exp(inflated_configs['il_train'], inflated_configs['il_test'],
+                            inflated_configs['benchmark'], config, log_dir)
         if stages_to_run == StagesToRun.REPL_ONLY:
-            run_repl_only_exp(ingredient_configs_dict['repl'], ingredient_configs_dict['benchmark'], config, log_dir)
+            run_repl_only_exp(inflated_configs['repl'],
+                              inflated_configs['benchmark'], config, log_dir)
 
     if detect_ec2():
         ray.init(address="auto", **ray_init_kwargs)
