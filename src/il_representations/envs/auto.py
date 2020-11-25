@@ -47,6 +47,8 @@ def load_dict_dataset(benchmark_name, n_traj=None):
 
 @env_cfg_ingredient.capture
 def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
+    """Get the name of the Gym environment corresponding to the current
+    task."""
     if benchmark_name == 'magical':
         return get_env_name_magical()
     elif benchmark_name == 'dm_control':
@@ -200,6 +202,9 @@ def load_wds_datasets(configs):
 
 @env_cfg_ingredient.capture
 def load_color_space(benchmark_name):
+    """Determine which colour space is used for this benchmark. This is RGB for
+    every task except Atari. Knowing the colour space is useful for determining
+    dimensions of the frame stacks that get passed to CNNs."""
     color_spaces = {
         'magical': ColorSpace.RGB,
         'dm_control': ColorSpace.RGB,

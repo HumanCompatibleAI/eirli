@@ -1,4 +1,4 @@
-"""Utilities for writing datasets in the new unified format."""
+"""Utilities for writing datasets in the webdataset format."""
 
 import os
 
@@ -20,6 +20,12 @@ def _get_env_data(_config):
 
 @env_cfg_ingredient.capture
 def get_meta_dict(benchmark_name, _config):
+    """Generate a dictionary with metadata for the current task (as defined by
+    `env_cfg`). When generating a webdataset, this dictionary will be written
+    to the beginning of each shard. Having this metadata in the file makes it
+    possible to determine how big the inputs to CNNs are, what sort of action
+    space should be used for each task, etc."""
+
     # figure out what config keys to keep
     # (we remove keys for benchmarks other than the current one)
     other_env_names = ALL_BENCHMARK_NAMES - {benchmark_name}
@@ -44,6 +50,9 @@ def get_meta_dict(benchmark_name, _config):
 
 
 def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None):
+    """Write a series of frames to a webdataset shard. This function also makes
+    sure to write the metadata dictionary `meta_dict` at the beginning of the
+    shard, as expected by the data-loading utilities in `read_dataset.py`."""
     out_dir = os.path.dirname(out_file_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)

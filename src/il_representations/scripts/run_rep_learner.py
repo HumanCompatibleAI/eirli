@@ -16,6 +16,8 @@ from il_representations.envs.config import (env_cfg_ingredient,
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment(
+    # We take env_cfg_ingredient to determine which task we need to load data
+    # for, and env_data_ingredient gives us the paths to that data.
     'repl', ingredients=[env_cfg_ingredient, env_data_ingredient])
 
 
@@ -25,8 +27,13 @@ def default_config():
     # you identify runs in viskit.
     exp_ident = None
 
-    # See docs for `load_new_style_ilr_dataset()` for more information on
-    # syntax for dataset_configs.
+    # `dataset_configs` is a list of data sources to use for representation
+    # learning. During representation learning, batches will be constructed by
+    # drawing from each of these data sources with equal probability. For
+    # instance, using `dataset_configs = [{'type': 'demos'}, {'type':
+    # 'random'}]` interleaves demonstrations and (saved) random rollouts in
+    # equal proportion. See docs for `load_new_style_ilr_dataset()` for more
+    # information on the syntax of `dataset_configs`.
     dataset_configs = [{'type': 'demos'}]
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
@@ -36,8 +43,9 @@ def default_config():
         'optimizer': torch.optim.Adam,
         'optimizer_kwargs': {'lr': 1e-4},
         'augmenter_kwargs': {
-            # augmenter_spec is a comma-separated list of enabled augmentations.
-            # See `help(imitation.augment.StandardAugmentations)` for available
+            # augmenter_spec is a comma-separated list of enabled
+            # augmentations. Consult docstring for
+            # imitation.augment.StandardAugmentations to see available
             # augmentations.
             "augmenter_spec": "translate,rotate,gaussian_blur",
         },
@@ -62,7 +70,10 @@ def default_config():
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
-    algo_params = {"scheduler": LinearWarmupCosine, "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}}
+    algo_params = {
+        "scheduler": LinearWarmupCosine,
+        "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}
+    }
     _ = locals()
     del _
 
@@ -92,8 +103,9 @@ def random_demos():
 
 
 def initialize_non_features_extractor(sb3_model):
-    # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
-    # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other
+    # This is a hack to get around the fact that you can't initialize only some
+    # of the components of a SB3 policy upon creation, and we in fact want to
+    # keep the loaded representation frozen, but orthogonally initalize other
     # components.
     sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
     sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)
