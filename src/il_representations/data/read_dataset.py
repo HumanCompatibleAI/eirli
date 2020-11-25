@@ -1,4 +1,4 @@
-"""Tools for reading datasets"""
+"""Tools for reading datasets stored in the webdataset format."""
 
 import os
 import pickle
@@ -117,6 +117,8 @@ def strip_extensions(dataset):
 
 
 def load_ilr_datasets(file_paths):
+    """Load a dataset that has been stored in webdataset format, given a list
+    of file paths representing shards of the dataset."""
     # wds doesn't use standard URL parser for some reason. I think they're just
     # looking for a file: prefix and then treating the rest of the string as a
     # file path.

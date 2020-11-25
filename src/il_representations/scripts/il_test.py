@@ -23,6 +23,10 @@ from il_representations.utils import TensorFrameWriter
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_test_ex = Experiment('il_test',
                         ingredients=[
+                            # We need env_cfg_ingredient to know which
+                            # environment to test on, and venv_opts_ingredient
+                            # to construct a vecenv (or vecenvs) for that
+                            # environment.
                             env_cfg_ingredient, venv_opts_ingredient
                         ])
 

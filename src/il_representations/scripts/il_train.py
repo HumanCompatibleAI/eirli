@@ -69,6 +69,11 @@ def gail_defaults():
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_train_ex = Experiment('il_train', ingredients=[
+    # We need env_cfg_ingredient to determine which environment to train on,
+    # venv_opts_ingredient to construct a vecenv for the environment, and
+    # env_data_ingredient to load training data. bc_ingredient and
+    # gail_ingredient are used for BC and GAIL, respectively (otherwise
+    # ignored).
     env_cfg_ingredient, venv_opts_ingredient, env_data_ingredient,
     bc_ingredient, gail_ingredient,
 ])
