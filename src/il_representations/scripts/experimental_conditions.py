@@ -6,7 +6,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 def condition_one_temporal_cpc():
     # Baseline Temporal CPC with expert demonstrations
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     _ = locals()
     del _
 
@@ -15,7 +14,6 @@ def condition_one_temporal_cpc():
 def condition_two_temporal_cpc_momentum():
     # Baseline Temporal CPC with momentum added
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {
         'batch_extender': batch_extenders.QueueBatchExtender,
         'encoder': encoders.MomentumEncoder,
@@ -29,7 +27,6 @@ def condition_two_temporal_cpc_momentum():
 def condition_three_temporal_cpc_sym_proj():
     # Baseline Temporal CPC with a symmetric projection head
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'decoder': decoders.SymmetricProjectionHead}
     _ = locals()
     del _
@@ -39,7 +36,6 @@ def condition_three_temporal_cpc_sym_proj():
 def condition_four_temporal_cpc_asym_proj():
     # Baseline Temporal CPC with an asymmetric projection head
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'decoder': decoders.AsymmetricProjectionHead}
     _ = locals()
     del _
@@ -49,7 +45,6 @@ def condition_four_temporal_cpc_asym_proj():
 def condition_five_temporal_cpc_augment_both():
     # Baseline Temporal CPC with augmentation of both context and target
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'augmenter': augmenters.AugmentContextAndTarget}
     _ = locals()
     del _
@@ -60,7 +55,6 @@ def condition_eight_temporal_autoencoder():
     # A variational autoencoder with weight on KLD loss set to 0, and temporal offset
     # between encoded image and target image
     algo = 'VariationalAutoencoder'
-    use_random_rollouts = False
     algo_params = {
             'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
             'loss_calculator_kwargs': {'beta': 0}}
@@ -73,7 +67,6 @@ def condition_eight_temporal_autoencoder():
 def condition_nine_autoencoder():
     # A variational autoencoder with weight on KLD loss set to 0
     algo = 'VariationalAutoencoder'
-    use_random_rollouts = False
     algo_params = {
             'loss_calculator_kwargs': {'beta': 0},
                     }
@@ -85,7 +78,6 @@ def condition_nine_autoencoder():
 def condition_ten_vae():
     # A variational autoencoder with weight on KLD loss set to 1.0
     algo = 'VariationalAutoencoder'
-    use_random_rollouts = False
     algo_params = {
         'loss_calculator_kwargs': {'beta': 0.1}} # TODO What is a good default beta here?
     _ = locals()
@@ -100,7 +92,6 @@ def condition_thirteen_temporal_vae_lowbeta():
     algo_params = {'loss_calculator_kwargs': {'beta': 0.1},
                    'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
                    }
-    use_random_rollouts = False
     _ = locals()
     del _
 
@@ -112,7 +103,6 @@ def condition_fourteen_temporal_vae_highbeta():
     algo_params = {'loss_calculator_kwargs': {'beta': 1.0},
                    'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
                    }
-    use_random_rollouts = False
     _ = locals()
     del _
 
@@ -123,7 +113,6 @@ def condition_eighteen_ac_temporal_vae_lowbeta():
     # between encoded image and target image
     algo = 'ActionConditionedTemporalVAE'
     algo_params = {'loss_calculator_kwargs': {'beta': 0.1}}
-    use_random_rollouts = False
     _ = locals()
     del _
 
@@ -189,7 +178,6 @@ def stooke_vae_hyperparams_dmc():
 @represent_ex.named_config
 def identity_cpc():
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor}
     _ = locals()
     del _
@@ -198,7 +186,6 @@ def identity_cpc():
 @represent_ex.named_config
 def identity_cpc_aug():
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
                    'augmenter': augmenters.AugmentContextAndTarget,
                    'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
@@ -209,7 +196,6 @@ def identity_cpc_aug():
 @represent_ex.named_config
 def temporal_ceb_no_projection():
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'loss_calculator': losses.CEBLoss}
     _ = locals()
     del _
@@ -218,7 +204,6 @@ def temporal_ceb_no_projection():
 @represent_ex.named_config
 def temporal_ceb_no_projection_beta0():
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'loss_calculator': losses.CEBLoss,
                    'loss_calculator_kwargs': {'beta': 0.0}}
     _ = locals()
@@ -229,7 +214,6 @@ def temporal_ceb_no_projection_beta0():
 def temporal_cpc_augment_both_magical():
     # Baseline Temporal CPC with augmentation of both context and target
     algo = 'TemporalCPC'
-    use_random_rollouts = False
     algo_params = {'augmenter': augmenters.AugmentContextAndTarget,
                    'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
     _ = locals()
