@@ -15,7 +15,9 @@ from magical.evaluation import EvaluationProtocol
 import numpy as np
 import torch as th
 
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient,
+                                            venv_opts_ingredient)
 
 register_envs()
 
@@ -98,21 +100,32 @@ def load_data(
     return dataset_dict, env_name
 
 
-@benchmark_ingredient.capture
-def get_env_name_magical(magical_env_prefix, magical_preproc):
-    orig_env_name = magical_env_prefix + '-Demo-v0'
+@env_cfg_ingredient.capture
+def get_env_name_magical(task_name, magical_preproc):
+    # for MAGICAL, the 'task_name' is a prefix like MoveToCorner or
+    # ClusterShape
+    orig_env_name = task_name + '-Demo-v0'
     gym_env_name = saved_trajectories.splice_in_preproc_name(
         orig_env_name, magical_preproc)
     return gym_env_name
 
 
-@benchmark_ingredient.capture
-def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc, n_traj, magical_remove_null_actions,
-                         data_root):
-    demo_dir = os.path.join(data_root, magical_demo_dirs[magical_env_prefix])
+@env_data_ingredient.capture
+def _get_magical_data_cfg(magical_demo_dirs, data_root):
+    # workaround for Sacred issue #206
+    return magical_demo_dirs, data_root
+
+
+@env_cfg_ingredient.capture
+def load_dataset_magical(
+        task_name,
+        magical_preproc,
+        magical_remove_null_actions,
+        n_traj=None):
+    magical_demo_dirs, data_root = _get_magical_data_cfg()
+    demo_dir = os.path.join(data_root, magical_demo_dirs[task_name])
     logging.info(
-        f"Loading trajectory data for '{magical_env_prefix}' from "
+        f"Loading trajectory data for '{task_name}' from "
         f"'{demo_dir}'")
     demo_paths = [
         os.path.join(demo_dir, f) for f in os.listdir(demo_dir)
@@ -148,7 +161,7 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         `.do_eval()`."""
         return self._run_id
 
-    @benchmark_ingredient.capture
+    @venv_opts_ingredient.capture
     def obtain_scores(self, env_name, venv_parallel, n_envs):
         """Collect `self.n_rollouts` scores on environment `env_name`."""
         vec_env_chans_last = make_vec_env(env_name,

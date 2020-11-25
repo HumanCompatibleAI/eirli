@@ -1,6 +1,5 @@
 runs
 test_observer
-tests
 output
 *_runs
 *.pyc
@@ -9,6 +8,7 @@ output
 /data
 progress.csv
 params.json
+*.tgz
 
 # editor and devlopment tool cruft
 .pytype

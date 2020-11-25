@@ -1,26 +1,24 @@
-from glob import glob
 import logging
-import os
 
-from imitation.data import rollout
-from imitation.policies.base import RandomPolicy
 import numpy as np
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.ppo import PPO
-import il_representations.envs.auto as auto_env
 import torch
 
-from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
-from il_representations.algos.utils import LinearWarmupCosine
 from il_representations import algos
-from il_representations.envs.config import benchmark_ingredient
-from il_representations.policy_interfacing import EncoderFeatureExtractor
+from il_representations.algos.representation_learner import \
+    RepresentationLearner
+from il_representations.algos.utils import LinearWarmupCosine
+from il_representations.envs import auto
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient)
+
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-represent_ex = Experiment('repl',
-                          ingredients=[benchmark_ingredient])
+represent_ex = Experiment(
+    # We take env_cfg_ingredient to determine which task we need to load data
+    # for, and env_data_ingredient gives us the paths to that data.
+    'repl', ingredients=[env_cfg_ingredient, env_data_ingredient])
 
 
 @represent_ex.config
@@ -29,34 +27,53 @@ def default_config():
     # you identify runs in viskit.
     exp_ident = None
 
+    # `dataset_configs` is a list of data sources to use for representation
+    # learning. During representation learning, batches will be constructed by
+    # drawing from each of these data sources with equal probability. For
+    # instance, using `dataset_configs = [{'type': 'demos'}, {'type':
+    # 'random'}]` interleaves demonstrations and (saved) random rollouts in
+    # equal proportion. See docs for `load_new_style_ilr_dataset()` for more
+    # information on the syntax of `dataset_configs`.
+    dataset_configs = [{'type': 'demos'}]
     algo = "ActionConditionedTemporalCPC"
-    use_random_rollouts = False
     torch_num_threads = 1
     n_envs = 1
-    demo_timesteps = 5000
-    ppo_timesteps = 1000
-    pretrain_epochs = None
-    pretrain_batches = 10000
-    algo_params = {'representation_dim': 128,
-                   'optimizer': torch.optim.Adam,
-                   'optimizer_kwargs': {'lr': 1e-4},
-                   'augmenter_kwargs': {
-                                        # augmenter_spec is a comma-separated list of enabled augmentations.
-                                        # See `help(imitation.augment.StandardAugmentations)` for available
-                                        # augmentations.
-                                        "augmenter_spec": "translate,rotate,gaussian_blur",
-                                    }}
-    ppo_finetune = False
+    algo_params = {
+        'representation_dim': 128,
+        'optimizer': torch.optim.Adam,
+        'optimizer_kwargs': {'lr': 1e-4},
+        'augmenter_kwargs': {
+            # augmenter_spec is a comma-separated list of enabled
+            # augmentations. Consult docstring for
+            # imitation.augment.StandardAugmentations to see available
+            # augmentations.
+            "augmenter_spec": "translate,rotate,gaussian_blur",
+        },
+    }
     device = "auto"
-    # this is useful for constructing tests where we want to truncate the
-    # dataset to be small
+
+    # For repL, an 'epoch' is just a fixed number of batches, configured with
+    # batches_per_epoch.
+    #
+    # This makes it possible to balance data sources when we do multitask
+    # training. For instance, if the datasets for two different tasks are
+    # different lengths, then we truncate or repeat them so they are both of
+    # length `batches_per_epoch / 2`. If we did not truncate/repeat, then the
+    # shorter dataset would run out before the longer one, and the network
+    # would end up training on more samples from the longer dataset.
+    batches_per_epoch = 1000
+    n_epochs = 10
 
     _ = locals()
     del _
 
+
 @represent_ex.named_config
 def cosine_warmup_scheduler():
-    algo_params = {"scheduler": LinearWarmupCosine, "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}}
+    algo_params = {
+        "scheduler": LinearWarmupCosine,
+        "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}
+    }
     _ = locals()
     del _
 
@@ -65,43 +82,30 @@ def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
     train_from_expert = True
     algo = algos.FixedVarianceCEB
-    pretrain_batches = None
-    pretrain_batches = 5
-    demo_timesteps = None
-    ppo_finetune = False
+    batches_per_epoch = 5
+    n_epochs = 1
     _ = locals()
     del _
+
 
 @represent_ex.named_config
-def expert():
-    use_random_rollouts=False
+def expert_demos():
+    dataset_configs = [{'type': 'demos'}]
     _ = locals()
     del _
+
 
 @represent_ex.named_config
-def tiny_epoch():
-    demo_timesteps=5000
+def random_demos():
+    dataset_configs = [{'type': 'random'}]
     _ = locals()
     del _
 
-@represent_ex.capture
-def get_random_traj(venv, demo_timesteps):
-    random_policy = RandomPolicy(venv.observation_space, venv.action_space)
-    trajectories = rollout.generate_trajectories(
-        random_policy, venv, rollout.min_timesteps(demo_timesteps))
-    flat_traj = rollout.flatten_trajectories(trajectories)
-    # "infos" and "next_obs" keys are also available
-    return {k: getattr(flat_traj, k) for k in ["obs", "acts", "dones"]}
-
-@represent_ex.named_config
-def target_projection():
-    algo = algos.FixedVarianceTargetProjectedCEB
-    _ = locals()
-    del _
 
 def initialize_non_features_extractor(sb3_model):
-    # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
-    # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other
+    # This is a hack to get around the fact that you can't initialize only some
+    # of the components of a SB3 policy upon creation, and we in fact want to
+    # keep the loaded representation frozen, but orthogonally initalize other
     # components.
     sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
     sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)
@@ -110,8 +114,7 @@ def initialize_non_features_extractor(sb3_model):
 
 
 @represent_ex.main
-def run(benchmark, use_random_rollouts, algo, algo_params, seed,
-        ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches,
+def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
 
@@ -123,13 +126,11 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         algo = getattr(algos, algo)
 
     # setup environment & dataset
-    venv = auto_env.load_vec_env()
-    color_space = auto_env.load_color_space()
-    if use_random_rollouts:
-        dataset_dict = get_random_traj(venv=venv)
-    else:
-        # TODO be able to load a fixed number, `demo_timesteps`
-        dataset_dict = auto_env.load_dataset()
+    webdatasets, combined_meta = auto.load_wds_datasets(
+        configs=dataset_configs)
+    color_space = combined_meta['color_space']
+    observation_space = combined_meta['observation_space']
+    action_space = combined_meta['action_space']
 
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
@@ -138,27 +139,18 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         **algo_params['augmenter_kwargs'],
     }
     logging.info(f"Running {algo} with parameters: {algo_params}")
-    model = algo(venv, log_dir=log_dir, **algo_params)
+    model = algo(
+        observation_space=observation_space,
+        action_space=action_space,
+        log_dir=log_dir,
+        **algo_params)
 
     # setup model
-    loss_record, most_recent_encoder_path = model.learn(dataset_dict, pretrain_epochs, pretrain_batches)
-    if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
-        encoder_checkpoint = model.encoder_checkpoints_path
-        all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
-        latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        encoder_feature_extractor_kwargs = {'features_dim': algo_params["representation_dim"],
-                                            'encoder_path': os.path.abspath(latest_checkpoint)}
+    loss_record, most_recent_encoder_path = model.learn(
+        datasets=webdatasets,
+        batches_per_epoch=batches_per_epoch,
+        n_epochs=n_epochs)
 
-        # TODO figure out how to not have to set `ortho_init` to False for the whole policy
-        policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
-                         'features_extractor_kwargs': encoder_feature_extractor_kwargs,
-                         'ortho_init': False}
-        ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
-                        verbose=1, policy_kwargs=policy_kwargs)
-        ppo_model = initialize_non_features_extractor(ppo_model)
-        ppo_model.learn(total_timesteps=ppo_timesteps)
-
-    venv.close()
     return {
         'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning
