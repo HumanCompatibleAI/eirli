@@ -470,7 +470,7 @@ def cfg_tune_moco():
             'repl:algo_params:representation_dim':
                 128,
             'repl:algo_params:encoder_kwargs:obs_encoder_cls':
-                'BasicCNN',
+                'MAGICALCNN',
             'il_train:freeze_encoder':
                 True,
             'il_test:n_rollouts':
@@ -494,7 +494,7 @@ def cfg_tune_moco():
             'repl:algo_params:representation_dim':
                 128,
             'repl:encoder_kwargs:obs_encoder_cls':
-                'BasicCNN',
+                'MAGICALCNN',
             'il_train:freeze_encoder':
                 True,
             'il_test:n_rollouts':
@@ -561,7 +561,7 @@ def cfg_tune_cpc():
             'repl:algo_params:representation_dim':
             512,
             'repl:algo_params:encoder_kwargs:obs_encoder_cls':
-            'BasicCNN',
+            'MAGICALCNN',
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
             "translate,rotate,gaussian_blur",
             'il_train:freeze_encoder':
@@ -578,7 +578,7 @@ def cfg_tune_cpc():
             'repl:algo_params:optimizer_kwargs:lr':
                 1e-3,
             'repl:algo_params:encoder_kwargs:obs_encoder_cls':
-                'BasicCNN',
+                'MAGICALCNN',
             'repl:algo_params:decoder_kwargs:action_encoding_dim': 128,
             'repl:algo_params:decoder_kwargs:action_embedding_dim': 5,
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
@@ -599,7 +599,7 @@ def cfg_tune_cpc():
             'repl:algo_params:representation_dim':
                 128,
             'repl:algo_params:encoder_kwargs:obs_encoder_cls':
-                'BasicCNN',
+                'MAGICALCNN',
             'repl:algo_params:augmenter_kwargs:augmenter_spec':
                 "translate,rotate,gaussian_blur",
             'il_train:freeze_encoder':
@@ -653,7 +653,7 @@ def cfg_tune_dynamics():
             'repl:algo_params:batch_size':  256,
             'repl:algo_params:optimizer_kwargs:lr': 0.0003,
             'repl:algo_params:representation_dim': 64,
-            'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+            'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'MAGICALCNN',
             'repl:algo_params:encoder_kwargs:action_encoding_dim': 16,
             'repl:algo_params:encoder_kwargs:action_embedding_dim': 16
         },
@@ -705,7 +705,7 @@ def cfg_tune_inverse_dynamics():
             'repl:algo_params:batch_size':  256,
             'repl:algo_params:optimizer_kwargs:lr': 0.0003,
             'repl:algo_params:representation_dim': 64,
-            'repl:algo_params:eencoder_kwargs:obs_encoder_cls': 'BasicCNN',
+            'repl:algo_params:eencoder_kwargs:obs_encoder_cls': 'MAGICALCNN',
         },
 
     ]
