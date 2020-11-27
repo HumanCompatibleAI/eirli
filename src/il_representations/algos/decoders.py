@@ -362,7 +362,7 @@ class PixelDecoder(LossDecoder):
         assert height == width, "The image must be square"
         square_dim = height
         super().__init__(representation_dim, projection_shape, sample)
-        encoder_arch_key = encoder_arch_key or "BasicCNN"
+        encoder_arch_key = encoder_arch_key or "MAGICALCNN"
         self.encoder_arch = NETWORK_ARCHITECTURE_DEFINITIONS[encoder_arch_key]
 
         # Computes the number of dimensions that will come out of the final
