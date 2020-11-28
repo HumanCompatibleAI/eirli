@@ -96,7 +96,7 @@ def default_config():
         n_envs=16,
     )
     encoder_kwargs = dict(  # noqa: F841
-        obs_encoder_cls='BasicCNN',
+        obs_encoder_cls='MAGICALCNN',
         representation_dim=128,
     )
 

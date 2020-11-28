@@ -18,7 +18,7 @@ def get_space_and_ref_configs(contrastive=True):
                 {'repl:algo_params:batch_size': 256,
                  'repl:algo_params:optimizer_kwargs:lr': 0.0003,
                  'repl:algo_params:representation_dim': 128,
-                 'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+                 'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'MAGICALCNN',
                  'il_train:freeze_encoder':  True,
                  'il_test:n_rollouts': 20
                     }]
@@ -35,7 +35,7 @@ def get_space_and_ref_configs(contrastive=True):
         base_refs = [
                 {'repl:algo_params:representation_dim': 128,
                  'repl:algo_params:optimizer_kwargs:lr': 0.0003,
-                 'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'BasicCNN',
+                 'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'MAGICALCNN',
                  'il_train:freeze_encoder':  True,
                  'il_test:n_rollouts': 20
                }]
