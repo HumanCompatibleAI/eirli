@@ -735,8 +735,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
 
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
-        shared_configs = ['env_cfg', 'env_data', 'venv_opts']
-        wrapped_configs = ['repl', 'il_train', 'il_test'] + shared_configs
+        shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
+        wrapped_config_keys = ['repl', 'il_train', 'il_test'] + shared_config_keys
 
         if config['stages_to_run'] == StagesToRun.REPL_AND_IL:
             keys_to_add = [
@@ -753,7 +753,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
 
         inflated_configs = {}
-        for key in wrapped_configs:
+        for key in wrapped_config_keys:
             # Unwrap all wrapped ingredient baseline configs
             # that were passed around as Ray parameters
             assert f"{key}_frozen" in config, f"No version of {key} config " \
@@ -763,7 +763,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
 
             # Delete the keys for cleanliness' sake
             del config[f"{key}_frozen"]
-        shared_configs = {k:inflated_configs[k] for k in shared_configs}
+        shared_configs = {k:inflated_configs[k] for k in shared_config_keys}
         logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
 
