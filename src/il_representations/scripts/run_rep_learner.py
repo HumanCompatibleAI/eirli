@@ -77,6 +77,7 @@ def cosine_warmup_scheduler():
     _ = locals()
     del _
 
+
 @represent_ex.named_config
 def ceb_breakout():
     env_id = 'BreakoutNoFrameskip-v4'
