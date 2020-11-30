@@ -736,15 +736,9 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
     # these are config keys shared between all two or more of the three Sacred
     # experiments (repl, il_train, il_test)
 
-    shared_configs = {
-        'env_cfg': env_cfg_config,
-        'env_data': env_data_config,
-        'venv_opts': venv_opts_config,
-    }
-
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
-
+        shared_configs = {'env_cfg', 'env_data', 'venv_opts'}
         if stages_to_run == StagesToRun.REPL_AND_IL:
             keys_to_add = [
                 'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
@@ -764,12 +758,11 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             assert f"{key}_frozen" in config, f"No version of {key} config " \
                                               f"(under {key}_frozen) found in config"
 
-
             inflated_configs[key] = config[f"{key}_frozen"].config_dict
 
             # Delete the keys for cleanliness' sake
             del config[f"{key}_frozen"]
-        shared_configs = {k:inflated_configs[k] for k,v in shared_configs.items()}
+        shared_configs = {k:inflated_configs[k] for k in shared_configs}
         logging.warning(f"Config keys: {config.keys()}")
         config = expand_dict_keys(config)
 
