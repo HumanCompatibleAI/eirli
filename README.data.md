@@ -152,7 +152,7 @@ metadata of the kind stored in `_metadata.meta.pickle`. Our code has some
 additional abstractions (such as `read_dataset.ILRDataset`) which ensure that
 the file-level metadata is accessible from Python, and also ensure that
 `_metadata.meta.pickle` is not accidentally treated as an additional "frame"
-when reading the tar file.
+when reading the tar file. This is discussed further below.
 
 ### Writing datasets in the webdataset format
 
@@ -231,15 +231,81 @@ the iterator into batches, just as it would with any other `IterableDataset`.
 
 ### High-level interface and configuration
 
-*TODO:** some things to discuss:
+Within our codebase, the high-level interface for loading datasets in the
+webdataset format is the [`auto.load_wds_datasets()`
+function](https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L126-L200).
+This takes a list of configurations for single-task datasets, and returns an
+equal-length list of webdataset `Dataset`s (one for each task). It is then the
+responsibility of the calling code to apply any necessary preprocessing steps to
+those `Dataset`s (e.g. target pair construction) and to multiplex the datasets
+with an `InterleavedDataset`.
 
-- The
-  [`auto.load_wds_datasets()`](https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L126-L200)
-  function.
-- How that function relates to `dataset_configs` in `represent_ex`. In
-  particular, include the example Cody requested: "I recall you saying on the
-  call that this syntax would by-default use the env specified by
-  `env_cfg_ingredient` but that you could also add in more full-path information
-  to use other environments (for example, if we wanted to train on both demos
-  Treechop and Survival, assuming they had the same observation space)."
-- Possibly the tools for _writing_ data.
+The configuration syntax for `auto.load_wds_datasets()` is exactly the syntax
+used for the `dataset_configs` configuration option in `run_rep_learner.py`, and
+as such deserves some further explanation. Each element of the list passed to
+`auto.load_wds_datasets()` is a dict with the following keys:
+
+```python
+{
+    # the type of data to be loaded
+    "type": "demos" | "random" | …,
+    # a dictionary containing some subset of configuration keys from `env_cfg_ingredient`
+    "env_cfg": {…},
+}
+```
+
+Both the `"type"` key and the `"env_cfg"` key are optional. `"type"` defaults to
+`"demos"`, and `"env_cfg"` defaults to the current configuration of
+`env_cfg_ingredient`. If any sub-keys are provided in `"env_cfg"`, then they are
+used to recursively update the current configuration of `"env_cfg_ingredient"`.
+This allows one to define new dataset configurations that override only some aspects of
+the "default" provided by `"env_cfg_ingredient"`.
+
+This configuration syntax might be more clear with a few examples (using
+`dataset_configs = <config>` as you might when configuring
+`run_rep_learner.py`):
+
+- Training on random rollouts and demonstrations using the current benchmark
+  name from `env_cfg_ingredient`:
+   
+   ```python
+   dataset_configs = [{"type": "demos"}, {"type": "random"}]
+   ```
+- Training on demos from both the default task from `env_cfg_ingredient`, and
+  another task called "finger-spin". Notice that this time the first config dict
+  does not have *any* keys; this is equivalent to using `{"type": "demos"}` as
+  we did above. `"type": "demos"` is also implicit in the second dict.
+   
+   ```python
+   dataset_configs = [{}, {"env_cfg": {"task_name": "finger-spin"}}]
+   ```
+- Combining the two examples above, here is a third example that trains on demos
+  from the current task, random rollouts from the current task, demos from a
+  second task called `"finger-spin"`, and random rollouts from a third task
+  called `"cheetah-run"`:
+   
+   ```python
+   dataset_configs = [
+       {},
+       {"type": "random"},
+       {"env_cfg": {"task_name": "finger-spin"}},
+       {"type": "random", "env_cfg": {"task": "cheetah-run"}},
+   ]
+   ```
+
+Since `env_cfg_ingredient` does not allow for specification of data paths, the
+configurations passed to `auto.load_wds_datasets()` also do not allow for paths
+to be overridden. Instead, the data for a given configuration will always be
+loaded using the following path template:
+
+```
+<procesed_data_root>/<data_type>/<task_key>/<benchmark_name>
+```
+
+`processed_data_root` is a config variable from `env_data_ingredient`, and
+`data_type` is the `"type"` defined in the dataset config dict. `"task_key"` is
+`env_cfg["task_name"]` (which is taken from `env_cfg_ingredient` by default, but
+can of course be overridden in any of the config dicts passed to
+`auto.load_wds_datasets())`). Likewise, `benchmark_name` is
+`env_cfg["benchmark_name"]`, and can again be overridden by dataset config
+dicts.
