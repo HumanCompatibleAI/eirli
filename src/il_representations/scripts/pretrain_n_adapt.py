@@ -735,21 +735,25 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
 
     def trainable_function(config):
         # "config" argument is passed in by Ray Tune
-        shared_configs = {'env_cfg', 'env_data', 'venv_opts'}
-        if stages_to_run == StagesToRun.REPL_AND_IL:
+        shared_configs = ['env_cfg', 'env_data', 'venv_opts']
+        wrapped_configs = ['repl', 'il_train', 'il_test'] + shared_configs
+
+        if config['stages_to_run'] == StagesToRun.REPL_AND_IL:
             keys_to_add = [
                 'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
                 'repl',
             ]
-        if stages_to_run == StagesToRun.IL_ONLY:
+        elif config['stages_to_run'] == StagesToRun.IL_ONLY:
             keys_to_add = [
                 'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
             ]
-        if stages_to_run == StagesToRun.REPL_ONLY:
+        elif config['stages_to_run'] == StagesToRun.REPL_ONLY:
             keys_to_add = ['env_cfg', 'env_data', 'repl']
+        else:
+            raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
 
         inflated_configs = {}
-        for key in ingredient_configs_dict.keys():
+        for key in wrapped_configs:
             # Unwrap all wrapped ingredient baseline configs
             # that were passed around as Ray parameters
             assert f"{key}_frozen" in config, f"No version of {key} config " \
@@ -772,21 +776,24 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             if key not in config:
                 config[key] = {}
 
+        config_log_dir = config['log_dir']
+        del config['log_dir']
+        del config['stages_to_run']
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(rep_ex_config=inflated_configs['repl'],
                             il_train_ex_config=inflated_configs['il_train'],
                             il_test_ex_config=inflated_configs['il_test'],
                             shared_configs=shared_configs, config=config,
-                            log_dir=log_dir)
+                            log_dir=config_log_dir)
         if stages_to_run == StagesToRun.IL_ONLY:
             run_il_only_exp(il_train_ex_config=inflated_configs['il_train'],
                             il_test_ex_config=inflated_configs['il_test'],
                             shared_configs=shared_configs, config=config,
-                            log_dir=log_dir)
+                            log_dir=config_log_dir)
         if stages_to_run == StagesToRun.REPL_ONLY:
             run_repl_only_exp(rep_ex_config=inflated_configs['repl'],
                               shared_configs=shared_configs, config=config,
-                              log_dir=log_dir)
+                              log_dir=config_log_dir)
 
     if detect_ec2():
         ray.init(address="auto", **ray_init_kwargs)
@@ -815,8 +822,12 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             # the frozen config. This means that Ray's config dictionary
             # will contain the same `frozen_config` object on every trial
             skopt_space[f"{ing_name}_frozen"] = skopt.space.Categorical(categories=(frozen_config,))
+            skopt_space['log_dir'] = skopt.space.Categorical(categories=(log_dir,))
+            skopt_space['stages_to_run'] = skopt.space.Categorical(categories=(stages_to_run,))
             for ref_config in skopt_ref_configs:
                 ref_config[f"{ing_name}_frozen"] = frozen_config
+                ref_config['log_dir'] = log_dir
+                ref_config['stages_to_run'] = stages_to_run
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
@@ -853,6 +864,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
+        spec['log_dir'] = log_dir
+        spec['stages_to_run'] = stages_to_run
 
     rep_run = tune.run(
         trainable_function,
