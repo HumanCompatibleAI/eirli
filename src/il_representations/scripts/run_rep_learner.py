@@ -10,15 +10,14 @@ from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.ppo import PPO
+import il_representations.envs.auto as auto_env
 import torch
 
-from il_representations import algos
 from il_representations.algos.representation_learner import RepresentationLearner, get_default_args
 from il_representations.algos.utils import LinearWarmupCosine
-import il_representations.envs.auto as auto_env
+from il_representations import algos
 from il_representations.envs.config import benchmark_ingredient
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment('repl',
                           ingredients=[benchmark_ingredient])
@@ -115,6 +114,7 @@ def run(benchmark, use_random_rollouts, algo, algo_params, seed,
         ppo_timesteps, ppo_finetune, pretrain_epochs, pretrain_batches,
         torch_num_threads, _config):
     # TODO fix to not assume FileStorageObserver always present
+
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
         torch.set_num_threads(torch_num_threads)
