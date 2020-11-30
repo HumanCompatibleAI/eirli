@@ -47,7 +47,6 @@ class TargetPairConstructor(ABC):
         Yields: dictionaries with keys 'context', 'target', 'extra_context',
             and 'traj_ts_ids'. Types of values vary depending on the algorithm.
         """
-        pass
 
 
 class IdentityPairConstructor:
