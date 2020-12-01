@@ -2,7 +2,7 @@
 
 set -e
 
-base_cfgs="cfg_base_3seed_1cpu_pt5gpu_2envs"
+base_cfgs="cfg_base_3seed_1cpu_1gpu_2envs"
 cluster_cfg_path="./gcp_cluster_sam.yaml"
 
 for il in cfg_il_bc_nofreeze; do
