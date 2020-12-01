@@ -115,6 +115,85 @@ and data-loading machinery based on the
 briefly explains how webdataset works, and how we use it to load data for the
 `run_rep_learner` script.
 
+### High-level interface and configuration
+
+Within our codebase, the high-level interface for loading datasets in the
+webdataset format is the [`auto.load_wds_datasets()`
+function](https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L126-L200).
+This takes a list of configurations for single-task datasets, and returns an
+list containing one webdataset `Dataset` for each task. It is then the
+responsibility of the calling code to apply any necessary preprocessing steps to
+those `Dataset`s (e.g. target pair construction) and to multiplex the datasets
+with an `InterleavedDataset`. These abstractions are explained further down the
+page.
+
+The configuration syntax for `auto.load_wds_datasets()` is exactly the syntax
+used for the `dataset_configs` configuration option in `run_rep_learner.py`, and
+as such deserves some further explanation. Each element of the list passed to
+`auto.load_wds_datasets()` is a dict which may contain the following keys:
+
+```python
+{
+    # the type of data to be loaded
+    "type": "demos" | "random" | …,
+    # a dictionary containing some subset of configuration keys from `env_cfg_ingredient`
+    "env_cfg": {…},
+}
+```
+
+Both the `"type"` key and the `"env_cfg"` key are optional. `"type"` defaults to
+`"demos"`, and `"env_cfg"` defaults to the current configuration of
+`env_cfg_ingredient`. If any sub-keys are provided in `"env_cfg"`, then they are
+recursively combined with the current configuration of `"env_cfg_ingredient"`.
+This allows one to define new dataset configurations that override only some
+aspects of the current `"env_cfg_ingredient"` configuration.
+
+This configuration syntax might be more clear with a few examples:
+
+- Training on random rollouts and demonstrations using the current benchmark
+  name from `env_cfg_ingredient`:
+   
+   ```python
+   dataset_configs = [{"type": "demos"}, {"type": "random"}]
+   ```
+- Training on demos from both the default task from `env_cfg_ingredient`, and
+  another task called "finger-spin". Notice that this time the first config dict
+  does not have *any* keys; this is equivalent to using `{"type": "demos"}` as
+  we did above. `"type": "demos"` is also implicit in the second dict.
+   
+   ```python
+   dataset_configs = [{}, {"env_cfg": {"task_name": "finger-spin"}}]
+   ```
+- Combining the examples above, here is an example that trains on demos from the
+  current task, random rollouts from the current task, demos from a second task
+  called `"finger-spin"`, and random rollouts from a third task called
+  `"cheetah-run"`:
+   
+   ```python
+   dataset_configs = [
+       {},
+       {"type": "random"},
+       {"env_cfg": {"task_name": "finger-spin"}},
+       {"type": "random", "env_cfg": {"task": "cheetah-run"}},
+   ]
+   ```
+
+Since `env_cfg_ingredient` does not allow for specification of data paths, the
+configurations passed to `auto.load_wds_datasets()` also do not allow for paths
+to be overridden. Instead, the data for a given configuration will always be
+loaded using the following path template:
+
+```
+<data_root>/processed/<data_type>/<task_key>/<benchmark_name>
+```
+
+`data_root` is a config variable from `env_data_ingredient`, and
+`data_type` is the `"type"` defined in the dataset config dict. `"task_key"` is
+`env_cfg["task_name"]` (which is taken from `env_cfg_ingredient` by default, but
+can be overridden in any of the config dicts passed to
+`auto.load_wds_datasets()`). Likewise, `benchmark_name` defaults to
+`env_cfg["benchmark_name"]`, but can be overridden by dataset config dicts.
+
 ### On-disk format
 
 The webdataset-based on-disk format (which I'll just call the "webdataset
@@ -239,80 +318,28 @@ The steps above yield a single `IterableDataset` which can be passed to Torch's
 `DataLoader`. The `DataLoader` is then responsible for combining samples from
 the iterator into batches, just as it would with any other `IterableDataset`.
 
-### High-level interface and configuration
+## Adding support for a new benchmark
 
-Within our codebase, the high-level interface for loading datasets in the
-webdataset format is the [`auto.load_wds_datasets()`
-function](https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L126-L200).
-This takes a list of configurations for single-task datasets, and returns an
-list containing one webdataset `Dataset` for each task. It is then the
-responsibility of the calling code to apply any necessary preprocessing steps to
-those `Dataset`s (e.g. target pair construction) and to multiplex the datasets
-with an `InterleavedDataset`.
+These are the rough steps required to add support for a new benchmark:
 
-The configuration syntax for `auto.load_wds_datasets()` is exactly the syntax
-used for the `dataset_configs` configuration option in `run_rep_learner.py`, and
-as such deserves some further explanation. Each element of the list passed to
-`auto.load_wds_datasets()` is a dict which may contain the following keys:
-
-```python
-{
-    # the type of data to be loaded
-    "type": "demos" | "random" | …,
-    # a dictionary containing some subset of configuration keys from `env_cfg_ingredient`
-    "env_cfg": {…},
-}
-```
-
-Both the `"type"` key and the `"env_cfg"` key are optional. `"type"` defaults to
-`"demos"`, and `"env_cfg"` defaults to the current configuration of
-`env_cfg_ingredient`. If any sub-keys are provided in `"env_cfg"`, then they are
-recursively combined with the current configuration of `"env_cfg_ingredient"`.
-This allows one to define new dataset configurations that override only some
-aspects of the current `"env_cfg_ingredient"` configuration.
-
-This configuration syntax might be more clear with a few examples:
-
-- Training on random rollouts and demonstrations using the current benchmark
-  name from `env_cfg_ingredient`:
-   
-   ```python
-   dataset_configs = [{"type": "demos"}, {"type": "random"}]
-   ```
-- Training on demos from both the default task from `env_cfg_ingredient`, and
-  another task called "finger-spin". Notice that this time the first config dict
-  does not have *any* keys; this is equivalent to using `{"type": "demos"}` as
-  we did above. `"type": "demos"` is also implicit in the second dict.
-   
-   ```python
-   dataset_configs = [{}, {"env_cfg": {"task_name": "finger-spin"}}]
-   ```
-- Combining the examples above, here is an example that trains on demos from the
-  current task, random rollouts from the current task, demos from a second task
-  called `"finger-spin"`, and random rollouts from a third task called
-  `"cheetah-run"`:
-   
-   ```python
-   dataset_configs = [
-       {},
-       {"type": "random"},
-       {"env_cfg": {"task_name": "finger-spin"}},
-       {"type": "random", "env_cfg": {"task": "cheetah-run"}},
-   ]
-   ```
-
-Since `env_cfg_ingredient` does not allow for specification of data paths, the
-configurations passed to `auto.load_wds_datasets()` also do not allow for paths
-to be overridden. Instead, the data for a given configuration will always be
-loaded using the following path template:
-
-```
-<data_root>/processed/<data_type>/<task_key>/<benchmark_name>
-```
-
-`data_root` is a config variable from `env_data_ingredient`, and
-`data_type` is the `"type"` defined in the dataset config dict. `"task_key"` is
-`env_cfg["task_name"]` (which is taken from `env_cfg_ingredient` by default, but
-can be overridden in any of the config dicts passed to
-`auto.load_wds_datasets()`). Likewise, `benchmark_name` defaults to
-`env_cfg["benchmark_name"]`, but can be overridden by dataset config dicts.
+1. Create benchmark-specific routines for creating vec envs; loading data in a
+   dict format; and inferring the equivalent Gym name of an environment. Add
+   these to a module in `il_representations.envs`, much like
+   `il_representations.envs.magical`.
+2. Add any required config variables for the new benchmark to
+   `il_representations.envs.config`, and update `il_representations.envs.auto`
+   so that the routines make use of the new config variables to dispatch to the
+   dataset-specific routines in `il_representations.envs.auto`.
+3. Update `il_representations.scripts.il_test` to do execute dataset-specific
+   code is required for evaluation of policies in the new environment.
+4. Add demonstrations for the new environment to svm and perceptron (in
+   `/scatch/sam/il-demos`). Also update `convert_all_to_new_data_format.sh` (in
+   `il_representations/scripts/`) to produce webdataset-format demonstrations
+   for the new benchmark, and add those to svm/perceptron too. Repeat these
+   steps to copy demonstrations to GCP, too. In particular, if you copy them to
+   `/scratch/sam/il-representations-gcp-volume/il-demos/` in svm or perceptron
+   then they should get automatically synced to GCP.
+5. Finally, add configs for one environment from the new benchmark to
+   `test_support.py`, and add test fixtures to `tests/data`. This will make it
+   possible to unit test the new benchmark. Since these data fixtures are stored
+   in the repo, I suggest using only 1-2 trajectories for each fixture.
