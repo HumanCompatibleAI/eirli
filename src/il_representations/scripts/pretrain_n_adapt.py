@@ -431,6 +431,29 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
 
 
 @chain_ex.named_config
+def cfg_base_3seed_1cpu_pt5gpu_2envs():
+    """As above, but .5 GPUs per run."""
+    use_skopt = False
+    tune_run_kwargs = dict(num_samples=3,
+                           # retry on node failure
+                           max_failures=2,
+                           fail_fast=False,
+                           resources_per_trial=dict(
+                               cpu=1,
+                               gpu=0.2,
+                           ))
+    ray_init_kwargs = {
+        'log_to_driver': False,
+    }
+    venv_opts = {
+        'n_envs': 2,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_bench_short_sweep_magical():
     """Sweeps over four easiest MAGICAL instances."""
     spec = dict(env_cfg=tune.grid_search(
@@ -611,6 +634,15 @@ def cfg_repl_temporal_cpc():
         'algo': 'TemporalCPC',
     }
 
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_repl_demos_random():
+    repl = {
+        'dataset_configs': [{'type': 'demos'}, {'type': 'random'}],
+    }
     _ = locals()
     del _
 
