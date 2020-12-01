@@ -5,6 +5,7 @@ import stable_baselines3.common.logger as sb_logger
 from pyro.distributions import Delta
 import imitation.util.logger as logger
 
+
 class RepresentationLoss(ABC):
     def __init__(self, device, sample=False):
         self.device = device
