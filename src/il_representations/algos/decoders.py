@@ -1,16 +1,3 @@
-import torch.nn as nn
-import copy
-import torch
-import torch.nn.functional as F
-from il_representations.algos.utils import independent_multivariate_normal
-from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
-import gym.spaces as spaces
-from stable_baselines3.common.distributions import make_proba_distribution
-import numpy as np
-import math
-from functools import partial
-import logging
-
 """
 LossDecoders are meant to be mappings between the representation being learned, 
 and the representation or tensor that is fed directly into the loss. In many cases, these are the 
@@ -26,14 +13,29 @@ both the representation of the current state, and also information about the nex
 need for extra information beyond the central context state is why we have `extra_context` as an optional 
 bit of data that pair constructors can return, to be passed forward for use here 
 """
+import torch.nn as nn
+import copy
+import torch
+import torch.nn.functional as F
+from il_representations.algos.utils import independent_multivariate_normal
+from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
+import gym.spaces as spaces
+from stable_baselines3.common.distributions import make_proba_distribution
+import numpy as np
+import logging
 
 #TODO change shape to dim throughout this file and the code
 
 DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
 
-def exp_sequential(x, sequential):
-    return torch.exp(sequential(x))
+class ExpSequential(nn.Module):
+    def __init__(self, sequential):
+        super().__init__()
+        self.sequential = sequential
+
+    def forward(self, x):
+        return torch.exp(self.sequential(x))
 
 
 def get_sequential_from_architecture(architecture, representation_dim, projection_dim):
@@ -110,7 +112,6 @@ class LossDecoder(nn.Module):
             stddev = stdev_layer(z_vector)
         return independent_multivariate_normal(mean, stddev)
 
-
     def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
         if architecture is None:
             architecture = DEFAULT_PROJECTION_ARCHITECTURE
@@ -123,7 +124,7 @@ class LossDecoder(nn.Module):
             stddev_net = get_sequential_from_architecture(architecture,
                                                           representation_dim,
                                                           projection_dim)
-            stddev_func = partial(exp_sequential, sequential=stddev_net)
+            stddev_func = ExpSequential(stddev_net)
         else:
             stddev_func = None
 
