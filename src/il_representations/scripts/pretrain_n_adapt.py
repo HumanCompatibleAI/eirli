@@ -440,7 +440,7 @@ def cfg_base_3seed_1cpu_pt5gpu_2envs():
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.2,
+                               gpu=0.5,
                            ))
     ray_init_kwargs = {
         'log_to_driver': False,
