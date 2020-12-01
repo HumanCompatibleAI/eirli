@@ -661,6 +661,70 @@ class WrappedConfig():
         self.config_dict = config_dict
 
 
+def trainable_function(config):
+    # "config" argument is passed in by Ray Tune
+    shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
+    wrapped_config_keys = ['repl', 'il_train', 'il_test'] + shared_config_keys
+
+    if config['stages_to_run'] == StagesToRun.REPL_AND_IL:
+        keys_to_add = [
+            'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
+            'repl',
+        ]
+    elif config['stages_to_run'] == StagesToRun.IL_ONLY:
+        keys_to_add = [
+            'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
+        ]
+    elif config['stages_to_run'] == StagesToRun.REPL_ONLY:
+        keys_to_add = ['env_cfg', 'env_data', 'repl']
+    else:
+        raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
+
+    inflated_configs = {}
+    for key in wrapped_config_keys:
+        # Unwrap all wrapped ingredient baseline configs
+        # that were passed around as Ray parameters
+        assert f"{key}_frozen" in config, f"No version of {key} config " \
+                                          f"(under {key}_frozen) found in config"
+
+        inflated_configs[key] = config[f"{key}_frozen"].config_dict
+
+        # Delete the keys for cleanliness' sake
+        del config[f"{key}_frozen"]
+    shared_configs = {k:inflated_configs[k] for k in shared_config_keys}
+    logging.warning(f"Config keys: {config.keys()}")
+    config = expand_dict_keys(config)
+
+    # add empty update dicts if necessary to avoid crashing
+    # FIXME(sam): decide whether this is the appropriate defensive thing to
+    # do. It would be nice if we caught errors where the user tries to,
+    # e.g., tune repL, but does not specify anything to tune _over_.
+
+    for key in keys_to_add:
+        if key not in config:
+            config[key] = {}
+
+    log_dir = config['log_dir']
+    stages_to_run = config['stages_to_run']
+    del config['log_dir']
+    del config['stages_to_run']
+    if stages_to_run == StagesToRun.REPL_AND_IL:
+        run_end2end_exp(rep_ex_config=inflated_configs['repl'],
+                        il_train_ex_config=inflated_configs['il_train'],
+                        il_test_ex_config=inflated_configs['il_test'],
+                        shared_configs=shared_configs, config=config,
+                        log_dir=log_dir)
+    if stages_to_run == StagesToRun.IL_ONLY:
+        run_il_only_exp(il_train_ex_config=inflated_configs['il_train'],
+                        il_test_ex_config=inflated_configs['il_test'],
+                        shared_configs=shared_configs, config=config,
+                        log_dir=log_dir)
+    if stages_to_run == StagesToRun.REPL_ONLY:
+        run_repl_only_exp(rep_ex_config=inflated_configs['repl'],
+                          shared_configs=shared_configs, config=config,
+                          log_dir=log_dir)
+
+
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
@@ -733,67 +797,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
     env_data_config['data_root'] = os.path.abspath(
         os.path.join(cwd, env_data_config['data_root']))
 
-    def trainable_function(config):
-        # "config" argument is passed in by Ray Tune
-        shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
-        wrapped_config_keys = ['repl', 'il_train', 'il_test'] + shared_config_keys
 
-        if config['stages_to_run'] == StagesToRun.REPL_AND_IL:
-            keys_to_add = [
-                'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
-                'repl',
-            ]
-        elif config['stages_to_run'] == StagesToRun.IL_ONLY:
-            keys_to_add = [
-                'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
-            ]
-        elif config['stages_to_run'] == StagesToRun.REPL_ONLY:
-            keys_to_add = ['env_cfg', 'env_data', 'repl']
-        else:
-            raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
-
-        inflated_configs = {}
-        for key in wrapped_config_keys:
-            # Unwrap all wrapped ingredient baseline configs
-            # that were passed around as Ray parameters
-            assert f"{key}_frozen" in config, f"No version of {key} config " \
-                                              f"(under {key}_frozen) found in config"
-
-            inflated_configs[key] = config[f"{key}_frozen"].config_dict
-
-            # Delete the keys for cleanliness' sake
-            del config[f"{key}_frozen"]
-        shared_configs = {k:inflated_configs[k] for k in shared_config_keys}
-        logging.warning(f"Config keys: {config.keys()}")
-        config = expand_dict_keys(config)
-
-        # add empty update dicts if necessary to avoid crashing
-        # FIXME(sam): decide whether this is the appropriate defensive thing to
-        # do. It would be nice if we caught errors where the user tries to,
-        # e.g., tune repL, but does not specify anything to tune _over_.
-
-        for key in keys_to_add:
-            if key not in config:
-                config[key] = {}
-
-        config_log_dir = config['log_dir']
-        del config['log_dir']
-        del config['stages_to_run']
-        if stages_to_run == StagesToRun.REPL_AND_IL:
-            run_end2end_exp(rep_ex_config=inflated_configs['repl'],
-                            il_train_ex_config=inflated_configs['il_train'],
-                            il_test_ex_config=inflated_configs['il_test'],
-                            shared_configs=shared_configs, config=config,
-                            log_dir=config_log_dir)
-        if stages_to_run == StagesToRun.IL_ONLY:
-            run_il_only_exp(il_train_ex_config=inflated_configs['il_train'],
-                            il_test_ex_config=inflated_configs['il_test'],
-                            shared_configs=shared_configs, config=config,
-                            log_dir=config_log_dir)
-        if stages_to_run == StagesToRun.REPL_ONLY:
-            run_repl_only_exp(rep_ex_config=inflated_configs['repl'],
-                              shared_configs=shared_configs, config=config,
-                              log_dir=config_log_dir)
 
     if detect_ec2():
         ray.init(address="auto", **ray_init_kwargs)
@@ -857,7 +861,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
-        algo = None
         # In addition to the actual spaces we're searching over, we also need to
         # store the baseline config values in Ray to avoid Ray issue #12048
         # We create a grid search with a single value of the WrappedConfig object
