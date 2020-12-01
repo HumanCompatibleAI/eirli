@@ -666,16 +666,21 @@ def trainable_function(config):
     shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
     wrapped_config_keys = ['repl', 'il_train', 'il_test'] + shared_config_keys
 
-    if config['stages_to_run'] == StagesToRun.REPL_AND_IL:
+    log_dir = config['log_dir']
+    stages_to_run = config['stages_to_run']
+    del config['log_dir']
+    del config['stages_to_run']
+
+    if stages_to_run == StagesToRun.REPL_AND_IL:
         keys_to_add = [
             'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
             'repl',
         ]
-    elif config['stages_to_run'] == StagesToRun.IL_ONLY:
+    elif stages_to_run == StagesToRun.IL_ONLY:
         keys_to_add = [
             'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
         ]
-    elif config['stages_to_run'] == StagesToRun.REPL_ONLY:
+    elif stages_to_run == StagesToRun.REPL_ONLY:
         keys_to_add = ['env_cfg', 'env_data', 'repl']
     else:
         raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
@@ -704,10 +709,7 @@ def trainable_function(config):
         if key not in config:
             config[key] = {}
 
-    log_dir = config['log_dir']
-    stages_to_run = config['stages_to_run']
-    del config['log_dir']
-    del config['stages_to_run']
+
     if stages_to_run == StagesToRun.REPL_AND_IL:
         run_end2end_exp(rep_ex_config=inflated_configs['repl'],
                         il_train_ex_config=inflated_configs['il_train'],
