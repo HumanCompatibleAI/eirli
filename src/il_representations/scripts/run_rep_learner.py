@@ -142,6 +142,7 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     model = algo(
         observation_space=observation_space,
         action_space=action_space,
+        color_space=color_space,
         log_dir=log_dir,
         **algo_params)
 

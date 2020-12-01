@@ -1,6 +1,7 @@
 import inspect
 import logging
 import os
+import re
 
 import imitation.util.logger as logger
 import numpy as np
@@ -8,14 +9,14 @@ from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data.dataloader import DataLoader, default_collate
+from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-import webdataset.filters as wds_filters
 
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import InterleavedDataset
+from il_representations.utils import image_tensor_to_rgb_grid, save_rgb_tensor
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -70,7 +71,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
                  dataset_max_workers=1,
-                 scheduler_kwargs=None):
+                 scheduler_kwargs=None,
+                 save_first_last_batches=True,
+                 color_space):
 
         super(RepresentationLearner, self).__init__(
             observation_space=observation_space, action_space=action_space)
@@ -93,6 +96,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.preprocess_target = preprocess_target
         self.save_interval = save_interval
         self.dataset_max_workers = dataset_max_workers
+        self.save_first_last_batches = save_first_last_batches
+        self.color_space = color_space
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -204,6 +209,28 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return extra_context
         return self._preprocess(extra_context)
 
+    def _save_batch_data(self, save_name, save_dict):
+        """Save some input and/or output data to a directory for future
+        analysis. Useful for saving input batches for visual inspection."""
+        out_dir = os.path.join(self.log_dir, save_name)
+        os.makedirs(out_dir, exist_ok=True)
+        for key, value in save_dict.items():
+            # replace special chars with '-'
+            out_filename_prefix = re.sub(r'[^\w_ \-]', '-', key)
+            out_path_prefix = os.path.join(out_dir, out_filename_prefix)
+
+            # first save as Torch pickle
+            torch.save(value, out_path_prefix + '.th')
+
+            # also save as image if it looks like a stack of observations
+            # (this is super heuristic, but if it breaks we at least have the
+            # .th files to fall back on)
+            obs_shape = self.observation_space.shape
+            obs_ndim = len(obs_shape)
+            if torch.is_tensor(value) and value.shape[-obs_ndim:] == obs_shape:
+                rgb_grid = image_tensor_to_rgb_grid(value, self.color_space)
+                save_rgb_tensor(rgb_grid, out_path_prefix + '.png')
+
     # TODO maybe make static?
     def unpack_batch(self, batch):
         """
@@ -307,6 +334,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
 
+                if (self.save_first_last_batches and step == 0
+                    and epoch_num == 1):
+                    self._save_batch_data(
+                        'first_batch',
+                        dict(contexts=contexts,
+                             targets=targets,
+                             extra_context=extra_context,
+                             traj_ts_info=traj_ts_info))
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
@@ -363,7 +398,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg)
 
             # save checkpoint on last epoch, or at regular interval
-            should_save_checkpoint = (epoch_num == n_epochs or
+            is_last_epoch = epoch_num == n_epochs
+            should_save_checkpoint = (is_last_epoch or
                                       epoch_num % self.save_interval == 0)
             if should_save_checkpoint:
                 most_recent_encoder_checkpoint_path = os.path.join(
@@ -372,6 +408,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 torch.save(self.decoder, os.path.join(
                     self.decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
 
+            # optionally save batch on last batch of last epoch
+            if self.save_first_last_batches and is_last_epoch:
+                self._save_batch_data('last_batch',
+                                      dict(contexts=contexts,
+                                           targets=targets,
+                                           extra_context=extra_context,
+                                           traj_ts_info=traj_ts_info))
+
+        assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"
 
         return loss_record, most_recent_encoder_checkpoint_path

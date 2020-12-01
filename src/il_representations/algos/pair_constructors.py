@@ -74,15 +74,15 @@ class _CircularBuffer:
         self.cap = capacity
         self.buf = np.zeros_like(
             example_item, shape=(self.cap, ) + example_item.shape)
-        self.next_free = 0
+        self.next_insert = 0
         self.full = False
 
     def append(self, item):
         assert item.shape == self.buf.shape[1:]
-        self.buf[self.next_free] = item
-        self.next_free = (self.next_free + 1) % self.cap
+        self.buf[self.next_insert] = item
+        self.next_insert = (self.next_insert + 1) % self.cap
         # we fill up once we wrap around
-        self.full = self.full or self.next_free == 0
+        self.full = self.full or self.next_insert == 0
 
     def get_oldest(self):
         """Get the oldest item that was inserted into in a full circular
@@ -90,22 +90,29 @@ class _CircularBuffer:
         # in TemporalOffsetPairConstructor we only use this method when the
         # queue is already full
         assert self.full, "have only implemented this for full queues"
-        last_idx = (self.next_free + 1) % self.cap
-        return self.buf[last_idx]
+        assert 0 <= self.next_insert < self.cap
+        # return copy instead of view
+        oldest = self.buf[self.next_insert].copy()
+        return oldest
 
     def concat_all(self):
         """Concatenate all the items in a full circular buffer, in the order
         they were added."""
         # again TemporalOffsetPairConstructor only calls this on full queues
         assert self.full, "have only implemented this for full queues"
-        return np.concatenate(
-            (self.buf[self.next_free:], self.buf[:self.next_free]))
+        result = np.concatenate(
+            (self.buf[self.next_insert:], self.buf[:self.next_insert]))
+        # make sure we haven't somehow ended up with a view
+        # (I'm concerned np.concatenate might be doing optimisations to avoid
+        # copies in some cases)
+        result = np.require(result, requirements=('OWNDATA', ))
+        return result
 
     def reset(self):
         """Reset circular buffer."""
-        self.next_free = 0
+        self.next_insert = 0
         self.full = False
-        self.buf[:] = 0  # defensive
+        self.buf[:] = 0  # defensive, better to catch errors
 
 
 class TemporalOffsetPairConstructor(TargetPairConstructor):
@@ -151,6 +158,9 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 else:
                     assert False, f"mode {self.mode} not recognised"
 
+            obs_queue.append(step_dict['obs'])
+            act_queue.append(step_dict['acts'])
+
             if step_dict['dones']:
                 timestep = 0
                 trajectory_ind += 1
@@ -158,6 +168,3 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 act_queue.reset()
             else:
                 timestep += 1
-
-            obs_queue.append(step_dict['obs'])
-            act_queue.append(step_dict['acts'])
