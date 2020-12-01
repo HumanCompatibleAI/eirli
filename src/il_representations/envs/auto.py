@@ -115,12 +115,12 @@ def _get_default_env_cfg(_config):
 
 
 @env_data_ingredient.capture
-def get_data_dir(benchmark_name, task_key, data_type, processed_data_root):
+def get_data_dir(benchmark_name, task_key, data_type, data_root):
     """Get the data directory for a given benchmark ("magical", "dm_control",
     etc.), task (e.g. "MoveToCorner", "finger-spin") and data type (e.g.
     "demos", "random")."""
-    return os.path.join(processed_data_root, data_type, benchmark_name,
-                        task_key)
+    return os.path.join(data_root, 'data', 'processed',
+                        data_type, benchmark_name, task_key)
 
 
 def load_wds_datasets(configs):

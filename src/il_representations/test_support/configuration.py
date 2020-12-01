@@ -13,7 +13,7 @@ VENV_OPTS_TEST_CONFIG = {
     'n_envs': 2,
 }
 ENV_DATA_TEST_CONFIG = {
-    'processed_data_root': path.join(TEST_DATA_DIR, 'processed'),
+    'data_root': path.join(TEST_DATA_DIR, '..'),
     'atari_demo_paths': {
         'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
     },
