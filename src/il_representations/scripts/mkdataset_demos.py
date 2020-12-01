@@ -58,7 +58,8 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     if not all_dones[-1]:
         # For, e.g., Atari, some of the data does not have a 'done' at the
         # final time step because the trajectory was truncated. For the purpose
-        # of inferring trajectory boundaries, we insert a fake None at the end.
+        # of inferring trajectory boundaries, we insert a fake 'done' at the
+        # end.
         warnings.warn("No 'done' at end of trajectories; inserting a fake one")
         all_dones[-1] = True
         added_final_done = True
