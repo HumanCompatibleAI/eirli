@@ -664,12 +664,13 @@ class WrappedConfig():
 def trainable_function(config):
     # "config" argument is passed in by Ray Tune
     shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
-    wrapped_config_keys = ['repl', 'il_train', 'il_test'] + shared_config_keys
-
     log_dir = config['log_dir']
     stages_to_run = config['stages_to_run']
+    wrapped_config_keys = config['wrapped_config_keys']
+
     del config['log_dir']
     del config['stages_to_run']
+    del config['wrapped_config_keys']
 
     if stages_to_run == StagesToRun.REPL_AND_IL:
         keys_to_add = [
@@ -708,7 +709,6 @@ def trainable_function(config):
     for key in keys_to_add:
         if key not in config:
             config[key] = {}
-
 
     if stages_to_run == StagesToRun.REPL_AND_IL:
         run_end2end_exp(rep_ex_config=inflated_configs['repl'],
@@ -758,6 +758,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         'env_data': env_data_config,
         'venv_opts': venv_opts_config,
     }
+    # List comprehension to make the keys() object an actual list
+    wrapped_config_keys = [k for k in ingredient_configs_dict.keys()]
 
     if metric is None:
         # choose a default metric depending on whether we're running
@@ -821,6 +823,14 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
 
         # In addition to the actual spaces we're searching over, we also need to
         # store the baseline config values in Ray to avoid Ray issue #12048
+        skopt_space['log_dir'] = skopt.space.Categorical(categories=(log_dir,))
+        skopt_space['stages_to_run'] = skopt.space.Categorical(categories=(stages_to_run,))
+        skopt_space['wrapped_config_keys'] = skopt.space.Categorical(categories=(wrapped_config_keys,))
+        for ref_config in skopt_ref_configs:
+            ref_config['log_dir'] = log_dir
+            ref_config['stages_to_run'] = stages_to_run
+            ref_config['wrapped_config_keys'] = wrapped_config_keys
+
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
 
@@ -828,12 +838,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             # the frozen config. This means that Ray's config dictionary
             # will contain the same `frozen_config` object on every trial
             skopt_space[f"{ing_name}_frozen"] = skopt.space.Categorical(categories=(frozen_config,))
-            skopt_space['log_dir'] = skopt.space.Categorical(categories=(log_dir,))
-            skopt_space['stages_to_run'] = skopt.space.Categorical(categories=(stages_to_run,))
             for ref_config in skopt_ref_configs:
                 ref_config[f"{ing_name}_frozen"] = frozen_config
-                ref_config['log_dir'] = log_dir
-                ref_config['stages_to_run'] = stages_to_run
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
@@ -871,6 +877,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
         spec['log_dir'] = log_dir
         spec['stages_to_run'] = stages_to_run
+        spec['wrapped_config_keys'] = wrapped_config_keys
 
     rep_run = tune.run(
         trainable_function,
