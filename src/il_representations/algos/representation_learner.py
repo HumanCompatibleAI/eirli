@@ -70,7 +70,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 dataset_max_workers=1,
+                 dataset_max_workers=0,
                  scheduler_kwargs=None,
                  save_first_last_batches=True,
                  color_space):
