@@ -307,10 +307,10 @@ to be overridden. Instead, the data for a given configuration will always be
 loaded using the following path template:
 
 ```
-<procesed_data_root>/<data_type>/<task_key>/<benchmark_name>
+<data_root>/processed/<data_type>/<task_key>/<benchmark_name>
 ```
 
-`processed_data_root` is a config variable from `env_data_ingredient`, and
+`data_root` is a config variable from `env_data_ingredient`, and
 `data_type` is the `"type"` defined in the dataset config dict. `"task_key"` is
 `env_cfg["task_name"]` (which is taken from `env_cfg_ingredient` by default, but
 can be overridden in any of the config dicts passed to

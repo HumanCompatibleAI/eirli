@@ -110,13 +110,6 @@ def env_data_defaults():
     data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
     del _this_file_dir
 
-    # This points to the root directory for datasets stored in the webdataset
-    # format (which is only used for repL, as of 2020-11-24). For a given
-    # benchmark (magical, dm_control, etc.), task (MoveToCorner, finger-spin,
-    # etc.) and data type (demos, random), we store the relevant demonstrations
-    # in '$processed_data_root/$type/$benchmark/$task'.
-    processed_data_root = 'data/processed'
-
     # ########################
     # MAGICAL config variables
     # ########################
