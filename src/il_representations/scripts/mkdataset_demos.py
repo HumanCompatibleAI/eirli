@@ -54,14 +54,14 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     # split dataset into trajectories
     trajectories = []
     all_dones = dataset_dict['dones'].copy()
-    added_final_none = False
+    added_final_done = False
     if not all_dones[-1]:
         # For, e.g., Atari, some of the data does not have a 'done' at the
         # final time step because the trajectory was truncated. For the purpose
         # of inferring trajectory boundaries, we insert a fake None at the end.
         warnings.warn("No 'done' at end of trajectories; inserting a fake one")
         all_dones[-1] = True
-        added_final_none = True
+        added_final_done = True
     traj_ends, = np.nonzero(all_dones)
     # add one to ends so that when we index with array[start:end], we get the
     # full trajectory
@@ -103,7 +103,7 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
 
             # again, if this assert fails then there's probably an off-by-one
             is_last_traj = traj_num == len(trajectories) - 1
-            assert sub_dict['dones'] or (is_last_traj and added_final_none), \
+            assert sub_dict['dones'] or (is_last_traj and added_final_done), \
                 "final step of trajectory was not 'done'"
 
     frame_iter = frame_gen()
