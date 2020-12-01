@@ -431,8 +431,8 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
 
 
 @chain_ex.named_config
-def cfg_base_3seed_1cpu_pt5gpu_2envs():
-    """As above, but .5 GPUs per run."""
+def cfg_base_3seed_1cpu_1gpu_2envs():
+    """As above, but one GPU per run."""
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on node failure
@@ -440,7 +440,7 @@ def cfg_base_3seed_1cpu_pt5gpu_2envs():
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
-                               gpu=0.5,
+                               gpu=1,
                            ))
     ray_init_kwargs = {
         'log_to_driver': False,
