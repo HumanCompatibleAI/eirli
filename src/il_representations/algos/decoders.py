@@ -1,16 +1,3 @@
-import torch.nn as nn
-import copy
-import torch
-import torch.nn.functional as F
-from il_representations.algos.utils import independent_multivariate_normal
-from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
-import gym.spaces as spaces
-from stable_baselines3.common.distributions import make_proba_distribution
-import numpy as np
-import math
-from functools import partial
-import logging
-
 """
 LossDecoders are meant to be mappings between the representation being learned, 
 and the representation or tensor that is fed directly into the loss. In many cases, these are the 
@@ -27,13 +14,48 @@ need for extra information beyond the central context state is why we have `extr
 bit of data that pair constructors can return, to be passed forward for use here 
 """
 
+import torch.nn as nn
+import copy
+import torch
+import torch.nn.functional as F
+from il_representations.algos.utils import independent_multivariate_normal
+from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
+import gym.spaces as spaces
+from stable_baselines3.common.distributions import make_proba_distribution
+import numpy as np
+import logging
+
 #TODO change shape to dim throughout this file and the code
 
 DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
 
-def exp_sequential(x, sequential):
-    return torch.exp(sequential(x))
+class ExpSequential(nn.Module):
+    def __init__(self, sequential):
+        super().__init__()
+        self.sequential = sequential
+
+    def forward(self, x):
+        return torch.exp(self.sequential(x))
+
+
+def get_projection_modules(representation_dim, projection_dim, architecture=None, learn_scale=False):
+    if architecture is None:
+        architecture = DEFAULT_PROJECTION_ARCHITECTURE
+
+    mean_func = get_sequential_from_architecture(architecture,
+                                                 representation_dim,
+                                                 projection_dim)
+
+    if learn_scale:
+        stddev_net = get_sequential_from_architecture(architecture,
+                                                      representation_dim,
+                                                      projection_dim)
+        stddev_func = ExpSequential(stddev_net)
+    else:
+        stddev_func = None
+
+    return mean_func, stddev_func
 
 
 def get_sequential_from_architecture(architecture, representation_dim, projection_dim):
@@ -111,25 +133,6 @@ class LossDecoder(nn.Module):
         return independent_multivariate_normal(mean, stddev)
 
 
-    def get_projection_modules(self, representation_dim, projection_dim, architecture=None, learn_scale=False):
-        if architecture is None:
-            architecture = DEFAULT_PROJECTION_ARCHITECTURE
-
-        mean_func = get_sequential_from_architecture(architecture,
-                                                     representation_dim,
-                                                     projection_dim)
-
-        if learn_scale:
-            stddev_net = get_sequential_from_architecture(architecture,
-                                                          representation_dim,
-                                                          projection_dim)
-            stddev_func = partial(exp_sequential, sequential=stddev_net)
-        else:
-            stddev_func = None
-
-        return mean_func, stddev_func
-
-
 class NoOp(LossDecoder):
     def forward(self, z, traj_info, extra_context=None):
         return z
@@ -140,11 +143,11 @@ class AsymmetricProjectionHead(LossDecoder):
                  projection_architecture=None, learn_scale=False):
         super(AsymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
-        self.context_mean, self.context_stddev = self.get_projection_modules(self.representation_dim,
+        self.context_mean, self.context_stddev = get_projection_modules(self.representation_dim,
                                                                              self.projection_dim,
                                                                              projection_architecture,
                                                                              learn_scale)
-        self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
+        self.target_mean, self.target_stddev = get_projection_modules(self.representation_dim,
                                                                            self.projection_dim,
                                                                            projection_architecture,
                                                                            learn_scale)
@@ -164,7 +167,7 @@ class SymmetricProjectionHead(LossDecoder):
                  projection_architecture=None, learn_scale=False):
         super(SymmetricProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
 
-        self.symmetric_mean, self.symmetric_stddev = self.get_projection_modules(self.representation_dim,
+        self.symmetric_mean, self.symmetric_stddev = get_projection_modules(self.representation_dim,
                                                                                  self.projection_dim,
                                                                                  projection_architecture,
                                                                                  learn_scale)
@@ -177,7 +180,7 @@ class OnlyTargetProjectionHead(LossDecoder):
     def __init__(self, representation_dim, projection_shape, sample=False,
                  projection_architecture=None, learn_scale=False):
         super(OnlyTargetProjectionHead, self).__init__(representation_dim, projection_shape, sample, learn_scale)
-        self.target_mean, self.target_stddev = self.get_projection_modules(self.representation_dim,
+        self.target_mean, self.target_stddev = get_projection_modules(self.representation_dim,
                                                                            self.projection_dim,
                                                                            projection_architecture,
                                                                            learn_scale)
@@ -260,10 +263,10 @@ class ActionConditionedVectorDecoder(LossDecoder):
 
         # Machinery for mapping a concatenated (context representation, action representation) into a projection
 
-        self.action_conditioned_mean, self.action_conditioned_stddev = self.get_projection_modules(self.representation_dim + action_representation_dim,
-                                                                                                   self.projection_dim,
-                                                                                                   projection_architecture,
-                                                                                                   learn_scale)
+        self.action_conditioned_mean, self.action_conditioned_stddev = get_projection_modules(self.representation_dim + action_representation_dim,
+                                                                                              self.projection_dim,
+                                                                                              projection_architecture,
+                                                                                              learn_scale)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
         return z_dist

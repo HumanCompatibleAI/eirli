@@ -10,8 +10,7 @@ do
 
   # TemporalCPC with Action Conditioning
   CUDA_VISIBLE_DEVICES="1" xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt with cfg_use_magical\
-  repl.stooke_contrastive_hyperparams_dmc repl.algo=ActionConditionedTemporalCPC\
-   repl.use_random_rollouts=False seed=$seed_var
+  repl.stooke_contrastive_hyperparams_dmc repl.algo=ActionConditionedTemporalCPC seed=$seed_var
 
 
    # Regular/Identity CPC

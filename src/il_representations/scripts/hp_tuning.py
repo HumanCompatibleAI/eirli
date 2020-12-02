@@ -51,12 +51,10 @@ def make_hp_tuning_configs(experiment_obj):
         metric = 'return_mean'
         stages_to_run = "REPL_AND_IL"
         repl = {
-            'use_random_rollouts': False,
-            'ppo_finetune': False,
             # this isn't a lot of training, but should be enough to tell whether
             # loss goes down quickly
-            'pretrain_batches': 10000,
-            'pretrain_epochs': None
+            'batches_per_epoch': 1000,
+            'n_epochs': 10,
         }
         tune_run_kwargs = dict(num_samples=50)
         _ = locals()

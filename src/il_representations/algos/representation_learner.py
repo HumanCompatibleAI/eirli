@@ -1,21 +1,27 @@
+import inspect
+import logging
 import os
+import re
+
+import imitation.util.logger as logger
+import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.base_learner import BaseEnvironmentLearner
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 import torch
-import inspect
-import numpy as np
-import imitation.util.logger as logger
-import logging
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import math
+from torch.utils.data.dataloader import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
-DEFAULT_HARDCODED_PARAMS = ['encoder', 'decoder', 'loss_calculator', 'augmenter', 'target_pair_constructor',
-                            'batch_extender']
+from il_representations.algos.base_learner import BaseEnvironmentLearner
+from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
+from il_representations.data.read_dataset import InterleavedDataset
+from il_representations.utils import image_tensor_to_rgb_grid, save_rgb_tensor
+
+DEFAULT_HARDCODED_PARAMS = [
+    'encoder', 'decoder', 'loss_calculator', 'augmenter',
+    'target_pair_constructor', 'batch_extender'
+]
 
 
 def get_default_args(func):
@@ -36,7 +42,9 @@ def to_dict(kwargs_element):
 
 
 class RepresentationLearner(BaseEnvironmentLearner):
-    def __init__(self, env, *,
+    def __init__(self, *,
+                 observation_space,
+                 action_space,
                  log_dir,
                  encoder=None,
                  decoder=None,
@@ -50,6 +58,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  projection_dim=None,
                  device=None,
                  shuffle_batches=True,
+                 shuffle_buffer_size=1024,
                  batch_size=256,
                  preprocess_extra_context=True,
                  preprocess_target=True,
@@ -61,9 +70,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 scheduler_kwargs=None):
+                 dataset_max_workers=0,
+                 scheduler_kwargs=None,
+                 save_first_last_batches=True,
+                 color_space):
 
-        super(RepresentationLearner, self).__init__(env)
+        super(RepresentationLearner, self).__init__(
+            observation_space=observation_space, action_space=action_space)
         for el in (encoder, decoder, loss_calculator, target_pair_constructor):
             assert el is not None
         # TODO clean up this kwarg parsing at some point
@@ -77,10 +90,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.device = get_device("auto" if device is None else device)
         self.shuffle_batches = shuffle_batches
+        self.shuffle_buffer_size = shuffle_buffer_size
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.preprocess_target = preprocess_target
         self.save_interval = save_interval
+        self.dataset_max_workers = dataset_max_workers
+        self.save_first_last_batches = save_first_last_batches
+        self.color_space = color_space
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -122,7 +139,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.scheduler_kwargs = scheduler_kwargs or {}
 
         self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'contrastive_tf_logs'), flush_secs=15)
-
 
     def _calculate_norms(self, norm_type=2):
         """
@@ -193,6 +209,28 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return extra_context
         return self._preprocess(extra_context)
 
+    def _save_batch_data(self, save_name, save_dict):
+        """Save some input and/or output data to a directory for future
+        analysis. Useful for saving input batches for visual inspection."""
+        out_dir = os.path.join(self.log_dir, save_name)
+        os.makedirs(out_dir, exist_ok=True)
+        for key, value in save_dict.items():
+            # replace special chars with '-'
+            out_filename_prefix = re.sub(r'[^\w_ \-]', '-', key)
+            out_path_prefix = os.path.join(out_dir, out_filename_prefix)
+
+            # first save as Torch pickle
+            torch.save(value, out_path_prefix + '.th')
+
+            # also save as image if it looks like a stack of observations
+            # (this is super heuristic, but if it breaks we at least have the
+            # .th files to fall back on)
+            obs_shape = self.observation_space.shape
+            obs_ndim = len(obs_shape)
+            if torch.is_tensor(value) and value.shape[-obs_ndim:] == obs_shape:
+                rgb_grid = image_tensor_to_rgb_grid(value, self.color_space)
+                save_rgb_tensor(rgb_grid, out_path_prefix + '.png')
+
     # TODO maybe make static?
     def unpack_batch(self, batch):
         """
@@ -206,57 +244,81 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, dataset, training_epochs=None, training_batches=None):
+    def learn(self, datasets, batches_per_epoch, n_epochs):
+        """Run repL training loop.
+
+        Args:
+            datasets ([wds.Dataset]): list of webdataset datasets which we will
+                sample from. Each one likely represents data from different
+                tasks, or different policies.
+            batches_per_epoch (int): each 'epoch' simply consists of a fixed
+                number of batches, with data drawn equally from the given
+                datasets (as opposed to each epoch consisting of a complete
+                cycle through all datasets).
+            n_epochs (int): the total number of 'epochs' of optimisation to
+                perform. Total number of updates will be `batches_per_epoch *
+                n_epochs`.
+
+        Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
+            `loss_record` is a list of average loss values encountered at each
+            epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
-        :param dataset:
-        :return:
-        """
-        assert training_epochs is not None or training_batches is not None, "One of " \
-                                                                            "training_epochs or " \
-                                                                            "training_batches must be " \
-                                                                            "specified"
-        assert not (training_epochs is not None and training_batches is not None), "Only one of training_epochs " \
-                                                                                   "or training_batches can be " \
-                                                                                   "specified"
-        # Construct representation learning dataset of correctly paired (context, target) pairs
-        dataset = self.target_pair_constructor(dataset)
-        # Torch chokes when batch_size is a numpy int instead of a Python int,
-        # so we need to wrap the batch size in int() in case we're running
-        # under skopt (which uses numpy types).
-        dataloader = DataLoader(dataset, batch_size=int(self.batch_size),  shuffle=self.shuffle_batches)
+        # For each single-task dataset in the `datasets` list, we first apply a
+        # target pair constructor to create targets from the incoming stream of
+        # observations. We can then optionally apply a shuffler that retains a
+        # small pool of constructed targets in memory and yields
+        # randomly-selected items from that pool (this approximates
+        # full-dataset shuffling without having to read the whole dataset into
+        # memory).
+        for sub_ds in datasets:
+            # Construct representation learning dataset of correctly paired
+            # (context, target) pairs
+            sub_ds.pipe(self.target_pair_constructor)
+            if self.shuffle_batches:
+                # TODO(sam): if we're low on memory due to shuffle buffer
+                # memory consumption, then consider shuffling *after*
+                # interleaving (more complicated, but also takes up less
+                # memory).
+                sub_ds.shuffle(self.shuffle_buffer_size)
+
+        if not self.shuffle_batches:
+            assert len(datasets) <= 1, \
+                "InterleavedDataset will intrinsically shuffle batches by " \
+                "randomly selecting which dataset to draw from at each " \
+                "iteration; do not use multi-task training if " \
+                f"shuffle_batches=False is required (got {len(datasets)}" \
+                "datasets)"
+            assert self.dataset_max_workers <= 1, \
+                "Using more than one dataset worker may shuffle the " \
+                "dataset; got dataset_max_workers={dataset_max_workers}"
+        interleaved_dataset = InterleavedDataset(
+            datasets, nominal_length=batches_per_epoch * self.batch_size)
+
+        dataloader = DataLoader(interleaved_dataset,
+                                num_workers=self.dataset_max_workers,
+                                batch_size=int(self.batch_size))
 
         loss_record = []
-        num_batches_per_epoch = math.ceil(len(dataset)/self.batch_size)
-        assert len(dataloader) == num_batches_per_epoch, \
-            "num_batches_per_dataset doesn't represent actual length of dataloader"
-        assert num_batches_per_epoch > 0, \
-            f"num_batches_per_epoch is incorrectly 0: len(ds)={len(dataset)}, bs={self.batch_size}"
-
-        if training_batches is None:
-            training_batches = num_batches_per_epoch*training_epochs
-        if training_epochs is None:
-            training_epochs = math.ceil(training_batches/num_batches_per_epoch)
 
         if self.scheduler_cls is not None:
             if self.scheduler_cls in [CosineAnnealingLR, LinearWarmupCosine]:
-                self.scheduler = self.scheduler_cls(self.optimizer, training_epochs, **to_dict(self.scheduler_kwargs))
+                self.scheduler = self.scheduler_cls(self.optimizer, n_epochs, **to_dict(self.scheduler_kwargs))
             else:
                 self.scheduler = self.scheduler_cls(self.optimizer, **to_dict(self.scheduler_kwargs))
 
         self.encoder.train(True)
         self.decoder.train(True)
         batches_trained = 0
-        epochs_trained = 0
-        training_complete = False
-        logging.debug(f"Training with {training_epochs} epochs and {training_batches} batches")
-        logging.debug(f"Batch size is {self.batch_size}; dataset size is {len(dataset)}")
+        logging.debug(
+            f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
+            f"batches (batch size {self.batch_size})")
 
-        while not training_complete:
+        for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
-            dataiter = iter(dataloader)
             # Set encoder and decoder to be in training mode
 
-            for step, batch in enumerate(dataiter):
+            samples_seen = 0
+            for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
@@ -272,6 +334,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
 
+                if (self.save_first_last_batches and step == 0
+                    and epoch_num == 1):
+                    self._save_batch_data(
+                        'first_batch',
+                        dict(contexts=contexts,
+                             targets=targets,
+                             extra_context=extra_context,
+                             traj_ts_info=traj_ts_info))
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
@@ -304,37 +374,49 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 gradient_norm, weight_norm = self._calculate_norms()
 
                 # FIXME(sam): don't plot this every batch, plot it every k
-                # batches (will make log files much smaller)
+                # batches (will make log files much smaller & let us stream
+                # them to head node on Ray cluster)
                 loss_meter.update(loss_item)
                 logger.record('loss', loss_item)
                 logger.record('gradient_norm', gradient_norm.item())
                 logger.record('weight_norm', weight_norm.item())
-                logger.record('epoch', epochs_trained)
+                logger.record('epoch', epoch_num)
                 logger.record('within_epoch_step', step)
                 logger.record('batches_trained', batches_trained)
                 logger.dump(step=batches_trained)
                 batches_trained += 1
-                if batches_trained >= training_batches:
-                    logging.info(f"Breaking out of training in epoch {epochs_trained} because max batches "
-                                 f"value of {training_batches} has been reached")
-                    training_complete = True
-                    break
+                samples_seen += len(contexts)
+
+            assert batches_trained > 0, \
+                "went through training loop with no batches---empty dataset?"
+            if epoch_num == 0:
+                logging.debug(f"Epoch yielded {samples_seen} data points "
+                              f"({step + 1} batches)")
 
             if self.scheduler is not None:
                 self.scheduler.step()
             loss_record.append(loss_meter.avg)
 
-            epochs_trained += 1
-            if epochs_trained >= training_epochs:
-                training_complete = True
-
-            should_save_checkpoint = (training_complete or
-                                      epochs_trained % self.save_interval == 0)
+            # save checkpoint on last epoch, or at regular interval
+            is_last_epoch = epoch_num == n_epochs
+            should_save_checkpoint = (is_last_epoch or
+                                      epoch_num % self.save_interval == 0)
             if should_save_checkpoint:
-                most_recent_encoder_checkpoint_path = os.path.join(self.encoder_checkpoints_path,
-                                                                   f'{epochs_trained}_epochs.ckpt')
+                most_recent_encoder_checkpoint_path = os.path.join(
+                    self.encoder_checkpoints_path, f'{epoch_num}_epochs.ckpt')
                 torch.save(self.encoder, most_recent_encoder_checkpoint_path)
-                torch.save(self.decoder, os.path.join(self.decoder_checkpoints_path,
-                                                      f'{epochs_trained}_epochs.ckpt'))
+                torch.save(self.decoder, os.path.join(
+                    self.decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
+
+            # optionally save batch on last batch of last epoch
+            if self.save_first_last_batches and is_last_epoch:
+                self._save_batch_data('last_batch',
+                                      dict(contexts=contexts,
+                                           targets=targets,
+                                           extra_context=extra_context,
+                                           traj_ts_info=traj_ts_info))
+
+        assert is_last_epoch, "did not make it to last epoch"
+        assert should_save_checkpoint, "did not save checkpoint on last epoch"
 
         return loss_record, most_recent_encoder_checkpoint_path
