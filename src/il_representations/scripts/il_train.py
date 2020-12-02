@@ -90,7 +90,6 @@ def default_config():
     # too (it only uses the venv for evaluation)
     n_traj = None # this should be a number of trajectories to return, or None if returning
                   # all available trajectories is okay
-    demo_timesteps = None
     benchmark = dict(  # noqa: F841
         venv_parallel=True,
         n_envs=16,
@@ -99,6 +98,8 @@ def default_config():
         obs_encoder_cls='BasicCNN',
         representation_dim=128,
     )
+    _ = locals()
+    del _
 
 
 @il_train_ex.capture
@@ -237,7 +238,7 @@ def do_training_gail(
 
 @il_train_ex.main
 def train(seed, algo, benchmark, encoder_path, freeze_encoder,
-          n_traj, demo_timesteps, _config):
+          n_traj, _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -248,7 +249,7 @@ def train(seed, algo, benchmark, encoder_path, freeze_encoder,
     imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     venv = auto_env.load_vec_env()
-    dataset_dict = auto_env.load_dataset(n_traj=n_traj, timesteps=demo_timesteps)
+    dataset_dict = auto_env.load_dataset(n_traj=n_traj)
     dataset = TransitionsMinimalDataset(dataset_dict)
 
     if encoder_path:

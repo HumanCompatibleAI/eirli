@@ -16,7 +16,6 @@ import numpy as np
 import torch as th
 
 from il_representations.envs.config import benchmark_ingredient
-from il_representations.utils import subset_all_dict_values
 
 register_envs()
 
@@ -109,7 +108,7 @@ def get_env_name_magical(magical_env_prefix, magical_preproc):
 
 @benchmark_ingredient.capture
 def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
-                         magical_preproc, n_traj, timesteps, magical_remove_null_actions,
+                         magical_preproc, n_traj, magical_remove_null_actions,
                          data_root):
     demo_dir = os.path.join(data_root, magical_demo_dirs[magical_env_prefix])
     logging.info(
@@ -129,8 +128,6 @@ def load_dataset_magical(magical_demo_dirs, magical_env_prefix,
         remove_null_actions=magical_remove_null_actions)
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
-    if timesteps is not None:
-        dataset_dict = subset_all_dict_values(dataset_dict, timesteps)
     return dataset_dict
 
 

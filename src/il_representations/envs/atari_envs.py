@@ -4,10 +4,9 @@ import numpy as np
 import random
 
 from il_representations.envs.config import benchmark_ingredient
-from il_representations.utils import subset_all_dict_values
 
 @benchmark_ingredient.capture
-def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj, timesteps,
+def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj,
                        data_root, chans_first=True):
     # load trajectories from disk
     full_rollouts_path = os.path.join(data_root, atari_demo_paths[atari_env_id])
@@ -38,8 +37,6 @@ def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj, timesteps,
         key: np.stack(values, axis=0)
         for key, values in merged_trajectories.items()
     }
-    if timesteps is not None:
-        dataset_dict = subset_all_dict_values(dataset_dict, timesteps)
 
     if chans_first:
         # In Gym Atari envs, channels are last; chans_first will transpose data

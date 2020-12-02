@@ -7,15 +7,9 @@ from gym import Wrapper, spaces, Env, register
 import time
 import logging
 
-MOCK_TO_REAL_LOOKUP = {
-    'MinecraftTreechopMockEnv-v0': 'MineRLTreechopVectorObf-v0'
-}
-REAL_TO_MOCK_LOOKUP = {v:k for k,v in MOCK_TO_REAL_LOOKUP.items()}
 
 @benchmark_ingredient.capture
 def load_dataset_minecraft(minecraft_env_id, minecraft_data_root, n_traj=None, timesteps=None, chunk_length=100):
-    if 'Mock' in minecraft_env_id:
-        minecraft_env_id = MOCK_TO_REAL_LOOKUP[minecraft_env_id]
     data_iterator = minerl.data.make(environment=minecraft_env_id,
                                      data_dir=minecraft_data_root,
                                      max_recordings=n_traj)
@@ -52,7 +46,6 @@ def channels_first(el):
 
     elif isinstance(el, tuple):
         return (el[2], el[0], el[1])
-
     else:
         raise NotImplementedError("Input must be either array or tuple")
 
@@ -89,37 +82,5 @@ class MinecraftVectorWrapper(Wrapper):
     def reset(self):
         obs = self.env.reset()
         return MinecraftVectorWrapper.transform_obs(obs)
-
-
-class TestingEnvironment(Env):
-    # Test environment for situations where we don't actually need to
-    # interact with a Minecraft environment, only pull env/action space info from it
-    def __init__(self, obs_shape=(64, 64, 3), action_shape=(64,), obs_high=255,
-                obs_low=0, action_high=1.05, action_low=-1.05):
-        super().__init__()
-        self.observation_space = spaces.Dict({'pov': spaces.Box(shape=obs_shape, high=obs_high, low=obs_low)})
-        self.action_space = spaces.Dict({'vector': spaces.Box(shape=action_shape, high=action_high, low=action_low)})
-        self.steps_taken = 0
-
-    def reset(self):
-        steps_taken = 0
-        return self.observation_space.sample()
-
-    def step(self, action):
-        self.steps_taken += 1
-        if self.steps_taken >= 100:
-            done = True
-        else:
-            done = False
-        return self.observation_space.sample(), 0, done, dict()
-
-
-def entry_point(**kwargs):
-    # add in common kwargs
-    return TestingEnvironment(**kwargs)
-
-# frame skip 2
-register('MinecraftTreechopMockEnv-v0',
-         entry_point=entry_point)
 
 
