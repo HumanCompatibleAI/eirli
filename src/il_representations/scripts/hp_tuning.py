@@ -6,7 +6,7 @@ from copy import deepcopy
 def get_space_and_ref_configs(contrastive=True):
     if contrastive:
         space = collections.OrderedDict([
-                ('repl:algo_params:batch_size', (64, 512)),
+                ('repl:algo_params:batch_size', (64, 384)),
                 ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
                 ('repl:algo_params:representation_dim', (8, 256)),
                 ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN',
