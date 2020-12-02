@@ -338,14 +338,13 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
                                      loss_calculator=BatchAsymmetricContrastiveLoss,
-                                     loss_calculator_kwargs=dict(sample=True),
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      preprocess_extra_context=False,
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
                                      encoder_kwargs=dict(action_space=kwargs['action_space'],
                                                          learn_scale=False),
                                      decoder_kwargs=dict(action_representation_dim=action_representation_dim,
-                                                         learn_scale=True))
+                                                         learn_scale=False))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
