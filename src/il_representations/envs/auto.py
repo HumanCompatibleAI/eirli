@@ -27,9 +27,9 @@ load_dataset_funcs = {
 }
 
 @benchmark_ingredient.capture
-def load_dataset(benchmark_name, n_traj, timesteps):
+def load_dataset(benchmark_name, n_traj):
     if benchmark_name in load_dataset_funcs:
-        dataset_dict = load_dataset_funcs[benchmark_name](n_traj=n_traj, timesteps=timesteps)
+        dataset_dict = load_dataset_funcs[benchmark_name](n_traj=n_traj)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
