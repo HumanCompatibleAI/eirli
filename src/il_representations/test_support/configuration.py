@@ -8,38 +8,39 @@ from il_representations import algos
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
-COMMON_TEST_CONFIG = {
+VENV_OPTS_TEST_CONFIG = {
     'venv_parallel': False,
     'n_envs': 2,
-    'n_traj': 1,
 }
-BENCHMARK_TEST_CONFIGS = [
+ENV_DATA_TEST_CONFIG = {
+    'data_root': path.join(TEST_DATA_DIR, '..'),
+    'atari_demo_paths': {
+        'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
+    },
+    'magical_demo_dirs': {
+        'MoveToRegion': path.join(TEST_DATA_DIR, 'magical', 'move-to-region'),
+    },
+    'dm_control_demo_patterns': {
+        'reacher-easy':
+        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
+    },
+}
+ENV_DATA_VENV_OPTS_TEST_CONFIG = {
+    'env_data': ENV_DATA_TEST_CONFIG,
+    'venv_opts': VENV_OPTS_TEST_CONFIG,
+}
+ENV_CFG_TEST_CONFIGS = [
     {
         'benchmark_name': 'atari',
-        'atari_env_id': 'PongNoFrameskip-v4',
-        'atari_demo_paths': {
-            'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari',
-                                            'pong.npz'),
-        },
-        **COMMON_TEST_CONFIG,
+        'task_name': 'PongNoFrameskip-v4',
     },
     {
         'benchmark_name': 'magical',
-        'magical_env_prefix': 'MoveToRegion',
-        'magical_demo_dirs': {
-            'MoveToRegion': path.join(TEST_DATA_DIR, 'magical',
-                                      'move-to-region'),
-        },
-        **COMMON_TEST_CONFIG,
+        'task_name': 'MoveToRegion',
     },
     {
         'benchmark_name': 'dm_control',
-        'dm_control_env': 'reacher-easy',
-        'dm_control_demo_patterns': {
-            'reacher-easy':
-            path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
-        },
-        **COMMON_TEST_CONFIG,
+        'task_name': 'reacher-easy',
     },
 ]
 FAST_IL_TRAIN_CONFIG = {
@@ -57,12 +58,12 @@ FAST_IL_TRAIN_CONFIG = {
     },
 }
 REPL_SMOKE_TEST_CONFIG = {
-    'pretrain_epochs': None,
-    'pretrain_batches': 2,
-    'demo_timesteps': 32,
-    'algo_params': {'representation_dim': 3, 'batch_size': 7},
-    'use_random_rollouts': False,
-    'ppo_finetune': False,
+    'batches_per_epoch': 2,
+    'n_epochs': 1,
+    'algo_params': {
+        'representation_dim': 3,
+        'batch_size': 7,
+    },
 }
 CHAIN_CONFIG = {
     'spec': {
@@ -75,7 +76,7 @@ CHAIN_CONFIG = {
             'algo': tune.grid_search(['bc']),
             'freeze_encoder': tune.grid_search([False])
         },
-        'benchmark': tune.grid_search([BENCHMARK_TEST_CONFIGS[0]]),
+        'env_cfg': tune.grid_search([ENV_CFG_TEST_CONFIGS[0]]),
     },
     'tune_run_kwargs': {
         'resources_per_trial': {
@@ -88,8 +89,8 @@ CHAIN_CONFIG = {
         # Ray has been mysteriously complaining about the amount of memory
         # available on CircleCI, even though the machines have heaps of RAM.
         # Setting sane defaults so this doesn't happen.
-        'memory': int(0.2*1e9),
-        'object_store_memory': int(0.2*1e9),
+        'memory': int(0.2 * 1e9),
+        'object_store_memory': int(0.2 * 1e9),
         'num_cpus': 2,
     },
     'il_train': {
@@ -104,4 +105,5 @@ CHAIN_CONFIG = {
         'device': 'cpu',
         **REPL_SMOKE_TEST_CONFIG,
     },
+    **ENV_DATA_VENV_OPTS_TEST_CONFIG,
 }

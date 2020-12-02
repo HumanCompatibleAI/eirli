@@ -16,11 +16,19 @@ import torch as th
 
 from il_representations.algos.utils import set_global_seeds
 from il_representations.envs import auto
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            venv_opts_ingredient)
 from il_representations.utils import TensorFrameWriter
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-il_test_ex = Experiment('il_test', ingredients=[benchmark_ingredient])
+il_test_ex = Experiment('il_test',
+                        ingredients=[
+                            # We need env_cfg_ingredient to know which
+                            # environment to test on, and venv_opts_ingredient
+                            # to construct a vecenv (or vecenvs) for that
+                            # environment.
+                            env_cfg_ingredient, venv_opts_ingredient
+                        ])
 
 
 @il_test_ex.config
@@ -40,9 +48,12 @@ def default_config():
     write_video = False
     video_file_name = "rollouts.mp4"
 
+    _ = locals()
+    del _
+
 
 @il_test_ex.main
-def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
+def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         write_video, video_file_name, torch_num_threads):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
@@ -66,10 +77,10 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
         video_writer = TensorFrameWriter(video_fp.name,
                                          color_space=auto.load_color_space())
 
-    if benchmark['benchmark_name'] == 'magical':
+    if env_cfg['benchmark_name'] == 'magical':
         from il_representations.envs import magical_envs
-        env_prefix = benchmark['magical_env_prefix']
-        env_preproc = benchmark['magical_preproc']
+        env_prefix = env_cfg['task_name']
+        env_preproc = env_cfg['magical_preproc']
         demo_env_name = f'{env_prefix}-Demo-{env_preproc}-v0'
         eval_protocol = magical_envs.SB3EvaluationProtocol(
             demo_env_name=demo_env_name,
@@ -95,8 +106,8 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
             'return_mean': eval_data_frame['mean_score'].mean(),
         }
 
-    elif (benchmark['benchmark_name'] == 'dm_control'
-          or benchmark['benchmark_name'] == 'atari'):
+    elif (env_cfg['benchmark_name'] == 'dm_control'
+          or env_cfg['benchmark_name'] == 'atari'):
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 
@@ -135,7 +146,7 @@ def run(policy_path, benchmark, seed, n_rollouts, device_name, run_id,
 
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
-                                  f"{benchmark['benchmark_name']!r} is not "
+                                  f"{env_cfg['benchmark_name']!r} is not "
                                   "yet supported")
 
     # save to a .json file

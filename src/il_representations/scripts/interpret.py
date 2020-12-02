@@ -96,7 +96,7 @@ def process_data(imgs, device, benchmark):
     label_list = []
     benchmark_name = benchmark['benchmark_name']
     print(f'Loading benchmark {benchmark_name}...')
-    data_dict = auto_env.load_dataset(benchmark_name)
+    data_dict = auto_env.load_dict_dataset(benchmark_name)
     for img_idx in imgs:
         img = data_dict['obs'][img_idx]
         label = data_dict['acts'][img_idx]
