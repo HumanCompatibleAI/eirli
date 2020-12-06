@@ -6,6 +6,7 @@ import warnings
 from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
+from torchvision.models.resnet import BasicBlock
 import torch
 from torch import nn
 from pyro.distributions import Delta
@@ -115,6 +116,15 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+        ],
+    'MAGICALCNN-basic': [
+            {'out_dim': 64, 'stride': 2, 'padding': 1, 'downsample': None},
+            {'out_dim': 64, 'stride': 2, 'padding': 1, 'downsample': None},
+            {'out_dim': 128, 'stride': 2, 'padding': 1,
+             'downsample': nn.Sequential(
+                nn.Conv2d(64, 128, kernel_size=1, stride=2),
+                nn.BatchNorm2d(128),
+                )},
         ]
 }
 
@@ -172,10 +182,14 @@ class MAGICALCNN(nn.Module):
                  use_ln=False,
                  dropout=None,
                  use_sn=False,
+                 block_type='resnet',
                  width=2,
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
+        # If block_type == resnet, use ResNet's basic block.
+        # If block_type == magical, use MAGICAL block from its paper.
+        assert block_type in ['resnet', 'magical']
         def conv_block(in_chans, out_chans, kernel_size, stride, padding):
             # We sometimes disable bias because batch norm has its own bias.
             conv_layer = nn.Conv2d(
@@ -210,15 +224,33 @@ class MAGICALCNN(nn.Module):
             return layers
 
         w = width
-        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS['MAGICALCNN']
+        arch_type = 'MAGICALCNN' if block_type == 'magical' else 'MAGICALCNN-basic'
+        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS[arch_type]
         conv_layers = []
         in_dim = observation_space.shape[0]
+
+        block = conv_block
+        if block_type == 'resnet':
+            block = BasicBlock
         for layer_definition in self.architecture_definition:
-            conv_layers += conv_block(in_dim,
-                                      layer_definition['out_dim']*w,
-                                      kernel_size=layer_definition['kernel_size'],
-                                      stride=layer_definition['stride'],
-                                      padding=layer_definition['padding'])
+            if block_type == 'magical':
+                block_kwargs = {
+                    'stride': layer_definition['stride'],
+                    'kernel_size': layer_definition['kernel_size'],
+                    'padding': layer_definition['padding']
+                }
+                conv_layers += block(in_dim,
+                                     layer_definition['out_dim']*w,
+                                     **block_kwargs)
+            else:
+                block_kwargs = {
+                    'stride': layer_definition['stride'],
+                    'padding': layer_definition['padding'],
+                    'downsample': layer_definition['downsample']
+                }
+                conv_layers += [block(in_dim,
+                                     layer_definition['out_dim'] * w,
+                                     **block_kwargs)]
             in_dim = layer_definition['out_dim']*w
         conv_layers.append(nn.Flatten())
 
@@ -330,10 +362,12 @@ class BaseEncoder(Encoder):
         return independent_multivariate_normal(mean=mean,
                                                stddev=scale)
 
-    def forward_deterministic(self, x, traj_info):
+    # def forward_deterministic(self, x, traj_info):
+    def forward_deterministic(self, x):
         features = self.network(x)
-        return independent_multivariate_normal(mean=features,
-                                               stddev=self.scale_constant)
+        return features
+        # return independent_multivariate_normal(mean=features,
+        #                                        stddev=self.scale_constant)
 
 
 def infer_action_shape_info(action_space, action_embedding_dim):
