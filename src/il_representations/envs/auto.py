@@ -18,6 +18,9 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
+from il_representations.envs.minecraft_envs import (load_dataset_minecraft,
+                                                    get_env_name_minecraft,
+                                                    MinecraftVectorWrapper)
 from il_representations.scripts.utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
@@ -34,6 +37,8 @@ def load_dict_dataset(benchmark_name, n_traj=None):
         dataset_dict = load_dataset_dm_control(n_traj=n_traj)
     elif benchmark_name == 'atari':
         dataset_dict = load_dataset_atari(n_traj=n_traj)
+    elif benchmark_name == 'minecraft':
+        dataset_dict = load_dataset_minecraft(n_traj=n_traj)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -55,6 +60,8 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
         return dm_control_full_env_names[task_name]
     elif benchmark_name == 'atari':
         return task_name
+    elif benchmark_name == 'minecraft':
+        return get_env_name_minecraft()  # uses task_name implicitly through config param
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -106,6 +113,14 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         assert final_env.observation_space.shape == (4, 84, 84), \
             final_env.observation_space.shape
         return final_env
+    elif benchmark_name == 'minecraft':
+        if venv_parallel:
+            raise ValueError("MineRL environments can only be run with `venv_parallel`=False as a result of "
+                             "issues with starting daemonic processes from SubprocVecEnv")
+        return make_vec_env(gym_env_name,
+                            n_envs=n_envs,
+                            parallel=venv_parallel,
+                            wrapper_class=MinecraftVectorWrapper)
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -209,6 +224,7 @@ def load_color_space(benchmark_name):
         'magical': ColorSpace.RGB,
         'dm_control': ColorSpace.RGB,
         'atari': ColorSpace.GRAY,
+        'minecraft': ColorSpace.RGB
     }
     try:
         return color_spaces[benchmark_name]
