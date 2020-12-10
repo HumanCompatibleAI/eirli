@@ -555,6 +555,32 @@ def cfg_bench_one_task_magical():
 
 
 @chain_ex.named_config
+def cfg_bench_magical_mr():
+    """Bench on MAGICAL MatchRegions."""
+    env_cfg = {
+        'benchmark_name': 'magical',
+        'task_name': 'MatchRegions',
+        'magical_remove_null_actions': True,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_magical_mtc():
+    """Bench on MAGICAL MoveToCorner."""
+    env_cfg = {
+        'benchmark_name': 'magical',
+        'task_name': 'MoveToCorner',
+        'magical_remove_null_actions': True,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_bench_one_task_dm_control():
     """Just one simple dm_control config."""
     env_cfg = {
@@ -639,8 +665,37 @@ def cfg_repl_temporal_cpc():
 
 @chain_ex.named_config
 def cfg_data_repl_demos_random():
+    """Training on both demos and random rollouts for the current
+    environment."""
     repl = {
         'dataset_configs': [{'type': 'demos'}, {'type': 'random'}],
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_repl_demos_magical_mt():
+    """Multi-task training on all MAGICAL tasks."""
+    repl = {
+        'dataset_configs': [
+            {
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': magical_task_name,
+                }
+            } for magical_task_name in [
+                'MoveToCorner',
+                'MoveToRegion',
+                'MatchRegions',
+                'MakeLine',
+                'FixColour',
+                'FindDupe',
+                'ClusterColour',
+                'ClusterShape',
+            ]
+        ],
     }
     _ = locals()
     del _
