@@ -47,6 +47,7 @@ ENV_CFG_TEST_CONFIGS = [
         'benchmark_name': 'minecraft',
         'task_name': 'NavigateVectorObf'
     }
+
 ]
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
