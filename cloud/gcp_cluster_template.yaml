@@ -30,7 +30,7 @@ idle_timeout_minutes: 5
 # Execute docker commands & open necessary ports.
 docker:
   # the image below is taken from .circleci/config.yml
-  image: "humancompatibleai/il-representations:2020.10.27-r1"
+  image: "humancompatibleai/il-representations:2020.12.09-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
@@ -124,7 +124,10 @@ worker_nodes:
 
 # Files or directories to copy to the head and worker nodes
 file_mounts: {
+  # Format in Docker container:
   # "/path1/on/remote/machine": "/path1/on/local/machine",
+  # (on the host, outside the Docker container, everything is prefixed with
+  # /tmp/ray_tmp_mount/ for some reason; even absolute paths have this problem)
   "/tmp/ray-init-scripts": "ray-init-scripts",
 }
 # List of files or directories to copy from the head node to the worker nodes.
@@ -147,7 +150,7 @@ initialization_commands:
   # nfs_mount.sh gets around this by *baking the IP into the script*; I should
   # consider baking IPs etc. into some separate config file instead.)
   - >-
-    sudo bash /tmp/ray-init-scripts/nfs_mount.sh
+    sudo bash /tmp/ray_tmp_mount/tmp/ray-init-scripts/nfs_mount.sh
     && nfs_server_ip="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d : -f 1)"
     && docker volume create --driver local --opt type=nfs \
       --opt "o=addr=${nfs_server_ip},rw" --opt device=:/vol1 \
@@ -207,7 +210,7 @@ setup_commands:
     && ( test -e data || ln -vs "${CLIENT_MOUNT_POINT}/il-demos/" data )
     && cluster_name="cluster-XXX-CUSTOMIZE-THIS-XXX"
     && runs_path="${CLIENT_MOUNT_POINT}/cluster-data/${cluster_name}"
-    && ( test -e runs || ( mkdir -p "$runs_path" && ln -vs "$runs_path" runs ) )
+    && ( test -e runs || ( mkdir -p "$runs_path" && chmod -R +rX "$runs_path" && ln -vs "$runs_path" runs ) )
   # Set up MuJoCo
   - >-
     cd ~/il-rep/
