@@ -74,6 +74,7 @@ def construct_next_obs(trajectories_dict):
     trajectories_dict['next_obs'] = merged_next_obs
     return trajectories_dict
 
+
 def channels_first(el):
     if isinstance(el, np.ndarray):
         dimension_order = list(range(len(el.shape)))
@@ -92,6 +93,12 @@ def channels_first(el):
 
 
 class MinecraftVectorWrapper(Wrapper):
+    """
+    Currently, RepL code only works with pixel inputs, and imitation can only work with vector (rather than dict)
+    action spaces. So, we currently (1) only allow VectorObfuscated environments (where the action dictionary
+    has been processed into a vector), and (2) extract the observation space to only save the pixels, before we load
+    the data in as a il_representations dataset
+    """
     def __init__(self, env):
         super().__init__(env)
         assert 'vector' in env.action_space.spaces.keys(), "Wrapper is only implemented to work with Vector Obfuscated envs"
