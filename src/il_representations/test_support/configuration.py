@@ -89,7 +89,6 @@ CHAIN_CONFIG = {
         # Ray has been mysteriously complaining about the amount of memory
         # available on CircleCI, even though the machines have heaps of RAM.
         # Setting sane defaults so this doesn't happen.
-        'memory': int(0.2 * 1e9),
         'object_store_memory': int(0.2 * 1e9),
         'num_cpus': 2,
     },

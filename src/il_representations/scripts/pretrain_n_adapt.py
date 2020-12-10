@@ -343,7 +343,6 @@ def base_config():
                                gpu=0,  # TODO change back to 0.32?
                            ))
     ray_init_kwargs = dict(
-        memory=None,
         object_store_memory=None,
         include_dashboard=False,
     )
@@ -901,9 +900,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
-        # In addition to the actual spaces we're searching over, we also need to
-        # store the baseline config values in Ray to avoid Ray issue #12048
-        # We create a grid search with a single value of the WrappedConfig object
+        # In addition to the actual spaces we're searching over, we also need
+        # to store the baseline config values in Ray to avoid Ray issue #12048.
+        # We create a grid search with a single value of the WrappedConfig
+        # object.
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
@@ -918,8 +918,12 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         local_dir=ray_dir,
         **tune_run_kwargs,
     )
-    best_config = rep_run.get_best_config(metric=metric)
-    logging.info(f"Best config is: {best_config}")
+    if use_skopt:
+        # get_best_config() requires a mode, but skopt_search_mode is only
+        # guaranteed to be non-None when tuning with skopt
+        best_config = rep_run.get_best_config(
+            metric=metric, mode=skopt_search_mode)
+        logging.info(f"Best config is: {best_config}")
     logging.info("Results available at: ")
     logging.info(rep_run._get_trial_paths())
 
