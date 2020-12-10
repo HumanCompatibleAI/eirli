@@ -56,13 +56,21 @@ def construct_next_obs(trajectories_dict):
     # Figure out locations of dones/marking end of trajectory
     # For each trajectory, construct a next_obs vector that is obs[1:] + None
     dones_locations = np.where(trajectories_dict['dones'])[0]
+    dones_locations = np.append(dones_locations, -1)
     prior_dones_loc = 0
     all_next_obs = []
     for done_loc in dones_locations:
-        trajectory_obs = trajectories_dict['obs'][prior_dones_loc:done_loc]
-        next_obs = trajectory_obs[1:] + [trajectory_obs[-1]] #duplicate final obs for final next_obs
+        if done_loc == -1:
+            trajectory_obs = trajectories_dict['obs'][prior_dones_loc:]
+        else:
+            trajectory_obs = trajectories_dict['obs'][prior_dones_loc:done_loc+1] # should this +1 be here?
+        next_obs = trajectory_obs[1:]
+        next_obs = np.append(next_obs, np.expand_dims(trajectory_obs[-1], axis=0), axis=0) #duplicate final obs for final next_obs
         all_next_obs.append(next_obs)
-    merged_next_obs = np.concatenate(all_next_obs)
+    if len(all_next_obs) == 1:
+        merged_next_obs = all_next_obs[0]
+    else:
+        merged_next_obs = np.concatenate(all_next_obs)
     trajectories_dict['next_obs'] = merged_next_obs
     return trajectories_dict
 

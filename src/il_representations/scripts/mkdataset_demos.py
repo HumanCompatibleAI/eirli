@@ -95,7 +95,6 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
             # probably an indexing bug if this assert fails; we should not have
             # any zero-length trajectories
             assert traj_len > 0, 'somehow ended up with zero-length traj?'
-
             for idx in range(traj_len):
                 sub_dict = {}
                 for key, arr in traj.items():
