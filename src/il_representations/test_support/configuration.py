@@ -24,6 +24,7 @@ ENV_DATA_TEST_CONFIG = {
         'reacher-easy':
         path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
     },
+
 }
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
     'env_data': ENV_DATA_TEST_CONFIG,
@@ -42,6 +43,10 @@ ENV_CFG_TEST_CONFIGS = [
         'benchmark_name': 'dm_control',
         'task_name': 'reacher-easy',
     },
+    {
+        'benchmark_name': 'minecraft',
+        'task_name': 'NavigateVectorObf'
+    }
 ]
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
