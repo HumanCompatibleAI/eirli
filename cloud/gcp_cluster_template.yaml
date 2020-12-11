@@ -149,8 +149,11 @@ initialization_commands:
   # alternative is to authenticate gcloud so that we can run get_server_ip.
   # nfs_mount.sh gets around this by *baking the IP into the script*; I should
   # consider baking IPs etc. into some separate config file instead.)
+  # (also, the 'find /tmp/ray*' thing is to get around the fact that Ray puts
+  # file mounts in different places on the head node and worker nodes; I can't
+  # figure out a good way to get around it)
   - >-
-    sudo bash /tmp/ray_tmp_mount/tmp/ray-init-scripts/nfs_mount.sh
+    sudo bash "$(find /tmp/ray* -type d -name 'ray-init-scripts' -print -quit)/nfs_mount.sh"
     && nfs_server_ip="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d : -f 1)"
     && docker volume create --driver local --opt type=nfs \
       --opt "o=addr=${nfs_server_ip},rw" --opt device=:/vol1 \
