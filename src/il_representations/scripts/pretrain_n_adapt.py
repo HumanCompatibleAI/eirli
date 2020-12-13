@@ -412,7 +412,7 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on node failure
-                           max_failures=2,
+                           max_failures=3,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
@@ -435,7 +435,7 @@ def cfg_base_3seed_1cpu_1gpu_2envs():
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on node failure
-                           max_failures=2,
+                           max_failures=3,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
@@ -675,6 +675,17 @@ def cfg_data_repl_demos_random():
 
 
 @chain_ex.named_config
+def cfg_data_repl_random():
+    """Training on both demos and random rollouts for the current
+    environment."""
+    repl = {
+        'dataset_configs': [{'type': 'random'}],
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_data_repl_demos_magical_mt():
     """Multi-task training on all MAGICAL tasks."""
     repl = {
@@ -702,12 +713,54 @@ def cfg_data_repl_demos_magical_mt():
 
 
 @chain_ex.named_config
+def cfg_data_il_5traj():
+    """Use only 5 trajectories for IL training."""
+    il_train = {
+        'n_traj': 5,
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_il_hc_extended():
+    """Use extended HalfCheetah dataset for IL training."""
+    env_data = {
+        'dm_control_demo_patterns': {
+            'cheetah-run': 'data/dm_control/extended-cheetah-run-*.pkl.gz',
+        }
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_repl_ceb():
     stages_to_run = StagesToRun.REPL_AND_IL
     repl = {
         'algo': 'CEB',
     }
 
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_vae():
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'algo_params': {'batch_size': 32},
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_inv_dyn():
+    repl = {
+        'algo': 'InverseDynamicsPrediction',
+        'algo_params': {'batch_size': 32},
+    }
     _ = locals()
     del _
 

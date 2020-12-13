@@ -68,49 +68,63 @@ def gail_defaults():
 
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-il_train_ex = Experiment('il_train', ingredients=[
-    # We need env_cfg_ingredient to determine which environment to train on,
-    # venv_opts_ingredient to construct a vecenv for the environment, and
-    # env_data_ingredient to load training data. bc_ingredient and
-    # gail_ingredient are used for BC and GAIL, respectively (otherwise
-    # ignored).
-    env_cfg_ingredient, venv_opts_ingredient, env_data_ingredient,
-    bc_ingredient, gail_ingredient,
-])
+il_train_ex = Experiment(
+    'il_train',
+    ingredients=[
+        # We need env_cfg_ingredient to determine which environment to train on,
+        # venv_opts_ingredient to construct a vecenv for the environment, and
+        # env_data_ingredient to load training data. bc_ingredient and
+        # gail_ingredient are used for BC and GAIL, respectively (otherwise
+        # ignored).
+        env_cfg_ingredient,
+        venv_opts_ingredient,
+        env_data_ingredient,
+        bc_ingredient,
+        gail_ingredient,
+    ])
 
 
 @il_train_ex.config
 def default_config():
     # exp_ident is an arbitrary string. Set it to a meaningful value to help
     # you identify runs in viskit.
-    exp_ident = None  # noqa: F841
+    exp_ident = None
+    # number of trajectories to load (default: all)
+    n_traj = None
     # manually set number of Torch threads
-    torch_num_threads = 1  # noqa: F841
+    torch_num_threads = 1
     # device to place all computations on
-    device_name = 'auto'  # noqa: F841
+    device_name = 'auto'
     # choose between 'bc'/'gail'
-    algo = 'bc'  # noqa: F841
+    algo = 'bc'
     # place to load pretrained encoder from (if not given, it will be
     # re-intialised from scratch)
-    encoder_path = None  # noqa: F841
+    encoder_path = None
     # file name for final policy
-    final_pol_name = 'policy_final.pt'  # noqa: F841
+    final_pol_name = 'policy_final.pt'
     # should we freeze waits of the encoder?
-    freeze_encoder = False  # noqa: F841
+    freeze_encoder = False
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
-    venv_opts = dict(  # noqa: F841
+    venv_opts = dict(
         venv_parallel=True,
         n_envs=16,
     )
-    encoder_kwargs = dict(  # noqa: F841
+    encoder_kwargs = dict(
         obs_encoder_cls='MAGICALCNN',
         representation_dim=128,
     )
 
+    _ = locals()
+    del _
+
 
 @il_train_ex.capture
-def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs, lr_schedule=None):
+def make_policy(observation_space,
+                action_space,
+                encoder_or_path,
+                encoder_kwargs,
+                lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
@@ -123,7 +137,8 @@ def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs
         # accidentally is used for something (using infinite or non-numeric
         # values fails initial validation, so we need an insane-but-finite
         # number).
-        'lr_schedule': (lambda _: 1e100) if lr_schedule is None else lr_schedule,
+        'lr_schedule':
+        (lambda _: 1e100) if lr_schedule is None else lr_schedule,
         'ortho_init': False,
     }
     if encoder_or_path is not None:
@@ -148,20 +163,23 @@ def make_policy(observation_space, action_space, encoder_or_path, encoder_kwargs
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
                    device_name, final_pol_name):
-    policy = make_policy(
-        observation_space=venv_chans_first.observation_space,
-        action_space=venv_chans_first.action_space, encoder_or_path=encoder)
+    policy = make_policy(observation_space=venv_chans_first.observation_space,
+                         action_space=venv_chans_first.action_space,
+                         encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
         bc['augs'], stack_color_space=color_space)
 
     # build dataset in the format required by imitation
-    dataset = il_types.TransitionsMinimal(
-        obs=dataset_dict['obs'], acts=dataset_dict['acts'],
-        infos=[{}] * len(dataset_dict['obs']))
+    dataset = il_types.TransitionsMinimal(obs=dataset_dict['obs'],
+                                          acts=dataset_dict['acts'],
+                                          infos=[{}] *
+                                          len(dataset_dict['obs']))
     del dataset_dict
     data_loader = th.utils.data.DataLoader(
-        dataset, batch_size=bc['batch_size'], shuffle=True,
+        dataset,
+        batch_size=bc['batch_size'],
+        shuffle=True,
         collate_fn=il_types.transitions_collate_fn)
     del dataset
 
@@ -180,7 +198,8 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
     )
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'], n_batches=bc['n_batches'],
+    trainer.train(n_epochs=bc['n_epochs'],
+                  n_batches=bc['n_batches'],
                   log_interval=bc['log_interval'])
 
     final_path = os.path.join(out_dir, final_pol_name)
@@ -206,13 +225,17 @@ def do_training_gail(
         encoder=encoder,
     )
 
-    def policy_constructor(observation_space, action_space, lr_schedule, use_sde=False):
+    def policy_constructor(observation_space,
+                           action_space,
+                           lr_schedule,
+                           use_sde=False):
         """Construct a policy with the right LR schedule (since PPO will
         actually use it, unlike BC)."""
         assert not use_sde
-        return make_policy(
-            observation_space=observation_space, action_space=action_space,
-            encoder_or_path=encoder, lr_schedule=lr_schedule)
+        return make_policy(observation_space=observation_space,
+                           action_space=action_space,
+                           encoder_or_path=encoder,
+                           lr_schedule=lr_schedule)
 
     ppo_algo = PPO(
         policy=policy_constructor,
@@ -237,13 +260,16 @@ def do_training_gail(
 
     # build dataset in the format required by imitation
     # (this time the dataset has more keys)
-    dataset = il_types.Transitions(
-        obs=dataset_dict['obs'], acts=dataset_dict['acts'],
-        next_obs=dataset_dict['next_obs'], dones=dataset_dict['dones'],
-        infos=[{}] * len(dataset_dict['obs']))
+    dataset = il_types.Transitions(obs=dataset_dict['obs'],
+                                   acts=dataset_dict['acts'],
+                                   next_obs=dataset_dict['next_obs'],
+                                   dones=dataset_dict['dones'],
+                                   infos=[{}] * len(dataset_dict['obs']))
     del dataset_dict
     data_loader = th.utils.data.DataLoader(
-        dataset, batch_size=gail['disc_batch_size'], shuffle=True,
+        dataset,
+        batch_size=gail['disc_batch_size'],
+        shuffle=True,
         collate_fn=il_types.transitions_collate_fn)
     del dataset
 
@@ -269,7 +295,7 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
+def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads, n_traj,
           _config):
     set_global_seeds(seed)
     # python built-in logging
@@ -297,16 +323,18 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
-        final_path = do_training_bc(dataset_dict=auto_env.load_dict_dataset(),
-                                    venv_chans_first=venv,
-                                    out_dir=log_dir,
-                                    encoder=encoder)
+        final_path = do_training_bc(
+            dataset_dict=auto_env.load_dict_dataset(n_traj=n_traj),
+            venv_chans_first=venv,
+            out_dir=log_dir,
+            encoder=encoder)
 
     elif algo == 'gail':
-        final_path = do_training_gail(dataset_dict=auto_env.load_dict_dataset(),
-                                      venv_chans_first=venv,
-                                      out_dir=log_dir,
-                                      encoder=encoder)
+        final_path = do_training_gail(
+            dataset_dict=auto_env.load_dict_dataset(n_traj=n_traj),
+            venv_chans_first=venv,
+            out_dir=log_dir,
+            encoder=encoder)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")
