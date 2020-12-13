@@ -750,7 +750,8 @@ def cfg_data_il_hc_extended():
     """Use extended HalfCheetah dataset for IL training."""
     env_data = {
         'dm_control_demo_patterns': {
-            'cheetah-run': 'data/dm_control/extended-cheetah-run-*.pkl.gz',
+            'cheetah-run':
+            'data/dm_control/extended-cheetah-run-*500traj.pkl.gz',
         }
     }
     _ = locals()
