@@ -9,10 +9,12 @@ for il in cfg_il_bc_nofreeze; do
     froco="$([[ "$il" == *_nofreeze  ]] || echo '_froco')"
 
     # control runs for all tasks
+    # (cfg_data_il_hc_extended ensures that HalfCheetah run uses extended
+    # dataset)
     for bench in cfg_bench_magical_mr cfg_bench_magical_mtc cfg_bench_one_task_dm_control; do
         ray submit --tmux "$cluster_cfg_path" \
             ./submit_pretrain_n_adapt.py \
-            -- $base_cfgs $bench cfg_repl_none $il exp_ident=control$froco
+            -- $base_cfgs $bench cfg_repl_none cfg_data_il_hc_extended $il exp_ident=control$froco
     done
 
     # MAGICAL multi-task runs (data sources are MT vs. random only vs. demos +
