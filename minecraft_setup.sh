@@ -4,11 +4,10 @@ apt-get update
 
 apt-get purge openjdk-8*
 
-apt-get install openjdk-8-jre-headless=8u162-b12-1
-apt-get install openjdk-8-jdk-headless=8u162-b12-1
-apt-get install openjdk-8-jre=8u162-b12-1
-apt-get install openjdk-8-jdk=8u162-b12-1
-apt-get install -y openjdk-8-jdk
+apt-get install -y openjdk-8-jre-headless=8u162-b12-1
+apt-get install -y openjdk-8-jdk-headless=8u162-b12-1
+apt-get install -y openjdk-8-jre=8u162-b12-1
+apt-get install -y openjdk-8-jdk=8u162-b12-1
 
 git clone --recurse-submodules https://github.com/decodyng/minerl.git
 cd minerl
