@@ -1,3 +1,4 @@
+# A script to run within Docker to setup Minecraft
 add-apt-repository ppa:openjdk-r/ppa
 apt-get update
 apt-get install -y openjdk-8-jdk
