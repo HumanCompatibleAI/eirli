@@ -45,7 +45,8 @@ ENV_CFG_TEST_CONFIGS = [
     },
     {
         'benchmark_name': 'minecraft',
-        'task_name': 'NavigateVectorObf'
+        'task_name': 'NavigateVectorObf',
+        'minecraft_max_env_steps': 100
     }
 
 ]

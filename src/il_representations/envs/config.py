@@ -65,6 +65,12 @@ def env_cfg_defaults():
     # (none currently present)
     # ###############################
 
+    # ###############################
+    # Minecraft-specific config variables
+    # (none currently present)
+    # ###############################
+    minecraft_max_env_steps = None
+
     _ = locals()
     del _
 

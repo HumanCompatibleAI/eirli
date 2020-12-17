@@ -74,7 +74,7 @@ def _get_venv_opts(n_envs, venv_parallel):
 
 @env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, dm_control_full_env_names,
-                 dm_control_frame_stack):
+                 dm_control_frame_stack, minecraft_max_env_steps):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     n_envs, venv_parallel = _get_venv_opts()
@@ -120,7 +120,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         return make_vec_env(gym_env_name,
                             n_envs=n_envs,
                             parallel=venv_parallel,
-                            wrapper_class=MinecraftVectorWrapper)
+                            wrapper_class=MinecraftVectorWrapper,
+                            max_episode_steps=minecraft_max_env_steps)
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
