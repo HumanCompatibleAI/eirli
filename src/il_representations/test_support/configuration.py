@@ -10,7 +10,7 @@ TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
 VENV_OPTS_TEST_CONFIG = {
     'venv_parallel': False,
-    'n_envs': 1,
+    'n_envs': 2,
 }
 ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
