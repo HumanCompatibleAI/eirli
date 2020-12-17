@@ -118,7 +118,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
             raise ValueError("MineRL environments can only be run with `venv_parallel`=False as a result of "
                              "issues with starting daemonic processes from SubprocVecEnv")
         return make_vec_env(gym_env_name,
-                            n_envs=n_envs,
+                            n_envs=1, # TODO fix this eventually; currently hitting error
+                                      # noted here: https://github.com/minerllabs/minerl/issues/177
                             parallel=venv_parallel,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
