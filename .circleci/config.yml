@@ -2,6 +2,7 @@ version: 2.1
 
 jobs:
   build-and-test:
+    resource_class: large
     docker:
       - image: humancompatibleai/il-representations:2020-12-10
     steps:
