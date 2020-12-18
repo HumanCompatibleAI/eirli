@@ -7,7 +7,7 @@ from il_representations.test_support.configuration import (
     VENV_OPTS_TEST_CONFIG)
 
 
-@pytest.mark.parametrize("env_cfg", [ENV_CFG_TEST_CONFIGS[3]])
+@pytest.mark.parametrize("env_cfg", [ENV_CFG_TEST_CONFIGS[3]]) #TODO fix these back, doing this to test one test more quickly
 @pytest.mark.parametrize("algo", ["gail"])
 def test_il_train_test(env_cfg, algo, il_train_ex, il_test_ex,
                        file_observer):
