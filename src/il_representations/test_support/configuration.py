@@ -56,8 +56,8 @@ FAST_IL_TRAIN_CONFIG = {
         'n_batches': 1,
     },
     'gail': {
-        'total_timesteps': 2,
-        'ppo_n_steps': 1,
+        'total_timesteps': 6,
+        'ppo_n_steps': 6,
         'ppo_batch_size': 6,
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
