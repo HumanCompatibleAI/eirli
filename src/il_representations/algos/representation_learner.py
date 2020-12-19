@@ -46,6 +46,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  observation_space,
                  action_space,
                  log_dir,
+                 log_interval=100,
                  encoder=None,
                  decoder=None,
                  loss_calculator=None,
@@ -81,6 +82,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             assert el is not None
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
+        self.log_interval = log_interval
         logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
@@ -373,17 +375,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 gradient_norm, weight_norm = self._calculate_norms()
 
-                # FIXME(sam): don't plot this every batch, plot it every k
-                # batches (will make log files much smaller & let us stream
-                # them to head node on Ray cluster)
                 loss_meter.update(loss_item)
-                logger.record('loss', loss_item)
-                logger.record('gradient_norm', gradient_norm.item())
-                logger.record('weight_norm', weight_norm.item())
+                logger.sb_logger.record_mean('loss', loss_item)
+                logger.sb_logger.record_mean(
+                    'gradient_norm', gradient_norm.item())
+                logger.sb_logger.record_mean('weight_norm', weight_norm.item())
                 logger.record('epoch', epoch_num)
                 logger.record('within_epoch_step', step)
                 logger.record('batches_trained', batches_trained)
-                logger.dump(step=batches_trained)
+                if batches_trained % self.log_interval == 0:
+                    logger.dump(step=batches_trained)
                 batches_trained += 1
                 samples_seen += len(contexts)
 
@@ -415,6 +416,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                            targets=targets,
                                            extra_context=extra_context,
                                            traj_ts_info=traj_ts_info))
+
+        # if we were not scheduled to dump on the last batch we trained on,
+        # then do one last log dump to make sure everything is there
+        if not (batches_trained % self.log_interval == 0):
+            logger.dump(step=batches_trained)
 
         assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"

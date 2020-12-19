@@ -9,6 +9,7 @@ import weakref
 import numpy as np
 import ray
 from ray import tune
+from ray.tune.integration.docker import DockerSyncer
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.suggest.skopt import SkOptSearch
 import sacred
@@ -334,6 +335,9 @@ def base_config():
     skopt_search_mode = None
     skopt_space = collections.OrderedDict()
     skopt_ref_configs = []
+    # use 'true' if you want to do cluster-specific things like using
+    # DockerSyncer
+    on_cluster = False
 
     tune_run_kwargs = dict(num_samples=1,
                            max_failures=2,
@@ -396,10 +400,6 @@ def cfg_base_3seed_4cpu_pt3gpu():
                                cpu=5,
                                gpu=0.32,
                            ))
-    ray_init_kwargs = {
-        # to avoid overwhelming the main driver when we have a big cluster
-        'log_to_driver': False,
-    }
 
     _ = locals()
     del _
@@ -418,9 +418,6 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
                                cpu=1,
                                gpu=0.2,
                            ))
-    ray_init_kwargs = {
-        'log_to_driver': False,
-    }
     venv_opts = {
         'n_envs': 2,
     }
@@ -441,9 +438,6 @@ def cfg_base_3seed_1cpu_pt5gpu_2envs():
                                cpu=1,
                                gpu=0.5,
                            ))
-    ray_init_kwargs = {
-        'log_to_driver': False,
-    }
     venv_opts = {
         'n_envs': 2,
     }
@@ -464,11 +458,20 @@ def cfg_base_3seed_1cpu_1gpu_2envs():
                                cpu=1,
                                gpu=1,
                            ))
-    ray_init_kwargs = {
-        'log_to_driver': False,
-    }
     venv_opts = {
         'n_envs': 2,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_no_log_to_driver():
+    # disables sending stdout of Ray workers back to head node
+    # (only useful for huge clusters)
+    ray_init_kwargs = {
+        'log_to_driver': False,
     }
 
     _ = locals()
@@ -893,7 +896,8 @@ def trainable_function(config):
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
-        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident):
+        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
+        on_cluster):
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
@@ -963,8 +967,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
     # that pwd-relative data_roots remain valid.
     env_data_config['data_root'] = os.path.abspath(
         os.path.join(cwd, env_data_config['data_root']))
-
-
 
     if detect_ec2():
         ray.init(address="auto", **ray_init_kwargs)
@@ -1042,6 +1044,16 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         spec['log_dir'] = log_dir
         spec['stages_to_run'] = stages_to_run
         spec['wrapped_config_keys'] = wrapped_config_keys
+
+    if on_cluster:
+        # use special syncer which is able to attach to autoscaler's Docker
+        # container once it connects to worker machines (necessary for GCP)
+        assert 'sync_config' not in tune_run_kwargs, \
+            "set on_cluster=True, which overrides sync_config for tune.run, " \
+            "but sync_config was already supplied (and set to " \
+            f"{tune_run_kwargs['sync_config']})"
+        tune_run_kwargs['sync_config'] = tune.SyncConfig(
+            sync_to_driver=DockerSyncer)
 
     rep_run = tune.run(
         trainable_function,
