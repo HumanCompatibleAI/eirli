@@ -43,4 +43,3 @@ git+git://github.com/HumanCompatibleAI/stable-baselines3.git@6a312199f2c24d5d74a
 magical-il~=0.0.1a4
 dm_control~=0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
-#git+git://github.com/decodyng/minerl@e9b8c12826636fdfb676c6db8492c683a6234083#egg=minerl
