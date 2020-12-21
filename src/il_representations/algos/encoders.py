@@ -117,10 +117,10 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
         ],
-    'MAGICALCNN-basic': [
-            {'out_dim': 64, 'stride': 2},
+    'MAGICALCNN-resnet': [
+            {'out_dim': 64, 'stride': 4},
             {'out_dim': 128, 'stride': 2},
-            {'out_dim': 256, 'stride': 2}
+            # {'out_dim': 256, 'stride': 2}
         ]
 }
 
@@ -178,15 +178,15 @@ class MAGICALCNN(nn.Module):
                  use_ln=False,
                  dropout=None,
                  use_sn=False,
-                 block_type='resnet',
+                 arch_str='MAGICALCNN-resnet',
                  width=1,  # TODO(Cynthia): Can this be deleted?
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
         # If block_type == resnet, use ResNet's basic block.
         # If block_type == magical, use MAGICAL block from its paper.
-        assert block_type in ['resnet', 'magical']
-        width = 1 if block_type == 'resnet' else 2
+        assert arch_str in NETWORK_ARCHITECTURE_DEFINITIONS.keys()
+        width = 1 if 'resnet' in arch_str else 2
         def conv_block(in_chans, out_chans, kernel_size, stride, padding):
             # We sometimes disable bias because batch norm has its own bias.
             conv_layer = nn.Conv2d(
@@ -221,16 +221,15 @@ class MAGICALCNN(nn.Module):
             return layers
 
         w = width
-        arch_type = 'MAGICALCNN' if block_type == 'magical' else 'MAGICALCNN-basic'
-        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS[arch_type]
+        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS[arch_str]
         conv_layers = []
         in_dim = observation_space.shape[0]
 
         block = conv_block
-        if block_type == 'resnet':
+        if 'resnet' in arch_str:
             block = BasicBlock
         for layer_definition in self.architecture_definition:
-            if block_type == 'magical':
+            if 'resnet' not in arch_str:
                 block_kwargs = {
                     'stride': layer_definition['stride'],
                     'kernel_size': layer_definition['kernel_size'],

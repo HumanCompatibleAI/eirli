@@ -17,6 +17,7 @@ ray[tune]~=0.8.7
 PyYAML~=5.3.1
 scikit-video~=1.1.11
 Pillow~=7.2.0
+torchsummary~=1.5.1
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
