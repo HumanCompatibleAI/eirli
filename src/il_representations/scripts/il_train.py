@@ -23,6 +23,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
+from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
@@ -37,11 +38,15 @@ def bc_defaults():
     # and store the *real* default elsewhere. That way users can specify
     # 'n_epochs' or 'n_batches' elsewhere without first having to set the other
     # config value to None.
-    n_epochs = None  # noqa: F841
-    n_batches = 5000  # noqa: F841
-    augs = 'rotate,translate,noise'  # noqa: F841
-    log_interval = 500  # noqa: F841
-    batch_size = 32  # noqa: F841
+    n_epochs = None
+    n_batches = 5000
+    augs = 'rotate,translate,noise'
+    log_interval = 500
+    batch_size = 32
+    save_every_n_batches = None
+
+    _ = locals()
+    del _
 
 
 gail_ingredient = Ingredient('gail')
@@ -50,21 +55,24 @@ gail_ingredient = Ingredient('gail')
 @gail_ingredient.config
 def gail_defaults():
     # number of env time steps to perform during reinforcement learning
-    total_timesteps = int(1e6)  # noqa: F841
-    disc_n_updates_per_round = 8  # noqa: F841
-    disc_batch_size = 32  # noqa: F841
-    disc_lr = 1e-4  # noqa: F841
-    disc_augs = "rotate,translate,noise"  # noqa: F841
-    ppo_n_steps = 16  # noqa: F841
+    total_timesteps = int(1e6)
+    disc_n_updates_per_round = 8
+    disc_batch_size = 32
+    disc_lr = 1e-4
+    disc_augs = "rotate,translate,noise"
+    ppo_n_steps = 16
     # "batch size" is actually the size of a _minibatch_. The amount of data
     # used for each training update is gail_ppo_n_steps*n_envs.
-    ppo_batch_size = 32  # noqa: F841
-    ppo_n_epochs = 4  # noqa: F841
-    ppo_learning_rate = 2.5e-4  # noqa: F841
-    ppo_gamma = 0.95  # noqa: F841
-    ppo_gae_lambda = 0.95  # noqa: F841
-    ppo_ent = 1e-5  # noqa: F841
-    ppo_adv_clip = 0.05  # noqa: F841
+    ppo_batch_size = 32
+    ppo_n_epochs = 4
+    ppo_learning_rate = 2.5e-4
+    ppo_gamma = 0.95
+    ppo_gae_lambda = 0.95
+    ppo_ent = 1e-5
+    ppo_adv_clip = 0.05
+
+    _ = locals()
+    del _
 
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
@@ -197,10 +205,18 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
         l2_weight=1e-5,
     )
 
+    save_interval = bc['save_every_n_batches']
+    if save_interval is not None:
+        optional_model_saver = BCModelSaver(
+            policy, os.path.join(out_dir, 'snapshots'), save_interval)
+    else:
+        optional_model_saver = None
+
     logging.info("Beginning BC training")
     trainer.train(n_epochs=bc['n_epochs'],
                   n_batches=bc['n_batches'],
-                  log_interval=bc['log_interval'])
+                  log_interval=bc['log_interval'],
+                  on_epoch_end=optional_model_saver)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
