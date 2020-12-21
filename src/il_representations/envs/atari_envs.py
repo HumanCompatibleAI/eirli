@@ -1,16 +1,25 @@
 """Utilities for working with Atari environments and demonstrations."""
 import os
-import numpy as np
 import random
 
-from il_representations.envs.config import benchmark_ingredient
+import numpy as np
+
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient)
 
 
-@benchmark_ingredient.capture
-def load_dataset_atari(atari_env_id, atari_demo_paths, n_traj,
-                       data_root, chans_first=True):
+@env_data_ingredient.capture
+def _get_atari_data_opts(data_root, atari_demo_paths):
+    # workaround for Sacred issue #206
+    return data_root, atari_demo_paths
+
+
+@env_cfg_ingredient.capture
+def load_dataset_atari(task_name, n_traj=None, chans_first=True):
+    data_root, atari_demo_paths = _get_atari_data_opts()
+
     # load trajectories from disk
-    full_rollouts_path = os.path.join(data_root, atari_demo_paths[atari_env_id])
+    full_rollouts_path = os.path.join(data_root, atari_demo_paths[task_name])
     trajs_or_file = np.load(full_rollouts_path, allow_pickle=True)
     if isinstance(trajs_or_file, np.lib.npyio.NpzFile):
         # handle .npz files (several arrays, maybe compressed, but we assume

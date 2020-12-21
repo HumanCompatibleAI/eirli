@@ -18,6 +18,9 @@ PyYAML~=5.3.1
 scikit-video~=1.1.11
 Pillow~=7.2.0
 torchsummary~=1.5.1
+webdataset~=0.1.40
+tqdm~=4.48.0
+
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
@@ -35,8 +38,6 @@ git+git://github.com/HumanCompatibleAI/imitation@9eda3ed67f1712786a234e1db90099b
 git+git://github.com/HumanCompatibleAI/stable-baselines3.git@6a312199f2c24d5d74a17c36af765ec443d78d3b#egg=stable-baselines3
 
 # environments
-# (MAGICAL currently requires an old version of Pyglet)
-pyglet==1.3.*
-git+https://github.com/qxcv/magical@master#egg=magical
+magical-il~=0.0.1a4
 dm_control~=0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym

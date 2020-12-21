@@ -1,12 +1,13 @@
-import copy
 import collections
+import copy
 import urllib
 import torch
 from torchsummary import summary
 
 
 def update(d, u):
-    """Recursive dictionary update."""
+    """Recursive dictionary update (pure)."""
+    d = copy.copy(d)  # to make this pure
     for k, v in u.items():
         if isinstance(d.get(k), collections.Mapping):
             # recursive insert into a mapping
