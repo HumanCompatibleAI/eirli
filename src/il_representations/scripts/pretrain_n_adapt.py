@@ -1052,8 +1052,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             "set on_cluster=True, which overrides sync_config for tune.run, " \
             "but sync_config was already supplied (and set to " \
             f"{tune_run_kwargs['sync_config']})"
-        tune_run_kwargs['sync_config'] = tune.SyncConfig(
-            sync_to_driver=DockerSyncer)
+        tune_run_kwargs = {
+            **tune_run_kwargs,
+            'sync_config': tune.SyncConfig(sync_to_driver=DockerSyncer),
+        }
 
     rep_run = tune.run(
         trainable_function,
