@@ -229,3 +229,26 @@ def temporal_cpc_action_conditioned_augment_both():
                    'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
     _ = locals()
     del _
+
+
+@represent_ex.named_config
+def temporal_ceb_action_conditioned_augment_both():
+    # Action-conditioned Temporal CPC with augmentation of both context and
+    # target
+    algo = 'ActionConditionedTemporalCPC'
+    algo_params = {'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"},
+                   'loss_calculator': losses.CEBLoss}
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def identity_cpc_action_conditioned_augment_both():
+    # Action-conditioned CPC with augmentation of both context and target
+    algo = 'ActionConditionedTemporalCPC'
+    algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
+                   'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
+    _ = locals()
+    del _

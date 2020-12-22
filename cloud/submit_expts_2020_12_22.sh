@@ -12,9 +12,15 @@ for il in cfg_il_bc_nofreeze; do
     # random; all IL runs use full 25 trajectories)
     for bench in cfg_bench_magical_mr cfg_bench_magical_mtc; do
         for repl in \
-            "exp_ident=actcpc_aug_rand_demos_il_25traj$froco cfg_data_repl_demos_random repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
-            "exp_ident=actcpc_aug_rand_only_il_25traj$froco cfg_data_repl_random repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
-            "exp_ident=actcpc_aug_mt_il_25traj$froco cfg_data_repl_demos_magical_mt repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_tcpc_aug_rand_demos_il_25traj$froco cfg_data_repl_demos_random repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_tcpc_aug_rand_only_il_25traj$froco cfg_data_repl_random repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_tcpc_aug_mt_il_25traj$froco cfg_data_repl_demos_magical_mt repl.stooke_contrastive_hyperparams_dmc repl.temporal_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_tceb_aug_rand_demos_il_25traj$froco cfg_data_repl_demos_random repl.stooke_contrastive_hyperparams_dmc repl.temporal_ceb_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_tceb_aug_rand_only_il_25traj$froco cfg_data_repl_random repl.stooke_contrastive_hyperparams_dmc repl.temporal_ceb_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_tceb_aug_mt_il_25traj$froco cfg_data_repl_demos_magical_mt repl.stooke_contrastive_hyperparams_dmc repl.temporal_ceb_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_cpc_aug_rand_demos_il_25traj$froco cfg_data_repl_demos_random repl.stooke_contrastive_hyperparams_dmc repl.identity_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_cpc_aug_rand_only_il_25traj$froco cfg_data_repl_random repl.stooke_contrastive_hyperparams_dmc repl.identity_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
+            "exp_ident=ac_cpc_aug_mt_il_25traj$froco cfg_data_repl_demos_magical_mt repl.stooke_contrastive_hyperparams_dmc repl.identity_cpc_action_conditioned_augment_both repl.algo_params.batch_size=192" \
             ; do
             ray submit --tmux "$cluster_cfg_path" \
                 ./submit_pretrain_n_adapt.py \
