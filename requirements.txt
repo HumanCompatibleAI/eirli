@@ -32,7 +32,7 @@ cryptography~=3.1
 git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
 
 # imitation needs special branch as of 2020-08-17
-git+git://github.com/HumanCompatibleAI/imitation@e1aab2f8b451ef153eb6e73862ec410eab958c9d#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@edb6534e32eb58cfb854b7b257c636ce45bbc659#egg=imitation
 git+git://github.com/HumanCompatibleAI/stable-baselines3.git@6a312199f2c24d5d74a17c36af765ec443d78d3b#egg=stable-baselines3
 
 # environments
