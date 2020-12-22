@@ -218,3 +218,14 @@ def temporal_cpc_augment_both_magical():
                    'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
     _ = locals()
     del _
+
+
+@represent_ex.named_config
+def temporal_cpc_action_conditioned_augment_both():
+    # Action-conditioned Temporal CPC with augmentation of both context and
+    # target
+    algo = 'ActionConditionedTemporalCPC'
+    algo_params = {'augmenter': augmenters.AugmentContextAndTarget,
+                   'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
+    _ = locals()
+    del _
