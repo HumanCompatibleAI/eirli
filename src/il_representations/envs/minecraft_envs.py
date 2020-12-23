@@ -42,7 +42,8 @@ def load_dataset_minecraft(n_traj=None, chunk_length=100):
         appended_trajectories['obs'].append(MinecraftVectorWrapper.transform_obs(current_state)[0])
         appended_trajectories['acts'].append(MinecraftVectorWrapper.extract_action(action)[0])
         appended_trajectories['dones'].append(done[0])
-    # Now, we need to go through and construct `next_obs` values, which aren't
+    # Now, we need to go through and construct `next_obs` values, which aren't natively returned
+    # by the environment
     merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
     merged_trajectories = construct_next_obs(merged_trajectories)
     end_time = time.time()
@@ -77,17 +78,11 @@ def construct_next_obs(trajectories_dict):
 
 def channels_first(el):
     if isinstance(el, np.ndarray):
-        dimension_order = list(range(len(el.shape)))
-
-        # Get final dimension, which is currently channels dimension
-        final_ind = dimension_order[-1]
-        # Switch with dimension which we want to contain channels dimension, the third from the end
-        dimension_order[final_ind-2] = final_ind
-        dimension_order[final_ind] = final_ind-2
-        return np.transpose(el, tuple(dimension_order))
+        return np.moveaxis(el, -1, -3)
 
     elif isinstance(el, tuple):
         return (el[2], el[0], el[1])
+
     else:
         raise NotImplementedError("Input must be either array or tuple")
 

@@ -17,7 +17,6 @@ jobs:
           command: pip install -e .
           name: Install in dev mode
       - run:
-          no_output_timeout: 15m
           command: |
             mkdir -p test-results
             xvfb-run -a pytest --junitxml=test-results/junit.xml tests/
