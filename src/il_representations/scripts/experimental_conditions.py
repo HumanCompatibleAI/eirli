@@ -247,7 +247,11 @@ def temporal_ceb_action_conditioned_augment_both():
 def identity_cpc_action_conditioned_augment_both():
     # Action-conditioned CPC with augmentation of both context and target
     algo = 'ActionConditionedTemporalCPC'
-    algo_params = {'target_pair_constructor': pair_constructors.IdentityPairConstructor,
+    # We use TemporalOffsetPairConstructor instead of IdentityPairConstructor
+    # because the former lets us set mode='dynamics', which includes actions in
+    # the extra_context.
+    algo_params = {'target_pair_constructor': pair_constructors.TemporalOffsetPairConstructor,
+                   'target_pair_constructor_kwargs': dict(mode='dynamics', temporal_offset=0),
                    'augmenter': augmenters.AugmentContextAndTarget,
                    'augmenter_kwargs': {'augmenter_spec': "translate,rotate"}}
     _ = locals()
