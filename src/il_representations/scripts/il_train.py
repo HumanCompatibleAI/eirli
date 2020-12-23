@@ -42,6 +42,8 @@ def bc_defaults():
     augs = 'rotate,translate,noise'  # noqa: F841
     log_interval = 500  # noqa: F841
     batch_size = 32  # noqa: F841
+    lr_scheduler_cls = None  # noqa: F841
+    lr_scheduler_kwargs = None  # noqa: F841
 
 
 gail_ingredient = Ingredient('gail')
@@ -177,6 +179,8 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
         optimizer_kwargs=dict(lr=1e-4),
         ent_weight=1e-3,
         l2_weight=1e-5,
+        lr_scheduler_cls=bc['lr_scheduler_cls'],
+        lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
     )
 
     logging.info("Beginning BC training")
