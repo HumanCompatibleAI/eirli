@@ -64,7 +64,7 @@ def construct_next_obs(trajectories_dict):
         if done_loc == -1:
             trajectory_obs = trajectories_dict['obs'][prior_dones_loc:]
         else:
-            trajectory_obs = trajectories_dict['obs'][prior_dones_loc:done_loc+1] # should this +1 be here?
+            trajectory_obs = trajectories_dict['obs'][prior_dones_loc:done_loc+1]
         next_obs = trajectory_obs[1:]
         next_obs = np.append(next_obs, np.expand_dims(trajectory_obs[-1], axis=0), axis=0) #duplicate final obs for final next_obs
         all_next_obs.append(next_obs)
