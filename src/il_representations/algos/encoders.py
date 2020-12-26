@@ -120,8 +120,14 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
     'MAGICALCNN-resnet': [
             {'out_dim': 64, 'stride': 4},
             {'out_dim': 128, 'stride': 2},
-            # {'out_dim': 256, 'stride': 2}
-        ]
+        ],
+    'MAGICALCNN-small': [
+            {'out_dim': 32, 'kernel_size': 5, 'stride': 2, 'padding': 2},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+    ]
 }
 
 
@@ -251,6 +257,7 @@ class MAGICALCNN(nn.Module):
                                       **block_kwargs)]
 
             in_dim = layer_definition['out_dim']*w
+        
         conv_layers.append(nn.Flatten())
 
         # another FC layer to make feature maps the right size
@@ -315,7 +322,7 @@ class Encoder(nn.Module):
 
 class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
-                 learn_scale=False, latent_dim=None, scale_constant=1):
+                 learn_scale=False, latent_dim=None, scale_constant=1, arch_str=None):
         """
                 :param obs_space: The observation space that this Encoder will be used on
                 :param representation_dim: The number of dimensions of the representation
@@ -332,18 +339,22 @@ class BaseEncoder(Encoder):
                        If not set, this defaults to representation_dim * 2.
                 :param scale_constant: The constant value that will be returned if learn_scale is
                        set to False.
+                :param arch_str: Specify the architecture of the encoder.
          """
         super().__init__()
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         self.learn_scale = learn_scale
+        kwargs = {}
+        if obs_encoder_cls == 'MAGICALCNN' and arch_str:
+            kwargs['arch_str'] = arch_str
         if self.learn_scale:
             if latent_dim is None:
                 latent_dim = representation_dim * 2
-            self.network = obs_encoder_cls(obs_space, latent_dim)
+            self.network = obs_encoder_cls(obs_space, latent_dim, **kwargs)
             self.mean_layer = nn.Linear(latent_dim, representation_dim)
             self.scale_layer = nn.Linear(latent_dim, representation_dim)
         else:
-            self.network = obs_encoder_cls(obs_space, representation_dim)
+            self.network = obs_encoder_cls(obs_space, representation_dim, **kwargs)
             self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
