@@ -185,7 +185,6 @@ class MAGICALCNN(nn.Module):
                  dropout=None,
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet',
-                 width=1,  # TODO(Cynthia): Can this be deleted?
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
@@ -257,7 +256,8 @@ class MAGICALCNN(nn.Module):
                                       **block_kwargs)]
 
             in_dim = layer_definition['out_dim']*w
-        
+        if 'resnet' in arch_str:
+            conv_layers.append(nn.AdaptiveAvgPool2d((1, 1)))
         conv_layers.append(nn.Flatten())
 
         # another FC layer to make feature maps the right size
