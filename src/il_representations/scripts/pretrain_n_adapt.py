@@ -50,8 +50,6 @@ class ForkedPdb(pdb.Pdb):
 def hash_config(config_dict):
     """MD5 hash of a dictionary."""
     dhash = hashlib.md5()
-    # We need to sort arguments so {'a': 1, 'b': 2} is
-    # the same as {'b': 2, 'a': 1}
     sorted_dict = collections.OrderedDict({k:config_dict[k] for k in sorted(config_dict.keys())})
     encoded = jsonpickle.encode(sorted_dict).encode()
     dhash.update(encoded)
