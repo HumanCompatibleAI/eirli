@@ -2,14 +2,10 @@ import collections
 import copy
 import enum
 from glob import glob
-import hashlib
-import jsonpickle
 import logging
 import os
 import os.path as osp
 from os.path import dirname as up
-import pdb
-import sys
 from time import time
 import weakref
 
@@ -32,28 +28,7 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update
-
-class ForkedPdb(pdb.Pdb):
-    """A Pdb subclass that may be used
-    from a forked multiprocessing child
-
-    """
-    def interaction(self, *args, **kwargs):
-        _stdin = sys.stdin
-        try:
-            sys.stdin = open('/dev/stdin')
-            pdb.Pdb.interaction(self, *args, **kwargs)
-        finally:
-            sys.stdin = _stdin
-
-
-def hash_config(config_dict):
-    """MD5 hash of a dictionary."""
-    dhash = hashlib.md5()
-    sorted_dict = collections.OrderedDict({k:config_dict[k] for k in sorted(config_dict.keys())})
-    encoded = jsonpickle.encode(sorted_dict).encode()
-    dhash.update(encoded)
-    return dhash.hexdigest()
+from il_representations.utils import hash_config
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -244,6 +219,23 @@ def report_experiment_result(sacred_result):
     tune.report(**filtered_result)
 
 
+def cache_repl_encoder(repl_encoder_path, repl_directory_dir, config_hash, seed, config_path=None):
+    if config_path is None:
+        config_path = os.path.join(up(up(repl_encoder_path)), 'config.json')
+    dir_name = f"{config_hash}_{seed}_{round(time())}"
+    os.makedirs(os.path.join(repl_directory_dir, dir_name))
+    logging.info(f"Symlinking encoder path under the directory {dir_name}")
+    os.symlink(repl_encoder_path, os.path.join(repl_directory_dir, dir_name, 'repl_encoder.ckpt'))
+    os.symlink(config_path, os.path.join(repl_directory_dir, dir_name, 'config.json'))
+
+
+def get_repl_dir(log_dir):
+    repl_dir = os.path.join(up(up(log_dir)), 'all_repl')
+    if not os.path.exists(repl_dir):
+        os.makedirs(repl_dir)
+    return repl_dir
+
+
 def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                     shared_configs, config, force_repl_run, repl_encoder_path,
                     log_dir):
@@ -274,9 +266,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     """
     rng, tune_config_updates = setup_run(config)
     del config  # I want a new name for it
-    repl_dir = os.path.join(up(up(log_dir)), 'all_repl')
-    if not os.path.exists(repl_dir):
-        os.makedirs(repl_dir)
+    repl_dir = get_repl_dir(log_dir)
     # Run representation learning
     repl_hash = hash_config(rep_ex_config)
     pretrained_encoder_path = None
@@ -299,14 +289,12 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         })
         pretrain_result = run_single_exp(rep_ex_config, shared_configs,
                                          tune_config_updates, log_dir, 'repl')
-        pretrained_encoder_path = pretrain_result['encoder_path']
-        config_path = os.path.join(up(up(pretrained_encoder_path)), 'config.json')
-        dir_name = f"{repl_hash}_{tune_config_updates['repl']['seed']}_{round(time())}"
-        os.makedirs(os.path.join(repl_dir, dir_name))
-        logging.info(f"Symlinking encoder path under the directory {dir_name}")
-        os.symlink(pretrained_encoder_path, os.path.join(repl_dir, dir_name, 'repl_encoder.ckpt'))
-        os.symlink(config_path, os.path.join(repl_dir, dir_name, 'config.json'))
 
+        pretrained_encoder_path = pretrain_result['encoder_path']
+        cache_repl_encoder(pretrained_encoder_path,
+                           repl_dir,
+                           repl_hash,
+                           tune_config_updates['repl']['seed'])
 
     # Run il train
     tune_config_updates['il_train'].update({
@@ -333,13 +321,18 @@ def run_repl_only_exp(rep_ex_config, shared_configs, config, log_dir):
     """Experiment that runs only representation learning."""
     rng, tune_config_updates = setup_run(config)
     del config
-
+    repl_dir = get_repl_dir(log_dir)
+    repl_hash = hash_config(rep_ex_config)
     tune_config_updates['repl'].update({
         'seed': rng.randint(1 << 31),
     })
 
     pretrain_result = run_single_exp(rep_ex_config, shared_configs,
                                      tune_config_updates, log_dir, 'repl')
+    cache_repl_encoder(pretrain_result['encoder_path'],
+                       repl_dir,
+                       repl_hash,
+                       tune_config_updates['repl']['seed'])
     report_experiment_result(pretrain_result)
     logging.info("RepL experiment completed")
 

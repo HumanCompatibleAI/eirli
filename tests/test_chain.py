@@ -8,6 +8,7 @@ from il_representations import algos
 from il_representations.scripts.pretrain_n_adapt import StagesToRun
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, ENV_CFG_TEST_CONFIGS)
+from il_representations.utils import hash_config
 
 
 def test_chain(chain_ex, file_observer):
@@ -47,3 +48,17 @@ def test_individual_stages(chain_ex, file_observer, stages):
     finally:
         if ray.is_initialized():
             ray.shutdown()
+
+
+def test_hash_config():
+    chain_config = copy.deepcopy(CHAIN_CONFIG)
+    repl_config = chain_config['repl']
+    repl_config['algo'] = algos.TemporalCPC
+    config_hash_1 = hash_config(repl_config)
+    config_hash_2 = hash_config(repl_config)
+    repl_config['algo'] = algos.SimCLR
+    diff_config_hash = hash_config(repl_config)
+    assert config_hash_1 == config_hash_2, "Sequential hashes from hash_config for " \
+                                           "identical config dict do not match"
+    assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \
+                                              "hash_config result in identical hashes"
