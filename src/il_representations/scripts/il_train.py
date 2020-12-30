@@ -259,7 +259,6 @@ def do_training_gail(
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
         disc_augmentation_fn=augmenter,
     )
-
     trainer.train(total_timesteps=gail['total_timesteps'])
 
     final_path = os.path.join(out_dir, final_pol_name)
