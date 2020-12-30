@@ -219,17 +219,38 @@ def report_experiment_result(sacred_result):
     tune.report(**filtered_result)
 
 
-def cache_repl_encoder(repl_encoder_path, repl_directory_dir, config_hash, seed, config_path=None):
+def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
+                       config_hash, seed, config_path=None):
+    """
+    A utility function for taking a trained repl encoder and symlinking it, with appropriate
+    searchable directory name, to the repl run directory
+
+    :param repl_encoder_path: A path to an encoder checkpoint file. Assumed to be within a /checkpoints dir
+    within a run of the `repl` experiment
+    :param repl_directory_dir: The directory where the symlinked listing of repl encoder should be stored
+    :param config_hash: The hash identifying the config attached to this repl run
+    :param seed: The seed for this repl run
+    :param config_path: The path to the config file for this repl run. If None, will try to search relative to
+                        repl_encoder_path
+    """
     if config_path is None:
         config_path = os.path.join(up(up(repl_encoder_path)), 'config.json')
     dir_name = f"{config_hash}_{seed}_{round(time())}"
     os.makedirs(os.path.join(repl_directory_dir, dir_name))
     logging.info(f"Symlinking encoder path under the directory {dir_name}")
-    os.symlink(repl_encoder_path, os.path.join(repl_directory_dir, dir_name, 'repl_encoder.ckpt'))
-    os.symlink(config_path, os.path.join(repl_directory_dir, dir_name, 'config.json'))
+    os.symlink(repl_encoder_path,
+               os.path.join(repl_directory_dir, dir_name, 'repl_encoder.ckpt'))
+    os.symlink(config_path,
+               os.path.join(repl_directory_dir, dir_name, 'config.json'))
 
 
 def get_repl_dir(log_dir):
+    """
+    A utility function for returning a repl directory location relative to logdir,
+    and creating one if it does not exist
+    :param log_dir:
+    :return:
+    """
     repl_dir = os.path.join(up(up(log_dir)), 'all_repl')
     if not os.path.exists(repl_dir):
         os.makedirs(repl_dir)
@@ -266,23 +287,33 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     """
     rng, tune_config_updates = setup_run(config)
     del config  # I want a new name for it
+
+    # Get the directory to store repl runs, and the hash for this config
+    # Used to facilitate reuse of repl runs
     repl_dir = get_repl_dir(log_dir)
-    # Run representation learning
     repl_hash = hash_config(rep_ex_config)
     pretrained_encoder_path = None
 
+    # If we are open to reading in a pretrained repl encoder
     if not force_repl_run:
+        # If we have hardcoded an encoder path, check if it exists, and, if so, use it
         if repl_encoder_path is not None:
             assert os.path.exists(repl_encoder_path), f"Hardcoded encoder path {repl_encoder_path} does not exist"
             pretrained_encoder_path = repl_encoder_path
         else:
+            # If we are searching for a prior repl run based on hashed config
+            # This is the default case
             existing_repl_runs = glob(os.path.join(repl_dir, f"{repl_hash}_*"))
+
+            # If no matching repl run is found, we will fall through to training repl as normal
             if len(existing_repl_runs) > 0:
                 timestamps = [el.split('_')[-1] for el in existing_repl_runs]
                 most_recent_run = existing_repl_runs[np.argmax(timestamps)]
                 pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder.ckpt')
                 logging.info(f"Loading encoder from {pretrained_encoder_path}")
 
+    # If none of the branches above have found a pretrained path,
+    # proceed with repl training as normal
     if pretrained_encoder_path is None:
         tune_config_updates['repl'].update({
             'seed': rng.randint(1 << 31),
@@ -291,6 +322,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                                          tune_config_updates, log_dir, 'repl')
 
         pretrained_encoder_path = pretrain_result['encoder_path']
+        # Once repl training finishes, symlink the result to the repl directory
         cache_repl_encoder(pretrained_encoder_path,
                            repl_dir,
                            repl_hash,
@@ -388,8 +420,10 @@ def base_config():
     skopt_search_mode = None
     skopt_space = collections.OrderedDict()
     skopt_ref_configs = []
-    force_repl_run = False
-    repl_encoder_path = None
+    force_repl_run = False  # Set to True if you want to force-run repl in end2end even if a prior cached run exists
+    repl_encoder_path = None  # Set to a non-None string to force reading in that saved encoder in end2end.
+                              # BE CAREFUL, since this will override the check that ensures you only read in an
+                              # encoder that matches your own repl config, and this could lead to inconsistencies
 
     tune_run_kwargs = dict(num_samples=1,
                            max_failures=2,
