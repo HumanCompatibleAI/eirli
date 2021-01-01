@@ -347,6 +347,7 @@ class BaseEncoder(Encoder):
         kwargs = {}
         if obs_encoder_cls == 'MAGICALCNN' and arch_str:
             kwargs['arch_str'] = arch_str
+            print(f"arch str {arch_str}")
         if self.learn_scale:
             if latent_dim is None:
                 latent_dim = representation_dim * 2
@@ -358,12 +359,16 @@ class BaseEncoder(Encoder):
             self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
+    # def forward(self, x):
         if self.learn_scale:
             return self.forward_with_stddev(x, traj_info)
+            # return self.forward_with_stddev(x)
         else:
             return self.forward_deterministic(x, traj_info)
+            # return self.forward_deterministic(x)
 
     def forward_with_stddev(self, x, traj_info):
+    # def forward_with_stddev(self, x):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
@@ -372,12 +377,12 @@ class BaseEncoder(Encoder):
         return independent_multivariate_normal(mean=mean,
                                                stddev=scale)
 
-    # def forward_deterministic(self, x, traj_info):
-    def forward_deterministic(self, x):
+    def forward_deterministic(self, x, traj_info):
+    # def forward_deterministic(self, x):
         features = self.network(x)
-        return features
-        # return independent_multivariate_normal(mean=features,
-        #                                        stddev=self.scale_constant)
+        # return features
+        return independent_multivariate_normal(mean=features,
+                                               stddev=self.scale_constant)
 
 
 def infer_action_shape_info(action_space, action_embedding_dim):
