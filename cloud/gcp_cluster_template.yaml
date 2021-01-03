@@ -30,7 +30,7 @@ idle_timeout_minutes: 5
 # Execute docker commands & open necessary ports.
 docker:
   # the image below is taken from .circleci/config.yml
-  image: "humancompatibleai/il-representations:2020.12.09-r1"
+  image: "humancompatibleai/il-representations:2021.01.02-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
