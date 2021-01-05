@@ -29,10 +29,15 @@ class ForkedPdb(pdb.Pdb):
             sys.stdin = _stdin
 
 
-def hash_config(config_dict):
+def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
+    merged_config = {}
+    for config_name, config in kwargs.items():
+        for k, v in config.items():
+            merged_config[f"{config_name}_k"] = v
+
     dhash = hashlib.md5()
-    sorted_dict = collections.OrderedDict({k:config_dict[k] for k in sorted(config_dict.keys())})
+    sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
     encoded = jsonpickle.encode(sorted_dict).encode()
     dhash.update(encoded)
     return dhash.hexdigest()
