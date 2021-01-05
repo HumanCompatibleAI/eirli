@@ -284,7 +284,7 @@ class Encoder(nn.Module):
 
 class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
-                 learn_scale=False, latent_dim=None, scale_constant=1):
+                 learn_scale=False, latent_dim=None, scale_constant=1, arch_str=None, load_path=None):
         """
                 :param obs_space: The observation space that this Encoder will be used on
                 :param representation_dim: The number of dimensions of the representation

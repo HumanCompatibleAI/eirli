@@ -113,7 +113,18 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                  decoder_kwargs.get('learn_scale', False))
         assert not duplicate_learn_scale, "learn_scale should be set on either " \
                                           "the encoder or the decoder at one time"
-        self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
+
+        # Load a pretrained encoder if load_path is provided
+        if 'load_path' in encoder_kwargs.keys():
+            assert encoder_kwargs['load_path'] is not None, "The provided encoder path should not be None"
+            self.encoder = torch.load(encoder_kwargs['load_path'])
+            # Load encoder from il trained policy
+            if isinstance(self.encoder, ActorCriticCnnPolicy):
+                self.encoder = self.encoder.features_extractor.representation_encoder
+            for param in self.encoder.parameters():
+                param.requires_grad = False
+        else:
+            self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **decoder_kwargs).to(self.device)
 
         if batch_extender is QueueBatchExtender:
