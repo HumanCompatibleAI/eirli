@@ -54,10 +54,10 @@ def test_hash_config():
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     repl_config = chain_config['repl']
     repl_config['algo'] = algos.TemporalCPC
-    config_hash_1 = hash_configs(repl=repl_config)
-    config_hash_2 = hash_configs(repl=repl_config)
+    config_hash_1 = hash_configs(repl_config)
+    config_hash_2 = hash_configs(repl_config)
     repl_config['algo'] = algos.SimCLR
-    diff_config_hash = hash_configs(repl=repl_config)
+    diff_config_hash = hash_configs(repl_config)
     assert config_hash_1 == config_hash_2, "Sequential hashes from hash_config for " \
                                            "identical config dict do not match"
     assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \

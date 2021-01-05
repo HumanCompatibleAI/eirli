@@ -303,8 +303,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     # Used to facilitate reuse of repl runs
     repl_dir = get_repl_dir(log_dir)
     merged_repl_config = merge_configs(rep_ex_config, shared_configs, tune_config_updates, 'repl')
-    ForkedPdb().set_trace()
-    repl_hash = hash_configs(**merged_repl_config)
+    repl_hash = hash_configs(merged_repl_config)
     pretrained_encoder_path = None
 
     # If we are open to reading in a pretrained repl encoder
@@ -368,7 +367,7 @@ def run_repl_only_exp(rep_ex_config, shared_configs, config, log_dir):
     del config
     repl_dir = get_repl_dir(log_dir)
     merged_repl_config = merge_configs(rep_ex_config, shared_configs, tune_config_updates, 'repl')
-    repl_hash = hash_configs(**merged_repl_config)
+    repl_hash = hash_configs(merged_repl_config)
     tune_config_updates['repl'].update({
         'seed': rng.randint(1 << 31),
     })

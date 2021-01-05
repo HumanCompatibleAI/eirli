@@ -31,11 +31,6 @@ class ForkedPdb(pdb.Pdb):
 
 def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
-    merged_config = {}
-    for config_name, config in kwargs.items():
-        for k, v in config.items():
-            merged_config[f"{config_name}_k"] = v
-
     dhash = hashlib.md5()
     sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
     encoded = jsonpickle.encode(sorted_dict).encode()
