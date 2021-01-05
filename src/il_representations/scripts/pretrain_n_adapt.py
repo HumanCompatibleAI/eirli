@@ -824,6 +824,8 @@ def cfg_il_gail_nofreeze():
     il_train = {
         'algo': 'gail',
         'gail': {
+            # TODO(sam): increase this to a default that works for most
+            # environments.
             'total_timesteps': 200000,
         },
         'freeze_encoder': False,
