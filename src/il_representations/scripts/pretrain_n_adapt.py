@@ -820,6 +820,7 @@ def cfg_il_bc_freeze():
     del _
 
 
+@chain_ex.named_config
 def cfg_il_gail_nofreeze():
     il_train = {
         'algo': 'gail',
