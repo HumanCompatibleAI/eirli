@@ -9,7 +9,7 @@ from il_representations.scripts.pretrain_n_adapt import StagesToRun
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, ENV_CFG_TEST_CONFIGS)
 from il_representations.utils import hash_configs
-
+from time import time
 
 def test_chain(chain_ex, file_observer):
     try:
@@ -28,13 +28,13 @@ def test_all_benchmarks(chain_ex, file_observer, env_cfg):
         = tune.grid_search([algos.SimCLR])
     # try just this benchmark
     chain_config['spec']['env_cfg'] = tune.grid_search([env_cfg])
+    chain_config['force_repl_run'] = True
     try:
         chain_ex.run(config_updates=chain_config)
     finally:
         if ray.is_initialized():
             ray.shutdown()
 
-#@pytest.mark.parametrize("stages", [StagesToRun.REPL_AND_IL])
 @pytest.mark.parametrize("stages", list(StagesToRun))
 def test_individual_stages(chain_ex, file_observer, stages):
     # test just doing IL, just doing REPL, etc.
@@ -43,11 +43,51 @@ def test_individual_stages(chain_ex, file_observer, stages):
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     chain_config['stages_to_run'] = stages
+    chain_config['force_repl_run'] = True
     try:
         chain_ex.run(config_updates=chain_config)
     finally:
         if ray.is_initialized():
             ray.shutdown()
+
+
+def test_repl_reuse(chain_ex):
+    # test just doing IL, just doing REPL, etc.
+    chain_config = copy.deepcopy(CHAIN_CONFIG)
+    # again, don't search over representation learner
+    chain_config['spec']['repl']['algo'] \
+        = tune.grid_search([algos.SimCLR])
+    random_id = round(time())
+    chain_config['spec']['repl']['exp_ident'] = random_id
+    chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
+    chain_config['force_repl_run'] = False
+
+    try:
+        first_start_time = time()
+        chain_ex.run(config_updates=chain_config)
+        first_runtime = time() - first_start_time
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+    try:
+        second_start_time = time()
+        chain_ex.run(config_updates=chain_config)
+        second_runtime = time() - second_start_time
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+    try:
+        third_start_time = time()
+        chain_ex.run(config_updates=chain_config)
+        third_runtime = time() - third_start_time
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+    assert second_runtime < first_runtime
+    assert third_runtime > second_runtime
 
 
 def test_hash_config():
