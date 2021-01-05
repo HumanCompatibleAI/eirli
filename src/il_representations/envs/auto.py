@@ -179,15 +179,15 @@ def load_wds_datasets(configs):
         env_cfg = config['env_cfg']
         benchmark_name = env_cfg["benchmark_name"]
         task_key = env_cfg['task_name']
-        data_root = get_data_dir(
+        data_dir_for_config = get_data_dir(
             benchmark_name=benchmark_name, task_key=task_key,
             data_type=data_type)
 
-        tar_files = glob.glob(os.path.join(data_root, "*.tgz"))
+        tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tgz"))
         if len(tar_files) == 0:
             raise IOError(
-                f"did not find any files in '{data_root}' (for dataset config "
-                f"'{orig_config}')")
+                f"did not find any files in '{data_dir_for_config}' (for "
+                f"dataset config '{orig_config}')")
         all_datasets.append(load_ilr_datasets(tar_files))
 
     # get combined metadata for all datasets
