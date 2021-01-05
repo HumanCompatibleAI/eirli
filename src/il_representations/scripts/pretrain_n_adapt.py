@@ -820,7 +820,23 @@ def cfg_il_bc_freeze():
     del _
 
 
-# TODO(sam): GAIL configs
+def cfg_il_gail_nofreeze():
+    il_train = {
+        'algo': 'gail',
+        'gail': {
+            'total_timesteps': 200000,
+        },
+        'freeze_encoder': False,
+    }
+    venv_opts = {
+        'n_envs': 32,
+        'parallel': True,
+        'parallel_workers': 8,
+    }
+
+    _ = locals()
+    del _
+
 
 class WrappedConfig():
     def __init__(self, config_dict):

@@ -54,22 +54,37 @@ gail_ingredient = Ingredient('gail')
 
 @gail_ingredient.config
 def gail_defaults():
+    # These default settings are copied from
+    # https://arxiv.org/pdf/2011.00401.pdf (page 19). They should work for
+    # MAGICAL, but not sure about the other tasks.
+    # WARNING: the number of parallel vec envs is actually an important
+    # hyperparameter. I set this to 32 in the MAGICAL paper, but 24 should work
+    # too.
+
+    ppo_n_steps = 8
+    ppo_n_epochs = 12
+    # "batch size" is actually the size of a _minibatch_. The amount of data
+    # used for each training update is ppo_n_steps*n_envs.
+    ppo_batch_size = 64
+    ppo_init_learning_rate = 2.5e-4
+    ppo_final_learning_rate = 0.0
+    ppo_gamma = 0.8
+    ppo_gae_lambda = 0.8
+    ppo_ent = 1e-5
+    ppo_adv_clip = 0.01
+    ppo_max_grad_norm = 1.0
+    # normalisation + clipping is experimental; previously I just did
+    # normalisation (to stddev of 0.1) with no clipping
+    ppo_norm_reward = True
+    ppo_clip_reward = 10.0
+
+    disc_n_updates_per_round = 12
+    disc_batch_size = 24
+    disc_lr = 2.5e-5
+    disc_augs = "rotate,translate,noise"
+
     # number of env time steps to perform during reinforcement learning
     total_timesteps = int(1e6)
-    disc_n_updates_per_round = 8
-    disc_batch_size = 32
-    disc_lr = 1e-4
-    disc_augs = "rotate,translate,noise"
-    ppo_n_steps = 16
-    # "batch size" is actually the size of a _minibatch_. The amount of data
-    # used for each training update is gail_ppo_n_steps*n_envs.
-    ppo_batch_size = 32
-    ppo_n_epochs = 4
-    ppo_learning_rate = 2.5e-4
-    ppo_gamma = 0.95
-    ppo_gae_lambda = 0.95
-    ppo_ent = 1e-5
-    ppo_adv_clip = 0.05
 
     _ = locals()
     del _
@@ -253,6 +268,14 @@ def do_training_gail(
                            encoder_or_path=encoder,
                            lr_schedule=lr_schedule)
 
+    def linear_lr_schedule(prog_remaining):
+        """This is called by SB3 to set the LR. `prog_remaining` falls from 1.0
+        (at the start) to 0.0 (at the end)."""
+        init = gail['ppo_init_learning_rate']
+        final = gail['ppo_final_learning_rate']
+        alpha = prog_remaining
+        return alpha * init + (1 - alpha) * final
+
     ppo_algo = PPO(
         policy=policy_constructor,
         env=venv_chans_first,
@@ -268,7 +291,8 @@ def do_training_gail(
         gamma=gail['ppo_gamma'],
         gae_lambda=gail['ppo_gae_lambda'],
         clip_range=gail['ppo_adv_clip'],
-        learning_rate=gail['ppo_learning_rate'],
+        learning_rate=linear_lr_schedule,
+        max_grad_norm=gail['ppo_max_grad_norm'],
     )
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
@@ -297,7 +321,8 @@ def do_training_gail(
         expert_batch_size=gail['disc_batch_size'],
         discrim_kwargs=dict(discrim_net=discrim_net, normalize_images=True),
         normalize_obs=False,
-        normalize_reward=True,
+        normalize_reward=gail['ppo_norm_reward'],
+        clip_reward=gail['ppo_clip_reward'],
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
         disc_augmentation_fn=augmenter,
     )
