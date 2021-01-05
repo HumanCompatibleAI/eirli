@@ -659,6 +659,17 @@ def cfg_repl_ceb():
 
 
 @chain_ex.named_config
+def cfg_repl_autoencoder():
+    stages_to_run = StagesToRun.REPL_ONLY
+    repl = {
+        'algo': 'Autoencoder',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_il_bc_nofreeze():
     il_train = {
         'algo': 'bc',

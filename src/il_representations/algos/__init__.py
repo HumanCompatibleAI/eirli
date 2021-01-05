@@ -5,7 +5,7 @@ from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
     AsymmetricProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, AELoss
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -268,6 +268,32 @@ class VariationalAutoencoder(RepresentationLearner):
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
+
+
+class Autoencoder(RepresentationLearner):
+    """
+    A basic autoencoder that tries to reconstruct the
+    current frame, and calculates an MSE loss over current frame pixels,
+    using reconstruction loss.
+    """
+    def __init__(self, env, log_dir, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+
+        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
+                                     decoder=PixelDecoder,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=AELoss,
+                                     target_pair_constructor=IdentityPairConstructor,
+                                     decoder_kwargs=dict(observation_space=env.observation_space,
+                                                         encoder_arch_key=encoder_cls_key,
+                                                         sample=True))
+
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        super().__init__(env=env,
+                         log_dir=log_dir,
+                         **kwargs)
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
