@@ -18,12 +18,47 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
-from il_representations.envs.minecraft_envs import (load_dataset_minecraft,
+from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
-                                                    MinecraftVectorWrapper)
+                                                    load_dataset_minecraft)
 from il_representations.scripts.utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
+
+
+@env_cfg_ingredient.capture
+def benchmark_is_available(benchmark_name):
+    """Check whether the selected benchmark is actually available for use on
+    this machine. Useful for skipping tests when deps are not installed.
+
+    Returns a tuple of `(benchmark_available, message)`: if
+    `benchmark_available` is `False`, then the `message` is a string explaining
+    why the benchmark is not available; otherwise, `benchmark_available` is
+    `True`, and `message` is `None`."""
+
+    # 2020-01-04: for now this mostly a placeholder: we just assume
+    # magical/dm_control/atari are installed by default, and only have logic
+    # for skipping MineCraft (which is hard to install). In future, it would
+    # make sense to extend this function so that magical and dm_control are
+    # also optional (since those also have somewhat involved installation
+    # steps).
+
+    if benchmark_name == 'magical':
+        return True, None
+    elif benchmark_name == 'dm_control':
+        return True, None
+    elif benchmark_name == 'atari':
+        return True, None
+    elif benchmark_name == 'minecraft':
+        # we check whether minecraft is installed by importing minerl
+        try:
+            import minerl  # noqa: F401
+            return True, None
+        except ImportError as ex:
+            return False, "MineRL not installed, cannot use MineCraft " \
+                f"envs (error: {ex})"
+    else:
+        raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
 @env_cfg_ingredient.capture
@@ -118,8 +153,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
             raise ValueError("MineRL environments can only be run with `venv_parallel`=False as a result of "
                              "issues with starting daemonic processes from SubprocVecEnv")
         return make_vec_env(gym_env_name,
-                            n_envs=1, # TODO fix this eventually; currently hitting error
-                                      # noted here: https://github.com/minerllabs/minerl/issues/177
+                            n_envs=1,  # TODO fix this eventually; currently hitting error
+                                       # noted here: https://github.com/minerllabs/minerl/issues/177
                             parallel=venv_parallel,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)

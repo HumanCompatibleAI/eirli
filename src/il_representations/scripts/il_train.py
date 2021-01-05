@@ -295,9 +295,9 @@ def do_training_gail(
         gen_algo=ppo_algo,
         n_disc_updates_per_round=gail['disc_n_updates_per_round'],
         expert_batch_size=gail['disc_batch_size'],
-        discrim_kwargs=dict(discrim_net=discrim_net, scale=True),
-        obs_norm=False,
-        rew_norm=True,
+        discrim_kwargs=dict(discrim_net=discrim_net, normalize_images=True),
+        normalize_obs=False,
+        normalize_reward=True,
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
         disc_augmentation_fn=augmenter,
     )
