@@ -833,7 +833,7 @@ def cfg_il_gail_nofreeze():
     }
     venv_opts = {
         'n_envs': 32,
-        'parallel': True,
+        'venv_parallel': True,
         'parallel_workers': 8,
     }
 
