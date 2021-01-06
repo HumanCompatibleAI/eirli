@@ -310,6 +310,7 @@ def do_training_gail(
         dataset,
         batch_size=gail['disc_batch_size'],
         shuffle=True,
+        drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
     del dataset
 
