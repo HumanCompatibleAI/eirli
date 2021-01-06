@@ -257,7 +257,7 @@ class MAGICALCNN(nn.Module):
 
             in_dim = layer_definition['out_dim']*w
         if 'resnet' in arch_str:
-            conv_layers.append(nn.AdaptiveAvgPool2d((1, 1)))
+            conv_layers.append(nn.Conv2d(in_dim, 32, 1))
         conv_layers.append(nn.Flatten())
 
         # another FC layer to make feature maps the right size
@@ -342,12 +342,11 @@ class BaseEncoder(Encoder):
                 :param arch_str: Specify the architecture of the encoder.
          """
         super().__init__()
+        kwargs = {}
+        if obs_encoder_cls == 'MAGICALCNN' and arch_str != None:
+            kwargs['arch_str'] = arch_str
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
         self.learn_scale = learn_scale
-        kwargs = {}
-        if obs_encoder_cls == 'MAGICALCNN' and arch_str:
-            kwargs['arch_str'] = arch_str
-            print(f"arch str {arch_str}")
         if self.learn_scale:
             if latent_dim is None:
                 latent_dim = representation_dim * 2
