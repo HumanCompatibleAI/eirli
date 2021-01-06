@@ -276,7 +276,7 @@ class Autoencoder(RepresentationLearner):
     current frame, and calculates an MSE loss over current frame pixels,
     using reconstruction loss.
     """
-    def __init__(self, env, log_dir, **kwargs):
+    def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
@@ -286,14 +286,12 @@ class Autoencoder(RepresentationLearner):
                                      augmenter=NoAugmentation,
                                      loss_calculator=AELoss,
                                      target_pair_constructor=IdentityPairConstructor,
-                                     decoder_kwargs=dict(observation_space=env.observation_space,
+                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
                                                          encoder_arch_key=encoder_cls_key,
                                                          sample=True))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
-        super().__init__(env=env,
-                         log_dir=log_dir,
-                         **kwargs)
+        super().__init__(**kwargs)
 
 
 class InverseDynamicsPrediction(RepresentationLearner):
