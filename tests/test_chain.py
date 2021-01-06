@@ -52,13 +52,24 @@ def test_individual_stages(chain_ex, file_observer, stages):
 
 
 def test_repl_reuse(chain_ex):
-    # test just doing IL, just doing REPL, etc.
+    """
+    An test of the functionality of reusing repl encoders. This test works
+    by running the same chain run experiment (with a unique timestamp ID)
+    twice in a row, and confirming that the second time RepL is reused. We
+    currently check this somewhat heuristically, by demanding that the
+    second run take meaningfully less time. We then modify one element of the
+    config, and confirm that repl is now run again, because there are no
+    existing matching runs (again, checking via the heuristic of longer
+    running time compared to the cache run)
+    """
+
     chain_config = copy.deepcopy(CHAIN_CONFIG)
-    # again, don't search over representation learner
+
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     random_id = round(time())
-    chain_config['spec']['repl']['exp_ident'] = random_id
+    chain_config['repl']['exp_ident'] = random_id
+    chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
     chain_config['force_repl_run'] = False
 
@@ -79,6 +90,8 @@ def test_repl_reuse(chain_ex):
             ray.shutdown()
 
     try:
+        chain_config['spec']['repl']['algo'] \
+            = tune.grid_search([algos.TemporalCPC])
         third_start_time = time()
         chain_ex.run(config_updates=chain_config)
         third_runtime = time() - third_start_time
@@ -91,6 +104,13 @@ def test_repl_reuse(chain_ex):
 
 
 def test_hash_config():
+    """
+    A test of the config-hashing used in the repl reuse logic. This test
+    is designed to specifically confirm that hashing twice without changes
+    to the config dict yields the same hash, and that modifying an element
+    of the config dict changes the hash
+
+    """
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     repl_config = chain_config['repl']
     repl_config['algo'] = algos.TemporalCPC

@@ -245,7 +245,7 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
                         repl_encoder_path
     """
     if config_path is None:
-        config_path = os.path.join(up(up(repl_encoder_path)), 'config.json')
+        config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')
     dir_name = f"{config_hash}_{seed}_{round(time())}"
     os.makedirs(os.path.join(repl_directory_dir, dir_name))
     logging.info(f"Symlinking encoder path under the directory {dir_name}")
