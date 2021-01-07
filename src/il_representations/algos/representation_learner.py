@@ -423,8 +423,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         # if we were not scheduled to dump on the last batch we trained on,
         # then do one last log dump to make sure everything is there
-        # if not (batches_trained % self.log_interval == 0):
-        #     logger.dump(step=batches_trained)
+        if not (batches_trained % self.log_interval == 0):
+            logger.dump(step=batches_trained)
 
         assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"
