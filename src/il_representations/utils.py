@@ -31,11 +31,9 @@ class ForkedPdb(pdb.Pdb):
 
 def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
-    dhash = hashlib.md5()
     sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
     encoded = jsonpickle.encode(sorted_dict).encode()
-    dhash.update(encoded)
-    return dhash.hexdigest()
+    return hashlib.md5(encoded).hexdigest()
 
 
 def freeze_params(module):
