@@ -366,9 +366,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-                loss_item = loss.item()
-                assert not np.isnan(loss_item), "Loss is not NAN"
-                loss_meter.update(loss_item)
+                # loss_item = loss.item()
+                # assert not np.isnan(loss_item), "Loss is not NAN"
+                # loss_meter.update(loss_item)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -376,14 +376,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 gradient_norm, weight_norm = self._calculate_norms()
 
-                loss_meter.update(loss_item)
-                logger.sb_logger.record_mean('loss', loss_item)
-                logger.sb_logger.record_mean(
-                    'gradient_norm', gradient_norm.item())
-                logger.sb_logger.record_mean('weight_norm', weight_norm.item())
-                logger.record('epoch', epoch_num)
-                logger.record('within_epoch_step', step)
-                logger.record('batches_trained', batches_trained)
+                # loss_meter.update(loss_item)
+                # logger.sb_logger.record_mean('loss', loss_item)
+                # logger.sb_logger.record_mean(
+                #     'gradient_norm', gradient_norm.item())
+                # logger.sb_logger.record_mean('weight_norm', weight_norm.item())
+                # logger.record('epoch', epoch_num)
+                # logger.record('within_epoch_step', step)
+                # logger.record('batches_trained', batches_trained)
                 if batches_trained % self.log_interval == 0:
                     logger.dump(step=batches_trained)
                 batches_trained += 1
