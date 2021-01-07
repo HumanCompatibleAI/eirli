@@ -336,7 +336,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
         algo_hardcoded_kwargs = dict(encoder=ActionEncodingEncoder,
                                      decoder=ActionConditionedVectorDecoder,
                                      batch_extender=IdentityBatchExtender,
-                                     augmenter=NoAugmentation,
+                                     augmenter=AugmentContextAndTarget,
                                      loss_calculator=BatchAsymmetricContrastiveLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      preprocess_extra_context=False,
