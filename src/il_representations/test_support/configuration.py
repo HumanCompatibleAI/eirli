@@ -63,8 +63,8 @@ FAST_IL_TRAIN_CONFIG = {
         'ppo_n_steps': 2,
         'ppo_batch_size': 2,
         'disc_batch_size': 2,
-        # total_timesteps needs to be at least 4 to let PPO train with a batch
-        # size of 2 and n_steps of 2
+        # imitation requires total_timesteps needs to be at least 4 to let PPO
+        # train with a n_envs * n_steps = 2 * 2 = 4 samples per PPO epoch
         'total_timesteps': 4,
         # ppo_n_epochs and disc_n_updates_per_round are at minimum values
         'ppo_n_epochs': 1,
