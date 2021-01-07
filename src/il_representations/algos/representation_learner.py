@@ -300,8 +300,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         dataloader = DataLoader(interleaved_dataset,
                                 num_workers=self.dataset_max_workers,
-                                batch_size=int(self.batch_size),
-                                shuffle=False) # TODO testing, change this back
+                                batch_size=int(self.batch_size)) # TODO testing, change this back
 
         loss_record = []
 
