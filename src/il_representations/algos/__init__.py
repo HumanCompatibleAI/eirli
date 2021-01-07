@@ -297,9 +297,9 @@ class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
     Like InverseDynamicsPrediction above, except it uses a contrastive loss function.
 
     During the decoder stage, instead of predicting an action, we simply concatenate
-    the representations of s and s' together. During the encoder stage, we need to also
-    encode the actions into a vector of size 2 * representation_dim, so that they can
-    be contrasted against the concatenation of encodings of s and s'.
+    the representations of s and s' together, and then predict an action representation
+    from the concatenation using a projection head. During the encoder stage, we need to
+    also encode the actions.
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
