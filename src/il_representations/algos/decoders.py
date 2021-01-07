@@ -289,6 +289,28 @@ class ActionConditionedVectorDecoder(LossDecoder):
                                                stddev=scale)
 
 
+class ContrastiveInverseDynamicsConcatenationHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, sample=False, learn_scale=False):
+        assert projection_shape == 2 * representation_dim
+        # For now, we assume the basic setup
+        assert not sample
+        assert not learn_scale
+        super().__init__(representation_dim, projection_shape, sample=sample, learn_scale=learn_scale)
+
+    def forward(self, z_dist, traj_info, extra_context=None):
+        # vector representations of current and future frames
+        z = self.get_vector(z_dist)
+        z_future = self.get_vector(extra_context)
+
+        # concatenate current and future frames together
+        z_merged = torch.cat([z, z_future], dim=1)
+        stddev_merged = torch.cat([z_dist.stddev, z_dist.stddev], dim=1)
+        return independent_multivariate_normal(mean=z_merged, stddev=stddev_merged)
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+
 class ActionPredictionHead(LossDecoder):
     """
     A decoder that takes in two vector representations of frames

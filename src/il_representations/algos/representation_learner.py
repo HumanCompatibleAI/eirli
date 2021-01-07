@@ -333,6 +333,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
+                extra_context = self.augmenter.augment_extra_context(extra_context)
 
                 if (self.save_first_last_batches and step == 0
                     and epoch_num == 1):

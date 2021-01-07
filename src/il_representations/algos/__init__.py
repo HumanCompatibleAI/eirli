@@ -1,13 +1,15 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, infer_action_shape_info
+    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
+    infer_action_shape_info
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
-    BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
-    AsymmetricProjectionHead
+    BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
+    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
     QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss
 
-from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
+from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
+    AugmentContextAndExtraContext
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
@@ -285,6 +287,35 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
                                      decoder_kwargs=dict(action_space=kwargs['action_space']),
                                      preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
+    """
+    Like InverseDynamicsPrediction above, except it uses a contrastive loss function.
+
+    During the decoder stage, instead of predicting an action, we simply concatenate
+    the representations of s and s' together. During the encoder stage, we need to also
+    encode the actions into a vector of size 2 * representation_dim, so that they can
+    be contrasted against the concatenation of encodings of s and s'.
+    """
+    def __init__(self, **kwargs):
+        projection_dim = 2 * kwargs['representation_dim']
+        algo_hardcoded_kwargs = dict(encoder=ActionEncodingInverseDynamicsEncoder,
+                                     decoder=ContrastiveInverseDynamicsConcatenationHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=AugmentContextAndExtraContext,
+                                     loss_calculator=BatchAsymmetricContrastiveLoss,
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
+                                     encoder_kwargs=dict(
+                                         action_space=kwargs['action_space'],
+                                         action_encoding_dim=projection_dim,
+                                         use_lstm=True),
+                                     preprocess_target=False,
+                                     projection_dim=projection_dim)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(**kwargs)
