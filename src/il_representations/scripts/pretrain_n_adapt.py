@@ -163,8 +163,7 @@ def merge_configs(inner_ex_config, shared_configs, tune_config_updates, exp_name
     return merged_config
 
 
-def run_single_exp(inner_ex_config, shared_configs, tune_config_updates,
-                   log_dir, exp_name):
+def run_single_exp(merged_config, log_dir, exp_name):
     """
     Run a specified experiment. We could not pass each Sacred experiment in
     because they are not pickle serializable, which is not supported by Ray
@@ -197,7 +196,6 @@ def run_single_exp(inner_ex_config, shared_configs, tune_config_updates,
     else:
         raise NotImplementedError(f"exp_name must be one of repl, il_train, or il_test. Value passed in: {exp_name}")
 
-    merged_config = merge_configs(inner_ex_config, shared_configs, tune_config_updates, exp_name)
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
     ret_val = inner_ex.run(config_updates=merged_config)
@@ -330,8 +328,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         tune_config_updates['repl'].update({
             'seed': rng.randint(1 << 31),
         })
-        pretrain_result = run_single_exp(rep_ex_config, shared_configs,
-                                         tune_config_updates, log_dir, 'repl')
+        pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
 
         pretrained_encoder_path = pretrain_result['encoder_path']
         # Once repl training finishes, symlink the result to the repl directory
@@ -345,8 +342,10 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         'encoder_path': pretrained_encoder_path,
         'seed': rng.randint(1 << 31),
     })
-    il_train_result = run_single_exp(il_train_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'il_train')
+    merged_il_train_config = merge_configs(il_train_ex_config,
+                                           shared_configs,
+                                           tune_config_updates, 'il_train')
+    il_train_result = run_single_exp(merged_il_train_config, log_dir, 'il_train')
 
     # Run il test
     tune_config_updates['il_test'].update({
@@ -355,8 +354,9 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         'seed':
         rng.randint(1 << 31),
     })
-    il_test_result = run_single_exp(il_test_ex_config, shared_configs,
-                                    tune_config_updates, log_dir, 'il_test')
+    merged_il_test_config = merge_configs(il_test_ex_config, shared_configs,
+                                  tune_config_updates, 'il_test')
+    il_test_result = run_single_exp(merged_il_test_config, log_dir, 'il_test')
 
     report_experiment_result(il_test_result)
 
@@ -372,8 +372,7 @@ def run_repl_only_exp(rep_ex_config, shared_configs, config, log_dir):
         'seed': rng.randint(1 << 31),
     })
 
-    pretrain_result = run_single_exp(rep_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'repl')
+    pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
     cache_repl_encoder(pretrain_result['encoder_path'],
                        repl_dir,
                        repl_hash,
@@ -389,16 +388,18 @@ def run_il_only_exp(il_train_ex_config, il_test_ex_config, shared_configs,
     del config
 
     tune_config_updates['il_train'].update({'seed': rng.randint(1 << 31)})
-    il_train_result = run_single_exp(il_train_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'il_train')
+    merged_il_train_config = merge_configs(il_train_ex_config, shared_configs,
+                                           tune_config_updates, 'il_train')
+    il_train_result = run_single_exp(merged_il_train_config, log_dir, 'il_train')
     tune_config_updates['il_test'].update({
         'policy_path':
         il_train_result['model_path'],
         'seed':
         rng.randint(1 << 31),
     })
-    il_test_result = run_single_exp(il_test_ex_config, shared_configs,
-                                    tune_config_updates, log_dir, 'il_test')
+    merged_il_test_config = merge_configs(il_test_ex_config, shared_configs,
+                                           tune_config_updates, 'il_test')
+    il_test_result = run_single_exp(merged_il_test_config, log_dir, 'il_test')
     report_experiment_result(il_test_result)
 
 
