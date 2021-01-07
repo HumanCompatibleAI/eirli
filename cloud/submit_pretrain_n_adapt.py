@@ -14,5 +14,10 @@ if __name__ == '__main__':
     main([
         # the autoscaler always launches a Ray server on this address;
         # we want to connect to it instead of making a new one
-        sys.argv[0], 'run', 'with',
-        'ray_init_kwargs.address=localhost:6379', *sys.argv[1:]])
+        sys.argv[0],
+        'run',
+        'with',
+        'ray_init_kwargs.address=localhost:6379',
+        'on_cluster=True',
+        *sys.argv[1:]
+    ])
