@@ -302,7 +302,8 @@ class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
     be contrasted against the concatenation of encodings of s and s'.
     """
     def __init__(self, **kwargs):
-        projection_dim = 2 * kwargs['representation_dim']
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        action_representation_dim = get_action_representation_dim(kwargs['action_space'], encoder_kwargs)
         algo_hardcoded_kwargs = dict(encoder=ActionEncodingInverseDynamicsEncoder,
                                      decoder=ContrastiveInverseDynamicsConcatenationHead,
                                      batch_extender=IdentityBatchExtender,
@@ -310,12 +311,11 @@ class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
                                      loss_calculator=BatchAsymmetricContrastiveLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
-                                     encoder_kwargs=dict(
-                                         action_space=kwargs['action_space'],
-                                         action_encoding_dim=projection_dim,
-                                         use_lstm=True),
+                                     encoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     # By default, have the bare minimum projection: a linear layer
+                                     decoder_kwargs=dict(projection_architecture=[]),
                                      preprocess_target=False,
-                                     projection_dim=projection_dim)
+                                     projection_dim=action_representation_dim)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(**kwargs)
