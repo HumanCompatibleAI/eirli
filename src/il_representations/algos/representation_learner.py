@@ -377,7 +377,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 self.optimizer.step()
                 del loss  # so we don't use again
 
-                if batches_trained % self.calc_log_interval:
+                if batches_trained % self.calc_log_interval == 0:
                     gradient_norm, weight_norm = self._calculate_norms()
 
                     loss_meter.update(loss_item)
