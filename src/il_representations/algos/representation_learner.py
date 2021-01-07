@@ -47,6 +47,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  action_space,
                  log_dir,
                  log_interval=100,
+                 calc_log_interval=10,
                  encoder=None,
                  decoder=None,
                  loss_calculator=None,
@@ -83,6 +84,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
         self.log_interval = log_interval
+        self.calc_log_interval = calc_log_interval
         logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
@@ -366,24 +368,26 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-                # loss_item = loss.item()
-                # assert not np.isnan(loss_item), "Loss is not NAN"
-                # loss_meter.update(loss_item)
+                if batches_trained % self.calc_log_interval == 0:
+                    loss_item = loss.item()
+                    assert not np.isnan(loss_item), "Loss is not NAN"
+                    loss_meter.update(loss_item)
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
                 del loss  # so we don't use again
 
-                gradient_norm, weight_norm = self._calculate_norms()
+                if batches_trained % self.calc_log_interval:
+                    gradient_norm, weight_norm = self._calculate_norms()
 
-                # loss_meter.update(loss_item)
-                # logger.sb_logger.record_mean('loss', loss_item)
-                # logger.sb_logger.record_mean(
-                #     'gradient_norm', gradient_norm.item())
-                # logger.sb_logger.record_mean('weight_norm', weight_norm.item())
-                # logger.record('epoch', epoch_num)
-                # logger.record('within_epoch_step', step)
-                # logger.record('batches_trained', batches_trained)
+                    loss_meter.update(loss_item)
+                    logger.sb_logger.record_mean('loss', loss_item)
+                    logger.sb_logger.record_mean(
+                        'gradient_norm', gradient_norm.item())
+                    logger.sb_logger.record_mean('weight_norm', weight_norm.item())
+                    logger.record('epoch', epoch_num)
+                    logger.record('within_epoch_step', step)
+                    logger.record('batches_trained', batches_trained)
                 if batches_trained % self.log_interval == 0:
                     logger.dump(step=batches_trained)
                 batches_trained += 1
