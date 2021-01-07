@@ -401,7 +401,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             if self.scheduler is not None:
                 self.scheduler.step()
-            # loss_record.append(loss_meter.avg)
+            loss_record.append(loss_meter.avg)
 
             # save checkpoint on last epoch, or at regular interval
             is_last_epoch = epoch_num == n_epochs
