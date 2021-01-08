@@ -477,36 +477,35 @@ class WrappedConfig():
 def trainable_function(config):
     # "config" argument is passed in by Ray Tune
     shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
-    log_dir = config['log_dir']
-    stages_to_run = config['stages_to_run']
-    wrapped_config_keys = config['wrapped_config_keys']
-    force_repl_run = config['force_repl_run']
-    repl_encoder_path = config['repl_encoder_path']
 
-    del config['log_dir']
-    del config['stages_to_run']
-    del config['wrapped_config_keys']
-    del config['repl_encoder_path']
-    del config['force_repl_run']
+    extra_params = {}
 
-    if stages_to_run == StagesToRun.REPL_AND_IL:
+    # Take out all of the elements in the config that
+    # are parameters governing this function, rather than
+    # underlying sacred configs
+    for k in config['extra_config_keys']:
+        extra_params[k] = config[k]
+        del config[k]
+
+    if extra_params['stages_to_run'] == StagesToRun.REPL_AND_IL:
         keys_to_add = [
             'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
             'repl',
         ]
-    elif stages_to_run == StagesToRun.IL_ONLY:
+    elif extra_params['stages_to_run'] == StagesToRun.IL_ONLY:
         keys_to_add = [
             'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
         ]
-    elif stages_to_run == StagesToRun.REPL_ONLY:
+    elif extra_params['stages_to_run'] == StagesToRun.REPL_ONLY:
         keys_to_add = ['env_cfg', 'env_data', 'repl']
     else:
         raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
 
     inflated_configs = {}
-    for key in wrapped_config_keys:
-        # Unwrap all wrapped ingredient baseline configs
-        # that were passed around as Ray parameters
+
+    # Unwrap all wrapped ingredient baseline configs
+    # that were passed around as Ray parameters
+    for key in extra_params['wrapped_config_keys']:
         assert f"{key}_frozen" in config, f"No version of {key} config " \
                                           f"(under {key}_frozen) found in config"
 
@@ -527,22 +526,23 @@ def trainable_function(config):
         if key not in config:
             config[key] = {}
 
-    if stages_to_run == StagesToRun.REPL_AND_IL:
+    if extra_params['stages_to_run'] == StagesToRun.REPL_AND_IL:
         run_end2end_exp(rep_ex_config=inflated_configs['repl'],
                         il_train_ex_config=inflated_configs['il_train'],
                         il_test_ex_config=inflated_configs['il_test'],
                         shared_configs=shared_configs, config=config,
-                        force_repl_run=force_repl_run, repl_encoder_path=repl_encoder_path,
-                        log_dir=log_dir)
-    if stages_to_run == StagesToRun.IL_ONLY:
+                        force_repl_run=extra_params['force_repl_run'],
+                        repl_encoder_path=extra_params['repl_encoder_path'],
+                        log_dir=extra_params['log_dir'])
+    if extra_params['stages_to_run'] == StagesToRun.IL_ONLY:
         run_il_only_exp(il_train_ex_config=inflated_configs['il_train'],
                         il_test_ex_config=inflated_configs['il_test'],
                         shared_configs=shared_configs, config=config,
-                        log_dir=log_dir)
-    if stages_to_run == StagesToRun.REPL_ONLY:
+                        log_dir=extra_params['log_dir'])
+    if extra_params['stages_to_run'] == StagesToRun.REPL_ONLY:
         run_repl_only_exp(rep_ex_config=inflated_configs['repl'],
                           shared_configs=shared_configs, config=config,
-                          log_dir=log_dir)
+                          log_dir=extra_params['log_dir'])
 
 
 def update_skopt_space_and_ref_configs(skopt_space,
@@ -552,6 +552,8 @@ def update_skopt_space_and_ref_configs(skopt_space,
         skopt_space[k] = v
         for ref_config in skopt_ref_configs:
             ref_config[k] = v
+    key_list = [k for k in update_dict.keys()]
+    skopt_space['extra_config_keys'] = key_list
     return skopt_space, skopt_ref_configs
 
 
@@ -658,12 +660,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
 
         # In addition to the actual spaces we're searching over, we also need to
         # store the baseline config values in Ray to avoid Ray issue #12048
-
-        #TODO refactor this into a function
         skopt_space, skopt_ref_configs = update_skopt_space_and_ref_configs(skopt_space,
                                                                             skopt_ref_configs,
                                                                             needed_config_params)
-
+        # We also need to add the ingredient configs to the skopt space
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
 
@@ -673,6 +673,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             skopt_space[f"{ing_name}_frozen"] = skopt.space.Categorical(categories=(frozen_config,))
             for ref_config in skopt_ref_configs:
                 ref_config[f"{ing_name}_frozen"] = frozen_config
+
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
@@ -710,6 +711,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
 
         spec.update(needed_config_params)
+        spec['extra_config_keys'] = [k for k in needed_config_params.keys()]
 
     rep_run = tune.run(
         trainable_function,
