@@ -1,5 +1,7 @@
 from il_representations.scripts.utils import StagesToRun
 
+# TODO(sam): GAIL configs
+
 
 def make_chain_configs(experiment_obj):
 

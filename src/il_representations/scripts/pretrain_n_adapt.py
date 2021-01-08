@@ -276,7 +276,7 @@ def get_repl_dir(log_dir):
 
 def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                     shared_configs, config, force_repl_run, repl_encoder_path,
-                    log_dir):
+                    full_run_start_time, log_dir):
     """
     Run representation learning, imitation learning's training and testing
     sequentially.
@@ -326,9 +326,16 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
             # If no matching repl run is found, we will fall through to training repl as normal
             if len(existing_repl_runs) > 0:
                 timestamps = [el.split('_')[-1] for el in existing_repl_runs]
-                most_recent_run = existing_repl_runs[np.argmax(timestamps)]
-                pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder.ckpt')
-                logging.info(f"Loading encoder from {pretrained_encoder_path}")
+
+                # Don't read in any Repl runs completed after the start of the full run
+                valid_timestamps = [ts for ts in timestamps if ts > full_run_start_time]
+                if len(valid_timestamps) > 0:
+                    most_recent_run = existing_repl_runs[np.argmax(timestamps)]
+                    pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder.ckpt')
+                    logging.info(f"Loading encoder from {pretrained_encoder_path}")
+
+            if pretrained_encoder_path is None:
+                logging.info(f"No encoder found that existed prior to full run start time")
 
     # If none of the branches above have found a pretrained path,
     # proceed with repl training as normal
@@ -464,11 +471,6 @@ def base_config():
     del _
 
 
-
-
-
-# TODO(sam): GAIL configs
-
 class WrappedConfig():
     def __init__(self, config_dict):
         self.config_dict = config_dict
@@ -533,7 +535,8 @@ def trainable_function(config):
                         shared_configs=shared_configs, config=config,
                         force_repl_run=extra_params['force_repl_run'],
                         repl_encoder_path=extra_params['repl_encoder_path'],
-                        log_dir=extra_params['log_dir'])
+                        log_dir=extra_params['log_dir'],
+                        full_run_start_time=extra_params['run_start_time'])
     if extra_params['stages_to_run'] == StagesToRun.IL_ONLY:
         run_il_only_exp(il_train_ex_config=inflated_configs['il_train'],
                         il_test_ex_config=inflated_configs['il_test'],
@@ -572,13 +575,11 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
     spec = sacred_copy(spec)
     stages_to_run = get_stages_to_run(stages_to_run)
     log_dir = os.path.abspath(chain_ex.observers[0].dir)
+
     # set default exp_ident
-    if rep_ex_config['exp_ident'] is None:
-        rep_ex_config['exp_ident'] = exp_ident
-    if il_train_ex_config['exp_ident'] is None:
-        il_train_ex_config['exp_ident'] = exp_ident
-    if il_test_ex_config['exp_ident'] is None:
-        il_test_ex_config['exp_ident'] = exp_ident
+    for inner_ex_config in [rep_ex_config, il_train_ex_config, il_test_ex_config]:
+        if inner_ex_config['exp_ident'] is None:
+            inner_ex_config['exp_ident'] = exp_ident
 
     ingredient_configs_dict = {
         'repl': rep_ex_config,
@@ -598,7 +599,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
                             'stages_to_run': stages_to_run,
                             'force_repl_run': force_repl_run,
                             'repl_encoder_path': repl_encoder_path,
-                            'wrapped_config_keys': wrapped_config_keys}
+                            'wrapped_config_keys': wrapped_config_keys,
+                            'run_start_time': round(time())}
 
     if metric is None:
         # choose a default metric depending on whether we're running
