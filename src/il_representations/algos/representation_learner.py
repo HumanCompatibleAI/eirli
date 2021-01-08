@@ -383,9 +383,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     logger.sb_logger.record_mean(
                         'gradient_norm', gradient_norm.item())
                     logger.sb_logger.record_mean('weight_norm', weight_norm.item())
-                    logger.record('epoch', epoch_num)
-                    logger.record('within_epoch_step', step)
-                    logger.record('batches_trained', batches_trained)
+                    logger.sb_logger.record('epoch', epoch_num)
+                    logger.sb_logger.record('within_epoch_step', step)
+                    logger.sb_logger.record('batches_trained', batches_trained)
                 if batches_trained % self.log_interval == 0:
                     import pdb; pdb.set_trace()
                     logger.dump(step=batches_trained)
