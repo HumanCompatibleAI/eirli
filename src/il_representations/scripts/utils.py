@@ -1,6 +1,14 @@
 import collections
 import copy
+import enum
 import urllib
+
+class StagesToRun(str, enum.Enum):
+    """These enum flags are used to control whether the script tunes RepL, or
+    IL, or both."""
+    REPL_AND_IL = "REPL_AND_IL"
+    REPL_ONLY = "REPL_ONLY"
+    IL_ONLY = "IL_ONLY"
 
 
 def update(d, u):
