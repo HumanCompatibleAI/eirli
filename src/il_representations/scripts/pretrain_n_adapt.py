@@ -545,6 +545,16 @@ def trainable_function(config):
                           log_dir=log_dir)
 
 
+def update_skopt_space_and_ref_configs(skopt_space,
+                                       skopt_ref_configs,
+                                       update_dict):
+    for k,v in update_dict.items():
+        skopt_space[k] = v
+        for ref_config in skopt_ref_configs:
+            ref_config[k] = v
+    return skopt_space, skopt_ref_configs
+
+
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
@@ -574,10 +584,19 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         'il_test': il_test_ex_config,
         'env_cfg': env_cfg_config,
         'env_data': env_data_config,
-        'venv_opts': venv_opts_config,
-    }
+        'venv_opts': venv_opts_config}
+
     # List comprehension to make the keys() object an actual list
     wrapped_config_keys = [k for k in ingredient_configs_dict.keys()]
+
+    # These are values from the config that we want to be set for all experiments,
+    # and that we need to pass in through either the spec or the skopt config so
+    # they will be reset properly in case of experiment failure
+    needed_config_params = {'log_dir': log_dir,
+                            'stages_to_run': stages_to_run,
+                            'force_repl_run': force_repl_run,
+                            'repl_encoder_path': repl_encoder_path,
+                            'wrapped_config_keys': wrapped_config_keys}
 
     if metric is None:
         # choose a default metric depending on whether we're running
@@ -641,17 +660,9 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         # store the baseline config values in Ray to avoid Ray issue #12048
 
         #TODO refactor this into a function
-        skopt_space['log_dir'] = skopt.space.Categorical(categories=(log_dir,))
-        skopt_space['stages_to_run'] = skopt.space.Categorical(categories=(stages_to_run,))
-        skopt_space['wrapped_config_keys'] = skopt.space.Categorical(categories=(wrapped_config_keys,))
-        skopt_space['force_repl_run'] = skopt.space.Categorical(categories=(force_repl_run,))
-        skopt_space['repl_encoder_path'] = skopt.space.Categorical(categories=(repl_encoder_path,))
-        for ref_config in skopt_ref_configs:
-            ref_config['log_dir'] = log_dir
-            ref_config['stages_to_run'] = stages_to_run
-            ref_config['wrapped_config_keys'] = wrapped_config_keys
-            ref_config['force_repl_run'] = force_repl_run
-            ref_config['repl_encoder_path'] = repl_encoder_path
+        skopt_space, skopt_ref_configs = update_skopt_space_and_ref_configs(skopt_space,
+                                                                            skopt_ref_configs,
+                                                                            needed_config_params)
 
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
@@ -697,11 +708,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
-        spec['log_dir'] = log_dir
-        spec['stages_to_run'] = stages_to_run
-        spec['wrapped_config_keys'] = wrapped_config_keys
-        spec['force_repl_run'] = force_repl_run
-        spec['repl_encoder_path'] = repl_encoder_path
+
+        spec.update(needed_config_params)
 
     rep_run = tune.run(
         trainable_function,
