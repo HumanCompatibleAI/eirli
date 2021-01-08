@@ -256,7 +256,7 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
     os.makedirs(os.path.join(repl_directory_dir, dir_name))
     logging.info(f"Symlinking encoder path under the directory {dir_name}")
     os.symlink(repl_encoder_path,
-               os.path.join(repl_directory_dir, dir_name, 'repl_encoder.ckpt'))
+               os.path.join(repl_directory_dir, dir_name, 'repl_encoder'))
     os.symlink(config_path,
                os.path.join(repl_directory_dir, dir_name, 'config.json'))
 
@@ -331,7 +331,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                 valid_timestamps = [ts for ts in timestamps if int(ts) < full_run_start_time]
                 if len(valid_timestamps) > 0:
                     most_recent_run = existing_repl_runs[np.argmax(valid_timestamps)]
-                    pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder.ckpt')
+                    pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder')
                     logging.info(f"Loading encoder from {pretrained_encoder_path}")
 
             if pretrained_encoder_path is None:
