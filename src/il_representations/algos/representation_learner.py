@@ -387,6 +387,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     logger.record('within_epoch_step', step)
                     logger.record('batches_trained', batches_trained)
                 if batches_trained % self.log_interval == 0:
+                    import pdb; pdb.set_trace()
                     logger.dump(step=batches_trained)
                 batches_trained += 1
                 samples_seen += len(contexts)
