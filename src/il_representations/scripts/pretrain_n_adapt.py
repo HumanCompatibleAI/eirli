@@ -328,9 +328,9 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                 timestamps = [el.split('_')[-1] for el in existing_repl_runs]
 
                 # Don't read in any Repl runs completed after the start of the full run
-                valid_timestamps = [ts for ts in timestamps if ts > full_run_start_time]
+                valid_timestamps = [ts for ts in timestamps if int(ts) < full_run_start_time]
                 if len(valid_timestamps) > 0:
-                    most_recent_run = existing_repl_runs[np.argmax(timestamps)]
+                    most_recent_run = existing_repl_runs[np.argmax(valid_timestamps)]
                     pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder.ckpt')
                     logging.info(f"Loading encoder from {pretrained_encoder_path}")
 
@@ -488,6 +488,7 @@ def trainable_function(config):
     for k in config['extra_config_keys']:
         extra_params[k] = config[k]
         del config[k]
+    del config['extra_config_keys']
 
     if extra_params['stages_to_run'] == StagesToRun.REPL_AND_IL:
         keys_to_add = [
