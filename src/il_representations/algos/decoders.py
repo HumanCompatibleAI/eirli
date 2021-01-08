@@ -127,6 +127,10 @@ class LossDecoder(nn.Module):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
         if stdev_layer is None:
+            # We better not have had a learned standard deviation in
+            # the encoder, since there's no clear way on how to pass
+            # it forward
+            assert np.all((z_dist.stddev == 1).numpy())
             stddev = self.ones_like_projection_dim(mean)
         else:
             stddev = stdev_layer(z_vector)

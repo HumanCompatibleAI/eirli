@@ -296,6 +296,10 @@ class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
     """
     Like InverseDynamicsPrediction above, except it uses a contrastive loss function.
 
+    A contrastive loss here means we predict a representation of the action given the
+    current and next state, and try to match that against the embedding of the true
+    action, with negatives provided by the embedding of other actions in the batch.
+
     During the decoder stage, instead of predicting an action, we simply concatenate
     the representations of s and s' together, and then predict an action representation
     from the concatenation using a projection head. During the encoder stage, we need to
