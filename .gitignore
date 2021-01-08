@@ -1,6 +1,9 @@
 runs
 test_observer
 output
+results
+logs
+demos
 *_runs
 *.pyc
 *.egg-info
