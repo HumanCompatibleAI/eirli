@@ -9,6 +9,7 @@ demos
 *.egg-info
 # data/ is used to set up symlinks to datasets
 /data
+data
 progress.csv
 params.json
 *.tgz

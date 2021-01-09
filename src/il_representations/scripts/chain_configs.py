@@ -1,5 +1,5 @@
 from il_representations.scripts.utils import StagesToRun
-
+from ray import tune
 # TODO(sam): GAIL configs
 
 
@@ -22,7 +22,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_use_dm_control():
         env_cfg = {
@@ -35,7 +34,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_base_3seed_4cpu_pt3gpu():
@@ -50,14 +48,9 @@ def make_chain_configs(experiment_obj):
                                    cpu=5,
                                    gpu=0.32,
                                ))
-        ray_init_kwargs = {
-            # to avoid overwhelming the main driver when we have a big cluster
-            'log_to_driver': False,
-        }
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_base_3seed_1cpu_pt2gpu_2envs():
@@ -66,15 +59,12 @@ def make_chain_configs(experiment_obj):
         use_skopt = False
         tune_run_kwargs = dict(num_samples=3,
                                # retry on node failure
-                               max_failures=2,
+                               max_failures=3,
                                fail_fast=False,
                                resources_per_trial=dict(
                                    cpu=1,
                                    gpu=0.2,
                                ))
-        ray_init_kwargs = {
-            'log_to_driver': False,
-        }
         venv_opts = {
             'n_envs': 2,
         }
@@ -82,6 +72,24 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_base_3seed_1cpu_pt5gpu_2envs():
+        """As above, but one GPU per run."""
+        use_skopt = False
+        tune_run_kwargs = dict(num_samples=3,
+                               # retry on node failure
+                               max_failures=3,
+                               fail_fast=False,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.5,
+                               ))
+        venv_opts = {
+            'n_envs': 2,
+        }
+
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_base_3seed_1cpu_1gpu_2envs():
@@ -89,15 +97,12 @@ def make_chain_configs(experiment_obj):
         use_skopt = False
         tune_run_kwargs = dict(num_samples=3,
                                # retry on node failure
-                               max_failures=2,
+                               max_failures=3,
                                fail_fast=False,
                                resources_per_trial=dict(
                                    cpu=1,
                                    gpu=1,
                                ))
-        ray_init_kwargs = {
-            'log_to_driver': False,
-        }
         venv_opts = {
             'n_envs': 2,
         }
@@ -105,6 +110,16 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_no_log_to_driver():
+        # disables sending stdout of Ray workers back to head node
+        # (only useful for huge clusters)
+        ray_init_kwargs = {
+            'log_to_driver': False,
+        }
+
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_bench_short_sweep_magical():
@@ -117,20 +132,19 @@ def make_chain_configs(experiment_obj):
                     'task_name': magical_env_name,
                     'magical_remove_null_actions': True,
                 } for magical_env_name in [
-                    'MoveToCorner',
-                    'MoveToRegion',
-                    'FixColour',
-                    'MatchRegions',
-                    # 'FindDupe',
-                    # 'MakeLine',
-                    # 'ClusterColour',
-                    # 'ClusterShape',
-                ]
+                'MoveToCorner',
+                'MoveToRegion',
+                'FixColour',
+                'MatchRegions',
+                # 'FindDupe',
+                # 'MakeLine',
+                # 'ClusterColour',
+                # 'ClusterShape',
+            ]
             ]))
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_bench_short_sweep_dm_control():
@@ -142,21 +156,20 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                    # to gauge how hard these are, see
-                    # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
-                    'reacher-easy',
-                    'finger-spin',
-                    'ball-in-cup-catch',
-                    'cartpole-swingup',
-                    # 'cheetah-run',
-                    # 'walker-walk',
-                    # 'reacher-easy',
-                ]
+                # to gauge how hard these are, see
+                # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
+                'reacher-easy',
+                'finger-spin',
+                'ball-in-cup-catch',
+                'cartpole-swingup',
+                # 'cheetah-run',
+                # 'walker-walk',
+                # 'reacher-easy',
+            ]
             ]))
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_bench_micro_sweep_magical():
@@ -169,13 +182,12 @@ def make_chain_configs(experiment_obj):
                     'task_name': magical_env_name,
                     'magical_remove_null_actions': True,
                 } for magical_env_name in [
-                    'MoveToRegion', 'MatchRegions', 'MoveToCorner'
-                ]
+                'MoveToRegion', 'MatchRegions', 'MoveToCorner'
+            ]
             ]))
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_bench_micro_sweep_dm_control():
@@ -187,13 +199,12 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                    'finger-spin', 'cheetah-run', 'reacher-easy'
-                ]
+                'finger-spin', 'cheetah-run', 'reacher-easy'
+            ]
             ]))
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_bench_one_task_magical():
@@ -207,6 +218,29 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_bench_magical_mr():
+        """Bench on MAGICAL MatchRegions."""
+        env_cfg = {
+            'benchmark_name': 'magical',
+            'task_name': 'MatchRegions',
+            'magical_remove_null_actions': True,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_bench_magical_mtc():
+        """Bench on MAGICAL MoveToCorner."""
+        env_cfg = {
+            'benchmark_name': 'magical',
+            'task_name': 'MoveToCorner',
+            'magical_remove_null_actions': True,
+        }
+
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_bench_one_task_dm_control():
@@ -219,7 +253,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_base_repl_5000_batches():
         repl = {
@@ -229,7 +262,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_base_repl_10000_batches():
@@ -241,7 +273,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_force_use_repl():
         stages_to_run = StagesToRun.REPL_AND_IL
@@ -249,14 +280,12 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_repl_none():
         stages_to_run = StagesToRun.IL_ONLY
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_repl_moco():
@@ -268,7 +297,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_repl_simclr():
         stages_to_run = StagesToRun.REPL_AND_IL
@@ -278,7 +306,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_repl_temporal_cpc():
@@ -290,15 +317,72 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_data_repl_demos_random():
+        """Training on both demos and random rollouts for the current
+        environment."""
         repl = {
             'dataset_configs': [{'type': 'demos'}, {'type': 'random'}],
         }
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_data_repl_random():
+        """Training on both demos and random rollouts for the current
+        environment."""
+        repl = {
+            'dataset_configs': [{'type': 'random'}],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_demos_magical_mt():
+        """Multi-task training on all MAGICAL tasks."""
+        repl = {
+            'dataset_configs': [
+                {
+                    'type': 'demos',
+                    'env_cfg': {
+                        'benchmark_name': 'magical',
+                        'task_name': magical_task_name,
+                    }
+                } for magical_task_name in [
+                    'MoveToCorner',
+                    'MoveToRegion',
+                    'MatchRegions',
+                    'MakeLine',
+                    'FixColour',
+                    'FindDupe',
+                    'ClusterColour',
+                    'ClusterShape',
+                ]
+            ],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_il_5traj():
+        """Use only 5 trajectories for IL training."""
+        il_train = {
+            'n_traj': 5,
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_il_hc_extended():
+        """Use extended HalfCheetah dataset for IL training."""
+        env_data = {
+            'dm_control_demo_patterns': {
+                'cheetah-run':
+                    'data/dm_control/extended-cheetah-run-*500traj.pkl.gz',
+            }
+        }
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_repl_ceb():
@@ -310,6 +394,23 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_repl_vae():
+        repl = {
+            'algo': 'VariationalAutoencoder',
+            'algo_params': {'batch_size': 32},
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_inv_dyn():
+        repl = {
+            'algo': 'InverseDynamicsPrediction',
+            'algo_params': {'batch_size': 32},
+        }
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_il_bc_nofreeze():
@@ -324,7 +425,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_il_bc_freeze():
         il_train = {
@@ -337,4 +437,5 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
+
 

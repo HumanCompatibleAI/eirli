@@ -1,0 +1,25 @@
+.git
+results
+runs
+test_observer
+output
+*_runs
+*.pyc
+*.egg-info
+# data/ is used to set up symlinks to datasets
+/data
+data
+progress.csv
+params.json
+*.tgz
+
+# editor and devlopment tool cruft
+.pytype
+*.swp
+.#*
+*~
+.idea
+*.xml
+*.iml
+.ipynb_checkpoints
+.DS_Store

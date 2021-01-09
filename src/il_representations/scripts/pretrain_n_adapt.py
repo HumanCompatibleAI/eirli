@@ -12,6 +12,7 @@ import weakref
 import numpy as np
 import ray
 from ray import tune
+from ray.tune.integration.docker import DockerSyncer
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.suggest.skopt import SkOptSearch
 import sacred
@@ -464,6 +465,9 @@ def base_config():
                               # BE CAREFUL, since this will override the check that ensures you only read in an
                               # encoder that matches your own repl config, and this could lead to inconsistencies
 
+    on_cluster = False        # use 'true' if you want to do cluster-specific things like using
+                              # DockerSyncer
+
     tune_run_kwargs = dict(num_samples=1,
                            max_failures=2,
                            fail_fast=False,
@@ -472,13 +476,14 @@ def base_config():
                                gpu=0,  # TODO change back to 0.32?
                            ))
     ray_init_kwargs = dict(
-        memory=None,
         object_store_memory=None,
         include_dashboard=False,
     )
 
     _ = locals()
     del _
+
+
 
 
 class WrappedConfig():
@@ -575,7 +580,8 @@ def update_skopt_space_and_ref_configs(skopt_space,
 def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
-        reuse_repl, repl_encoder_path):
+        reuse_repl, repl_encoder_path, on_cluster):
+
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
@@ -716,15 +722,28 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
-        # In addition to the actual spaces we're searching over, we also need to
-        # store the baseline config values in Ray to avoid Ray issue #12048
-        # We create a grid search with a single value of the WrappedConfig object
+        # In addition to the actual spaces we're searching over, we also need
+        # to store the baseline config values in Ray to avoid Ray issue #12048.
+        # We create a grid search with a single value of the WrappedConfig
+        # object.
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
 
         spec.update(needed_config_params)
         spec['extra_config_keys'] = [k for k in needed_config_params.keys()]
+
+    if on_cluster:
+        # use special syncer which is able to attach to autoscaler's Docker
+        # container once it connects to worker machines (necessary for GCP)
+        assert 'sync_config' not in tune_run_kwargs, \
+            "set on_cluster=True, which overrides sync_config for tune.run, " \
+            "but sync_config was already supplied (and set to " \
+            f"{tune_run_kwargs['sync_config']})"
+        tune_run_kwargs = {
+            **tune_run_kwargs,
+            'sync_config': tune.SyncConfig(sync_to_driver=DockerSyncer),
+        }
 
     rep_run = tune.run(
         trainable_function,
@@ -733,8 +752,12 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         local_dir=ray_dir,
         **tune_run_kwargs,
     )
-    best_config = rep_run.get_best_config(metric=metric)
-    logging.info(f"Best config is: {best_config}")
+    if use_skopt:
+        # get_best_config() requires a mode, but skopt_search_mode is only
+        # guaranteed to be non-None when tuning with skopt
+        best_config = rep_run.get_best_config(
+            metric=metric, mode=skopt_search_mode)
+        logging.info(f"Best config is: {best_config}")
     logging.info("Results available at: ")
     logging.info(rep_run._get_trial_paths())
 
