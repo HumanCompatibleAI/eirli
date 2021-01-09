@@ -55,7 +55,7 @@ def benchmark_is_available(benchmark_name):
             import minerl  # noqa: F401
             return True, None
         except ImportError as ex:
-            return False, "MineRL not installed, cannot use MineCraft " \
+            return False, "MineRL not installed, cannot use Minecraft " \
                 f"envs (error: {ex})"
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
