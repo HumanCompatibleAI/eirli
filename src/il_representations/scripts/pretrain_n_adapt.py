@@ -9,6 +9,7 @@ import weakref
 import numpy as np
 import ray
 from ray import tune
+from ray.tune.integration.docker import DockerSyncer
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.suggest.skopt import SkOptSearch
 import sacred
@@ -334,6 +335,9 @@ def base_config():
     skopt_search_mode = None
     skopt_space = collections.OrderedDict()
     skopt_ref_configs = []
+    # use 'true' if you want to do cluster-specific things like using
+    # DockerSyncer
+    on_cluster = False
 
     tune_run_kwargs = dict(num_samples=1,
                            max_failures=2,
@@ -343,7 +347,6 @@ def base_config():
                                gpu=0,  # TODO change back to 0.32?
                            ))
     ray_init_kwargs = dict(
-        memory=None,
         object_store_memory=None,
         include_dashboard=False,
     )
@@ -397,10 +400,6 @@ def cfg_base_3seed_4cpu_pt3gpu():
                                cpu=5,
                                gpu=0.32,
                            ))
-    ray_init_kwargs = {
-        # to avoid overwhelming the main driver when we have a big cluster
-        'log_to_driver': False,
-    }
 
     _ = locals()
     del _
@@ -413,15 +412,32 @@ def cfg_base_3seed_1cpu_pt2gpu_2envs():
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on node failure
-                           max_failures=2,
+                           max_failures=3,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
                                gpu=0.2,
                            ))
-    ray_init_kwargs = {
-        'log_to_driver': False,
+    venv_opts = {
+        'n_envs': 2,
     }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_base_3seed_1cpu_pt5gpu_2envs():
+    """As above, but one GPU per run."""
+    use_skopt = False
+    tune_run_kwargs = dict(num_samples=3,
+                           # retry on node failure
+                           max_failures=3,
+                           fail_fast=False,
+                           resources_per_trial=dict(
+                               cpu=1,
+                               gpu=0.5,
+                           ))
     venv_opts = {
         'n_envs': 2,
     }
@@ -436,17 +452,26 @@ def cfg_base_3seed_1cpu_1gpu_2envs():
     use_skopt = False
     tune_run_kwargs = dict(num_samples=3,
                            # retry on node failure
-                           max_failures=2,
+                           max_failures=3,
                            fail_fast=False,
                            resources_per_trial=dict(
                                cpu=1,
                                gpu=1,
                            ))
-    ray_init_kwargs = {
-        'log_to_driver': False,
-    }
     venv_opts = {
         'n_envs': 2,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_no_log_to_driver():
+    # disables sending stdout of Ray workers back to head node
+    # (only useful for huge clusters)
+    ray_init_kwargs = {
+        'log_to_driver': False,
     }
 
     _ = locals()
@@ -556,6 +581,32 @@ def cfg_bench_one_task_magical():
 
 
 @chain_ex.named_config
+def cfg_bench_magical_mr():
+    """Bench on MAGICAL MatchRegions."""
+    env_cfg = {
+        'benchmark_name': 'magical',
+        'task_name': 'MatchRegions',
+        'magical_remove_null_actions': True,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_bench_magical_mtc():
+    """Bench on MAGICAL MoveToCorner."""
+    env_cfg = {
+        'benchmark_name': 'magical',
+        'task_name': 'MoveToCorner',
+        'magical_remove_null_actions': True,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_bench_one_task_dm_control():
     """Just one simple dm_control config."""
     env_cfg = {
@@ -640,8 +691,71 @@ def cfg_repl_temporal_cpc():
 
 @chain_ex.named_config
 def cfg_data_repl_demos_random():
+    """Training on both demos and random rollouts for the current
+    environment."""
     repl = {
         'dataset_configs': [{'type': 'demos'}, {'type': 'random'}],
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_repl_random():
+    """Training on both demos and random rollouts for the current
+    environment."""
+    repl = {
+        'dataset_configs': [{'type': 'random'}],
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_repl_demos_magical_mt():
+    """Multi-task training on all MAGICAL tasks."""
+    repl = {
+        'dataset_configs': [
+            {
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': magical_task_name,
+                }
+            } for magical_task_name in [
+                'MoveToCorner',
+                'MoveToRegion',
+                'MatchRegions',
+                'MakeLine',
+                'FixColour',
+                'FindDupe',
+                'ClusterColour',
+                'ClusterShape',
+            ]
+        ],
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_il_5traj():
+    """Use only 5 trajectories for IL training."""
+    il_train = {
+        'n_traj': 5,
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_data_il_hc_extended():
+    """Use extended HalfCheetah dataset for IL training."""
+    env_data = {
+        'dm_control_demo_patterns': {
+            'cheetah-run':
+            'data/dm_control/extended-cheetah-run-*500traj.pkl.gz',
+        }
     }
     _ = locals()
     del _
@@ -654,6 +768,26 @@ def cfg_repl_ceb():
         'algo': 'CEB',
     }
 
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_vae():
+    repl = {
+        'algo': 'VariationalAutoencoder',
+        'algo_params': {'batch_size': 32},
+    }
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
+def cfg_repl_inv_dyn():
+    repl = {
+        'algo': 'InverseDynamicsPrediction',
+        'algo_params': {'batch_size': 32},
+    }
     _ = locals()
     del _
 
@@ -762,7 +896,8 @@ def trainable_function(config):
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
-        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident):
+        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
+        on_cluster):
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
@@ -833,8 +968,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
     env_data_config['data_root'] = os.path.abspath(
         os.path.join(cwd, env_data_config['data_root']))
 
-
-
     if detect_ec2():
         ray.init(address="auto", **ray_init_kwargs)
     else:
@@ -901,15 +1034,28 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             logging.warning("Will ignore everything in 'spec' argument")
         spec = {}
     else:
-        # In addition to the actual spaces we're searching over, we also need to
-        # store the baseline config values in Ray to avoid Ray issue #12048
-        # We create a grid search with a single value of the WrappedConfig object
+        # In addition to the actual spaces we're searching over, we also need
+        # to store the baseline config values in Ray to avoid Ray issue #12048.
+        # We create a grid search with a single value of the WrappedConfig
+        # object.
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
         spec['log_dir'] = log_dir
         spec['stages_to_run'] = stages_to_run
         spec['wrapped_config_keys'] = wrapped_config_keys
+
+    if on_cluster:
+        # use special syncer which is able to attach to autoscaler's Docker
+        # container once it connects to worker machines (necessary for GCP)
+        assert 'sync_config' not in tune_run_kwargs, \
+            "set on_cluster=True, which overrides sync_config for tune.run, " \
+            "but sync_config was already supplied (and set to " \
+            f"{tune_run_kwargs['sync_config']})"
+        tune_run_kwargs = {
+            **tune_run_kwargs,
+            'sync_config': tune.SyncConfig(sync_to_driver=DockerSyncer),
+        }
 
     rep_run = tune.run(
         trainable_function,
@@ -918,8 +1064,12 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         local_dir=ray_dir,
         **tune_run_kwargs,
     )
-    best_config = rep_run.get_best_config(metric=metric)
-    logging.info(f"Best config is: {best_config}")
+    if use_skopt:
+        # get_best_config() requires a mode, but skopt_search_mode is only
+        # guaranteed to be non-None when tuning with skopt
+        best_config = rep_run.get_best_config(
+            metric=metric, mode=skopt_search_mode)
+        logging.info(f"Best config is: {best_config}")
     logging.info("Results available at: ")
     logging.info(rep_run._get_trial_paths())
 

@@ -72,6 +72,8 @@ RUN conda update -n base -c defaults conda \
 # Install dependencies
 COPY requirements.txt /root/requirements.txt
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
+COPY minecraft_setup.sh /root/minecraft_setup.sh
+RUN bash /root/minecraft_setup.sh
 
 # This is useful for making the X server work (but will break unless the X
 # server is on the right port)
