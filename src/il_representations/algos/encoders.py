@@ -246,7 +246,8 @@ class MAGICALCNN(nn.Module):
             else:
                 block_kwargs = {
                     'stride': layer_definition['stride'],
-                    'downsample': nn.Sequential(nn.Conv2d(in_dim, layer_definition['out_dim'],
+                    'downsample': nn.Sequential(nn.Conv2d(in_dim,
+                                                          layer_definition['out_dim'],
                                                           kernel_size=1,
                                                           stride=layer_definition['stride']),
                                                 nn.BatchNorm2d(layer_definition['out_dim']))
@@ -358,16 +359,12 @@ class BaseEncoder(Encoder):
             self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
-    # def forward(self, x):
         if self.learn_scale:
             return self.forward_with_stddev(x, traj_info)
-            # return self.forward_with_stddev(x)
         else:
             return self.forward_deterministic(x, traj_info)
-            # return self.forward_deterministic(x)
 
     def forward_with_stddev(self, x, traj_info):
-    # def forward_with_stddev(self, x):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
         scale = torch.exp(self.scale_layer(shared_repr))
@@ -377,9 +374,7 @@ class BaseEncoder(Encoder):
                                                stddev=scale)
 
     def forward_deterministic(self, x, traj_info):
-    # def forward_deterministic(self, x):
         features = self.network(x)
-        # return features
         return independent_multivariate_normal(mean=features,
                                                stddev=self.scale_constant)
 
