@@ -2,6 +2,8 @@
 """Run an IL algorithm in some selected domain."""
 import logging
 import os
+# readline import is black magic to stop PDB from segfaulting; do not remove it
+import readline  # noqa: F401
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
