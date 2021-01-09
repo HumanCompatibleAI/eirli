@@ -158,7 +158,6 @@ def make_policy(observation_space,
         assert isinstance(encoder, nn.Module)
     else:
         encoder = BaseEncoder(observation_space, **encoder_kwargs)
-    print_policy_info(encoder, observation_space)
     policy_kwargs = {
         'features_extractor_class': EncoderFeatureExtractor,
         'features_extractor_kwargs': {
