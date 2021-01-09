@@ -3,13 +3,20 @@ import copy
 import enum
 import urllib
 
+
 class StagesToRun(str, enum.Enum):
-    """These enum flags are used to control whether the script tunes RepL, or
+    """These enum flags are used to control whether pretrain_n_adapt tunes RepL, or
     IL, or both."""
     REPL_AND_IL = "REPL_AND_IL"
     REPL_ONLY = "REPL_ONLY"
     IL_ONLY = "IL_ONLY"
 
+class ReuseRepl(str, enum.Enum):
+    """These enum flags are used to control whether
+     pretrain_n_adapt reuses repl or not """
+    YES = "YES"
+    NO = "NO"
+    IF_AVAILABLE = "IF_AVAILABLE"
 
 def update(d, u):
     """Recursive dictionary update (pure)."""

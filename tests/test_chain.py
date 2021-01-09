@@ -5,7 +5,7 @@ import ray
 from ray import tune
 
 from il_representations import algos
-from il_representations.scripts.pretrain_n_adapt import StagesToRun
+from il_representations.scripts.utils import StagesToRun, ReuseRepl
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, ENV_CFG_TEST_CONFIGS)
 from il_representations.utils import hash_configs
@@ -28,7 +28,6 @@ def test_all_benchmarks(chain_ex, file_observer, env_cfg):
         = tune.grid_search([algos.SimCLR])
     # try just this benchmark
     chain_config['spec']['env_cfg'] = tune.grid_search([env_cfg])
-    chain_config['force_repl_run'] = True
     try:
         chain_ex.run(config_updates=chain_config)
     finally:
@@ -43,7 +42,6 @@ def test_individual_stages(chain_ex, file_observer, stages):
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     chain_config['stages_to_run'] = stages
-    chain_config['force_repl_run'] = True
     try:
         chain_ex.run(config_updates=chain_config)
     finally:
@@ -64,14 +62,13 @@ def test_repl_reuse(chain_ex):
     """
 
     chain_config = copy.deepcopy(CHAIN_CONFIG)
-
+    chain_config['reuse_repl'] = ReuseRepl.IF_AVAILABLE
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     random_id = round(time())
     chain_config['repl']['exp_ident'] = random_id
     chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
-    chain_config['force_repl_run'] = False
 
     try:
         first_start_time = time()
