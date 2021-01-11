@@ -369,7 +369,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
                 if batches_trained % self.calc_log_interval == 0:
                     loss_item = loss.item()
-                    assert not np.isnan(loss_item), "Loss is not NAN"
+                    assert not np.isnan(loss_item), "Loss is NaN"
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
