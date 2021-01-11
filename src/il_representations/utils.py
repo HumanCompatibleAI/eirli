@@ -1,13 +1,39 @@
 """Miscellaneous tools that don't fit elsewhere."""
+import collections
+import hashlib
+import jsonpickle
 import math
 import os
+import pdb
 import pickle
+import sys
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
 from skvideo.io import FFmpegWriter
 import torch as th
 import torchvision.utils as vutils
+
+
+class ForkedPdb(pdb.Pdb):
+    """A Pdb subclass that may be used
+    from a forked multiprocessing child
+
+    """
+    def interaction(self, *args, **kwargs):
+        _stdin = sys.stdin
+        try:
+            sys.stdin = open('/dev/stdin')
+            pdb.Pdb.interaction(self, *args, **kwargs)
+        finally:
+            sys.stdin = _stdin
+
+
+def hash_configs(merged_config):
+    """MD5 hash of a dictionary."""
+    sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
+    encoded = jsonpickle.encode(sorted_dict).encode()
+    return hashlib.md5(encoded).hexdigest()
 
 
 def freeze_params(module):
