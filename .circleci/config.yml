@@ -4,7 +4,7 @@ jobs:
   build-and-test:
     resource_class: large
     docker:
-      - image: humancompatibleai/il-representations:2021.01.05-r2
+      - image: humancompatibleai/il-representations:2021.01.11-r1
     steps:
       - checkout
       - run:
