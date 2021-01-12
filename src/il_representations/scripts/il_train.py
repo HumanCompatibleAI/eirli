@@ -25,6 +25,8 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             venv_opts_ingredient)
 from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
+from il_representations.il.gail_pol_save import GAILSavePolicyCallback
+from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
 
@@ -66,7 +68,7 @@ def gail_defaults():
     # "batch size" is actually the size of a _minibatch_. The amount of data
     # used for each training update is ppo_n_steps*n_envs.
     ppo_batch_size = 64
-    ppo_init_learning_rate = 2.5e-4
+    ppo_init_learning_rate = 6e-5
     ppo_final_learning_rate = 0.0
     ppo_gamma = 0.8
     ppo_gae_lambda = 0.8
@@ -76,7 +78,9 @@ def gail_defaults():
     # normalisation + clipping is experimental; previously I just did
     # normalisation (to stddev of 0.1) with no clipping
     ppo_norm_reward = True
-    ppo_clip_reward = 10.0
+    ppo_clip_reward = float('inf')
+    # target standard deviation for rewards
+    ppo_reward_std = 0.01
 
     disc_n_updates_per_round = 12
     disc_batch_size = 24
@@ -85,6 +89,10 @@ def gail_defaults():
 
     # number of env time steps to perform during reinforcement learning
     total_timesteps = int(1e6)
+    # save intermediate snapshot after this many environment time steps
+    save_every_n_steps = 5e4
+    # dump logs every <this many> steps (at most)
+    log_interval_steps = 5e3
 
     _ = locals()
     del _
@@ -94,9 +102,9 @@ sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_train_ex = Experiment(
     'il_train',
     ingredients=[
-        # We need env_cfg_ingredient to determine which environment to train on,
-        # venv_opts_ingredient to construct a vecenv for the environment, and
-        # env_data_ingredient to load training data. bc_ingredient and
+        # We need env_cfg_ingredient to determine which environment to train
+        # on, venv_opts_ingredient to construct a vecenv for the environment,
+        # and env_data_ingredient to load training data. bc_ingredient and
         # gail_ingredient are used for BC and GAIL, respectively (otherwise
         # ignored).
         env_cfg_ingredient,
@@ -222,8 +230,9 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
 
     save_interval = bc['save_every_n_batches']
     if save_interval is not None:
-        optional_model_saver = BCModelSaver(
-            policy, os.path.join(out_dir, 'snapshots'), save_interval)
+        optional_model_saver = BCModelSaver(policy,
+                                            os.path.join(out_dir, 'snapshots'),
+                                            save_interval)
     else:
         optional_model_saver = None
 
@@ -323,11 +332,18 @@ def do_training_gail(
         discrim_kwargs=dict(discrim_net=discrim_net, normalize_images=True),
         normalize_obs=False,
         normalize_reward=gail['ppo_norm_reward'],
+        normalize_reward_std=gail['ppo_reward_std'],
         clip_reward=gail['ppo_clip_reward'],
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
         disc_augmentation_fn=augmenter,
+        gen_callbacks=[SB3ScoreLoggingCallback()],
     )
-    trainer.train(total_timesteps=gail['total_timesteps'])
+    save_callback = GAILSavePolicyCallback(
+        ppo_algo=ppo_algo, save_every_n_steps=gail['save_every_n_steps'],
+        save_dir=out_dir)
+    trainer.train(
+        total_timesteps=gail['total_timesteps'], callback=save_callback,
+        log_interval_timesteps=gail['log_interval_steps'])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final GAIL policy to {final_path}")

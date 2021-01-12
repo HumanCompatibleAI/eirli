@@ -36,9 +36,9 @@ cryptography~=3.1
 git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
 
 # imitation needs special branch as of 2021-01-04
-git+git://github.com/HumanCompatibleAI/imitation@e6d2ffaed8d14c6e5d68c953c65c80d8ce254932#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@dfd3634f3ed8ba3b101f14ada0c002e9f30cf6ab#egg=imitation
 # this branch has fixes to VecEnvTranspose, some new features for SubprocVecEnv, etc.
-git+git://github.com/HumanCompatibleAI/stable-baselines3@50c186399901ada895573bef461498a801787b25#egg=stable_baselines3
+git+git://github.com/HumanCompatibleAI/stable-baselines3@7c95c9027dbbb93843873aac6dcdcab4c7c709a6#egg=stable_baselines3
 
 # environments
 magical-il~=0.0.1a4
