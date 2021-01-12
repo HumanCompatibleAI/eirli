@@ -662,12 +662,21 @@ def cfg_repl_ceb():
 def cfg_repl_autoencoder():
     stages_to_run = StagesToRun.REPL_ONLY
     repl = {
-        'algo': 'Autoencoder',
+        'algo': 'Autoencoder'
     }
 
     _ = locals()
     del _
 
+@chain_ex.named_config
+def cfg_repl_VAE():
+    stages_to_run = StagesToRun.REPL_ONLY
+    repl = {
+        'algo': 'VariationalAutoencoder'
+    }
+
+    _ = locals()
+    del _
 
 @chain_ex.named_config
 def cfg_il_bc_nofreeze():

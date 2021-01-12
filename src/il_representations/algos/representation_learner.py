@@ -7,6 +7,7 @@ import imitation.util.logger as logger
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
+import stable_baselines3.common.policies as sb3_pols
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data.dataloader import DataLoader
@@ -16,7 +17,8 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import InterleavedDataset
-from il_representations.utils import image_tensor_to_rgb_grid, save_rgb_tensor
+from il_representations.utils import image_tensor_to_rgb_grid, save_rgb_tensor, normalize_image, \
+                                     TensorFrameWriter
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -72,7 +74,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  loss_calculator_kwargs=None,
                  dataset_max_workers=0,
                  scheduler_kwargs=None,
+                 encoder_load_path=None,
+                 decoder_load_path=None,
                  save_first_last_batches=True,
+                 save_decoded_contexts=False,
+                 fix_encoder=False,
+                 fix_decoder=False,
+                 save_video=False,
                  color_space):
 
         super(RepresentationLearner, self).__init__(
@@ -97,7 +105,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.save_interval = save_interval
         self.dataset_max_workers = dataset_max_workers
         self.save_first_last_batches = save_first_last_batches
+        self.save_decoded_contexts = save_decoded_contexts
         self.color_space = color_space
+        self.save_video = save_video
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the same as representation_dim
@@ -114,18 +124,29 @@ class RepresentationLearner(BaseEnvironmentLearner):
         assert not duplicate_learn_scale, "learn_scale should be set on either " \
                                           "the encoder or the decoder at one time"
 
-        # Load a pretrained encoder if load_path is provided
-        if 'load_path' in encoder_kwargs.keys():
-            assert encoder_kwargs['load_path'] is not None, "The provided encoder path should not be None"
-            self.encoder = torch.load(encoder_kwargs['load_path'])
+        self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
+        # Load a pretrained network if load_path is provided
+        if encoder_load_path is not None:
+            print(f"Loading encoder from path {encoder_load_path}")
+            assert encoder_load_path is not None, "The provided encoder path should not be None"
+            self.encoder.network = torch.load(encoder_load_path).network
             # Load encoder from il trained policy
-            if isinstance(self.encoder, ActorCriticCnnPolicy):
+            if isinstance(self.encoder, sb3_pols.ActorCriticCnnPolicy):
                 self.encoder = self.encoder.features_extractor.representation_encoder
-            for param in self.encoder.parameters():
+        if fix_encoder:
+            for param in self.encoder.network.parameters():
                 param.requires_grad = False
-        else:
-            self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
+                print(f"Encoder's requires_grad is {param.requires_grad}")
+        print(self.encoder)
+
         self.decoder = decoder(representation_dim, projection_dim, **decoder_kwargs).to(self.device)
+        if decoder_load_path:
+            self.decoder = torch.load(decoder_load_path)
+        if fix_decoder:
+            for param in self.decoder.parameters():
+                param.requires_grad = False
+                print(f"Decoder's requires_grad is {param.requires_grad}")
+        print(self.decoder)
 
         if batch_extender is QueueBatchExtender:
             # TODO maybe clean this up?
@@ -238,6 +259,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # .th files to fall back on)
             obs_shape = self.observation_space.shape
             obs_ndim = len(obs_shape)
+
             if torch.is_tensor(value) and value.shape[-obs_ndim:] == obs_shape:
                 rgb_grid = image_tensor_to_rgb_grid(value, self.color_space)
                 save_rgb_tensor(rgb_grid, out_path_prefix + '.png')
@@ -328,6 +350,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
 
+            if self.save_video:
+                video_out_dir = os.path.join(self.log_dir, 'videos')
+                os.makedirs(video_out_dir, exist_ok=True)
+                video_out_path = os.path.join(video_out_dir, f'video_epoch{epoch_num}.mp4')
+                video_writer = TensorFrameWriter(video_out_path,
+                                                 color_space=self.color_space)
+
             samples_seen = 0
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
@@ -398,6 +427,20 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 batches_trained += 1
                 samples_seen += len(contexts)
 
+                if step == 0 and self.save_decoded_contexts:
+                    normalized_decoded_sample = normalize_image(decoded_contexts.mean[0, :, :, :])
+                    normalized_context = normalize_image(contexts[0, :, :, :])
+                    save_dict = {f'decoded_context_epoch_{epoch_num}':
+                                     normalized_decoded_sample,
+                                 f'input_context_epoch_{epoch_num}':
+                                     normalized_context}
+                    self._save_batch_data('decoder_output', save_dict)
+
+                if step == batches_per_epoch - 1 and self.save_video:
+                    normalized_decoded_sample = normalize_image(decoded_contexts.mean)
+                    for image in normalized_decoded_sample:
+                        video_writer.add_tensor(image)
+
             assert batches_trained > 0, \
                 "went through training loop with no batches---empty dataset?"
             if epoch_num == 0:
@@ -426,6 +469,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                            targets=targets,
                                            extra_context=extra_context,
                                            traj_ts_info=traj_ts_info))
+
+            if self.save_video:
+                video_writer.close()
 
         assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"

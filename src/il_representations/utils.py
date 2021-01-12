@@ -137,6 +137,7 @@ class TensorFrameWriter:
         }
         if config is not None:
             ffmpeg_out_config.update(config)
+
         self.writer = FFmpegWriter(out_path, outputdict=ffmpeg_out_config)
 
     def add_tensor(self, tensor):
@@ -201,3 +202,10 @@ def load_sacred_pickle(fp, **kwargs):
     """Unpickle an object that may contain Sacred ReadOnlyDict and ReadOnlyList
     objects. It will convert those objects to plain dicts/lists."""
     return SacredUnpickler(fp, **kwargs).load()
+
+
+def normalize_image(image):
+    """Normalize an image tensor to be in the range of [0,1]."""
+    image -= image.min()
+    image /= image.max()
+    return image
