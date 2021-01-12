@@ -243,12 +243,12 @@ def make_hp_tuning_configs(experiment_obj):
                 ('il_train_gail:ppo_batch_size', 32),
                 ('il_train:gail:ppo_init_learning_rate', 6e-5),
                 ('il_train:gail:ppo_gamma', 0.9),
-                ('il_train:gail:ppo_gae_lambda', 0.9,
+                ('il_train:gail:ppo_gae_lambda', 0.9),
                 ('il_train:gail:ppo_ent', 1e-7),
                 ('il_train:gail:ppo_adv_clip', 0.05),
                 ('il_train:gail:disc_n_updates_per_round', 2),
                 ('venv_opts:n_envs', 24),
-            ),
+            ]),
         ]
 
         _ = locals()
