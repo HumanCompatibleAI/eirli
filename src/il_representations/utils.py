@@ -41,7 +41,7 @@ def recursively_sort(element):
     elif isinstance(element, Sequence) and not isinstance(element, str):
         return [recursively_sort(inner_el) for inner_el in element]
     else:
-        return element
+        return str(element)
 
 
 def hash_configs(merged_config):
