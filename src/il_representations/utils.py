@@ -1,6 +1,7 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
 import hashlib
+import json
 import jsonpickle
 import math
 import os
@@ -48,7 +49,8 @@ def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
     sorted_dict = recursively_sort(merged_config)
     # Needs to be double-encoded because result of jsonpickle is Unicode
-    encoded = jsonpickle.encode(sorted_dict).encode()
+    #encoded = jsonpickle.encode(sorted_dict).encode()
+    encoded = json.dumps(sorted_dict).encode('utf-8')
     return hashlib.md5(encoded).hexdigest()
 
 
