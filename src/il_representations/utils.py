@@ -7,6 +7,7 @@ import os
 import pdb
 import pickle
 import sys
+from collections.abc import Sequence
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
@@ -29,21 +30,23 @@ class ForkedPdb(pdb.Pdb):
             sys.stdin = _stdin
 
 
-def recursively_sorted_dict(config_dict):
-    """Create an OrderedDict, where all internal nested
-    dicts are also sorted-by-key OrderedDicts"""
-    sorted_dict = collections.OrderedDict()
-    for k in sorted(config_dict.keys()):
-        if isinstance(config_dict[k], collections.Mapping):
-            sorted_dict[k] = recursively_sorted_dict(config_dict[k])
-        else:
-            sorted_dict[k] = config_dict[k]
-    return sorted_dict
+def recursively_sort(element):
+    """Ensures that any dicts in nested dict/list object
+    collection are converted to OrderedDicts"""
+    if isinstance(element, collections.Mapping):
+        sorted_dict = collections.OrderedDict()
+        for k in sorted(element.keys()):
+            sorted_dict[k] = recursively_sort(element[k])
+        return sorted_dict
+    elif isinstance(element, Sequence) and not isinstance(element, str):
+        return [recursively_sort(inner_el) for inner_el in element]
+    else:
+        return element
 
 
 def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
-    sorted_dict = recursively_sorted_dict(merged_config)
+    sorted_dict = recursively_sort(merged_config)
     # Needs to be double-encoded because result of jsonpickle is Unicode
     encoded = jsonpickle.encode(sorted_dict).encode()
     return hashlib.md5(encoded).hexdigest()

@@ -16,7 +16,6 @@ ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
     'atari_demo_paths': {
         'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
-        # TODO add test data dir here
     },
     'magical_demo_dirs': {
         'MoveToRegion': path.join(TEST_DATA_DIR, 'magical', 'move-to-region'),
