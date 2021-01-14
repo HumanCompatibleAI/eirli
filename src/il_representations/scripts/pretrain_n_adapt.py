@@ -274,11 +274,20 @@ def get_repl_dir(log_dir):
         os.makedirs(repl_dir)
     return repl_dir
 
+
 def resolve_env_cfg(merged_repl_config):
     merged_config_copy = copy.deepcopy(merged_repl_config)
+
+    # If the task we are training on is multitask, we do not want to
+    # include env_cfg.task_name in the canonical repl hash, since it will not be used
     if merged_config_copy.get('is_multitask', False):
         del merged_config_copy['env_cfg']['task_name']
+
+    # Do not hash based on env_data, which just contains path information,
+    # and thus will vary based on path setup by machine
+    del merged_config_copy['env_data']
     return merged_config_copy
+
 
 def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                     shared_configs, config, reuse_repl, repl_encoder_path,
@@ -488,8 +497,6 @@ def base_config():
 
     _ = locals()
     del _
-
-
 
 
 class WrappedConfig():

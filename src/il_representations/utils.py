@@ -50,7 +50,9 @@ def hash_configs(merged_config):
     sorted_dict = recursively_sort(merged_config)
     # Needs to be double-encoded because result of jsonpickle is Unicode
     encoded = json.dumps(sorted_dict).encode('utf-8')
-    return hashlib.md5(encoded).hexdigest()
+    ForkedPdb().set_trace()
+    hash = hashlib.md5(encoded).hexdigest()
+    return hash
 
 
 def freeze_params(module):
