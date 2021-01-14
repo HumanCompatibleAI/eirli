@@ -49,7 +49,7 @@ def test_individual_stages(chain_ex, file_observer, stages):
             ray.shutdown()
 
 
-def _time_ray_run(config_to_run, ex):
+def _time_ray_run(ex, config_to_run):
     try:
         start_time = time()
         ex.run(config_updates=config_to_run)
@@ -82,36 +82,16 @@ def test_repl_reuse(chain_ex):
     chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
 
-    try:
-        first_start_time = time()
-        chain_ex.run(config_updates=chain_config)
-        first_runtime = time() - first_start_time
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
+    first_runtime = _time_ray_run(chain_ex, chain_config)
+    second_runtime = _time_ray_run(chain_ex, chain_config)
 
-    try:
-        second_start_time = time()
-        chain_ex.run(config_updates=chain_config)
-        second_runtime = time() - second_start_time
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
 
-    try:
-        modified_config = copy.deepcopy(chain_config)
-        modified_config['spec']['repl']['seed'] \
-            = tune.grid_search([42])
-        third_start_time = time()
-        chain_ex.run(config_updates= modified_config)
-        third_runtime = time() - third_start_time
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
+    modified_config = copy.deepcopy(chain_config)
+    modified_config['spec']['repl']['seed'] = tune.grid_search([42])
+    third_runtime = _time_ray_run(chain_ex, modified_config)
 
     assert second_runtime < first_runtime
     assert third_runtime > second_runtime
-
 
 
 def test_hash_config():
