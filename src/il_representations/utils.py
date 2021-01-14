@@ -29,9 +29,22 @@ class ForkedPdb(pdb.Pdb):
             sys.stdin = _stdin
 
 
+def recursively_sorted_dict(config_dict):
+    """Create an OrderedDict, where all internal nested
+    dicts are also sorted-by-key OrderedDicts"""
+    sorted_dict = collections.OrderedDict()
+    for k in sorted(config_dict.keys()):
+        if isinstance(config_dict[k], collections.Mapping):
+            sorted_dict[k] = recursively_sorted_dict(config_dict[k])
+        else:
+            sorted_dict[k] = config_dict[k]
+    return sorted_dict
+
+
 def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
-    sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
+    sorted_dict = recursively_sorted_dict(merged_config)
+    # Needs to be double-encoded because result of jsonpickle is Unicode
     encoded = jsonpickle.encode(sorted_dict).encode()
     return hashlib.md5(encoded).hexdigest()
 

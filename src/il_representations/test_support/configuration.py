@@ -16,13 +16,14 @@ ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
     'atari_demo_paths': {
         'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
+        # TODO add test data dir here
     },
     'magical_demo_dirs': {
         'MoveToRegion': path.join(TEST_DATA_DIR, 'magical', 'move-to-region'),
     },
     'dm_control_demo_patterns': {
         'reacher-easy':
-        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
+        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz')
     },
 
 }

@@ -274,6 +274,11 @@ def get_repl_dir(log_dir):
         os.makedirs(repl_dir)
     return repl_dir
 
+def resolve_env_cfg(merged_repl_config):
+    merged_config_copy = copy.deepcopy(merged_repl_config)
+    if merged_config_copy.get('is_multitask', False):
+        del merged_config_copy['env_cfg']['task_name']
+    return merged_config_copy
 
 def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
                     shared_configs, config, reuse_repl, repl_encoder_path,
@@ -310,7 +315,8 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     # Used to facilitate reuse of repl runs
     repl_dir = get_repl_dir(log_dir)
     merged_repl_config = merge_configs(rep_ex_config, shared_configs, tune_config_updates, 'repl')
-    repl_hash = hash_configs(merged_repl_config)
+    config_to_hash = resolve_env_cfg(merged_repl_config)
+    repl_hash = hash_configs(config_to_hash)
     pretrained_encoder_path = None
 
     # If we are open to reading in a pretrained repl encoder
@@ -344,9 +350,9 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     # If none of the branches above have found a pretrained path,
     # proceed with repl training as normal
     if pretrained_encoder_path is None:
-        tune_config_updates['repl'].update({
-            'seed': rng.randint(1 << 31),
-        })
+        if merged_repl_config.get('seed') is None:
+            merged_repl_config['seed'] = rng.randint(1 << 31)
+
         pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
 
         pretrained_encoder_path = pretrain_result['encoder_path']
@@ -354,7 +360,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         cache_repl_encoder(pretrained_encoder_path,
                            repl_dir,
                            repl_hash,
-                           tune_config_updates['repl']['seed'])
+                           merged_repl_config['seed'])
 
     # Run il train
     tune_config_updates['il_train'].update({

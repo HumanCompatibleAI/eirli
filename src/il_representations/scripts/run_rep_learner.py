@@ -63,7 +63,7 @@ def default_config():
     # would end up training on more samples from the longer dataset.
     batches_per_epoch = 1000
     n_epochs = 10
-
+    is_multitask = False
     _ = locals()
     del _
 
@@ -113,10 +113,14 @@ def initialize_non_features_extractor(sb3_model):
     sb3_model.policy.init_weights(sb3_model.policy.value_net, 1)
     return sb3_model
 
+def config_specifies_task_name(dataset_config_dict):
+    if 'env_cfg' not in dataset_config_dict:
+        return False
+    return 'task_name' in dataset_config_dict['env_cfg']
 
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
-        torch_num_threads, _config):
+        torch_num_threads, is_multitask, _config):
     # TODO fix to not assume FileStorageObserver always present
 
     log_dir = represent_ex.observers[0].dir
@@ -132,7 +136,14 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     color_space = combined_meta['color_space']
     observation_space = combined_meta['observation_space']
     action_space = combined_meta['action_space']
-
+    dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
+                                        for config_dict in dataset_configs])
+    if is_multitask:
+        assert dataset_configs_multitask, "Parameter `is_multitask` is set, but dataset_configs contain configs " \
+                                          "referencing the current task_name"
+    else:
+        assert not dataset_configs_multitask, "dataset_configs implies a multitask training setup, but " \
+                                              "is_multitask is set to False; please fix to make consistent"
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
     algo_params['augmenter_kwargs'] = {
