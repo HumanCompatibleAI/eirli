@@ -78,7 +78,7 @@ def test_repl_reuse(chain_ex):
         = tune.grid_search([algos.SimCLR])
     random_id = round(time())
 
-    chain_config['repl']['exp_ident'] = 42
+    chain_config['repl']['exp_ident'] = random_id
     chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
 
@@ -112,3 +112,6 @@ def test_hash_config():
                                            "identical config dict do not match"
     assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \
                                               "hash_config result in identical hashes"
+    assert config_hash_1 == '1b88af9e0bdc4a254d5c186fc2931e10', "Hash differs from that on canonical testing machine; " \
+                                                                "either base config has been updated, or consistency" \
+                                                                "has broken"
