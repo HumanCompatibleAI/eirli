@@ -48,6 +48,7 @@ def bc_defaults():
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
+    lr = 1e-4
 
     _ = locals()
     del _
@@ -225,7 +226,7 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
         device=device_name,
         augmentation_fn=augmenter,
         optimizer_cls=th.optim.Adam,
-        optimizer_kwargs=dict(lr=1e-4),
+        optimizer_kwargs=dict(lr=bc['lr']),
         ent_weight=1e-3,
         l2_weight=1e-5,
     )

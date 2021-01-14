@@ -821,6 +821,20 @@ def cfg_il_bc_500k_nofreeze():
 
 
 @chain_ex.named_config
+def cfg_il_bc_200k_nofreeze():
+    il_train = {
+        'algo': 'bc',
+        'bc': {
+            'n_batches': 200000,
+        },
+        'freeze_encoder': False,
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_il_bc_freeze():
     il_train = {
         'algo': 'bc',
