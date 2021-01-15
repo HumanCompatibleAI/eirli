@@ -26,6 +26,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.scripts import experimental_conditions  # noqa: F401
 from il_representations.scripts.chain_configs import make_chain_configs
 from il_representations.scripts.hp_tuning import make_hp_tuning_configs
+from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
@@ -46,6 +47,8 @@ chain_ex = Experiment(
     ])
 cwd = os.getcwd()
 
+
+make_icml_tuning_configs(chain_ex)
 
 # Add configs to experiment for hyperparameter tuning
 # This is to allow us to separate out tuning configs into their own file
