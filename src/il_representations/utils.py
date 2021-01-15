@@ -245,3 +245,14 @@ def load_sacred_pickle(fp, **kwargs):
     """Unpickle an object that may contain Sacred ReadOnlyDict and ReadOnlyList
     objects. It will convert those objects to plain dicts/lists."""
     return SacredUnpickler(fp, **kwargs).load()
+
+
+def up(p):
+    """Return the path *above* whatever object the path `p` points to.
+    Examples:
+
+        up("/foo/bar") == "/foo"
+        up("/foo/bar/") == "/foo
+        up(up(up("foo/bar"))) == ".."
+    """
+    return os.path.normpath(os.path.join(p, ".."))

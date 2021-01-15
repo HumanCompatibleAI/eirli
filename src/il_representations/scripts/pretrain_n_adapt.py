@@ -5,7 +5,6 @@ from glob import glob
 import logging
 import os
 import os.path as osp
-from os.path import dirname as up
 from time import time
 import weakref
 
@@ -30,7 +29,7 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
-from il_representations.utils import hash_configs
+from il_representations.utils import hash_configs, up
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -237,6 +236,24 @@ def report_experiment_result(sacred_result):
     tune.report(**filtered_result)
 
 
+def relative_symlink(src, dst):
+    link_dir_abs, link_fn = os.path.split(os.path.abspath(dst))
+    if not link_fn:
+        raise ValueError(f"path dst='{dst}' has empty basename")
+    # absolute path to src, and path relative to link_dir
+    src_abspath = os.path.abspath(src)
+    src_relpath = os.path.relpath(src_abspath, start=link_dir_abs)
+
+    os.makedirs(link_dir_abs, exist_ok=True)
+    link_dir_fd = os.open(link_dir_abs, os.O_RDONLY)
+    try:
+        # both src_relpath and link_fn are relative to link_dir, which is
+        # represented by the file descriptor link_dir_fd
+        os.symlink(src_relpath, link_fn, dir_fd=link_dir_fd)
+    finally:
+        os.close(link_dir_fd)
+
+
 def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
                        config_hash, seed, config_path=None):
     """
@@ -254,12 +271,11 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
     if config_path is None:
         config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')
     dir_name = f"{config_hash}_{seed}_{round(time())}"
-    os.makedirs(os.path.join(repl_directory_dir, dir_name))
     logging.info(f"Symlinking encoder path under the directory {dir_name}")
-    os.symlink(repl_encoder_path,
-               os.path.join(repl_directory_dir, dir_name, 'repl_encoder'))
-    os.symlink(config_path,
-               os.path.join(repl_directory_dir, dir_name, 'config.json'))
+    encoder_link = os.path.join(repl_directory_dir, dir_name, 'repl_encoder')
+    config_link = os.path.join(repl_directory_dir, dir_name, 'config.json')
+    relative_symlink(repl_encoder_path, encoder_link)
+    relative_symlink(config_path, config_link)
 
 
 def get_repl_dir(log_dir):
