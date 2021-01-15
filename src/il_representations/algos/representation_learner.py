@@ -212,28 +212,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return extra_context
         return self._preprocess(extra_context)
 
-    def _save_batch_data(self, save_name, save_dict):
-        """Save some input and/or output data to a directory for future
-        analysis. Useful for saving input batches for visual inspection."""
-        out_dir = os.path.join(self.log_dir, save_name)
-        os.makedirs(out_dir, exist_ok=True)
-        for key, value in save_dict.items():
-            # replace special chars with '-'
-            out_filename_prefix = re.sub(r'[^\w_ \-]', '-', key)
-            out_path_prefix = os.path.join(out_dir, out_filename_prefix)
-
-            # first save as Torch pickle
-            torch.save(value, out_path_prefix + '.th')
-
-            # also save as image if it looks like a stack of observations
-            # (this is super heuristic, but if it breaks we at least have the
-            # .th files to fall back on)
-            obs_shape = self.observation_space.shape
-            obs_ndim = len(obs_shape)
-            if torch.is_tensor(value) and value.shape[-obs_ndim:] == obs_shape:
-                rgb_grid = image_tensor_to_rgb_grid(value, self.color_space)
-                save_rgb_tensor(rgb_grid, out_path_prefix + '.png')
-
     # TODO maybe make static?
     def unpack_batch(self, batch):
         """
@@ -247,7 +225,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, datasets, batches_per_epoch, n_epochs):
+    def learn(self, datasets, batches_per_epoch, n_epochs, callbacks=(),
+              end_callbacks=()):
         """Run repL training loop.
 
         Args:
@@ -261,6 +240,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
             n_epochs (int): the total number of 'epochs' of optimisation to
                 perform. Total number of updates will be `batches_per_epoch *
                 n_epochs`.
+            callbacks ([dict -> None]): list of functions to call at the
+                end of each batch, after computing the loss and updating the
+                network but before dumping logs. Will be provided with all
+                local variables.
+            end_callbacks ([dict -> None]): these callbacks will only be
+                called once, at the end of training.
 
         Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
             `loss_record` is a list of average loss values encountered at each
@@ -339,26 +324,17 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
 
-                if (self.save_first_last_batches and step == 0
-                    and epoch_num == 1):
-                    self._save_batch_data(
-                        'first_batch',
-                        dict(contexts=contexts,
-                             targets=targets,
-                             extra_context=extra_context,
-                             traj_ts_info=traj_ts_info))
-
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
                 encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
                 encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
                 # Typically the identity function
-                extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
+                encoded_extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
-                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
-                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
+                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
+                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, encoded_extra_context)
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic
@@ -375,6 +351,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 loss.backward()
                 self.optimizer.step()
                 del loss  # so we don't use again
+
+                for callback in callbacks:
+                    callback(locals())
 
                 gradient_norm, weight_norm = self._calculate_norms()
 
@@ -410,6 +389,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg)
 
             # save checkpoint on last epoch, or at regular interval
+            # TODO(sam): replace this saving code with callbacks
             is_last_epoch = epoch_num == n_epochs
             should_save_checkpoint = (is_last_epoch or
                                       epoch_num % self.save_interval == 0)
@@ -420,13 +400,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 torch.save(self.decoder, os.path.join(
                     self.decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
 
-            # optionally save batch on last batch of last epoch
-            if self.save_first_last_batches and is_last_epoch:
-                self._save_batch_data('last_batch',
-                                      dict(contexts=contexts,
-                                           targets=targets,
-                                           extra_context=extra_context,
-                                           traj_ts_info=traj_ts_info))
+        for callback in end_callbacks:
+            callback(locals())
 
         # if we were not scheduled to dump on the last batch we trained on,
         # then do one last log dump to make sure everything is there
