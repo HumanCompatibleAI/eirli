@@ -166,10 +166,11 @@ def rewrite_dataset_magical(task_name, n_traj, new_data_root):
 
     # copy those paths over directly to the output directory
     out_dir = os.path.join(new_data_root, magical_demo_dirs[task_name])
+    os.makedirs(out_dir, exist_ok=True)
     logging.info(f"Copying {len(demo_paths)} trajectory files to '{out_dir}':")
     for count, demo_path in enumerate(demo_paths, start=1):
-        rel_demo_path = os.path.relpath(demo_path, start=data_root)
-        out_demo_path = os.path.join(out_dir, rel_demo_path)
+        base_name = os.path.basename(demo_path)
+        out_demo_path = os.path.join(out_dir, base_name)
         logging.info(
             f"  [{count}/{n_traj}] Copying '{demo_path}' -> '{out_demo_path}'")
         shutil.copy2(demo_path, out_demo_path)

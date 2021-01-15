@@ -2,6 +2,7 @@ import inspect
 import logging
 import os
 import re
+import time
 
 import imitation.util.logger as logger
 import numpy as np
@@ -320,6 +321,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # Set encoder and decoder to be in training mode
 
             samples_seen = 0
+            timer_start = time.time()
+            timer_last_batches_trained = batches_trained
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
@@ -375,6 +378,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 gradient_norm, weight_norm = self._calculate_norms()
 
+                # measure time per batch & restart counted
+                time_per_batch = (time.time() - timer_start) \
+                    / max(1, batches_trained - timer_last_batches_trained)
+                timer_start = time.time()
+                timer_last_batches_trained = batches_trained
+
                 loss_meter.update(loss_item)
                 logger.sb_logger.record_mean('loss', loss_item)
                 logger.sb_logger.record_mean(
@@ -383,6 +392,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 logger.record('epoch', epoch_num)
                 logger.record('within_epoch_step', step)
                 logger.record('batches_trained', batches_trained)
+                logger.record('time_per_batch', time_per_batch)
+                logger.record('time_per_ksample', 1000 * time_per_batch / self.batch_size)
                 if batches_trained % self.log_interval == 0:
                     logger.dump(step=batches_trained)
                 batches_trained += 1
