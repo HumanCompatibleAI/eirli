@@ -260,3 +260,14 @@ class RepLSaveCallback:
                 save_path = save_path_no_suffix + '.pt'
                 # will save with Torch's generic serialisation code
                 th.save(save_value, save_path)
+
+
+class SigmoidRescale(th.nn.Module):
+    """Rescales input to be in [min_val, max_val]; useful for pixel decoder."""
+    def __init__(self, min_val, max_val):
+        super().__init__()
+        self.min_val = min_val
+        self.val_range = max_val - min_val
+
+    def forward(self, x):
+        return th.sigmoid(x) * self.val_range + self.min_val
