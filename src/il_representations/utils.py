@@ -218,7 +218,7 @@ class RepLSaveCallback:
 
         # check whether we should save anything
         should_save = self.last_save is None \
-            or self.last_save + self.save_interval_batches >= batches_trained
+            or self.last_save + self.save_interval_batches <= batches_trained
         if not should_save:
             return
         self.last_save = batches_trained
