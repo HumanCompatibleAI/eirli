@@ -193,7 +193,7 @@ def rewrite_dataset_dm_control(task_name, dm_control_full_env_names, n_traj,
         os.makedirs(out_dir, exist_ok=True)
 
     # finally, use cloudpickle to write out the result
-    logging.log(f"Writing result to '{out_path}'")
+    logging.info(f"Writing result to '{out_path}'")
     with gzip.GzipFile(out_path, 'wb') as fp:
         cloudpickle.dump(loaded_trajs, fp)
 

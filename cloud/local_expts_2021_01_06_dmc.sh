@@ -7,7 +7,6 @@ set -e
 # override three-seed config to do five seeds instead. Also make sure that
 # HalfCheetah always uses the extended dataset.
 base_cfgs="cfg_base_3seed_1cpu_pt5gpu_2envs tune_run_kwargs.num_samples=5 ray_init_kwargs.num_cpus=8 cfg_data_il_hc_extended"
-cluster_cfg_path="./gcp_cluster_sam.yaml"
 
 for il in cfg_il_bc_500k_nofreeze; do
     froco="$([[ "$il" == *_nofreeze  ]] || echo '_froco')"
