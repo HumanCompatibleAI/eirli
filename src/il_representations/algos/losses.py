@@ -268,7 +268,7 @@ class VAELoss(RepresentationLoss):
     KL divergence between a Normal distribution prior on z and
     the conditioned-on-x z distribution
     """
-    def __init__(self, device, sample=False, beta=1e-3, prior_scale=1.0):
+    def __init__(self, device, sample=False, beta=1e-5, prior_scale=1.0):
         super().__init__(device, sample)
         self.beta = beta  # The relative weight on the KL Divergence/regularization loss, relative to reconstruction
         self.prior_scale = prior_scale  # The scale parameter used to construct prior used in KLD
