@@ -1,7 +1,7 @@
 from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders
 import collections
 from copy import deepcopy
-
+from il_representations.scripts.utils import StagesToRun
 
 def get_space_and_ref_configs(contrastive=True):
     if contrastive:
@@ -49,7 +49,7 @@ def make_hp_tuning_configs(experiment_obj):
         use_skopt = True
         skopt_search_mode = 'max'
         metric = 'return_mean'
-        stages_to_run = "REPL_AND_IL"
+        stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             # this isn't a lot of training, but should be enough to tell whether
             # loss goes down quickly
