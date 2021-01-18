@@ -690,6 +690,17 @@ def cfg_repl_temporal_cpc():
 
 
 @chain_ex.named_config
+def cfg_data_use_icml_on_chai_machines():
+    # use data for ICML when running on perceptron/svm
+    env_data = {
+        'data_root': '/scratch/sam/ilr-data-icml/',
+    }
+
+    _ = locals()
+    del _
+
+
+@chain_ex.named_config
 def cfg_data_repl_demos_random():
     """Training on both demos and random rollouts for the current
     environment."""
