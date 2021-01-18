@@ -161,6 +161,7 @@ def load_dataset_dm_control(task_name, dm_control_full_env_names,
 @env_cfg_ingredient.capture
 def rewrite_dataset_dm_control(task_name, dm_control_full_env_names, n_traj,
                                new_data_root):
+    """Truncate a dm_control dataset to some new length."""
     dm_control_demo_patterns, data_root = _get_data_cfg()
     # load data from all relevant paths
     data_pattern = dm_control_demo_patterns[task_name]

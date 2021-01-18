@@ -146,6 +146,7 @@ def load_dataset_magical(
 
 @env_cfg_ingredient.capture
 def rewrite_dataset_magical(task_name, n_traj, new_data_root):
+    """Truncate a MAGICAL dataset to some new length."""
     # select the demo paths we want to load
     magical_demo_dirs, data_root = _get_magical_data_cfg()
     demo_dir = os.path.join(data_root, magical_demo_dirs[task_name])

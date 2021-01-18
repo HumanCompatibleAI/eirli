@@ -7,6 +7,9 @@ from stable_baselines3.common.callbacks import BaseCallback
 
 
 class SB3ScoreLoggingCallback(BaseCallback):
+    """Callback for SB3 RL algorithms which extracts the 'eval_score' from the
+    step info dict (if it exists) and includes it in the logs. Useful for
+    MAGICAL, which reports end-of-trajectory performance using `eval_score`."""
     def __init__(self, verbose=0):
         super().__init__(verbose)
         self._scores = None
