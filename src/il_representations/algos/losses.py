@@ -267,6 +267,10 @@ class VAELoss(RepresentationLoss):
     An additive combination of negative log likelihood and
     KL divergence between a Normal distribution prior on z and
     the conditioned-on-x z distribution
+
+    Note that beta of 1e-6 gives ~perfect autoencoding on finger-spin after
+    10,000 batches. Pushing it up to 1e-5 makes it slightly noisier. Starts to
+    struggle around 1e-4, and doesn't learn anything around 1e-3.
     """
     def __init__(self, device, sample=False, beta=1e-5, prior_scale=1.0):
         super().__init__(device, sample)
