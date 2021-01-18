@@ -48,6 +48,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  action_space,
                  log_dir,
                  log_interval=100,
+                 calc_log_interval=10,
                  encoder=None,
                  decoder=None,
                  loss_calculator=None,
@@ -84,6 +85,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
         self.log_interval = log_interval
+        self.calc_log_interval = calc_log_interval
         logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
@@ -344,9 +346,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-                loss_item = loss.item()
-                assert not np.isnan(loss_item), "Loss is not NAN"
-                loss_meter.update(loss_item)
+                if batches_trained % self.calc_log_interval == 0:
+                    loss_item = loss.item()
+                    assert not np.isnan(loss_item), "Loss is NaN"
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -355,26 +357,29 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 for callback in callbacks:
                     callback(locals())
 
-                gradient_norm, weight_norm = self._calculate_norms()
-
                 # measure time per batch & restart counted
                 time_per_batch = (time.time() - timer_start) \
                     / max(1, batches_trained - timer_last_batches_trained)
                 timer_start = time.time()
                 timer_last_batches_trained = batches_trained
 
-                loss_meter.update(loss_item)
-                logger.sb_logger.record_mean('loss', loss_item)
-                logger.sb_logger.record_mean(
-                    'gradient_norm', gradient_norm.item())
-                logger.sb_logger.record_mean('weight_norm', weight_norm.item())
-                logger.record('epoch', epoch_num)
-                logger.record('within_epoch_step', step)
-                logger.record('batches_trained', batches_trained)
-                logger.record('time_per_batch', time_per_batch)
-                logger.record('time_per_ksample', 1000 * time_per_batch / self.batch_size)
+                if batches_trained % self.calc_log_interval == 0:
+                    gradient_norm, weight_norm = self._calculate_norms()
+
+                    loss_meter.update(loss_item)
+                    logger.sb_logger.record_mean('loss', loss_item)
+                    logger.sb_logger.record_mean(
+                        'gradient_norm', gradient_norm.item())
+                    logger.sb_logger.record_mean('weight_norm', weight_norm.item())
+                    logger.record('epoch', epoch_num)
+                    logger.record('within_epoch_step', step)
+                    logger.record('batches_trained', batches_trained)
+                    logger.record('time_per_batch', time_per_batch)
+                    logger.record('time_per_ksample', 1000 * time_per_batch / self.batch_size)
+
                 if batches_trained % self.log_interval == 0:
                     logger.dump(step=batches_trained)
+
                 batches_trained += 1
                 samples_seen += len(contexts)
 
