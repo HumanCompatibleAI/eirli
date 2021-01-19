@@ -6,7 +6,7 @@ import warnings
 from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
-from torchvision.models.resnet import BasicBlock
+from torchvision.models.resnet import BasicResidualBlock as BasicResidualBlock
 import torch
 from torch import nn
 from pyro.distributions import Delta
@@ -192,58 +192,17 @@ class MAGICALCNN(nn.Module):
         # If block_type == magical, use MAGICAL block from its paper.
         assert arch_str in NETWORK_ARCHITECTURE_DEFINITIONS.keys()
         width = 1 if 'resnet' in arch_str else 2
-        def conv_block(in_chans, out_chans, kernel_size, stride, padding):
-            # We sometimes disable bias because batch norm has its own bias.
-            conv_layer = nn.Conv2d(
-                in_chans,
-                out_chans,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                bias=not use_bn,
-                padding_mode='zeros')
-
-            if use_sn:
-                # apply spectral norm if necessary
-                conv_layer = nn.utils.spectral_norm(conv_layer)
-
-            layers = [conv_layer]
-
-            if dropout:
-                # dropout after conv, but before activation
-                # (doesn't matter for ReLU)
-                layers.append(nn.Dropout2d(dropout))
-
-            layers.append(ActivationCls())
-
-            if use_bn:
-                # Insert BN layer after convolution (and optionally after
-                # dropout). I doubt order matters much, but see here for
-                # CONTROVERSY:
-                # https://github.com/keras-team/keras/issues/1802#issuecomment-187966878
-                layers.append(nn.BatchNorm2d(out_chans))
-
-            return layers
 
         w = width
         self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS[arch_str]
         conv_layers = []
         in_dim = observation_space.shape[0]
 
-        block = conv_block
+        block = magical_conv_block
         if 'resnet' in arch_str:
-            block = BasicBlock
+            block = BasicResidualBlock
         for layer_definition in self.architecture_definition:
-            if 'resnet' not in arch_str:
-                block_kwargs = {
-                    'stride': layer_definition['stride'],
-                    'kernel_size': layer_definition['kernel_size'],
-                    'padding': layer_definition['padding']
-                }
-                conv_layers += block(in_dim,
-                                     layer_definition['out_dim']*w,
-                                     **block_kwargs)
-            else:
+            if 'resnet' in arch_str:
                 block_kwargs = {
                     'stride': layer_definition['stride'],
                     'downsample': nn.Sequential(nn.Conv2d(in_dim,
@@ -255,6 +214,18 @@ class MAGICALCNN(nn.Module):
                 conv_layers += [block(in_dim,
                                       layer_definition['out_dim'] * w,
                                       **block_kwargs)]
+            else:
+                block_kwargs = {
+                    'stride': layer_definition['stride'],
+                    'kernel_size': layer_definition['kernel_size'],
+                    'padding': layer_definition['padding'],
+                    'use_bn': use_bn,
+                    'dropout': dropout,
+                    'activation_cls': ActivationCls
+                }
+                conv_layers += block(in_dim,
+                                     layer_definition['out_dim'] * w,
+                                     **block_kwargs)
 
             in_dim = layer_definition['out_dim']*w
         if 'resnet' in arch_str:
@@ -299,6 +270,40 @@ def get_obs_encoder_cls(obs_encoder_cls):
         except KeyError:
             raise ValueError(f"Unknown encoder name '{obs_encoder_cls}'")
     return obs_encoder_cls
+
+
+def magical_conv_block(in_chans, out_chans, kernel_size, stride, padding, use_bn, dropout, activation_cls):
+    # We sometimes disable bias because batch norm has its own bias.
+    conv_layer = nn.Conv2d(
+        in_chans,
+        out_chans,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        bias=not use_bn,
+        padding_mode='zeros')
+
+    if use_sn:
+        # apply spectral norm if necessary
+        conv_layer = nn.utils.spectral_norm(conv_layer)
+
+    layers = [conv_layer]
+
+    if dropout:
+        # dropout after conv, but before activation
+        # (doesn't matter for ReLU)
+        layers.append(nn.Dropout2d(dropout))
+
+    layers.append(activation_cls())
+
+    if use_bn:
+        # Insert BN layer after convolution (and optionally after
+        # dropout). I doubt order matters much, but see here for
+        # CONTROVERSY:
+        # https://github.com/keras-team/keras/issues/1802#issuecomment-187966878
+        layers.append(nn.BatchNorm2d(out_chans))
+
+    return layers
 
 
 class Encoder(nn.Module):
