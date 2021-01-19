@@ -94,7 +94,7 @@ def make_icml_tuning_configs(experiment_obj):
                 'algo_params': {'loss_calculator': losses.CEBLoss}}
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
-            ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.25, 'log-uniform')),
+            ('repl:algo_params:loss_calculator_kwargs:beta', (1e-10, 0.25, 'log-uniform')),
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:': 0.1,
