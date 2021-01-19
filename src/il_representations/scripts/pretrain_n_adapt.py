@@ -516,11 +516,11 @@ def cfg_bench_short_sweep_dm_control():
             } for dm_control_env_name in [
                 # to gauge how hard these are, see
                 # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
-                # 'reacher-easy',
+                'reacher-easy',
                 'finger-spin',
-                # 'ball-in-cup-catch',
-                # 'cartpole-swingup',
-                'cheetah-run',
+                'ball-in-cup-catch',
+                'cartpole-swingup',
+                # 'cheetah-run',
                 # 'walker-walk',
                 # 'reacher-easy',
             ]
