@@ -221,6 +221,7 @@ class MAGICALCNN(nn.Module):
                     'kernel_size': layer_definition['kernel_size'],
                     'padding': layer_definition['padding'],
                     'use_bn': use_bn,
+                    'use_sn': use_sn,
                     'dropout': dropout,
                     'activation_cls': ActivationCls
                 }
@@ -280,7 +281,7 @@ def get_obs_encoder_cls(obs_encoder_cls, encoder_kwargs):
     return cls
 
 
-def magical_conv_block(in_chans, out_chans, kernel_size, stride, padding, use_bn, dropout, activation_cls):
+def magical_conv_block(in_chans, out_chans, kernel_size, stride, padding, use_bn, use_sn, dropout, activation_cls):
     # We sometimes disable bias because batch norm has its own bias.
     conv_layer = nn.Conv2d(
         in_chans,

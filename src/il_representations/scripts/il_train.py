@@ -122,6 +122,7 @@ def default_config():
     encoder_kwargs = dict(
         obs_encoder_cls='MAGICALCNN',
         representation_dim=128,
+        obs_encoder_cls_kwargs={}
     )
 
     _ = locals()
