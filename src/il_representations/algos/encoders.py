@@ -274,9 +274,8 @@ def get_obs_encoder_cls(obs_encoder_cls, encoder_kwargs):
             raise ValueError(f"Unknown encoder name '{obs_encoder_cls}'")
 
     # Ensure the specified kwargs are in the encoder's parameters
-    if encoder_kwargs is not None:
-        for key in encoder_kwargs.keys():
-            assert key in inspect.signature(cls).parameters.keys()
+    for key in encoder_kwargs.keys():
+        assert key in inspect.signature(cls).parameters.keys()
 
     return cls
 
@@ -357,6 +356,8 @@ class BaseEncoder(Encoder):
                 :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
          """
         super().__init__()
+        if obs_encoder_cls_kwargs is None:
+            obs_encoder_cls_kwargs = {}
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
         self.learn_scale = learn_scale
         if self.learn_scale:
