@@ -2,11 +2,12 @@ import copy
 import os
 import traceback
 import warnings
+import inspect
 
 from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
-from torchvision.models.resnet import BasicResidualBlock as BasicResidualBlock
+from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 import torch
 from torch import nn
 from pyro.distributions import Delta
@@ -261,15 +262,22 @@ NETWORK_SHORT_NAMES = {
 }
 
 
-def get_obs_encoder_cls(obs_encoder_cls):
+def get_obs_encoder_cls(obs_encoder_cls, encoder_kwargs):
+    cls = None
     if obs_encoder_cls is None:
-        return MAGICALCNN
+        cls = MAGICALCNN
     if isinstance(obs_encoder_cls, str):
         try:
-            return NETWORK_SHORT_NAMES[obs_encoder_cls]
+            cls = NETWORK_SHORT_NAMES[obs_encoder_cls]
         except KeyError:
             raise ValueError(f"Unknown encoder name '{obs_encoder_cls}'")
-    return obs_encoder_cls
+
+    # Ensure the specified kwargs are in the encoder's parameters
+    if encoder_kwargs is not None:
+        for key in encoder_kwargs.keys():
+            assert key in inspect.signature(cls).parameters.keys()
+
+    return cls
 
 
 def magical_conv_block(in_chans, out_chans, kernel_size, stride, padding, use_bn, dropout, activation_cls):
@@ -328,7 +336,7 @@ class Encoder(nn.Module):
 
 class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
-                 learn_scale=False, latent_dim=None, scale_constant=1, arch_str=None):
+                 learn_scale=False, latent_dim=None, scale_constant=1, obs_encoder_cls_kwargs=None):
         """
                 :param obs_space: The observation space that this Encoder will be used on
                 :param representation_dim: The number of dimensions of the representation
@@ -345,22 +353,19 @@ class BaseEncoder(Encoder):
                        If not set, this defaults to representation_dim * 2.
                 :param scale_constant: The constant value that will be returned if learn_scale is
                        set to False.
-                :param arch_str: Specify the architecture of the encoder.
+                :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
          """
         super().__init__()
-        kwargs = {}
-        if obs_encoder_cls == 'MAGICALCNN' and arch_str != None:
-            kwargs['arch_str'] = arch_str
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
         self.learn_scale = learn_scale
         if self.learn_scale:
             if latent_dim is None:
                 latent_dim = representation_dim * 2
-            self.network = obs_encoder_cls(obs_space, latent_dim, **kwargs)
+            self.network = obs_encoder_cls(obs_space, latent_dim, **obs_encoder_cls_kwargs)
             self.mean_layer = nn.Linear(latent_dim, representation_dim)
             self.scale_layer = nn.Linear(latent_dim, representation_dim)
         else:
-            self.network = obs_encoder_cls(obs_space, representation_dim, **kwargs)
+            self.network = obs_encoder_cls(obs_space, representation_dim, **obs_encoder_cls_kwargs)
             self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
