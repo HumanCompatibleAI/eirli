@@ -231,7 +231,7 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_space = collections.OrderedDict([
             ('il_train:gail:ppo_n_steps', (8, 64)),
             ('il_train:gail:ppo_n_epochs', (4, 12)),
-            ('il_train_gail:ppo_batch_size', (16, 64)),
+            ('il_train:gail:ppo_batch_size', (16, 64)),
             ('il_train:gail:ppo_init_learning_rate', (1e-6, 1e-3, 'log-uniform')),
             ('il_train:gail:ppo_gamma', (0.8, 0.9999, 'log-uniform')),
             ('il_train:gail:ppo_gae_lambda', (0.8, 0.9999, 'log-uniform')),
@@ -244,7 +244,7 @@ def make_hp_tuning_configs(experiment_obj):
             collections.OrderedDict([
                 ('il_train:gail:ppo_n_steps', 8),
                 ('il_train:gail:ppo_n_epochs', 8),
-                ('il_train_gail:ppo_batch_size', 32),
+                ('il_train:gail:ppo_batch_size', 32),
                 ('il_train:gail:ppo_init_learning_rate', 6e-5),
                 ('il_train:gail:ppo_gamma', 0.9),
                 ('il_train:gail:ppo_gae_lambda', 0.9),
