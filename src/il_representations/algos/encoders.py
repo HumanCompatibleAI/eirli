@@ -119,8 +119,8 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
         ],
     'MAGICALCNN-resnet': [
-            {'out_dim': 64, 'stride': 4},
-            {'out_dim': 128, 'stride': 2},
+            {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
         ],
     'MAGICALCNN-small': [
             {'out_dim': 32, 'kernel_size': 5, 'stride': 2, 'padding': 2},
@@ -203,7 +203,7 @@ class MAGICALCNN(nn.Module):
         if 'resnet' in arch_str:
             block = BasicResidualBlock
         for layer_definition in self.architecture_definition:
-            if 'resnet' in arch_str:
+            if layer_definition.get('residual', False):
                 block_kwargs = {
                     'stride': layer_definition['stride'],
                     'downsample': nn.Sequential(nn.Conv2d(in_dim,
