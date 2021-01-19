@@ -20,6 +20,7 @@ import torch
 import torch.nn.functional as F
 from il_representations.algos.utils import independent_multivariate_normal
 from il_representations.algos.encoders import NETWORK_ARCHITECTURE_DEFINITIONS, compute_output_shape
+from il_representations.utils import SigmoidRescale
 import gym.spaces as spaces
 from stable_baselines3.common.distributions import make_proba_distribution
 import numpy as np
@@ -352,7 +353,8 @@ def compute_decoder_input_shape_from_encoder(observation_space, encoder_arch):
 class PixelDecoder(LossDecoder):
     def __init__(self, representation_dim, projection_shape, observation_space, *,
                  action_representation_dim=None, sample=False, encoder_arch_key=None,
-                 learn_scale=False, constant_stddev=0.1):
+                 learn_scale=False, constant_stddev=0.1, pixel_min=0.0,
+                 pixel_max=1.0):
 
         assert isinstance(observation_space, spaces.Box)
         # Assert that the observation space is a 3D box
@@ -415,10 +417,13 @@ class PixelDecoder(LossDecoder):
         self.decoder = nn.Sequential(*decoder_layers)
         # A final layer to produce each of mean and stdev
         # that doesn't change image dimensions
-        self.mean_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
-                                                  out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?
-                                                  kernel_size=3,
-                                                  padding=1)) # This isn't always positive; is that okay?
+        self.mean_layer = nn.Sequential(
+            nn.Conv2d(reversed_architecture[-1]['out_dim'],
+                      # TODO assumes channels are 0th dim?
+                      out_channels=observation_space.shape[0],
+                      kernel_size=3, padding=1),
+            # puts pixel values in [0,1]
+            SigmoidRescale(pixel_min, pixel_max))
         if self.learn_scale:
             self.std_layer = nn.Sequential(nn.Conv2d(reversed_architecture[-1]['out_dim'],
                                                       out_channels=observation_space.shape[0], # TODO assumes channels are 0th dim?

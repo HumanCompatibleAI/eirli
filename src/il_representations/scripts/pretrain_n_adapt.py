@@ -1,9 +1,11 @@
 import collections
 import copy
-import enum
+from glob import glob
 import logging
 import os
 import os.path as osp
+from os.path import dirname as up
+from time import time
 import weakref
 
 import numpy as np
@@ -21,11 +23,13 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
 from il_representations.scripts import experimental_conditions  # noqa: F401
+from il_representations.scripts.chain_configs import make_chain_configs
 from il_representations.scripts.hp_tuning import make_hp_tuning_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
-from il_representations.scripts.utils import detect_ec2, sacred_copy, update
+from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
+from il_representations.utils import hash_configs
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -42,17 +46,13 @@ chain_ex = Experiment(
 cwd = os.getcwd()
 
 
-class StagesToRun(str, enum.Enum):
-    """These enum flags are used to control whether the script tunes RepL, or
-    IL, or both."""
-    REPL_AND_IL = "REPL_AND_IL"
-    REPL_ONLY = "REPL_ONLY"
-    IL_ONLY = "IL_ONLY"
-
-
 # Add configs to experiment for hyperparameter tuning
 # This is to allow us to separate out tuning configs into their own file
 make_hp_tuning_configs(chain_ex)
+
+# Add all other configs
+# DO NOT ADD MORE CONFIGS TO pretrain_n_adapt.py! Add them to a separate file
+make_chain_configs(chain_ex)
 
 
 def get_stages_to_run(stages_to_run):
@@ -122,12 +122,8 @@ def expand_dict_keys(config_dict):
     return new_dict
 
 
-def run_single_exp(inner_ex_config, shared_configs, tune_config_updates,
-                   log_dir, exp_name):
+def merge_configs(inner_ex_config, shared_configs, tune_config_updates, exp_name):
     """
-    Run a specified experiment. We could not pass each Sacred experiment in
-    because they are not pickle serializable, which is not supported by Ray
-    (when running this as a remote function).
 
     params:
         inner_ex_config: The current experiment's default config.
@@ -139,22 +135,14 @@ def run_single_exp(inner_ex_config, shared_configs, tune_config_updates,
         log_dir: The log directory of current chain experiment.
         exp_name: Specify the experiment type in ['repl', 'il_train',
             'il_test']
+    :return: The merged config that should be passed into experiment `exp_name`,
+             accounting for base config, shared configs, and tune updates
     """
-    # we need to run the workaround in each raylet, so we do it at the start of
-    # run_single_exp
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-    from il_representations.scripts.il_test import il_test_ex
-    from il_representations.scripts.il_train import il_train_ex
-    from il_representations.scripts.run_rep_learner import represent_ex
-
     if exp_name == 'repl':
-        inner_ex = represent_ex
         allowed_shared_config_keys = {'env_cfg', 'env_data'}
     elif exp_name == 'il_train':
-        inner_ex = il_train_ex
         allowed_shared_config_keys = {'env_cfg', 'env_data', 'venv_opts'}
     elif exp_name == 'il_test':
-        inner_ex = il_test_ex
         allowed_shared_config_keys = {'env_cfg', 'venv_opts'}
     else:
         raise ValueError(f"cannot process exp type '{exp_name}'")
@@ -184,6 +172,38 @@ def run_single_exp(inner_ex_config, shared_configs, tune_config_updates,
         merged_config = update(
             merged_config,
             {root_key: tune_config_updates.get(root_key, {})})
+    return merged_config
+
+
+def run_single_exp(merged_config, log_dir, exp_name):
+    """
+    Run a specified experiment. We could not pass each Sacred experiment in
+    because they are not pickle serializable, which is not supported by Ray
+    (when running this as a remote function).
+
+    params:
+        merged_config: The config that should be used in the sub-experiment;
+                       formed by calling merge_configs()
+        log_dir: The log directory of current chain experiment.
+        exp_name: Specify the experiment type in ['repl', 'il_train',
+            'il_test']
+    """
+    # we need to run the workaround in each raylet, so we do it at the start of
+    # run_single_exp
+    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+    from il_representations.scripts.il_test import il_test_ex
+    from il_representations.scripts.il_train import il_train_ex
+    from il_representations.scripts.run_rep_learner import represent_ex
+
+    if exp_name == 'repl':
+        inner_ex = represent_ex
+    elif exp_name == 'il_train':
+        inner_ex = il_train_ex
+    elif exp_name == 'il_test':
+        inner_ex = il_test_ex
+    else:
+        raise NotImplementedError(f"exp_name must be one of repl, il_train, or il_test. Value passed in: {exp_name}")
+
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
     ret_val = inner_ex.run(config_updates=merged_config)
@@ -216,8 +236,47 @@ def report_experiment_result(sacred_result):
     tune.report(**filtered_result)
 
 
+def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
+                       config_hash, seed, config_path=None):
+    """
+    A utility function for taking a trained repl encoder and symlinking it, with appropriate
+    searchable directory name, to the repl run directory
+
+    :param repl_encoder_path: A path to an encoder checkpoint file. Assumed to be within a /checkpoints dir
+    within a run of the `repl` experiment
+    :param repl_directory_dir: The directory where the symlinked listing of repl encoder should be stored
+    :param config_hash: The hash identifying the config attached to this repl run
+    :param seed: The seed for this repl run
+    :param config_path: The path to the config file for this repl run. If None, will try to search relative to
+                        repl_encoder_path
+    """
+    if config_path is None:
+        config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')
+    dir_name = f"{config_hash}_{seed}_{round(time())}"
+    os.makedirs(os.path.join(repl_directory_dir, dir_name))
+    logging.info(f"Symlinking encoder path under the directory {dir_name}")
+    os.symlink(repl_encoder_path,
+               os.path.join(repl_directory_dir, dir_name, 'repl_encoder'))
+    os.symlink(config_path,
+               os.path.join(repl_directory_dir, dir_name, 'config.json'))
+
+
+def get_repl_dir(log_dir):
+    """
+    A utility function for returning a repl directory location relative to logdir,
+    and creating one if it does not exist
+    :param log_dir:
+    :return:
+    """
+    repl_dir = os.path.join(up(up(log_dir)), 'all_repl')
+    if not os.path.exists(repl_dir):
+        os.makedirs(repl_dir)
+    return repl_dir
+
+
 def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
-                    shared_configs, config, log_dir):
+                    shared_configs, config, reuse_repl, repl_encoder_path,
+                    full_run_start_time, log_dir):
     """
     Run representation learning, imitation learning's training and testing
     sequentially.
@@ -234,27 +293,77 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
             update.
         shared_configs: Config keys shared between two or more experiments.
         config: The config generated by Ray tune for hyperparameter tuning
+        reuse_repl: An enum value determining whether, in our end2end experiment,
+            we should kick off a new RepL run, or else attempt to load one in
+            that previously exists
+        repl_encoder_path: A string parameter, set by default to None, allows
+            us to hardcode a path from which to load a pretrained RepL encoder.
+            In this situation, hardcoding overrides inference of which prior
+            RepL run we should read in
         log_dir: The log directory of current chain experiment.
     """
     rng, tune_config_updates = setup_run(config)
     del config  # I want a new name for it
 
-    # Run representation learning
-    tune_config_updates['repl'].update({
-        'seed': rng.randint(1 << 31),
-    })
-    pretrain_result = run_single_exp(rep_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'repl')
+    # Get the directory to store repl runs, and the hash for this config
+    # Used to facilitate reuse of repl runs
+    repl_dir = get_repl_dir(log_dir)
+    merged_repl_config = merge_configs(rep_ex_config, shared_configs, tune_config_updates, 'repl')
+    repl_hash = hash_configs(merged_repl_config)
+    pretrained_encoder_path = None
+
+    # If we are open to reading in a pretrained repl encoder
+    if repl_encoder_path is not None:
+        assert reuse_repl != ReuseRepl.NO, "You've set a specific encoder path, but also turned off RepL encoder reuse"
+    if reuse_repl in (ReuseRepl.YES, ReuseRepl.IF_AVAILABLE):
+        # If we have hardcoded an encoder path, check if it exists, and, if so, use it
+        if repl_encoder_path is not None:
+            assert os.path.exists(repl_encoder_path), f"Hardcoded encoder path {repl_encoder_path} does not exist"
+            pretrained_encoder_path = repl_encoder_path
+        else:
+            # If we are searching for a prior repl run based on hashed config
+            # This is the default case
+            existing_repl_runs = glob(os.path.join(repl_dir, f"{repl_hash}_*"))
+
+            # If no matching repl run is found, we will fall through to training repl as normal
+            if len(existing_repl_runs) > 0:
+                timestamps = [el.split('_')[-1] for el in existing_repl_runs]
+
+                # Don't read in any Repl runs completed after the start of the full run
+                valid_timestamps = [ts for ts in timestamps if int(ts) < full_run_start_time]
+                if len(valid_timestamps) > 0:
+                    most_recent_run = existing_repl_runs[np.argmax(valid_timestamps)]
+                    pretrained_encoder_path = os.path.join(most_recent_run, 'repl_encoder')
+                    logging.info(f"Loading encoder from {pretrained_encoder_path}")
+
+            if pretrained_encoder_path is None:
+                assert reuse_repl != ReuseRepl.YES, "Set repl_reuse to YES, but no run was found; erroring out"
+                logging.info(f"No encoder found that existed prior to full run start time")
+
+    # If none of the branches above have found a pretrained path,
+    # proceed with repl training as normal
+    if pretrained_encoder_path is None:
+        tune_config_updates['repl'].update({
+            'seed': rng.randint(1 << 31),
+        })
+        pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
+
+        pretrained_encoder_path = pretrain_result['encoder_path']
+        # Once repl training finishes, symlink the result to the repl directory
+        cache_repl_encoder(pretrained_encoder_path,
+                           repl_dir,
+                           repl_hash,
+                           tune_config_updates['repl']['seed'])
 
     # Run il train
     tune_config_updates['il_train'].update({
-        'encoder_path':
-        pretrain_result['encoder_path'],
-        'seed':
-        rng.randint(1 << 31),
+        'encoder_path': pretrained_encoder_path,
+        'seed': rng.randint(1 << 31),
     })
-    il_train_result = run_single_exp(il_train_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'il_train')
+    merged_il_train_config = merge_configs(il_train_ex_config,
+                                           shared_configs,
+                                           tune_config_updates, 'il_train')
+    il_train_result = run_single_exp(merged_il_train_config, log_dir, 'il_train')
 
     # Run il test
     tune_config_updates['il_test'].update({
@@ -263,8 +372,9 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         'seed':
         rng.randint(1 << 31),
     })
-    il_test_result = run_single_exp(il_test_ex_config, shared_configs,
-                                    tune_config_updates, log_dir, 'il_test')
+    merged_il_test_config = merge_configs(il_test_ex_config, shared_configs,
+                                  tune_config_updates, 'il_test')
+    il_test_result = run_single_exp(merged_il_test_config, log_dir, 'il_test')
 
     report_experiment_result(il_test_result)
 
@@ -273,13 +383,18 @@ def run_repl_only_exp(rep_ex_config, shared_configs, config, log_dir):
     """Experiment that runs only representation learning."""
     rng, tune_config_updates = setup_run(config)
     del config
-
+    repl_dir = get_repl_dir(log_dir)
+    merged_repl_config = merge_configs(rep_ex_config, shared_configs, tune_config_updates, 'repl')
+    repl_hash = hash_configs(merged_repl_config)
     tune_config_updates['repl'].update({
         'seed': rng.randint(1 << 31),
     })
 
-    pretrain_result = run_single_exp(rep_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'repl')
+    pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
+    cache_repl_encoder(pretrain_result['encoder_path'],
+                       repl_dir,
+                       repl_hash,
+                       tune_config_updates['repl']['seed'])
     report_experiment_result(pretrain_result)
     logging.info("RepL experiment completed")
 
@@ -291,16 +406,18 @@ def run_il_only_exp(il_train_ex_config, il_test_ex_config, shared_configs,
     del config
 
     tune_config_updates['il_train'].update({'seed': rng.randint(1 << 31)})
-    il_train_result = run_single_exp(il_train_ex_config, shared_configs,
-                                     tune_config_updates, log_dir, 'il_train')
+    merged_il_train_config = merge_configs(il_train_ex_config, shared_configs,
+                                           tune_config_updates, 'il_train')
+    il_train_result = run_single_exp(merged_il_train_config, log_dir, 'il_train')
     tune_config_updates['il_test'].update({
         'policy_path':
         il_train_result['model_path'],
         'seed':
         rng.randint(1 << 31),
     })
-    il_test_result = run_single_exp(il_test_ex_config, shared_configs,
-                                    tune_config_updates, log_dir, 'il_test')
+    merged_il_test_config = merge_configs(il_test_ex_config, shared_configs,
+                                           tune_config_updates, 'il_test')
+    il_test_result = run_single_exp(merged_il_test_config, log_dir, 'il_test')
     report_experiment_result(il_test_result)
 
 
@@ -335,6 +452,22 @@ def base_config():
     skopt_search_mode = None
     skopt_space = collections.OrderedDict()
     skopt_ref_configs = []
+
+    # An enum for whether to reuse Repl or train it again from scratch
+    # Available options are YES, NO, and IF_AVAILABLE Setting to YES will error
+    # if no prior runs exist with a matching config IF_AVAILABLE will use a run
+    # if it exists, and rerun otherwise This code is designed to ensure that
+    # repl reuse only happens if it can be done in a way that seeds can be
+    # consistent across tasks (i.e. only loads encoders completed before main
+    # Ray script was started
+    reuse_repl = ReuseRepl.NO
+
+    # Set to a non-None string to force reading in that saved encoder in
+    # end2end. BE CAREFUL, since this will override the check that ensures you
+    # only read in an encoder that matches your own repl config, and this could
+    # lead to inconsistencies
+    repl_encoder_path = None
+
     # use 'true' if you want to do cluster-specific things like using
     # DockerSyncer
     on_cluster = False
@@ -355,520 +488,6 @@ def base_config():
     del _
 
 
-@chain_ex.named_config
-def cfg_use_magical():
-    # see il_representations/envs/config for examples of what should go here
-    env_cfg = {
-        'benchmark_name': 'magical',
-        # MatchRegions is of intermediate difficulty
-        # (TODO(sam): allow MAGICAL to load data from _all_ tasks at once, so
-        # we can try multi-task repL)
-        'task_name': 'MatchRegions',
-        # we really need magical_remove_null_actions=True for BC; for RepL it
-        # shouldn't matter so much (for action-based RepL methods)
-        'magical_remove_null_actions': False,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_use_dm_control():
-    env_cfg = {
-        'benchmark_name': 'dm_control',
-        # walker-walk is difficult relative to other dm-control tasks that we
-        # use, but RL solves it quickly. Plateaus around 850-900 reward (see
-        # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#).
-        'task_name': 'reacher-easy',
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_base_3seed_4cpu_pt3gpu():
-    """Basic config that does three samples per config, using 5 CPU cores and
-    0.3 of a GPU. Reasonable idea for, e.g., GAIL on svm/perceptron."""
-    use_skopt = False
-    tune_run_kwargs = dict(num_samples=3,
-                           # retry on (node) failure
-                           max_failures=2,
-                           fail_fast=False,
-                           resources_per_trial=dict(
-                               cpu=5,
-                               gpu=0.32,
-                           ))
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_base_3seed_1cpu_pt2gpu_2envs():
-    """Another config that uses only one CPU per run, and .2 of a GPU. Good for
-    running GPU-intensive algorithms (repL, BC) on GCP."""
-    use_skopt = False
-    tune_run_kwargs = dict(num_samples=3,
-                           # retry on node failure
-                           max_failures=3,
-                           fail_fast=False,
-                           resources_per_trial=dict(
-                               cpu=1,
-                               gpu=0.2,
-                           ))
-    venv_opts = {
-        'n_envs': 2,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_base_3seed_1cpu_pt5gpu_2envs():
-    """As above, but one GPU per run."""
-    use_skopt = False
-    tune_run_kwargs = dict(num_samples=3,
-                           # retry on node failure
-                           max_failures=3,
-                           fail_fast=False,
-                           resources_per_trial=dict(
-                               cpu=1,
-                               gpu=0.5,
-                           ))
-    venv_opts = {
-        'n_envs': 2,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_base_3seed_1cpu_1gpu_2envs():
-    """As above, but one GPU per run."""
-    use_skopt = False
-    tune_run_kwargs = dict(num_samples=3,
-                           # retry on node failure
-                           max_failures=3,
-                           fail_fast=False,
-                           resources_per_trial=dict(
-                               cpu=1,
-                               gpu=1,
-                           ))
-    venv_opts = {
-        'n_envs': 2,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_no_log_to_driver():
-    # disables sending stdout of Ray workers back to head node
-    # (only useful for huge clusters)
-    ray_init_kwargs = {
-        'log_to_driver': False,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_short_sweep_magical():
-    """Sweeps over four easiest MAGICAL instances."""
-    spec = dict(env_cfg=tune.grid_search(
-        # MAGICAL configs
-        [
-            {
-                'benchmark_name': 'magical',
-                'task_name': magical_env_name,
-                'magical_remove_null_actions': True,
-            } for magical_env_name in [
-                'MoveToCorner',
-                'MoveToRegion',
-                'FixColour',
-                'MatchRegions',
-                # 'FindDupe',
-                # 'MakeLine',
-                # 'ClusterColour',
-                # 'ClusterShape',
-            ]
-        ]))
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_short_sweep_dm_control():
-    """Sweeps over four easiest dm_control instances."""
-    spec = dict(env_cfg=tune.grid_search(
-        # dm_control configs
-        [
-            {
-                'benchmark_name': 'dm_control',
-                'task_name': dm_control_env_name
-            } for dm_control_env_name in [
-                # to gauge how hard these are, see
-                # https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5
-                'reacher-easy',
-                'finger-spin',
-                'ball-in-cup-catch',
-                'cartpole-swingup',
-                # 'cheetah-run',
-                # 'walker-walk',
-                # 'reacher-easy',
-            ]
-        ]))
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_micro_sweep_magical():
-    """Tiny sweep over MAGICAL configs, both of which are "not too hard",
-    but still provide interesting generalisation challenges."""
-    spec = dict(env_cfg=tune.grid_search(
-        [
-            {
-                'benchmark_name': 'magical',
-                'task_name': magical_env_name,
-                'magical_remove_null_actions': True,
-            } for magical_env_name in [
-                'MoveToRegion', 'MatchRegions', 'MoveToCorner'
-            ]
-        ]))
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_micro_sweep_dm_control():
-    """Tiny sweep over two dm_control configs (finger-spin is really easy for
-    RL, and cheetah-run is really hard for RL)."""
-    spec = dict(env_cfg=tune.grid_search(
-        [
-            {
-                'benchmark_name': 'dm_control',
-                'task_name': dm_control_env_name
-            } for dm_control_env_name in [
-                'finger-spin', 'cheetah-run', 'reacher-easy'
-            ]
-        ]))
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_one_task_magical():
-    """Just one simple MAGICAL config."""
-    env_cfg = {
-        'benchmark_name': 'magical',
-        'task_name': 'MatchRegions',
-        'magical_remove_null_actions': True,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_magical_mr():
-    """Bench on MAGICAL MatchRegions."""
-    env_cfg = {
-        'benchmark_name': 'magical',
-        'task_name': 'MatchRegions',
-        'magical_remove_null_actions': True,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_magical_mtc():
-    """Bench on MAGICAL MoveToCorner."""
-    env_cfg = {
-        'benchmark_name': 'magical',
-        'task_name': 'MoveToCorner',
-        'magical_remove_null_actions': True,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_bench_one_task_dm_control():
-    """Just one simple dm_control config."""
-    env_cfg = {
-        'benchmark_name': 'dm_control',
-        'task_name': 'cheetah-run',
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_base_repl_5000_batches():
-    repl = {
-        'batches_per_epoch': 500,
-        'n_epochs': 10,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_base_repl_10000_batches():
-    repl = {
-        'batches_per_epoch': 1000,
-        'n_epochs': 10,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_force_use_repl():
-    stages_to_run = StagesToRun.REPL_AND_IL
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_none():
-    stages_to_run = StagesToRun.IL_ONLY
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_moco():
-    stages_to_run = StagesToRun.REPL_AND_IL
-    repl = {
-        'algo': 'MoCoWithProjection',
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_simclr():
-    stages_to_run = StagesToRun.REPL_AND_IL
-    repl = {
-        'algo': 'SimCLR',
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_temporal_cpc():
-    stages_to_run = StagesToRun.REPL_AND_IL
-    repl = {
-        'algo': 'TemporalCPC',
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_data_repl_demos_random():
-    """Training on both demos and random rollouts for the current
-    environment."""
-    repl = {
-        'dataset_configs': [{'type': 'demos'}, {'type': 'random'}],
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_data_repl_random():
-    """Training on both demos and random rollouts for the current
-    environment."""
-    repl = {
-        'dataset_configs': [{'type': 'random'}],
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_data_repl_demos_magical_mt():
-    """Multi-task training on all MAGICAL tasks."""
-    repl = {
-        'dataset_configs': [
-            {
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': magical_task_name,
-                }
-            } for magical_task_name in [
-                'MoveToCorner',
-                'MoveToRegion',
-                'MatchRegions',
-                'MakeLine',
-                'FixColour',
-                'FindDupe',
-                'ClusterColour',
-                'ClusterShape',
-            ]
-        ],
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_data_il_5traj():
-    """Use only 5 trajectories for IL training."""
-    il_train = {
-        'n_traj': 5,
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_data_il_hc_extended():
-    """Use extended HalfCheetah dataset for IL training."""
-    env_data = {
-        'dm_control_demo_patterns': {
-            'cheetah-run':
-            'data/dm_control/extended-cheetah-run-*500traj.pkl.gz',
-        }
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_ceb():
-    stages_to_run = StagesToRun.REPL_AND_IL
-    repl = {
-        'algo': 'CEB',
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_vae():
-    repl = {
-        'algo': 'VariationalAutoencoder',
-        'algo_params': {'batch_size': 32},
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_repl_inv_dyn():
-    repl = {
-        'algo': 'InverseDynamicsPrediction',
-        'algo_params': {'batch_size': 32},
-    }
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_il_bc_nofreeze():
-    il_train = {
-        'algo': 'bc',
-        'bc': {
-            'n_batches': 15000,
-        },
-        'freeze_encoder': False,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_il_bc_500k_nofreeze():
-    il_train = {
-        'algo': 'bc',
-        'bc': {
-            'n_batches': 500000,
-        },
-        'freeze_encoder': False,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_il_bc_200k_nofreeze():
-    il_train = {
-        'algo': 'bc',
-        'bc': {
-            'n_batches': 200000,
-        },
-        'freeze_encoder': False,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_il_bc_freeze():
-    il_train = {
-        'algo': 'bc',
-        'bc': {
-            'n_batches': 15000,
-        },
-        'freeze_encoder': True,
-    }
-
-    _ = locals()
-    del _
-
-
-@chain_ex.named_config
-def cfg_il_gail_nofreeze():
-    il_train = {
-        'algo': 'gail',
-        'gail': {
-            # TODO(sam): increase this to a default that works for most
-            # environments.
-            'total_timesteps': 200000,
-        },
-        'freeze_encoder': False,
-    }
-    venv_opts = {
-        'n_envs': 32,
-        'venv_parallel': True,
-        'parallel_workers': 8,
-    }
-
-    _ = locals()
-    del _
-
-
 class WrappedConfig():
     def __init__(self, config_dict):
         self.config_dict = config_dict
@@ -877,32 +496,36 @@ class WrappedConfig():
 def trainable_function(config):
     # "config" argument is passed in by Ray Tune
     shared_config_keys = ['env_cfg', 'env_data', 'venv_opts']
-    log_dir = config['log_dir']
-    stages_to_run = config['stages_to_run']
-    wrapped_config_keys = config['wrapped_config_keys']
 
-    del config['log_dir']
-    del config['stages_to_run']
-    del config['wrapped_config_keys']
+    extra_params = {}
 
-    if stages_to_run == StagesToRun.REPL_AND_IL:
+    # Take out all of the elements in the config that
+    # are parameters governing this function, rather than
+    # underlying sacred configs
+    for k in config['extra_config_keys']:
+        extra_params[k] = config[k]
+        del config[k]
+    del config['extra_config_keys']
+
+    if extra_params['stages_to_run'] == StagesToRun.REPL_AND_IL:
         keys_to_add = [
             'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
             'repl',
         ]
-    elif stages_to_run == StagesToRun.IL_ONLY:
+    elif extra_params['stages_to_run'] == StagesToRun.IL_ONLY:
         keys_to_add = [
             'env_cfg', 'env_data', 'venv_opts', 'il_train', 'il_test',
         ]
-    elif stages_to_run == StagesToRun.REPL_ONLY:
+    elif extra_params['stages_to_run'] == StagesToRun.REPL_ONLY:
         keys_to_add = ['env_cfg', 'env_data', 'repl']
     else:
         raise ValueError(f"stages_to_run has invalid value {config['stages_to_run']}")
 
     inflated_configs = {}
-    for key in wrapped_config_keys:
-        # Unwrap all wrapped ingredient baseline configs
-        # that were passed around as Ray parameters
+
+    # Unwrap all wrapped ingredient baseline configs
+    # that were passed around as Ray parameters
+    for key in extra_params['wrapped_config_keys']:
         assert f"{key}_frozen" in config, f"No version of {key} config " \
                                           f"(under {key}_frozen) found in config"
 
@@ -910,7 +533,7 @@ def trainable_function(config):
 
         # Delete the keys for cleanliness' sake
         del config[f"{key}_frozen"]
-    shared_configs = {k:inflated_configs[k] for k in shared_config_keys}
+    shared_configs = {k: inflated_configs[k] for k in shared_config_keys}
     logging.warning(f"Config keys: {config.keys()}")
     config = expand_dict_keys(config)
 
@@ -923,28 +546,51 @@ def trainable_function(config):
         if key not in config:
             config[key] = {}
 
-    if stages_to_run == StagesToRun.REPL_AND_IL:
+    if extra_params['stages_to_run'] == StagesToRun.REPL_AND_IL:
         run_end2end_exp(rep_ex_config=inflated_configs['repl'],
                         il_train_ex_config=inflated_configs['il_train'],
                         il_test_ex_config=inflated_configs['il_test'],
                         shared_configs=shared_configs, config=config,
-                        log_dir=log_dir)
-    if stages_to_run == StagesToRun.IL_ONLY:
+                        reuse_repl=extra_params['reuse_repl'],
+                        repl_encoder_path=extra_params['repl_encoder_path'],
+                        log_dir=extra_params['log_dir'],
+                        full_run_start_time=extra_params['run_start_time'])
+    if extra_params['stages_to_run'] == StagesToRun.IL_ONLY:
         run_il_only_exp(il_train_ex_config=inflated_configs['il_train'],
                         il_test_ex_config=inflated_configs['il_test'],
                         shared_configs=shared_configs, config=config,
-                        log_dir=log_dir)
-    if stages_to_run == StagesToRun.REPL_ONLY:
+                        log_dir=extra_params['log_dir'])
+    if extra_params['stages_to_run'] == StagesToRun.REPL_ONLY:
         run_repl_only_exp(rep_ex_config=inflated_configs['repl'],
                           shared_configs=shared_configs, config=config,
-                          log_dir=log_dir)
+                          log_dir=extra_params['log_dir'])
+
+
+def update_skopt_space_and_ref_configs(skopt_space,
+                                       skopt_ref_configs,
+                                       update_dict):
+    for k, v in update_dict.items():
+        # update space and reference configs with this key
+        skopt_space[k] = skopt.space.Categorical([v])
+        for ref_config in skopt_ref_configs:
+            ref_config[k] = v
+
+    # update space and reference configs with key list
+    ex_key = 'extra_config_keys'
+    key_tup = tuple(k for k in update_dict.keys())
+    skopt_space[ex_key] = skopt.space.Categorical([key_tup])
+    for ref_config in skopt_ref_configs:
+        ref_config[ex_key] = key_tup
+
+    return skopt_space, skopt_ref_configs
 
 
 @chain_ex.main
 def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
-        on_cluster):
+        reuse_repl, repl_encoder_path, on_cluster):
+
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
@@ -957,12 +603,9 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
     log_dir = os.path.abspath(chain_ex.observers[0].dir)
 
     # set default exp_ident
-    if rep_ex_config['exp_ident'] is None:
-        rep_ex_config['exp_ident'] = exp_ident
-    if il_train_ex_config['exp_ident'] is None:
-        il_train_ex_config['exp_ident'] = exp_ident
-    if il_test_ex_config['exp_ident'] is None:
-        il_test_ex_config['exp_ident'] = exp_ident
+    for inner_ex_config in [rep_ex_config, il_train_ex_config, il_test_ex_config]:
+        if inner_ex_config['exp_ident'] is None:
+            inner_ex_config['exp_ident'] = exp_ident
 
     ingredient_configs_dict = {
         'repl': rep_ex_config,
@@ -970,10 +613,20 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         'il_test': il_test_ex_config,
         'env_cfg': env_cfg_config,
         'env_data': env_data_config,
-        'venv_opts': venv_opts_config,
-    }
-    # List comprehension to make the keys() object an actual list
-    wrapped_config_keys = [k for k in ingredient_configs_dict.keys()]
+        'venv_opts': venv_opts_config}
+
+    # Make keys() into a real tuple
+    wrapped_config_keys = tuple(k for k in ingredient_configs_dict.keys())
+
+    # These are values from the config that we want to be set for all experiments,
+    # and that we need to pass in through either the spec or the skopt config so
+    # they will be reset properly in case of experiment failure
+    needed_config_params = {'log_dir': log_dir,
+                            'stages_to_run': stages_to_run,
+                            'reuse_repl': reuse_repl,
+                            'repl_encoder_path': repl_encoder_path,
+                            'wrapped_config_keys': wrapped_config_keys,
+                            'run_start_time': round(time())}
 
     if metric is None:
         # choose a default metric depending on whether we're running
@@ -1035,14 +688,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
 
         # In addition to the actual spaces we're searching over, we also need to
         # store the baseline config values in Ray to avoid Ray issue #12048
-        skopt_space['log_dir'] = skopt.space.Categorical(categories=(log_dir,))
-        skopt_space['stages_to_run'] = skopt.space.Categorical(categories=(stages_to_run,))
-        skopt_space['wrapped_config_keys'] = skopt.space.Categorical(categories=(wrapped_config_keys,))
-        for ref_config in skopt_ref_configs:
-            ref_config['log_dir'] = log_dir
-            ref_config['stages_to_run'] = stages_to_run
-            ref_config['wrapped_config_keys'] = wrapped_config_keys
-
+        skopt_space, skopt_ref_configs = update_skopt_space_and_ref_configs(skopt_space,
+                                                                            skopt_ref_configs,
+                                                                            needed_config_params)
+        # We also need to add the ingredient configs to the skopt space
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
 
@@ -1088,9 +737,9 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         for ing_name, ing_config in ingredient_configs_dict.items():
             frozen_config = WrappedConfig(ing_config)
             spec[f"{ing_name}_frozen"] = tune.grid_search([frozen_config])
-        spec['log_dir'] = log_dir
-        spec['stages_to_run'] = stages_to_run
-        spec['wrapped_config_keys'] = wrapped_config_keys
+
+        spec.update(needed_config_params)
+        spec['extra_config_keys'] = [k for k in needed_config_params.keys()]
 
     if on_cluster:
         # use special syncer which is able to attach to autoscaler's Docker

@@ -1,12 +1,16 @@
 runs
 test_observer
 output
+results
+logs
+demos
 *_runs
 *.pyc
 *.egg-info
 # data/ is used to set up symlinks to datasets
-/data
 data
+# data-icml is like data but with different trajectory sizes for ICML
+data-icml
 progress.csv
 params.json
 *.tgz
@@ -14,6 +18,7 @@ params.json
 # editor and devlopment tool cruft
 .pytype
 *.swp
+*.cprof
 .#*
 *~
 .idea

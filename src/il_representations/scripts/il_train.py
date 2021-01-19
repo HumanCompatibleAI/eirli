@@ -281,8 +281,10 @@ def do_training_gail(
                            lr_schedule=lr_schedule)
 
     def linear_lr_schedule(prog_remaining):
-        """This is called by SB3 to set the LR. `prog_remaining` falls from 1.0
-        (at the start) to 0.0 (at the end)."""
+        """Linearly anneal LR from `init` to `final` (both taken from context).
+
+        This is called by SB3. `prog_remaining` falls from 1.0 (at the start)
+        to 0.0 (at the end)."""
         init = gail['ppo_init_learning_rate']
         final = gail['ppo_final_learning_rate']
         alpha = prog_remaining
