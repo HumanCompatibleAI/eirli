@@ -118,10 +118,15 @@ def load_dataset_dm_control(task_name, dm_control_full_env_names,
             new_data = cloudpickle.load(fp)
         loaded_trajs.extend(new_data)
 
+
     loaded_trajs = list(loaded_trajs)
     random.shuffle(loaded_trajs)
     if n_traj is not None:
         loaded_trajs = loaded_trajs[:n_traj]
+
+    assert len(loaded_trajs) > 0, \
+        f"couldn't load any trajectories with data_root='{data_root}', " \
+        f"pattern='{user_pattern}'"
 
     # join together all trajectories into a single dataset
     dones_lists = [
