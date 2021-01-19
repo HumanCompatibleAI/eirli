@@ -517,10 +517,13 @@ class InverseDynamicsEncoder(BaseEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, obs_encoder_cls=None):
+                 momentum_weight=0.999, obs_encoder_cls=None, obs_encoder_cls_kwargs=None):
         super().__init__()
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
+        if obs_encoder_cls_kwargs is None:
+            obs_encoder_cls_kwargs = {}
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
+        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, learn_scale=learn_scale,
+                                         obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
@@ -550,15 +553,20 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64):
+                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64,
+                 obs_encoder_cls_kwargs=None):
         super().__init__()
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
+        if obs_encoder_cls_kwargs is None:
+            obs_encoder_cls_kwargs = {}
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
-        self.single_frame_encoder = BaseEncoder(obs_shape, self.single_frame_repr_dim,
-                                                         obs_encoder_cls)
+        self.single_frame_encoder = BaseEncoder(obs_shape,
+                                                self.single_frame_repr_dim,
+                                                obs_encoder_cls,
+                                                obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
         self.context_rnn = nn.LSTM(self.single_frame_repr_dim, rnn_output_dim,
                                    self.num_recurrent_layers, batch_first=True)
         self.mean_layer = nn.Linear(rnn_output_dim, self.representation_dim)
