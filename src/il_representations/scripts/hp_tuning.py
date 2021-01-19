@@ -202,6 +202,10 @@ def make_hp_tuning_configs(experiment_obj):
 
     @experiment_obj.named_config
     def gail_tune():
+        use_skopt = True
+        skopt_search_mode = 'max'
+        metric = 'return_mean'
+        stages_to_run = StagesToRun.IL_ONLY
         il_train = {
             'algo': 'gail',
             'gail': {
