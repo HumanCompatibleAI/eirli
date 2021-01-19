@@ -11,7 +11,8 @@ def make_icml_tuning_configs(experiment_obj):
     # Base: AC Temporal CPC
     # Axes to test: Batch size, learning rate, representation_dim,
     #               augmentation (Y/N), ActionConditioned (Y/N),
-    #               projection head (None, Symmetric, Asymmetric)
+    #               projection head (None, Symmetric, Asymmetric),
+    #               loss CEB/CPC
 
     # Note: This doesn't directly have momentum as an axis
     # because momentum requires that encoder, decoder, loss,
@@ -74,7 +75,7 @@ def make_icml_tuning_configs(experiment_obj):
         skopt_space = OrderedDict([
             ('repl:algo_params:batch_size', (128, 512)),
             ('repl:algo_params:batch_extender_kwargs:queue_size', (1024, 8192)),
-            ('repl:algo_params:encoder_kwargs:momentum_weight', (0.990, 0.999))
+            ('repl:algo_params:encoder_kwargs:momentum_weight', (0.985, 0.999))
         ])
         skopt_ref_configs = [
             {'repl:algo_params:batch_size': 256,
@@ -93,7 +94,7 @@ def make_icml_tuning_configs(experiment_obj):
                 'algo_params': {'loss_calculator': losses.CEBLoss}}
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
-            ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.25)),
+            ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.25, 'log-uniform')),
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:': 0.1,
@@ -109,7 +110,7 @@ def make_icml_tuning_configs(experiment_obj):
         repl = {'algo': 'VariationalAutoencoder'}
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
-            ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.2)),
+            ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.2, 'log-uniform')),
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:': 0.01,
