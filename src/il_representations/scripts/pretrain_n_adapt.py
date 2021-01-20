@@ -703,7 +703,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         for k, v in list(sorted_space.items()):
             # cast each value in sorted_space to a skopt Dimension object, then
             # make the name of the Dimension object match the corresponding key
-            new_v = skopt.space.check_dimension(v)
+            try:
+                new_v = skopt.space.check_dimension(v)
+            except ValueError:
+                raise ValueError(f"Dimension issue: k:{k} v: {v}")
             new_v.name = k
             sorted_space[k] = new_v
         skopt_optimiser = skopt.optimizer.Optimizer([*sorted_space.values()],
