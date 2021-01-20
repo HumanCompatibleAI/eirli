@@ -1,5 +1,6 @@
 declare -a tuning_configs=("tune_ceb" "tune_momentum"
-                           "main_contrastive_tuning" "tune_vae")
+                           "main_contrastive_tuning" "tune_vae",
+                           "tune_projection_heads")
 
 declare -a dmc_envs=("finger-spin" "cheetah-run")
 
