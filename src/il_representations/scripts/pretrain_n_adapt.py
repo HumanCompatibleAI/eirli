@@ -570,12 +570,17 @@ def trainable_function(config):
 def update_skopt_space_and_ref_configs(skopt_space,
                                        skopt_ref_configs,
                                        update_dict):
-    for k,v in update_dict.items():
-        skopt_space[k] = v
+    for k, v in update_dict.items():
+        # update space and reference configs with this key
+        skopt_space[k] = skopt.space.Categorical([v])
         for ref_config in skopt_ref_configs:
             ref_config[k] = v
-    key_list = [k for k in update_dict.keys()]
-    skopt_space['extra_config_keys'] = key_list
+    # update space and reference configs with key list
+    ex_key = 'extra_config_keys'
+    key_tup = tuple(k for k in update_dict.keys())
+    skopt_space[ex_key] = skopt.space.Categorical([key_tup])
+    for ref_config in skopt_ref_configs:
+        ref_config[ex_key] = key_tup
     return skopt_space, skopt_ref_configs
 
 
@@ -609,8 +614,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         'env_data': env_data_config,
         'venv_opts': venv_opts_config}
 
-    # List comprehension to make the keys() object an actual list
-    wrapped_config_keys = [k for k in ingredient_configs_dict.keys()]
+    # Make keys() into a real tuple
+    wrapped_config_keys = tuple(k for k in ingredient_configs_dict.keys())
 
     # These are values from the config that we want to be set for all experiments,
     # and that we need to pass in through either the spec or the skopt config so
@@ -706,6 +711,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             try:
                 new_v = skopt.space.check_dimension(v)
             except ValueError:
+                import pdb; pdb.set_trace()
                 raise ValueError(f"Dimension issue: k:{k} v: {v}")
             new_v.name = k
             sorted_space[k] = new_v
