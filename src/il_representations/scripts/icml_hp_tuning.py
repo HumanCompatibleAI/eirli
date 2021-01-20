@@ -98,7 +98,7 @@ def make_icml_tuning_configs(experiment_obj):
             ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
-            {'repl:algo_params:loss_calculator_kwargs:': 0.1,
+            {'repl:algo_params:loss_calculator_kwargs:beta': 0.1,
              'il_test:n_rollouts': 20
              }]
 
