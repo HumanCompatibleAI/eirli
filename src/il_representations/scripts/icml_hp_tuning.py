@@ -129,7 +129,7 @@ def make_icml_tuning_configs(experiment_obj):
     # projection heads for each of the projection head types, which
     # probably doesn't make sense unless they actually seem valuable
     @experiment_obj.named_config
-    def tune_vae():
+    def tune_projection_heads():
         repl = {'algo': 'TemporalCPC'}
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([

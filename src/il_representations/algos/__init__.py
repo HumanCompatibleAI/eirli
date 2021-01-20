@@ -73,7 +73,7 @@ class TemporalCPC(RepresentationLearner):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=NoOp,
                                      loss_calculator=BatchAsymmetricContrastiveLoss,
-                                     augmenter=NoAugmentation,
+                                     augmenter=AugmentContextAndTarget,
                                      batch_extender=IdentityBatchExtender,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
