@@ -2,7 +2,7 @@ from il_representations.algos import augmenters, pair_constructors, encoders, lo
 from collections import OrderedDict
 from copy import deepcopy
 from il_representations.scripts.utils import StagesToRun
-
+from skopt.space import Categorical
 
 def make_icml_tuning_configs(experiment_obj):
 
@@ -42,21 +42,22 @@ def make_icml_tuning_configs(experiment_obj):
                         ('repl:algo_params:batch_size', (256, 512)),
                         ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
                         ('repl:algo_params:representation_dim', (64, 256)),
-                        ('repl:algo_params:augmenter', [augmenters.AugmentContextAndTarget,
-                                                        augmenters.NoAugmentation]),
-                        ('repl:algo', ['TemporalCPC', 'ActionConditionedTemporalCPC']),
-                        ('repl:algo_params:decoder', [decoders.NoOp,
-                                                      decoders.SymmetricProjectionHead,
-                                                      decoders.AsymmetricProjectionHead]),
-                        ('repl:algo_params:loss_calculator', [losses.CEBLoss,
-                                                              losses.BatchAsymmetricContrastiveLoss]),
+                        ('repl:algo', Categorical(['TemporalCPC',
+                                                   'ActionConditionedTemporalCPC'],
+                                                  prior=[0.2, 0.8])),
+                        ('repl:algo_params:decoder', Categorical([decoders.NoOp,
+                                                                 decoders.SymmetricProjectionHead,
+                                                                 decoders.AsymmetricProjectionHead],
+                                                                 prior=[0.5, 0.25, 0.25])),
+                        ('repl:algo_params:loss_calculator', Categorical([losses.CEBLoss,
+                                                                          losses.BatchAsymmetricContrastiveLoss],
+                                                                         prior=[0.2, 0.8]),),
                         ('il_test:n_rollouts', [20])
                         ])
         skopt_ref_configs = [
                 {'repl:algo_params:batch_size': 256,
                  'repl:algo_params:optimizer_kwargs:lr': 0.0003,
                  'repl:algo_params:representation_dim': 128,
-                 'repl:algo_params:augmenter': augmenters.AugmentContextAndTarget,
                  'repl:algo': 'ActionConditionedTemporalCPC',
                  'repl:algo_params:decoder': decoders.NoOp,
                  'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss,
