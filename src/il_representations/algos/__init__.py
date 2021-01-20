@@ -28,7 +28,7 @@ def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
             merged_kwargs[param_name] = validate_and_update_kwargs(merged_kwargs[param_name], param_value)
         # If there's a shared non-dict param, warn that a param hardcoded by the algorithm
         # will be ignored and the user-input param used instead
-        elif param_name in merged_kwargs:
+        elif param_name in merged_kwargs and merged_kwargs[param_name] != param_value:
             logging.warning(
                 f"Overwriting algorithm-hardcoded value {param_value} of "
                 f"param {param_name} with user value {merged_kwargs[param_name]}")
