@@ -264,7 +264,7 @@ NETWORK_SHORT_NAMES = {
 
 
 def get_obs_encoder_cls(obs_encoder_cls, encoder_kwargs):
-    cls = None
+    cls = obs_encoder_cls
     if obs_encoder_cls is None:
         cls = MAGICALCNN
     if isinstance(obs_encoder_cls, str):
