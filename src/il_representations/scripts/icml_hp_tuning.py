@@ -32,7 +32,6 @@ def make_icml_tuning_configs(experiment_obj):
         repl = {
             'batches_per_epoch': 5000,
         }
-        il_test = {'num_rollouts': 20}
         _ = locals()
         del _
 
@@ -50,7 +49,8 @@ def make_icml_tuning_configs(experiment_obj):
                                                       decoders.SymmetricProjectionHead,
                                                       decoders.AsymmetricProjectionHead]),
                         ('repl:algo_params:loss_calculator', [losses.CEBLoss,
-                                                              losses.BatchAsymmetricContrastiveLoss])
+                                                              losses.BatchAsymmetricContrastiveLoss]),
+                        ('il_test:n_rollouts', [20])
                         ])
         skopt_ref_configs = [
                 {'repl:algo_params:batch_size': 256,
@@ -59,7 +59,8 @@ def make_icml_tuning_configs(experiment_obj):
                  'repl:algo_params:augmenter': augmenters.AugmentContextAndTarget,
                  'repl:algo': 'ActionConditionedTemporalCPC',
                  'repl:algo_params:decoder': decoders.NoOp,
-                 'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss
+                 'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss,
+                 'il_test:n_rollouts': 20
                     }]
 
         _ = locals()
@@ -75,12 +76,14 @@ def make_icml_tuning_configs(experiment_obj):
         skopt_space = OrderedDict([
             ('repl:algo_params:batch_size', (128, 512)),
             ('repl:algo_params:batch_extender_kwargs:queue_size', (1024, 8192)),
-            ('repl:algo_params:encoder_kwargs:momentum_weight', (0.985, 0.999))
+            ('repl:algo_params:encoder_kwargs:momentum_weight', (0.985, 0.999)),
+            ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:batch_size': 256,
              'repl:algo_params:batch_extender_kwargs:queue_size': 8192,
-             'repl:algo_params:encoder_kwargs:momentum_weight': 0.999
+             'repl:algo_params:encoder_kwargs:momentum_weight': 0.999,
+             'il_test:n_rollouts': 20
              }]
 
         _ = locals()
@@ -95,9 +98,11 @@ def make_icml_tuning_configs(experiment_obj):
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
             ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.25, 'log-uniform')),
+            ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:': 0.1,
+             'il_test:n_rollouts': 20
              }]
 
         _ = locals()
@@ -111,9 +116,11 @@ def make_icml_tuning_configs(experiment_obj):
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
             ('repl:algo_params:loss_calculator_kwargs:beta', (0.0, 0.2, 'log-uniform')),
+            ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:': 0.01,
+             'il_test:n_rollouts': 20
              }]
 
         _ = locals()
