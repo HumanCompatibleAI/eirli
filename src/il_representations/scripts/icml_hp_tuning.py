@@ -45,10 +45,7 @@ def make_icml_tuning_configs(experiment_obj):
                         ('repl:algo', Categorical(['TemporalCPC',
                                                    'ActionConditionedTemporalCPC'],
                                                   prior=[0.2, 0.8])),
-                        ('repl:algo_params:decoder', Categorical([decoders.NoOp,
-                                                                 decoders.SymmetricProjectionHead,
-                                                                 decoders.AsymmetricProjectionHead],
-                                                                 prior=[0.5, 0.25, 0.25])),
+
                         ('repl:algo_params:loss_calculator', Categorical([losses.CEBLoss,
                                                                           losses.BatchAsymmetricContrastiveLoss],
                                                                          prior=[0.2, 0.8]),),
@@ -59,7 +56,6 @@ def make_icml_tuning_configs(experiment_obj):
                  'repl:algo_params:optimizer_kwargs:lr': 0.0003,
                  'repl:algo_params:representation_dim': 128,
                  'repl:algo': 'ActionConditionedTemporalCPC',
-                 'repl:algo_params:decoder': decoders.NoOp,
                  'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss,
                  'il_test:n_rollouts': 20
                     }]
@@ -126,3 +122,30 @@ def make_icml_tuning_configs(experiment_obj):
 
         _ = locals()
         del _
+
+    # Tuning Config #5
+    # This config tests different projection decoders. It can't be done
+    # with ActionConditionedTemporalCPC as a base without writing action-conditioned
+    # projection heads for each of the projection head types, which
+    # probably doesn't make sense unless they actually seem valuable
+    @experiment_obj.named_config
+    def tune_vae():
+        repl = {'algo': 'TemporalCPC'}
+        tune_run_kwargs = dict(num_samples=15)
+        skopt_space = OrderedDict([
+            ('repl:algo_params:decoder', Categorical([decoders.NoOp,
+                                                      decoders.SymmetricProjectionHead,
+                                                      decoders.AsymmetricProjectionHead],
+                                                     prior=[0.5, 0.25, 0.25])),
+            ('il_test:n_rollouts', [20])
+        ])
+        skopt_ref_configs = [
+            {'repl:algo_params:decoder': decoders.NoOp,
+             'il_test:n_rollouts': 20
+             }]
+
+        _ = locals()
+        del _
+
+
+
