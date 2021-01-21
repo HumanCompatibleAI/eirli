@@ -304,6 +304,7 @@ class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
     the representations of s and s' together, and then predict an action representation
     from the concatenation using a projection head. During the encoder stage, we need to
     also encode the actions.
+
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
