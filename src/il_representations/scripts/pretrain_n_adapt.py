@@ -5,7 +5,6 @@ from glob import glob
 import logging
 import os
 import os.path as osp
-from os.path import dirname as up
 from time import time
 import weakref
 
@@ -31,7 +30,7 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
-from il_representations.utils import hash_configs
+from il_representations.utils import hash_configs, up
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -240,6 +239,24 @@ def report_experiment_result(sacred_result):
     tune.report(**filtered_result)
 
 
+def relative_symlink(src, dst):
+    link_dir_abs, link_fn = os.path.split(os.path.abspath(dst))
+    if not link_fn:
+        raise ValueError(f"path dst='{dst}' has empty basename")
+    # absolute path to src, and path relative to link_dir
+    src_abspath = os.path.abspath(src)
+    src_relpath = os.path.relpath(src_abspath, start=link_dir_abs)
+
+    os.makedirs(link_dir_abs, exist_ok=True)
+    link_dir_fd = os.open(link_dir_abs, os.O_RDONLY)
+    try:
+        # both src_relpath and link_fn are relative to link_dir, which is
+        # represented by the file descriptor link_dir_fd
+        os.symlink(src_relpath, link_fn, dir_fd=link_dir_fd)
+    finally:
+        os.close(link_dir_fd)
+
+
 def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
                        config_hash, seed, config_path=None):
     """
@@ -257,12 +274,11 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
     if config_path is None:
         config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')
     dir_name = f"{config_hash}_{seed}_{round(time())}"
-    os.makedirs(os.path.join(repl_directory_dir, dir_name))
     logging.info(f"Symlinking encoder path under the directory {dir_name}")
-    os.symlink(repl_encoder_path,
-               os.path.join(repl_directory_dir, dir_name, 'repl_encoder'))
-    os.symlink(config_path,
-               os.path.join(repl_directory_dir, dir_name, 'config.json'))
+    encoder_link = os.path.join(repl_directory_dir, dir_name, 'repl_encoder')
+    config_link = os.path.join(repl_directory_dir, dir_name, 'config.json')
+    relative_symlink(repl_encoder_path, encoder_link)
+    relative_symlink(config_path, config_link)
 
 
 def get_repl_dir(log_dir):
@@ -276,6 +292,20 @@ def get_repl_dir(log_dir):
     if not os.path.exists(repl_dir):
         os.makedirs(repl_dir)
     return repl_dir
+
+
+def resolve_env_cfg(merged_repl_config):
+    merged_config_copy = copy.deepcopy(merged_repl_config)
+
+    # If the task we are training on is multitask, we do not want to
+    # include env_cfg.task_name in the canonical repl hash, since it will not be used
+    if merged_config_copy.get('is_multitask', False):
+        del merged_config_copy['env_cfg']['task_name']
+
+    # Do not hash based on env_data, which just contains path information,
+    # and thus will vary based on path setup by machine
+    del merged_config_copy['env_data']
+    return merged_config_copy
 
 
 def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
@@ -313,7 +343,8 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     # Used to facilitate reuse of repl runs
     repl_dir = get_repl_dir(log_dir)
     merged_repl_config = merge_configs(rep_ex_config, shared_configs, tune_config_updates, 'repl')
-    repl_hash = hash_configs(merged_repl_config)
+    config_to_hash = resolve_env_cfg(merged_repl_config)
+    repl_hash = hash_configs(config_to_hash)
     pretrained_encoder_path = None
 
     # If we are open to reading in a pretrained repl encoder
@@ -347,9 +378,9 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
     # If none of the branches above have found a pretrained path,
     # proceed with repl training as normal
     if pretrained_encoder_path is None:
-        tune_config_updates['repl'].update({
-            'seed': rng.randint(1 << 31),
-        })
+        if merged_repl_config.get('seed') is None:
+            merged_repl_config['seed'] = rng.randint(1 << 31)
+
         pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
 
         pretrained_encoder_path = pretrain_result['encoder_path']
@@ -357,7 +388,7 @@ def run_end2end_exp(rep_ex_config, il_train_ex_config, il_test_ex_config,
         cache_repl_encoder(pretrained_encoder_path,
                            repl_dir,
                            repl_hash,
-                           tune_config_updates['repl']['seed'])
+                           merged_repl_config['seed'])
 
     # Run il train
     tune_config_updates['il_train'].update({
@@ -485,8 +516,6 @@ def base_config():
 
     _ = locals()
     del _
-
-
 
 
 class WrappedConfig():
