@@ -122,7 +122,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         if batch_extender is QueueBatchExtender:
             # TODO maybe clean this up?
-            batch_extender_kwargs = batch_extender_kwargs or {}
+            if batch_extender_kwargs is None:
+                batch_extender_kwargs = {}
+            else:
+                batch_extender_kwargs = dict(batch_extender_kwargs)
             batch_extender_kwargs['queue_dim'] = projection_dim
             batch_extender_kwargs['device'] = self.device
 

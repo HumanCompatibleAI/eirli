@@ -25,6 +25,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.scripts import experimental_conditions  # noqa: F401
 from il_representations.scripts.chain_configs import make_chain_configs
 from il_representations.scripts.hp_tuning import make_hp_tuning_configs
+from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
@@ -45,6 +46,8 @@ chain_ex = Experiment(
     ])
 cwd = os.getcwd()
 
+
+make_icml_tuning_configs(chain_ex)
 
 # Add configs to experiment for hyperparameter tuning
 # This is to allow us to separate out tuning configs into their own file
@@ -596,12 +599,17 @@ def trainable_function(config):
 def update_skopt_space_and_ref_configs(skopt_space,
                                        skopt_ref_configs,
                                        update_dict):
-    for k,v in update_dict.items():
-        skopt_space[k] = v
+    for k, v in update_dict.items():
+        # update space and reference configs with this key
+        skopt_space[k] = skopt.space.Categorical([v])
         for ref_config in skopt_ref_configs:
             ref_config[k] = v
-    key_list = [k for k in update_dict.keys()]
-    skopt_space['extra_config_keys'] = key_list
+    # update space and reference configs with key list
+    ex_key = 'extra_config_keys'
+    key_tup = tuple(k for k in update_dict.keys())
+    skopt_space[ex_key] = skopt.space.Categorical([key_tup])
+    for ref_config in skopt_ref_configs:
+        ref_config[ex_key] = key_tup
     return skopt_space, skopt_ref_configs
 
 
@@ -635,8 +643,8 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         'env_data': env_data_config,
         'venv_opts': venv_opts_config}
 
-    # List comprehension to make the keys() object an actual list
-    wrapped_config_keys = [k for k in ingredient_configs_dict.keys()]
+    # Make keys() into a real tuple
+    wrapped_config_keys = tuple(k for k in ingredient_configs_dict.keys())
 
     # These are values from the config that we want to be set for all experiments,
     # and that we need to pass in through either the spec or the skopt config so
@@ -729,7 +737,11 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         for k, v in list(sorted_space.items()):
             # cast each value in sorted_space to a skopt Dimension object, then
             # make the name of the Dimension object match the corresponding key
-            new_v = skopt.space.check_dimension(v)
+            try:
+                new_v = skopt.space.check_dimension(v)
+            except ValueError:
+                # Raise actually-informative value error instead
+                raise ValueError(f"Dimension issue: k:{k} v: {v}")
             new_v.name = k
             sorted_space[k] = new_v
         skopt_optimiser = skopt.optimizer.Optimizer([*sorted_space.values()],
