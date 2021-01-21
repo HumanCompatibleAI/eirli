@@ -49,6 +49,9 @@ def make_icml_tuning_configs(experiment_obj):
                         ('repl:algo_params:loss_calculator', Categorical([losses.CEBLoss,
                                                                           losses.BatchAsymmetricContrastiveLoss],
                                                                          prior=[0.2, 0.8]),),
+                        ('repl:algo_params:augmenter_kwargs:augmenter_spec', Categorical(["translate,rotate,gaussian_blur",
+                                                                                          "translate,rotate",
+                                                                                          "translate,rotate,flip_ud,flip_lr"])),
                         ('il_test:n_rollouts', [20])
                         ])
         skopt_ref_configs = [
@@ -57,6 +60,7 @@ def make_icml_tuning_configs(experiment_obj):
                  'repl:algo_params:representation_dim': 128,
                  'repl:algo': 'ActionConditionedTemporalCPC',
                  'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss,
+                 'repl:algo_params:augmenter_kwargs:augmenter_spec': "translate,rotate",
                  'il_test:n_rollouts': 20
                     }]
 
@@ -106,13 +110,13 @@ def make_icml_tuning_configs(experiment_obj):
         del _
 
     # Tuning Config #4
-    # This config tests different beta parameters of Temporal CEB
+    # This config tests different beta parameters of VAE
     @experiment_obj.named_config
     def tune_vae():
         repl = {'algo': 'VariationalAutoencoder'}
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
-            ('repl:algo_params:loss_calculator_kwargs:beta', (1e-10, 0.2, 'log-uniform')),
+            ('repl:algo_params:loss_calculator_kwargs:beta', (1e-10, 0.1, 'log-uniform')),
             ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
@@ -130,7 +134,9 @@ def make_icml_tuning_configs(experiment_obj):
     # probably doesn't make sense unless they actually seem valuable
     @experiment_obj.named_config
     def tune_projection_heads():
-        repl = {'algo': 'TemporalCPC'}
+        repl = {'algo': 'TemporalCPC',
+                'algo_params': {'target_pair_constructor': pair_constructors.IdentityPairConstructor}
+                }
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
             ('repl:algo_params:decoder', Categorical([decoders.NoOp,
