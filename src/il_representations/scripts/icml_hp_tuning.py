@@ -113,7 +113,8 @@ def make_icml_tuning_configs(experiment_obj):
     # This config tests different beta parameters of VAE
     @experiment_obj.named_config
     def tune_vae():
-        repl = {'algo': 'VariationalAutoencoder'}
+        repl = {'algo': 'VariationalAutoencoder',
+                'repl:algo_params:batch_size': 64}
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
             ('repl:algo_params:loss_calculator_kwargs:beta', (1e-10, 0.1, 'log-uniform')),
