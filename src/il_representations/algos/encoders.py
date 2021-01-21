@@ -122,6 +122,16 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 64, 'stride': 4, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
         ],
+    'MAGICALCNN-resnet-128': [
+            {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+        ],
+    'MAGICALCNN-resnet-256': [
+            {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 256, 'stride': 2, 'residual': True},
+        ],
     'MAGICALCNN-small': [
             {'out_dim': 32, 'kernel_size': 5, 'stride': 2, 'padding': 2},
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
@@ -185,7 +195,7 @@ class MAGICALCNN(nn.Module):
                  use_ln=False,
                  dropout=None,
                  use_sn=False,
-                 arch_str='MAGICALCNN-resnet',
+                 arch_str='MAGICALCNN-resnet-128',
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
