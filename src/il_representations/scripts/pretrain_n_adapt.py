@@ -740,7 +740,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
             try:
                 new_v = skopt.space.check_dimension(v)
             except ValueError:
-                import pdb; pdb.set_trace()
+                # Raise actually-informative value error instead
                 raise ValueError(f"Dimension issue: k:{k} v: {v}")
             new_v.name = k
             sorted_space[k] = new_v
