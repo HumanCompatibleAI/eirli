@@ -22,7 +22,7 @@ ENV_DATA_TEST_CONFIG = {
     },
     'dm_control_demo_patterns': {
         'reacher-easy':
-        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
+        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz')
     },
 
 }

@@ -67,6 +67,17 @@ def test_skopt_search(chain_ex, file_observer):
             ray.shutdown()
 
 
+def _time_ray_run(ex, config_to_run):
+    try:
+        start_time = time()
+        ex.run(config_updates=config_to_run)
+        runtime = time() - start_time
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+    return runtime
+
+
 def test_repl_reuse(chain_ex):
     """
     An test of the functionality of reusing repl encoders. This test works
@@ -84,35 +95,17 @@ def test_repl_reuse(chain_ex):
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     random_id = round(time())
+
     chain_config['repl']['exp_ident'] = random_id
     chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
 
-    try:
-        first_start_time = time()
-        chain_ex.run(config_updates=chain_config)
-        first_runtime = time() - first_start_time
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
+    first_runtime = _time_ray_run(chain_ex, chain_config)
+    second_runtime = _time_ray_run(chain_ex, chain_config)
 
-    try:
-        second_start_time = time()
-        chain_ex.run(config_updates=chain_config)
-        second_runtime = time() - second_start_time
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
-
-    try:
-        chain_config['spec']['repl']['algo'] \
-            = tune.grid_search([algos.TemporalCPC])
-        third_start_time = time()
-        chain_ex.run(config_updates=chain_config)
-        third_runtime = time() - third_start_time
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
+    modified_config = copy.deepcopy(chain_config)
+    modified_config['spec']['repl']['seed'] = tune.grid_search([42])
+    third_runtime = _time_ray_run(chain_ex, modified_config)
 
     assert second_runtime < first_runtime
     assert third_runtime > second_runtime
@@ -137,3 +130,6 @@ def test_hash_config():
                                            "identical config dict do not match"
     assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \
                                               "hash_config result in identical hashes"
+    assert config_hash_1 == '1b88af9e0bdc4a254d5c186fc2931e10', "Hash differs from that on canonical testing machine; " \
+                                                                "either base config has been updated, or consistency" \
+                                                                "has broken"
