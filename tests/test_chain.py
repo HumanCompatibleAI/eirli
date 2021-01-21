@@ -107,7 +107,7 @@ def test_repl_reuse(chain_ex):
     modified_config['spec']['repl']['seed'] = tune.grid_search([42])
     third_runtime = _time_ray_run(chain_ex, modified_config)
 
-    min_speedup_factor = 0.8
+    min_speedup_factor = 0.95
     assert second_runtime < min_speedup_factor * first_runtime
     assert min_speedup_factor * third_runtime > second_runtime
 

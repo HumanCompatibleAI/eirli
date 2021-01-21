@@ -122,19 +122,22 @@ def initialize_non_features_extractor(sb3_model):
     sb3_model.policy.init_weights(sb3_model.policy.value_net, 1)
     return sb3_model
 
+
 def config_specifies_task_name(dataset_config_dict):
     if 'env_cfg' not in dataset_config_dict:
         return False
     return 'task_name' in dataset_config_dict['env_cfg']
 
+
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask, _config):
     # TODO fix to not assume FileStorageObserver always present
-
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
         torch.set_num_threads(torch_num_threads)
+
+    logging.basicConfig(level=logging.INFO)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
