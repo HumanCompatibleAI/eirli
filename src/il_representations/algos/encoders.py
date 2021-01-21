@@ -2,10 +2,12 @@ import copy
 import os
 import traceback
 import warnings
+import inspect
 
 from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
+from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 import torch
 from torch import nn
 from pyro.distributions import Delta
@@ -115,7 +117,28 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
             {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
-        ]
+        ],
+    'MAGICALCNN-resnet': [
+            {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+        ],
+    'MAGICALCNN-resnet-128': [
+            {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+        ],
+    'MAGICALCNN-resnet-256': [
+            {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 256, 'stride': 2, 'residual': True},
+        ],
+    'MAGICALCNN-small': [
+            {'out_dim': 32, 'kernel_size': 5, 'stride': 2, 'padding': 2},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+            {'out_dim': 64, 'kernel_size': 3, 'stride': 2, 'padding': 1},
+    ]
 }
 
 
@@ -172,54 +195,53 @@ class MAGICALCNN(nn.Module):
                  use_ln=False,
                  dropout=None,
                  use_sn=False,
-                 width=2,
+                 arch_str='MAGICALCNN-resnet-128',
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
-        def conv_block(in_chans, out_chans, kernel_size, stride, padding):
-            # We sometimes disable bias because batch norm has its own bias.
-            conv_layer = nn.Conv2d(
-                in_chans,
-                out_chans,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                bias=not use_bn,
-                padding_mode='zeros')
-
-            if use_sn:
-                # apply spectral norm if necessary
-                conv_layer = nn.utils.spectral_norm(conv_layer)
-
-            layers = [conv_layer]
-
-            if dropout:
-                # dropout after conv, but before activation
-                # (doesn't matter for ReLU)
-                layers.append(nn.Dropout2d(dropout))
-
-            layers.append(ActivationCls())
-
-            if use_bn:
-                # Insert BN layer after convolution (and optionally after
-                # dropout). I doubt order matters much, but see here for
-                # CONTROVERSY:
-                # https://github.com/keras-team/keras/issues/1802#issuecomment-187966878
-                layers.append(nn.BatchNorm2d(out_chans))
-
-            return layers
+        # If block_type == resnet, use ResNet's basic block.
+        # If block_type == magical, use MAGICAL block from its paper.
+        assert arch_str in NETWORK_ARCHITECTURE_DEFINITIONS.keys()
+        width = 1 if 'resnet' in arch_str else 2
 
         w = width
-        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS['MAGICALCNN']
+        self.architecture_definition = NETWORK_ARCHITECTURE_DEFINITIONS[arch_str]
         conv_layers = []
         in_dim = observation_space.shape[0]
+
+        block = magical_conv_block
+        if 'resnet' in arch_str:
+            block = BasicResidualBlock
         for layer_definition in self.architecture_definition:
-            conv_layers += conv_block(in_dim,
-                                      layer_definition['out_dim']*w,
-                                      kernel_size=layer_definition['kernel_size'],
-                                      stride=layer_definition['stride'],
-                                      padding=layer_definition['padding'])
+            if layer_definition.get('residual', False):
+                block_kwargs = {
+                    'stride': layer_definition['stride'],
+                    'downsample': nn.Sequential(nn.Conv2d(in_dim,
+                                                          layer_definition['out_dim'],
+                                                          kernel_size=1,
+                                                          stride=layer_definition['stride']),
+                                                nn.BatchNorm2d(layer_definition['out_dim']))
+                }
+                conv_layers += [block(in_dim,
+                                      layer_definition['out_dim'] * w,
+                                      **block_kwargs)]
+            else:
+                block_kwargs = {
+                    'stride': layer_definition['stride'],
+                    'kernel_size': layer_definition['kernel_size'],
+                    'padding': layer_definition['padding'],
+                    'use_bn': use_bn,
+                    'use_sn': use_sn,
+                    'dropout': dropout,
+                    'activation_cls': ActivationCls
+                }
+                conv_layers += block(in_dim,
+                                     layer_definition['out_dim'] * w,
+                                     **block_kwargs)
+
             in_dim = layer_definition['out_dim']*w
+        if 'resnet' in arch_str:
+            conv_layers.append(nn.Conv2d(in_dim, 32, 1))
         conv_layers.append(nn.Flatten())
 
         # another FC layer to make feature maps the right size
@@ -251,15 +273,55 @@ NETWORK_SHORT_NAMES = {
 }
 
 
-def get_obs_encoder_cls(obs_encoder_cls):
+def get_obs_encoder_cls(obs_encoder_cls, encoder_kwargs):
+    cls = obs_encoder_cls
     if obs_encoder_cls is None:
-        return MAGICALCNN
+        cls = MAGICALCNN
     if isinstance(obs_encoder_cls, str):
         try:
-            return NETWORK_SHORT_NAMES[obs_encoder_cls]
+            cls = NETWORK_SHORT_NAMES[obs_encoder_cls]
         except KeyError:
             raise ValueError(f"Unknown encoder name '{obs_encoder_cls}'")
-    return obs_encoder_cls
+
+    # Ensure the specified kwargs are in the encoder's parameters
+    for key in encoder_kwargs.keys():
+        assert key in inspect.signature(cls).parameters.keys()
+
+    return cls
+
+
+def magical_conv_block(in_chans, out_chans, kernel_size, stride, padding, use_bn, use_sn, dropout, activation_cls):
+    # We sometimes disable bias because batch norm has its own bias.
+    conv_layer = nn.Conv2d(
+        in_chans,
+        out_chans,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        bias=not use_bn,
+        padding_mode='zeros')
+
+    if use_sn:
+        # apply spectral norm if necessary
+        conv_layer = nn.utils.spectral_norm(conv_layer)
+
+    layers = [conv_layer]
+
+    if dropout:
+        # dropout after conv, but before activation
+        # (doesn't matter for ReLU)
+        layers.append(nn.Dropout2d(dropout))
+
+    layers.append(activation_cls())
+
+    if use_bn:
+        # Insert BN layer after convolution (and optionally after
+        # dropout). I doubt order matters much, but see here for
+        # CONTROVERSY:
+        # https://github.com/keras-team/keras/issues/1802#issuecomment-187966878
+        layers.append(nn.BatchNorm2d(out_chans))
+
+    return layers
 
 
 class Encoder(nn.Module):
@@ -284,7 +346,7 @@ class Encoder(nn.Module):
 
 class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
-                 learn_scale=False, latent_dim=None, scale_constant=1):
+                 learn_scale=False, latent_dim=None, scale_constant=1, obs_encoder_cls_kwargs=None):
         """
                 :param obs_space: The observation space that this Encoder will be used on
                 :param representation_dim: The number of dimensions of the representation
@@ -301,18 +363,21 @@ class BaseEncoder(Encoder):
                        If not set, this defaults to representation_dim * 2.
                 :param scale_constant: The constant value that will be returned if learn_scale is
                        set to False.
+                :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
          """
         super().__init__()
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
+        if obs_encoder_cls_kwargs is None:
+            obs_encoder_cls_kwargs = {}
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
         self.learn_scale = learn_scale
         if self.learn_scale:
             if latent_dim is None:
                 latent_dim = representation_dim * 2
-            self.network = obs_encoder_cls(obs_space, latent_dim)
+            self.network = obs_encoder_cls(obs_space, latent_dim, **obs_encoder_cls_kwargs)
             self.mean_layer = nn.Linear(latent_dim, representation_dim)
             self.scale_layer = nn.Linear(latent_dim, representation_dim)
         else:
-            self.network = obs_encoder_cls(obs_space, representation_dim)
+            self.network = obs_encoder_cls(obs_space, representation_dim, **obs_encoder_cls_kwargs)
             self.scale_constant = scale_constant
 
     def forward(self, x, traj_info):
@@ -462,10 +527,13 @@ class InverseDynamicsEncoder(BaseEncoder):
 
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
-                 momentum_weight=0.999, obs_encoder_cls=None):
+                 momentum_weight=0.999, obs_encoder_cls=None, obs_encoder_cls_kwargs=None):
         super().__init__()
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
-        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
+        if obs_encoder_cls_kwargs is None:
+            obs_encoder_cls_kwargs = {}
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
+        self.query_encoder = BaseEncoder(obs_shape, representation_dim, obs_encoder_cls, learn_scale=learn_scale,
+                                         obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
         self.momentum_weight = momentum_weight
         self.key_encoder = copy.deepcopy(self.query_encoder)
         for param in self.key_encoder.parameters():
@@ -495,15 +563,20 @@ class MomentumEncoder(Encoder):
 
 class RecurrentEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False, num_recurrent_layers=2,
-                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64):
+                 single_frame_repr_dim=None, min_traj_size=5, obs_encoder_cls=None, rnn_output_dim=64,
+                 obs_encoder_cls_kwargs=None):
         super().__init__()
-        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls)
+        if obs_encoder_cls_kwargs is None:
+            obs_encoder_cls_kwargs = {}
+        obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls, obs_encoder_cls_kwargs)
         self.num_recurrent_layers = num_recurrent_layers
         self.min_traj_size = min_traj_size
         self.representation_dim = representation_dim
         self.single_frame_repr_dim = representation_dim if single_frame_repr_dim is None else single_frame_repr_dim
-        self.single_frame_encoder = BaseEncoder(obs_shape, self.single_frame_repr_dim,
-                                                         obs_encoder_cls)
+        self.single_frame_encoder = BaseEncoder(obs_shape,
+                                                self.single_frame_repr_dim,
+                                                obs_encoder_cls,
+                                                obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
         self.context_rnn = nn.LSTM(self.single_frame_repr_dim, rnn_output_dim,
                                    self.num_recurrent_layers, batch_first=True)
         self.mean_layer = nn.Linear(rnn_output_dim, self.representation_dim)
