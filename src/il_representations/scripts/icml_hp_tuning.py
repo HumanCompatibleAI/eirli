@@ -97,11 +97,11 @@ def make_icml_tuning_configs(experiment_obj):
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
             ('repl:algo_params:loss_calculator_kwargs:beta', (1e-10, 0.25, 'log-uniform')),
-            ('il_test:n_rollouts', [20])
+            # ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:beta': 0.1,
-             'il_test:n_rollouts': 20
+             # 'il_test:n_rollouts': 20
              }]
 
         _ = locals()
@@ -116,11 +116,11 @@ def make_icml_tuning_configs(experiment_obj):
         tune_run_kwargs = dict(num_samples=15)
         skopt_space = OrderedDict([
             ('repl:algo_params:loss_calculator_kwargs:beta', (1e-10, 0.1, 'log-uniform')),
-            ('il_test:n_rollouts', [20])
+            # ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:loss_calculator_kwargs:beta': 1e-5,
-             'il_test:n_rollouts': 20
+             # 'il_test:n_rollouts': 20
              }]
 
         _ = locals()
@@ -142,11 +142,11 @@ def make_icml_tuning_configs(experiment_obj):
                                                       decoders.SymmetricProjectionHead,
                                                       decoders.AsymmetricProjectionHead],
                                                      prior=[0.5, 0.25, 0.25])),
-            ('il_test:n_rollouts', [20])
+            # ('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:decoder': decoders.NoOp,
-             'il_test:n_rollouts': 20
+             # 'il_test:n_rollouts': 20
              }]
 
         _ = locals()
