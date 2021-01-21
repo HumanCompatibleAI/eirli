@@ -51,8 +51,7 @@ def make_icml_tuning_configs(experiment_obj):
                                                                          prior=[0.2, 0.8]),),
                         ('repl:algo_params:augmenter_kwargs:augmenter_spec', Categorical(["translate,rotate,gaussian_blur",
                                                                                           "translate,rotate",
-                                                                                          "translate,rotate,flip_ud,flip_lr"])),
-                        ('il_test:n_rollouts', [20])
+                                                                                          "translate,rotate,flip_ud,flip_lr"]))
                         ])
         skopt_ref_configs = [
                 {'repl:algo_params:batch_size': 256,
@@ -61,7 +60,6 @@ def make_icml_tuning_configs(experiment_obj):
                  'repl:algo': 'ActionConditionedTemporalCPC',
                  'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss,
                  'repl:algo_params:augmenter_kwargs:augmenter_spec': "translate,rotate",
-                 'il_test:n_rollouts': 20
                     }]
 
         _ = locals()
@@ -77,14 +75,14 @@ def make_icml_tuning_configs(experiment_obj):
         skopt_space = OrderedDict([
             ('repl:algo_params:batch_size', (128, 512)),
             ('repl:algo_params:batch_extender_kwargs:queue_size', (1024, 8192)),
-            ('repl:algo_params:encoder_kwargs:momentum_weight', (0.985, 0.999)),
-            ('il_test:n_rollouts', [20])
+            ('repl:algo_params:encoder_kwargs:momentum_weight', (0.985, 0.999)) #,
+            #('il_test:n_rollouts', [20])
         ])
         skopt_ref_configs = [
             {'repl:algo_params:batch_size': 256,
              'repl:algo_params:batch_extender_kwargs:queue_size': 8192,
              'repl:algo_params:encoder_kwargs:momentum_weight': 0.999,
-             'il_test:n_rollouts': 20
+             #'il_test:n_rollouts': 20
              }]
 
         _ = locals()
