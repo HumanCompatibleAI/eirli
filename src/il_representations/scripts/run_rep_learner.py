@@ -14,7 +14,7 @@ from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
-from il_representations.utils import RepLSaveCallback
+from il_representations.utils import RepLSaveExampleBatchesCallback
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment(
@@ -141,9 +141,10 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
 
     # callbacks for saving example batches
     def make_batch_saver(interval):
-        return RepLSaveCallback(save_interval_batches=repl_batch_save_interval,
-                                dest_dir=os.path.join(log_dir, 'batch_saves'),
-                                color_space=color_space)
+        return RepLSaveExampleBatchesCallback(
+            save_interval_batches=repl_batch_save_interval,
+            dest_dir=os.path.join(log_dir, 'batch_saves'),
+            color_space=color_space)
     repl_callbacks = []
     repl_end_callbacks = []
     if repl_batch_save_interval is not None:

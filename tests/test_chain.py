@@ -9,7 +9,7 @@ from il_representations import algos
 from il_representations.envs import auto
 from il_representations.scripts.utils import StagesToRun, ReuseRepl
 from il_representations.test_support.configuration import (
-    CHAIN_CONFIG, ENV_CFG_TEST_CONFIGS)
+    CHAIN_CONFIG, CHAIN_CONFIG_SKOPT, ENV_CFG_TEST_CONFIGS)
 from il_representations.utils import hash_configs
 
 
@@ -50,6 +50,16 @@ def test_individual_stages(chain_ex, file_observer, stages):
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     chain_config['stages_to_run'] = stages
+    try:
+        chain_ex.run(config_updates=chain_config)
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+
+def test_skopt_search(chain_ex, file_observer):
+    # test using skopt to do hyperparameter search
+    chain_config = copy.deepcopy(CHAIN_CONFIG_SKOPT)
     try:
         chain_ex.run(config_updates=chain_config)
     finally:

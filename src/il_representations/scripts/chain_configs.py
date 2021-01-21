@@ -475,12 +475,12 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def cfg_il_gail_nofreeze():
+    def cfg_il_gail_200k_nofreeze():
         il_train = {
             'algo': 'gail',
             'gail': {
-                # TODO(sam): increase this to a default that works for most
-                # environments.
+                # TODO(sam): make a new config with a larger value once you
+                # know what works for most envs.
                 'total_timesteps': 200000,
             },
             'freeze_encoder': False,

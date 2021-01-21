@@ -4,6 +4,8 @@ jobs:
   build-and-test:
     resource_class: large
     docker:
+      # this is also used in gcp_cluster_template.yaml (if you change this file,
+      # remember to update all your cluster configs too)
       - image: humancompatibleai/il-representations:2021.01.11-r1
     steps:
       - checkout

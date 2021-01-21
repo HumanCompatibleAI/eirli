@@ -230,7 +230,7 @@ def load_sacred_pickle(fp, **kwargs):
     return SacredUnpickler(fp, **kwargs).load()
 
 
-class RepLSaveCallback:
+class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
     def __init__(self, save_interval_batches, dest_dir, color_space):

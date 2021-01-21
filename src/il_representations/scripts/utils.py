@@ -11,6 +11,7 @@ class StagesToRun(str, enum.Enum):
     REPL_ONLY = "REPL_ONLY"
     IL_ONLY = "IL_ONLY"
 
+
 class ReuseRepl(str, enum.Enum):
     """These enum flags are used to control whether
      pretrain_n_adapt reuses repl or not """

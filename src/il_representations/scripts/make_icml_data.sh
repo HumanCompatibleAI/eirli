@@ -5,6 +5,8 @@
 set -e
 
 NEW_DATA_ROOT="data-icml"
+# randomness used to generate random rollouts, and to select which subset of
+# trajectories is used from the larger demonstration set
 SEED=797821
 MAGICAL_NTRAJ=5
 DMC_NTRAJ=250

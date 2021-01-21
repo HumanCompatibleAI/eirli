@@ -37,7 +37,8 @@ def default_config():
 
 
 @mkdataset_random_ex.main
-def run(seed, env_data, env_cfg, n_timesteps_min):
+def run(seed, env_data, env_cfg, n_timesteps_min, *,
+        _max_steps_to_write_at_once=16384):
     set_global_seeds(seed)
     logging.basicConfig(level=logging.INFO)
 
@@ -60,7 +61,8 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
         # keep generating trajectories until we meet or exceed the minimum time
         # step count
         while timestep_ctr < n_timesteps_min:
-            n_to_generate = min(16384, n_timesteps_min - timestep_ctr)
+            n_to_generate = min(_max_steps_to_write_at_once,
+                                n_timesteps_min - timestep_ctr)
             logging.info(f'Generating {n_to_generate} timesteps '
                          f'({timestep_ctr}/{n_timesteps_min} generated so '
                          'far)')
