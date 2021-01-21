@@ -10,6 +10,7 @@ from il_representations.envs import auto
 from il_representations.scripts.utils import StagesToRun, ReuseRepl
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, CHAIN_CONFIG_SKOPT, ENV_CFG_TEST_CONFIGS)
+from il_representations.test_support.utils import files_are_identical
 from il_representations.utils import hash_configs
 
 
@@ -67,15 +68,32 @@ def test_skopt_search(chain_ex, file_observer):
             ray.shutdown()
 
 
-def _time_ray_run(ex, config_to_run):
+def _do_chain_run(chain_ex, config_to_run):
     try:
-        start_time = time()
-        ex.run(config_updates=config_to_run)
-        runtime = time() - start_time
+        run = chain_ex.run(config_updates=config_to_run)
     finally:
         if ray.is_initialized():
             ray.shutdown()
-    return runtime
+
+    # extract a path to the encoder & infer whether encoder was reused or
+    # trained anew (if it was reused, there will be an entry for 'cached_repl'
+    # instead of 'repl'; if it was done anew, then there will be an entry for
+    # 'repl' instead)
+    results = run.result
+    # this happens if there is more than one trial; we assume that is not the
+    # case
+    assert len(results) == 1, "chain_ex did more than one trial"
+    trial_result_dict = next(iter(results.values()))
+    by_type = {
+        d['type']: d for d in trial_result_dict["all_experiment_rvs"]
+    }
+    if 'repl' in by_type:
+        # encoder was not reused
+        return by_type['repl']['result']['encoder_path'], False
+    elif 'cached_repl' in by_type:
+        # encoder was reused
+        return by_type['cached_repl']['result']['encoder_path'], True
+    raise ValueError(f"could not find repL encoder path in results={results}")
 
 
 def test_repl_reuse(chain_ex):
@@ -100,16 +118,18 @@ def test_repl_reuse(chain_ex):
     chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
 
-    first_runtime = _time_ray_run(chain_ex, chain_config)
-    second_runtime = _time_ray_run(chain_ex, chain_config)
+    first_encoder_path, first_was_reused = _do_chain_run(chain_ex, chain_config)
+    second_encoder_path, second_was_reused = _do_chain_run(chain_ex, chain_config)
+
+    assert files_are_identical(first_encoder_path, second_encoder_path)
+    assert second_was_reused and not first_was_reused
 
     modified_config = copy.deepcopy(chain_config)
     modified_config['spec']['repl']['seed'] = tune.grid_search([42])
-    third_runtime = _time_ray_run(chain_ex, modified_config)
+    third_encoder_path, third_was_reused = _do_chain_run(chain_ex, modified_config)
 
-    min_speedup_factor = 0.95
-    assert second_runtime < min_speedup_factor * first_runtime
-    assert min_speedup_factor * third_runtime > second_runtime
+    assert not files_are_identical(third_encoder_path, first_encoder_path)
+    assert not third_was_reused
 
 
 def test_hash_config():

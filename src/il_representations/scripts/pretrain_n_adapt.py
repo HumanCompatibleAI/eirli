@@ -148,23 +148,26 @@ def run_single_exp(merged_config, log_dir, exp_name):
     elif exp_name == 'il_test':
         inner_ex = il_test_ex
     else:
-        raise NotImplementedError(f"exp_name must be one of repl, il_train, or il_test. Value passed in: {exp_name}")
+        raise NotImplementedError(
+            f"exp_name must be one of repl, il_train, or il_test. Value passed in: {exp_name}")
 
     observer = FileStorageObserver(osp.join(log_dir, exp_name))
     inner_ex.observers.append(observer)
     ret_val = inner_ex.run(config_updates=merged_config)
-    return ret_val.result
-
-
-def report_experiment_result(sacred_result):
-    """To be run after an experiment."""
-    filtered_result = {
-        k: v
-        for k, v in sacred_result.items() if isinstance(v, (int, float))
+    return {
+        "type": exp_name,
+        "result": ret_val.result,
+        # FIXME(sam): this is dependent on us having exactly one
+        # observer, and it being a FileStorageObserver
+        "dir": ret_val.observers[0].dir,
     }
+
+
+def report_final_experiment_results(results_dict):
+    """To be run after an experiment."""
     logging.info(
-        f"Got sacred result with keys {', '.join(filtered_result.keys())}")
-    tune.report(**filtered_result)
+        f"Got experiment result with keys {', '.join(results_dict.keys())}")
+    tune.report(**results_dict)
 
 
 def relative_symlink(src, dst):
@@ -315,14 +318,21 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
         if merged_repl_config.get('seed') is None:
             merged_repl_config['seed'] = rng.randint(1 << 31)
 
-        pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
+        pretrain_rv = run_single_exp(merged_repl_config, log_dir, 'repl')
 
-        pretrained_encoder_path = pretrain_result['encoder_path']
+        pretrained_encoder_path = pretrain_rv['result']['encoder_path']
         # Once repl training finishes, symlink the result to the repl directory
         cache_repl_encoder(pretrained_encoder_path,
                            repl_dir,
                            repl_hash,
                            merged_repl_config['seed'])
+    else:
+        pretrain_rv = {
+            "type": "cached_repl",
+            "result": {
+                "encoder_path": pretrained_encoder_path,
+            },
+        }
 
     # Run il train
     merged_il_train_config = update(
@@ -335,21 +345,24 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
             'venv_opts': venv_opts_config,
         },
     )
-    il_train_result = run_single_exp(merged_il_train_config, log_dir, 'il_train')
+    il_train_rv = run_single_exp(merged_il_train_config, log_dir, 'il_train')
 
     # Run il test
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_result['model_path'],
+            'policy_path': il_train_rv['result']['model_path'],
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
     )
-    il_test_result = run_single_exp(merged_il_test_config, log_dir, 'il_test')
+    il_test_rv = run_single_exp(merged_il_test_config, log_dir, 'il_test')
 
-    report_experiment_result(il_test_result)
+    report_final_experiment_results({
+        "all_experiment_rvs": [pretrain_rv, il_train_rv, il_test_rv],
+        **il_test_rv["result"],
+    })
 
 
 def run_repl_only_exp(*, rep_ex_config, env_cfg_config, env_data_config,
@@ -368,17 +381,20 @@ def run_repl_only_exp(*, rep_ex_config, env_cfg_config, env_data_config,
     repl_hash = hash_configs(merged_repl_config)
     merged_repl_config.setdefault('seed', rng.randint(1 << 31))
 
-    pretrain_result = run_single_exp(merged_repl_config, log_dir, 'repl')
+    pretrain_rv = run_single_exp(merged_repl_config, log_dir, 'repl')
 
     # caching
     repl_dir = get_repl_dir(log_dir)
-    cache_repl_encoder(pretrain_result['encoder_path'],
+    cache_repl_encoder(pretrain_rv['result']['encoder_path'],
                        repl_dir,
                        repl_hash,
                        merged_repl_config['seed'])
 
     # report result
-    report_experiment_result(pretrain_result)
+    report_final_experiment_results({
+        "all_experiment_rvs": [pretrain_rv],
+        **pretrain_rv["result"],
+    })
     logging.info("RepL experiment completed")
 
 
@@ -396,21 +412,24 @@ def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
             'venv_opts': venv_opts_config,
         },
     )
-    il_train_result = run_single_exp(merged_il_train_config, log_dir,
-                                     'il_train')
+    il_train_rv = run_single_exp(merged_il_train_config, log_dir,
+                                 'il_train')
 
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_result['model_path'],
+            'policy_path': il_train_rv['result']['model_path'],
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
     )
-    il_test_result = run_single_exp(merged_il_test_config, log_dir, 'il_test')
+    il_test_rv = run_single_exp(merged_il_test_config, log_dir, 'il_test')
 
-    report_experiment_result(il_test_result)
+    report_final_experiment_results({
+        "all_experiment_rvs": [il_train_rv, il_test_rv],
+        **il_test_rv["result"],
+    })
 
 
 @chain_ex.config
@@ -740,6 +759,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         logging.info(f"Best config is: {best_config}")
     logging.info("Results available at: ")
     logging.info(rep_run._get_trial_paths())
+    return rep_run.results
 
 
 def main(argv=None):
