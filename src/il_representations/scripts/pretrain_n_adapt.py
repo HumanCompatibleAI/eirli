@@ -511,6 +511,7 @@ def trainable_function(config):
     #    inner function that actually runs the experiment. This step ensures
     #    that we do not omit any keys from 'config', or provide extraneous keys
     #    that are not used at all in 'trainable_function'.
+    logging.basicConfig(level=logging.INFO)
 
     # first separate hyperparameters from base config
     hyperparameters = dict(config)  # so we don't modify Tune data structures
