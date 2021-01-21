@@ -27,6 +27,7 @@ from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
+from il_representations.scripts.utils import print_policy_info
 
 bc_ingredient = Ingredient('bc')
 
@@ -121,6 +122,7 @@ def default_config():
     encoder_kwargs = dict(
         obs_encoder_cls='MAGICALCNN',
         representation_dim=128,
+        obs_encoder_cls_kwargs={}
     )
 
     _ = locals()
