@@ -40,6 +40,8 @@ docker:
     - "--mount"
     - "type=volume,source=project-data-volume,target=/project-data"
     - "--runtime=nvidia"
+    - "--ulimit"
+    - "core=0"
 
 # Cloud-provider specific configuration.
 provider:
@@ -165,6 +167,10 @@ initialization_commands:
     nfs_mount_path="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d ' ' -f 3)"
     && nv_driver_major_version="$(nvidia-smi -q | grep 'Driver Version.*:.*' | cut -d : -f 2- | sed 's/\s//g' | cut -d . -f 1)"
     && ( [ "$nv_driver_major_version" -ge 450 ] || sudo sh "${nfs_mount_path}/driver/NVIDIA-Linux-x86_64-450.51.06.run" -s )
+  # disable auto coredumps (these sometimes take more space than there is on local disk)
+  - >-
+    sudo sh -c 'echo "kernel.core_pattern=|/bin/false" > /etc/sysctl.d/50-coredump.conf'
+    && sudo sysctl -p /etc/sysctl.d/50-coredump.conf
 # List of shell commands to run to set up nodes (both head and worker).
 setup_commands:
   # Set up SSH key

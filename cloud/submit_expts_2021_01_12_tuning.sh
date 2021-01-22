@@ -11,6 +11,7 @@ dmc_envs=("finger-spin" "cheetah-run")
 magical_envs=("MatchRegions" "MoveToRegion")
 
 submit_expt() {
+    # submit experiment to cluster using given args
     ray submit --tmux "$cluster_cfg_path" \
         ./submit_pretrain_n_adapt.py -- ${base_cfgs[@]} $@
 }
