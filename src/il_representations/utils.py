@@ -339,3 +339,11 @@ def augmenter_from_spec(spec, color_space):
         return StandardAugmentations(**spec, stack_color_space=color_space)
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
+
+
+class WrappedConfig:
+    """Dumb wrapper class used in pretrain_n_adapt to hide things from skopt.
+    It's in a separate module so that we can pickle it when pretrain_n_adapt is
+    __main__."""
+    def __init__(self, config_dict):
+        self.config_dict = config_dict
