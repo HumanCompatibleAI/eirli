@@ -9,7 +9,7 @@ demos
 *.egg-info
 # data/ is used to set up symlinks to datasets
 data
-# data-icml is like data but with different trajectory sizes for ICML
+# data-icml is like data but with different trajectory sizes (for ICML)
 data-icml
 progress.csv
 params.json
