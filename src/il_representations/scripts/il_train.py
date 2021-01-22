@@ -54,6 +54,14 @@ def bc_defaults():
     del _
 
 
+@bc_ingredient.capture
+def _bc_dummy(augs):
+    """This is a do-nothing function to indicate to sacred that `bc.augs` is
+    actually used. If we don't include this, then Sacred doesn't allow us to
+    set `bc.augs` to be a dictionary with arbitrary keys."""
+    raise NotImplementedError("this function is not meant to be called")
+
+
 gail_ingredient = Ingredient('gail')
 
 
@@ -99,6 +107,12 @@ def gail_defaults():
 
     _ = locals()
     del _
+
+
+@gail_ingredient.capture
+def _gail_dummy(disc_augs):
+    """Similar to _bc_dummy above, but for GAIL augmentations."""
+    raise NotImplementedError("this function is not meant to be called")
 
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
