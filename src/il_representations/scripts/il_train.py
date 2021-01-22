@@ -7,7 +7,6 @@ import readline  # noqa: F401
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
-from imitation.augment import StandardAugmentations
 import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
 import sacred
