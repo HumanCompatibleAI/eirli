@@ -200,4 +200,68 @@ def make_hp_tuning_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def gail_tune():
+        use_skopt = True
+        skopt_search_mode = 'max'
+        metric = 'return_mean'
+        stages_to_run = StagesToRun.IL_ONLY
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                # 1e6 timesteps is enough to solve at least half the MAGICAL
+                # tasks, so 500k is enough for the easy ones. For DMC I'm not
+                # sure how many steps we need. CURL and RAD papers
+                # (https://arxiv.org/pdf/2004.04136.pdf,
+                # https://arxiv.org/pdf/2004.14990.pdf) suggest that 500k steps
+                # is only enough to get ~200 reward on half-cheetah and
+                # finger-spin using SAC-from-pixels, but they're using RL
+                # rather than GAIL. Will try 500k first & see where we go from
+                # there.
+                'total_timesteps': 500000,
+                # basically disable intermediate checkpoint saving
+                'save_every_n_steps': int(1e10),
+                # log, but not too often
+                'log_interval_steps': int(1e3),
+            }
+        }
+        venv_opts = {
+            'venv_parallel': True,
+        }
+        skopt_space = collections.OrderedDict([
+            ('il_train:gail:ppo_n_steps', (8, 64)),
+            ('il_train:gail:ppo_n_epochs', (4, 12)),
+            ('il_train:gail:ppo_batch_size', (16, 64)),
+            ('il_train:gail:ppo_init_learning_rate',
+             (1e-7, 1e-3, 'log-uniform')),
+            ('il_train:gail:ppo_gamma', (0.8, 0.9999, 'log-uniform')),
+            ('il_train:gail:ppo_gae_lambda', (0.8, 0.9999, 'log-uniform')),
+            ('il_train:gail:ppo_ent', (1e-10, 1.0, 'log-uniform')),
+            ('il_train:gail:ppo_adv_clip', (0.01, 0.3)),
+            ('il_train:gail:disc_n_updates_per_round', (1, 8)),
+            ('il_train:gail:disc_augs', [
+                'rotate_ex,translate_ex', 'rotate_mid,translate,erase',
+                'rotate_ex,translate_ex,erase,noise',
+                'rotate_ex,translate_ex,erase,flip_ud,flip_lr,noise,gray',
+            ]),
+            ('venv_opts:n_envs', (8, 32)),
+        ])
+        skopt_ref_configs = [
+            collections.OrderedDict([
+                ('il_train:gail:ppo_n_steps', 8),
+                ('il_train:gail:ppo_n_epochs', 8),
+                ('il_train:gail:ppo_batch_size', 32),
+                ('il_train:gail:ppo_init_learning_rate', 6e-5),
+                ('il_train:gail:ppo_gamma', 0.9),
+                ('il_train:gail:ppo_gae_lambda', 0.9),
+                ('il_train:gail:ppo_ent', 1e-7),
+                ('il_train:gail:ppo_adv_clip', 0.05),
+                ('il_train:gail:disc_n_updates_per_round', 2),
+                ('il_train:gail:disc_augs',
+                 'rotate_ex,translate_ex,erase,flip_ud,flip_lr,noise,gray'),
+                ('venv_opts:n_envs', 24),
+            ]),
+        ]
 
+        _ = locals()
+        del _

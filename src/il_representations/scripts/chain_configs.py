@@ -338,6 +338,16 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_use_icml_on_chai_machines():
+        # use data for ICML when running on perceptron/svm
+        env_data = {
+            'data_root': '/scratch/sam/ilr-data-icml/',
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_demos_magical_mt():
         """Multi-task training on all MAGICAL tasks."""
         repl = {
@@ -426,6 +436,32 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_il_bc_500k_nofreeze():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'n_batches': 500000,
+            },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_200k_nofreeze():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'n_batches': 200000,
+            },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_il_bc_freeze():
         il_train = {
             'algo': 'bc',
@@ -438,4 +474,22 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_il_gail_200k_nofreeze():
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                # TODO(sam): make a new config with a larger value once you
+                # know what works for most envs.
+                'total_timesteps': 200000,
+            },
+            'freeze_encoder': False,
+        }
+        venv_opts = {
+            'n_envs': 32,
+            'venv_parallel': True,
+            'parallel_workers': 8,
+        }
 
+        _ = locals()
+        del _

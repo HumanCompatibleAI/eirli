@@ -2,6 +2,8 @@
 """Run an IL algorithm in some selected domain."""
 import logging
 import os
+# readline import is black magic to stop PDB from segfaulting; do not remove it
+import readline  # noqa: F401
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
@@ -25,6 +27,8 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             venv_opts_ingredient)
 from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
+from il_representations.il.gail_pol_save import GAILSavePolicyCallback
+from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
 from il_representations.scripts.utils import print_policy_info
@@ -45,6 +49,7 @@ def bc_defaults():
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
+    lr = 1e-4
 
     _ = locals()
     del _
@@ -55,22 +60,43 @@ gail_ingredient = Ingredient('gail')
 
 @gail_ingredient.config
 def gail_defaults():
+    # These default settings are copied from
+    # https://arxiv.org/pdf/2011.00401.pdf (page 19). They should work for
+    # MAGICAL, but not sure about the other tasks.
+    # WARNING: the number of parallel vec envs is actually an important
+    # hyperparameter. I set this to 32 in the MAGICAL paper, but 24 should work
+    # too.
+
+    ppo_n_steps = 8
+    ppo_n_epochs = 12
+    # "batch size" is actually the size of a _minibatch_. The amount of data
+    # used for each training update is ppo_n_steps*n_envs.
+    ppo_batch_size = 64
+    ppo_init_learning_rate = 6e-5
+    ppo_final_learning_rate = 0.0
+    ppo_gamma = 0.8
+    ppo_gae_lambda = 0.8
+    ppo_ent = 1e-5
+    ppo_adv_clip = 0.01
+    ppo_max_grad_norm = 1.0
+    # normalisation + clipping is experimental; previously I just did
+    # normalisation (to stddev of 0.1) with no clipping
+    ppo_norm_reward = True
+    ppo_clip_reward = float('inf')
+    # target standard deviation for rewards
+    ppo_reward_std = 0.01
+
+    disc_n_updates_per_round = 12
+    disc_batch_size = 24
+    disc_lr = 2.5e-5
+    disc_augs = "rotate,translate,noise"
+
     # number of env time steps to perform during reinforcement learning
     total_timesteps = int(1e6)
-    disc_n_updates_per_round = 8
-    disc_batch_size = 32
-    disc_lr = 1e-4
-    disc_augs = "rotate,translate,noise"
-    ppo_n_steps = 16
-    # "batch size" is actually the size of a _minibatch_. The amount of data
-    # used for each training update is gail_ppo_n_steps*n_envs.
-    ppo_batch_size = 32
-    ppo_n_epochs = 4
-    ppo_learning_rate = 2.5e-4
-    ppo_gamma = 0.95
-    ppo_gae_lambda = 0.95
-    ppo_ent = 1e-5
-    ppo_adv_clip = 0.05
+    # save intermediate snapshot after this many environment time steps
+    save_every_n_steps = 5e4
+    # dump logs every <this many> steps (at most)
+    log_interval_steps = 5e3
 
     _ = locals()
     del _
@@ -80,9 +106,9 @@ sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 il_train_ex = Experiment(
     'il_train',
     ingredients=[
-        # We need env_cfg_ingredient to determine which environment to train on,
-        # venv_opts_ingredient to construct a vecenv for the environment, and
-        # env_data_ingredient to load training data. bc_ingredient and
+        # We need env_cfg_ingredient to determine which environment to train
+        # on, venv_opts_ingredient to construct a vecenv for the environment,
+        # and env_data_ingredient to load training data. bc_ingredient and
         # gail_ingredient are used for BC and GAIL, respectively (otherwise
         # ignored).
         env_cfg_ingredient,
@@ -202,15 +228,16 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
         device=device_name,
         augmentation_fn=augmenter,
         optimizer_cls=th.optim.Adam,
-        optimizer_kwargs=dict(lr=1e-4),
+        optimizer_kwargs=dict(lr=bc['lr']),
         ent_weight=1e-3,
         l2_weight=1e-5,
     )
 
     save_interval = bc['save_every_n_batches']
     if save_interval is not None:
-        optional_model_saver = BCModelSaver(
-            policy, os.path.join(out_dir, 'snapshots'), save_interval)
+        optional_model_saver = BCModelSaver(policy,
+                                            os.path.join(out_dir, 'snapshots'),
+                                            save_interval)
     else:
         optional_model_saver = None
 
@@ -255,6 +282,16 @@ def do_training_gail(
                            encoder_or_path=encoder,
                            lr_schedule=lr_schedule)
 
+    def linear_lr_schedule(prog_remaining):
+        """Linearly anneal LR from `init` to `final` (both taken from context).
+
+        This is called by SB3. `prog_remaining` falls from 1.0 (at the start)
+        to 0.0 (at the end)."""
+        init = gail['ppo_init_learning_rate']
+        final = gail['ppo_final_learning_rate']
+        alpha = prog_remaining
+        return alpha * init + (1 - alpha) * final
+
     ppo_algo = PPO(
         policy=policy_constructor,
         env=venv_chans_first,
@@ -270,7 +307,8 @@ def do_training_gail(
         gamma=gail['ppo_gamma'],
         gae_lambda=gail['ppo_gae_lambda'],
         clip_range=gail['ppo_adv_clip'],
-        learning_rate=gail['ppo_learning_rate'],
+        learning_rate=linear_lr_schedule,
+        max_grad_norm=gail['ppo_max_grad_norm'],
     )
     color_space = auto_env.load_color_space()
     augmenter = StandardAugmentations.from_string_spec(
@@ -288,6 +326,7 @@ def do_training_gail(
         dataset,
         batch_size=gail['disc_batch_size'],
         shuffle=True,
+        drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
     del dataset
 
@@ -297,13 +336,21 @@ def do_training_gail(
         gen_algo=ppo_algo,
         n_disc_updates_per_round=gail['disc_n_updates_per_round'],
         expert_batch_size=gail['disc_batch_size'],
-        discrim_kwargs=dict(discrim_net=discrim_net, scale=True),
-        obs_norm=False,
-        rew_norm=True,
+        discrim_kwargs=dict(discrim_net=discrim_net, normalize_images=True),
+        normalize_obs=False,
+        normalize_reward=gail['ppo_norm_reward'],
+        normalize_reward_std=gail['ppo_reward_std'],
+        clip_reward=gail['ppo_clip_reward'],
         disc_opt_kwargs=dict(lr=gail['disc_lr']),
         disc_augmentation_fn=augmenter,
+        gen_callbacks=[SB3ScoreLoggingCallback()],
     )
-    trainer.train(total_timesteps=gail['total_timesteps'])
+    save_callback = GAILSavePolicyCallback(
+        ppo_algo=ppo_algo, save_every_n_steps=gail['save_every_n_steps'],
+        save_dir=out_dir)
+    trainer.train(
+        total_timesteps=gail['total_timesteps'], callback=save_callback,
+        log_interval_timesteps=gail['log_interval_steps'])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final GAIL policy to {final_path}")

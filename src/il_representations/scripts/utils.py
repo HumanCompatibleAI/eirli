@@ -13,6 +13,7 @@ class StagesToRun(str, enum.Enum):
     REPL_ONLY = "REPL_ONLY"
     IL_ONLY = "IL_ONLY"
 
+
 class ReuseRepl(str, enum.Enum):
     """These enum flags are used to control whether
      pretrain_n_adapt reuses repl or not """
@@ -20,16 +21,18 @@ class ReuseRepl(str, enum.Enum):
     NO = "NO"
     IF_AVAILABLE = "IF_AVAILABLE"
 
-def update(d, u):
+
+def update(d, *updates):
     """Recursive dictionary update (pure)."""
     d = copy.copy(d)  # to make this pure
-    for k, v in u.items():
-        if isinstance(d.get(k), collections.Mapping):
-            # recursive insert into a mapping
-            d[k] = update(d[k], v)
-        else:
-            # if the existing value is not a mapping, then overwrite it
-            d[k] = v
+    for u in updates:
+        for k, v in u.items():
+            if isinstance(d.get(k), collections.Mapping):
+                # recursive insert into a mapping
+                d[k] = update(d[k], v)
+            else:
+                # if the existing value is not a mapping, then overwrite it
+                d[k] = v
     return d
 
 

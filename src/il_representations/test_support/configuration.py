@@ -120,3 +120,18 @@ CHAIN_CONFIG = {
     },
     **ENV_DATA_VENV_OPTS_TEST_CONFIG,
 }
+CHAIN_CONFIG_SKOPT = {
+    **CHAIN_CONFIG,
+    'use_skopt': True,
+    'skopt_search_mode': 'max',
+    'metric': 'return_mean',
+    'stages_to_run': 'REPL_AND_IL',
+    'spec': {},
+    'env_cfg': ENV_CFG_TEST_CONFIGS[0],
+    'skopt_space': {
+        'repl:algo_params:augmenter_kwargs:augmenter_spec': [
+            "translate", "rotate",
+        ],
+        'il_train:bc:lr': (1e-7, 1.0, 'log-uniform'),
+    }
+}

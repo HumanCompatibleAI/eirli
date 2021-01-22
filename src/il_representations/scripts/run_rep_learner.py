@@ -1,4 +1,5 @@
 import logging
+import os
 
 import numpy as np
 import sacred
@@ -13,6 +14,7 @@ from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
+from il_representations.utils import RepLSaveExampleBatchesCallback
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment(
@@ -63,7 +65,14 @@ def default_config():
     # would end up training on more samples from the longer dataset.
     batches_per_epoch = 1000
     n_epochs = 10
+
+    # how often should we save repL batch data?
+    # (set to None to disable completely)
+    repl_batch_save_interval = 1000
+
+    # set this to True if you want repL encoder hashing to ignore env_cfg
     is_multitask = False
+
     _ = locals()
     del _
 
@@ -113,19 +122,22 @@ def initialize_non_features_extractor(sb3_model):
     sb3_model.policy.init_weights(sb3_model.policy.value_net, 1)
     return sb3_model
 
+
 def config_specifies_task_name(dataset_config_dict):
     if 'env_cfg' not in dataset_config_dict:
         return False
     return 'task_name' in dataset_config_dict['env_cfg']
 
+
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
-        torch_num_threads, is_multitask, _config):
+        torch_num_threads, repl_batch_save_interval, is_multitask, _config):
     # TODO fix to not assume FileStorageObserver always present
-
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
         torch.set_num_threads(torch_num_threads)
+
+    logging.basicConfig(level=logging.INFO)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -136,6 +148,28 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     color_space = combined_meta['color_space']
     observation_space = combined_meta['observation_space']
     action_space = combined_meta['action_space']
+
+    # callbacks for saving example batches
+    def make_batch_saver(interval):
+        return RepLSaveExampleBatchesCallback(
+            save_interval_batches=repl_batch_save_interval,
+            dest_dir=os.path.join(log_dir, 'batch_saves'),
+            color_space=color_space)
+    repl_callbacks = []
+    repl_end_callbacks = []
+    if repl_batch_save_interval is not None:
+        # this gets called at every batch, so we need a nonzero interval
+        reg_save_callback = make_batch_saver(repl_batch_save_interval)
+    else:
+        # if there's no specified interval, we set the interval so high that it
+        # will only run once (at the start)
+        reg_save_callback = make_batch_saver(n_epochs * batches_per_epoch + 1)
+    repl_callbacks.append(reg_save_callback)
+    # this callback gets called once at the end to guarantee that we always
+    # save the last batch
+    repl_end_callbacks.append(make_batch_saver(0))
+
+    # instantiate algo
     dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
                                         for config_dict in dataset_configs])
     if is_multitask:
@@ -162,7 +196,9 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     loss_record, most_recent_encoder_path = model.learn(
         datasets=webdatasets,
         batches_per_epoch=batches_per_epoch,
-        n_epochs=n_epochs)
+        n_epochs=n_epochs,
+        callbacks=repl_callbacks,
+        end_callbacks=repl_end_callbacks)
 
     return {
         'encoder_path': most_recent_encoder_path,
