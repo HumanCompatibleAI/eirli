@@ -30,7 +30,8 @@ def make_icml_tuning_configs(experiment_obj):
         metric = 'return_mean'
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
-            'batches_per_epoch': 5000,
+            'batches_per_epoch': 500,
+            'n_epochs': 10,
         }
         _ = locals()
         del _
