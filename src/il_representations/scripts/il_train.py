@@ -30,8 +30,7 @@ from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-from il_representations.utils import freeze_params
-from il_representations.scripts.utils import print_policy_info
+from il_representations.utils import augmenter_from_spec, freeze_params
 
 bc_ingredient = Ingredient('bc')
 
@@ -203,8 +202,7 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
                          action_space=venv_chans_first.action_space,
                          encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        bc['augs'], stack_color_space=color_space)
+    augmenter = augmenter_from_spec(bc['augs'], color_space)
 
     # build dataset in the format required by imitation
     dataset = il_types.TransitionsMinimal(obs=dataset_dict['obs'],
@@ -311,8 +309,7 @@ def do_training_gail(
         max_grad_norm=gail['ppo_max_grad_norm'],
     )
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        gail['disc_augs'], stack_color_space=color_space)
+    augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
 
     # build dataset in the format required by imitation
     # (this time the dataset has more keys)

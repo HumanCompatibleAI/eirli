@@ -223,6 +223,9 @@ def make_hp_tuning_configs(experiment_obj):
                 'save_every_n_steps': int(1e10),
                 # log, but not too often
                 'log_interval_steps': int(1e3),
+                # base type should be dict
+                # (the space will customise this later on)
+                'disc_augs': {},
             }
         }
         venv_opts = {
@@ -239,12 +242,18 @@ def make_hp_tuning_configs(experiment_obj):
             ('il_train:gail:ppo_ent', (1e-10, 1.0, 'log-uniform')),
             ('il_train:gail:ppo_adv_clip', (0.01, 0.3)),
             ('il_train:gail:disc_n_updates_per_round', (1, 8)),
-            ('il_train:gail:disc_augs', [
-                'rotate_ex,translate_ex', 'rotate_mid,translate,erase',
-                'rotate_ex,translate_ex,erase,noise',
-                'rotate_ex,translate_ex,erase,flip_ud,flip_lr,noise,gray',
-            ]),
             ('venv_opts:n_envs', (8, 32)),
+            # lots of augmentation options
+            ('il_train:gail:disc_augs:translate_ex', [True, False]),
+            ('il_train:gail:disc_augs:rotate_mid', [True, False]),
+            ('il_train:gail:disc_augs:color_jitter_mid', [True, False]),
+            ('il_train:gail:disc_augs:flip_ud', [True, False]),
+            ('il_train:gail:disc_augs:flip_lr', [True, False]),
+            ('il_train:gail:disc_augs:noise', [True, False]),
+            ('il_train:gail:disc_augs:rot90', [True, False]),
+            ('il_train:gail:disc_augs:erase', [True, False]),
+            ('il_train:gail:disc_augs:gray', [True, False]),
+            ('il_train:gail:disc_augs:gaussian_blur', [True, False]),
         ])
         skopt_ref_configs = [
             collections.OrderedDict([
@@ -260,6 +269,16 @@ def make_hp_tuning_configs(experiment_obj):
                 ('il_train:gail:disc_augs',
                  'rotate_ex,translate_ex,erase,flip_ud,flip_lr,noise,gray'),
                 ('venv_opts:n_envs', 24),
+                ('il_train:gail:disc_augs:translate_ex', True),
+                ('il_train:gail:disc_augs:rotate_mid', True),
+                ('il_train:gail:disc_augs:color_jitter_mid', True),
+                ('il_train:gail:disc_augs:flip_ud', True),
+                ('il_train:gail:disc_augs:flip_lr', True),
+                ('il_train:gail:disc_augs:noise', True),
+                ('il_train:gail:disc_augs:rot90', True),
+                ('il_train:gail:disc_augs:erase', True),
+                ('il_train:gail:disc_augs:gray', True),
+                ('il_train:gail:disc_augs:gaussian_blur', True),
             ]),
         ]
 

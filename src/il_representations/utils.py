@@ -12,6 +12,7 @@ from collections.abc import Sequence
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
+from imitation.augment.convenience import StandardAugmentations
 from skvideo.io import FFmpegWriter
 import torch as th
 import torchvision.utils as vutils
@@ -325,3 +326,16 @@ def up(p):
         up(up(up("foo/bar"))) == ".."
     """
     return os.path.normpath(os.path.join(p, ".."))
+
+
+def augmenter_from_spec(spec, color_space):
+    """Construct an image augmentation module from an augmenter spec, expressed
+    as either a string of comma-separated augmenter names, or a dict of kwargs
+    for StandardAugmentations."""
+    # from il_representations.utils import augmenter_from_spec
+    if isinstance(spec, str):
+        return StandardAugmentations.from_string_spec(spec, color_space)
+    elif isinstance(spec, dict):
+        return StandardAugmentations(**spec, stack_color_space=color_space)
+    raise TypeError(
+        f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
