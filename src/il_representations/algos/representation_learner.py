@@ -1,7 +1,6 @@
 import inspect
 import logging
 import os
-import re
 import time
 
 import imitation.util.logger as logger
@@ -10,14 +9,12 @@ from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
-from il_representations.data.read_dataset import InterleavedDataset
-from il_representations.utils import image_tensor_to_rgb_grid, save_rgb_tensor
+from il_representations.data.read_dataset import datasets_to_loader
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -256,40 +253,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
             `loss_record` is a list of average loss values encountered at each
             epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
-        # For each single-task dataset in the `datasets` list, we first apply a
-        # target pair constructor to create targets from the incoming stream of
-        # observations. We can then optionally apply a shuffler that retains a
-        # small pool of constructed targets in memory and yields
-        # randomly-selected items from that pool (this approximates
-        # full-dataset shuffling without having to read the whole dataset into
-        # memory).
-        for sub_ds in datasets:
-            # Construct representation learning dataset of correctly paired
-            # (context, target) pairs
-            sub_ds.pipe(self.target_pair_constructor)
-            if self.shuffle_batches:
-                # TODO(sam): if we're low on memory due to shuffle buffer
-                # memory consumption, then consider shuffling *after*
-                # interleaving (more complicated, but also takes up less
-                # memory).
-                sub_ds.shuffle(self.shuffle_buffer_size)
-
-        if not self.shuffle_batches:
-            assert len(datasets) <= 1, \
-                "InterleavedDataset will intrinsically shuffle batches by " \
-                "randomly selecting which dataset to draw from at each " \
-                "iteration; do not use multi-task training if " \
-                f"shuffle_batches=False is required (got {len(datasets)}" \
-                "datasets)"
-            assert self.dataset_max_workers <= 1, \
-                "Using more than one dataset worker may shuffle the " \
-                "dataset; got dataset_max_workers={dataset_max_workers}"
-        interleaved_dataset = InterleavedDataset(
-            datasets, nominal_length=batches_per_epoch * self.batch_size)
-
-        dataloader = DataLoader(interleaved_dataset,
-                                num_workers=self.dataset_max_workers,
-                                batch_size=int(self.batch_size))
+        dataloader = datasets_to_loader(
+            datasets, batch_size=self.batch_size,
+            nominal_length=batches_per_epoch * self.batch_size,
+            max_workers=self.dataset_max_workers,
+            shuffle_buffer_size=self.shuffle_buffer_size,
+            shuffle=self.shuffle_batches,
+            preprocessors=(self.target_pair_constructor, ))
 
         loss_record = []
 
