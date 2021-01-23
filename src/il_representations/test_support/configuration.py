@@ -58,6 +58,8 @@ FAST_IL_TRAIN_CONFIG = {
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
     },
+    # we don't need a large shuffle buffer for tests
+    'shuffle_buffer_size': 3,
 }
 REPL_SMOKE_TEST_CONFIG = {
     'batches_per_epoch': 2,

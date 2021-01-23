@@ -133,6 +133,9 @@ def default_config():
     # dataset configurations for webdataset code
     # (you probably don't want to change this)
     dataset_configs = [{'type': 'demos'}]
+    # size of the buffer used for intermediate shuffling
+    # (smaller = lower memory usage, but less effective shuffling)
+    shuffle_buffer_size = 1024
     # should we freeze weights of the encoder?
     freeze_encoder = False
     # these defaults are mostly optimised for GAIL, but should be fine for BC
@@ -208,7 +211,7 @@ def add_infos(data_iter):
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
-                   device_name, final_pol_name):
+                   device_name, final_pol_name, shuffle_buffer_size):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          encoder_or_path=encoder)
@@ -218,10 +221,12 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
 
     # build dataset in the format required by imitation
     data_loader = datasets_to_loader(
-        demo_webdatasets, batch_size=bc['batch_size'],
+        demo_webdatasets,
+        batch_size=bc['batch_size'],
         # nominal_length is arbitrary, since nothing in BC uses len(dataset)
-        nominal_length=int(1e6), shuffle=True,
-        shuffle_buffer_size=5,
+        nominal_length=int(1e6),
+        shuffle=True,
+        shuffle_buffer_size=shuffle_buffer_size,
         preprocessors=[streaming_extract_keys("obs", "acts")])
 
     trainer = BC(
@@ -268,6 +273,7 @@ def do_training_gail(
     out_dir,
     final_pol_name,
     gail,
+    shuffle_buffer_size,
 ):
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
@@ -321,13 +327,15 @@ def do_training_gail(
         gail['disc_augs'], stack_color_space=color_space)
 
     data_loader = datasets_to_loader(
+        demo_webdatasets,
+        batch_size=gail['disc_batch_size'],
         # nominal_length is arbitrary; we could make it basically anything b/c
         # nothing in GAIL depends on the 'length' of the expert dataset
-        demo_webdatasets, batch_size=gail['disc_batch_size'],
-        nominal_length=int(1e6), shuffle=True,
+        nominal_length=int(1e6),
+        shuffle=True,
+        shuffle_buffer_size=shuffle_buffer_size,
         preprocessors=[streaming_extract_keys(
             "obs", "acts", "next_obs", "dones"), add_infos],
-        shuffle_buffer_size=5,
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
