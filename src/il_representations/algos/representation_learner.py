@@ -258,7 +258,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             nominal_length=batches_per_epoch * self.batch_size,
             max_workers=self.dataset_max_workers,
             shuffle_buffer_size=self.shuffle_buffer_size,
-            shuffle=True,
+            shuffle=self.shuffle_batches,
             preprocessors=(self.target_pair_constructor, ))
 
         loss_record = []
