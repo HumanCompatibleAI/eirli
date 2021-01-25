@@ -325,3 +325,10 @@ def up(p):
         up(up(up("foo/bar"))) == ".."
     """
     return os.path.normpath(os.path.join(p, ".."))
+
+
+def normalize_image(image):
+    """Normalize an image tensor to be in the range of [0,1]."""
+    image -= image.min()
+    image /= image.max()
+    return image

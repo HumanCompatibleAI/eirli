@@ -19,6 +19,7 @@ from stable_baselines3.common.policies import ActorCriticCnnPolicy
 
 from il_representations.scripts.il_train import make_policy
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, RecurrentEncoder
+from il_representations.utils import TensorFrameWriter, normalize_image
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -120,16 +121,16 @@ def process_data(imgs, device, env_cfg, save_video, video_length):
 
 
 @interp_ex.capture
-def save_img(img, save_name, save_dir, benchmark, show=True):
+def save_img(img, save_name, save_dir, env_cfg):
     savefig_kwargs = {}
     if isinstance(img, torch.Tensor):
         if img.shape[0] == 3 or img.shape[0] == 4:
             img = img.permute(1, 2, 0)
         img = img.detach().numpy()
     else:
-        if img[0][0][0] > 1:
-            img = img.astype(int)  # matplotlib requires the image data in range [0, 255] to be integers.
-        if benchmark['benchmark_name'] == 'magical' and img.shape[2] == 12:  # For MAGICAL, original img shape is
+        if np.max(img) > 1:
+            img = normalize_image(img)
+        if env_cfg['benchmark_name'] == 'magical' and img.shape[2] == 12:  # For MAGICAL, original img shape is
                                                                              # [96, 96, 12]
             img = np.dsplit(img, 4)
             img = np.concatenate(img, axis=1)  # frames tiled horizontally
@@ -140,8 +141,6 @@ def save_img(img, save_name, save_dir, benchmark, show=True):
             plt.axis('off')
             savefig_kwargs = {'bbox_inches': 'tight', 'dpi': 150, 'pad_inches': 0}
     plt.imshow(img)
-    if show:
-        plt.show()
     if save_dir:
         plt.savefig(f'{save_dir}/{save_name}.png', **savefig_kwargs)
         print(f'Saved image at {save_dir}/{save_name}.png')
@@ -171,7 +170,7 @@ def attribute_image_features(network, algorithm, image, label, **kwargs):
     return tensor_attributions
 
 
-def saliency_(net, image, label, original_img, log_dir, show_imgs):
+def saliency_(net, image, label, original_img):
     saliency = Saliency(net)
     grads = saliency.attribute(image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
@@ -179,8 +178,7 @@ def saliency_(net, image, label, original_img, log_dir, show_imgs):
                                             sign="absolute_value",
                                             show_colorbar=True,
                                             title="Overlayed Gradient Magnitudes")
-    save_img(figure_2_numpy(saliency_viz[0]), 'saliency', log_dir, show=show_imgs)
-    return grads
+    return figure_2_numpy(saliency_viz[0])
 
 
 def integrated_gradient_(net, image, label, original_img, log_dir, show_imgs):
@@ -345,7 +343,7 @@ def choose_layer(network, module_name, layer_idx):
 
 
 @interp_ex.main
-def run(show_imgs, log_dir, chosen_algo, layer_kwargs):
+def run(log_dir, chosen_algo, layer_kwargs, save_video):
     # Load the network and images
     assert f"{chosen_algo}_" in dir(sys.modules[__name__])
 
@@ -354,21 +352,26 @@ def run(show_imgs, log_dir, chosen_algo, layer_kwargs):
     images, labels = process_data()
 
     log_dir = interp_ex.observers[0].dir if log_dir == 'default' else log_dir
+    if save_video:
+        video_writer = TensorFrameWriter(f"{log_dir}/{chosen_algo}.mp4", 'RGB', fps=8)
 
     for img, label in zip(images, labels):
         # Get policy prediction
         original_img = img[0].permute(1, 2, 0).detach().cpu().numpy()
         # save_img(original_img, 'original_image', log_dir, show=show_imgs)
 
-        img = img.contiguous()  # Do we need this?
+        # img = img.contiguous()  # Do we need this?
         interp_algo_func = getattr(sys.modules[__name__], f"{chosen_algo}_")
 
         if 'layer' in chosen_algo:
             module, idx = layer_kwargs[chosen_algo]['module'], \
                           layer_kwargs[chosen_algo]['layer_idx']
             chosen_layer = choose_layer(network, module, idx)
-        interp_algo_func(network, img, label, original_img, log_dir, show_imgs)
-
+        interpreted_img = interp_algo_func(network, img, label, original_img)
+        if save_video:
+            # stacked_img = torch.cat((torch.FloatTensor(original_img),
+            #                          torch.FloatTensor(interpreted_img)), dim=2)
+            video_writer.add_tensor(normalize_image(torch.FloatTensor(interpreted_img.copy())))
 
         # if layer_gradxact:
         #     module, idx = layer_kwargs['layer_gradxact']['module'], \
@@ -383,6 +386,8 @@ def run(show_imgs, log_dir, chosen_algo, layer_kwargs):
         #     chosen_layer = choose_layer(network, module, idx)
         #     layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
         #                img, log_dir, show_imgs=show_imgs, attr_kwargs={})
+    if save_video:
+        video_writer.close()
 
 
 if __name__ == '__main__':
