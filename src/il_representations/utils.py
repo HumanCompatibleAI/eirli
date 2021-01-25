@@ -347,3 +347,7 @@ class WrappedConfig:
     __main__."""
     def __init__(self, config_dict):
         self.config_dict = config_dict
+
+    def __repr__(self):
+        """Shorter repr in case this object gets printed."""
+        return f'WrappedConfig@{hex(id(self))}'
