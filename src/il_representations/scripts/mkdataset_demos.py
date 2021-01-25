@@ -64,6 +64,13 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
         all_dones[-1] = True
         added_final_done = True
     traj_ends, = np.nonzero(all_dones)
+    real_n_traj = len(traj_ends)
+    if n_traj_total is not None and real_n_traj != n_traj_total:
+        raise ValueError(
+            f"asked for n_traj_total={n_traj_total} trajectories, but loaded "
+            f"{real_n_traj} trajectories instead")
+    else:
+        logging.info(f"Identified {real_n_traj} trajectories")
     # add one to ends so that when we index with array[start:end], we get the
     # full trajectory
     traj_ends = traj_ends + 1

@@ -1,12 +1,14 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
 import hashlib
-import jsonpickle
+import json
 import math
 import os
 import pdb
 import pickle
+import re
 import sys
+from collections.abc import Sequence
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
@@ -29,11 +31,27 @@ class ForkedPdb(pdb.Pdb):
             sys.stdin = _stdin
 
 
+def recursively_sort(element):
+    """Ensures that any dicts in nested dict/list object
+    collection are converted to OrderedDicts"""
+    if isinstance(element, collections.Mapping):
+        sorted_dict = collections.OrderedDict()
+        for k in sorted(element.keys()):
+            sorted_dict[k] = recursively_sort(element[k])
+        return sorted_dict
+    elif isinstance(element, Sequence) and not isinstance(element, str):
+        return [recursively_sort(inner_el) for inner_el in element]
+    else:
+        return str(element)
+
+
 def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
-    sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
-    encoded = jsonpickle.encode(sorted_dict).encode()
-    return hashlib.md5(encoded).hexdigest()
+    sorted_dict = recursively_sort(merged_config)
+    # Needs to be double-encoded because result of jsonpickle is Unicode
+    encoded = json.dumps(sorted_dict).encode('utf-8')
+    hash = hashlib.md5(encoded).hexdigest()
+    return hash
 
 
 def freeze_params(module):
@@ -227,3 +245,83 @@ def load_sacred_pickle(fp, **kwargs):
     """Unpickle an object that may contain Sacred ReadOnlyDict and ReadOnlyList
     objects. It will convert those objects to plain dicts/lists."""
     return SacredUnpickler(fp, **kwargs).load()
+
+
+class RepLSaveExampleBatchesCallback:
+    """Save (possibly image-based) contexts, targets, and encoded/decoded
+    contexts/targets."""
+    def __init__(self, save_interval_batches, dest_dir, color_space):
+        self.save_interval_batches = save_interval_batches
+        self.dest_dir = dest_dir
+        self.last_save = None
+        self.color_space = color_space
+
+    def __call__(self, repl_locals):
+        batches_trained = repl_locals['batches_trained']
+
+        # check whether we should save anything
+        should_save = self.last_save is None \
+            or self.last_save + self.save_interval_batches <= batches_trained
+        if not should_save:
+            return
+        self.last_save = batches_trained
+
+        os.makedirs(self.dest_dir, exist_ok=True)
+
+        # now loop over items and save using appropriate format
+        to_save = [
+            'contexts', 'targets', 'extra_context', 'encoded_contexts',
+            'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
+            'decoded_targets', 'traj_ts_info',
+        ]
+        for save_name in to_save:
+            save_value = repl_locals[save_name]
+
+            if isinstance(save_value, th.distributions.Distribution):
+                # take sample instead of mean so that we can see noise
+                save_value = save_value.sample()
+            if th.is_tensor(save_value):
+                save_value = save_value.detach().cpu()
+
+            # heuristic to check if this is an image
+            probably_an_image = th.is_tensor(save_value) \
+                and save_value.ndim == 4 \
+                and save_value.shape[-2] == save_value.shape[-1]
+            clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
+            save_prefix = f'{clean_save_name}_{batches_trained:06d}'
+            save_path_no_suffix = os.path.join(self.dest_dir, save_prefix)
+
+            if probably_an_image:
+                # probably an image
+                save_path = save_path_no_suffix + '.png'
+                # save as image
+                save_image = save_value.float().clamp(0, 1)
+                as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
+                save_rgb_tensor(as_rgb, save_path)
+            else:
+                # probably not an image
+                save_path = save_path_no_suffix + '.pt'
+                # will save with Torch's generic serialisation code
+                th.save(save_value, save_path)
+
+
+class SigmoidRescale(th.nn.Module):
+    """Rescales input to be in [min_val, max_val]; useful for pixel decoder."""
+    def __init__(self, min_val, max_val):
+        super().__init__()
+        self.min_val = min_val
+        self.val_range = max_val - min_val
+
+    def forward(self, x):
+        return th.sigmoid(x) * self.val_range + self.min_val
+
+
+def up(p):
+    """Return the path *above* whatever object the path `p` points to.
+    Examples:
+
+        up("/foo/bar") == "/foo"
+        up("/foo/bar/") == "/foo
+        up(up(up("foo/bar"))) == ".."
+    """
+    return os.path.normpath(os.path.join(p, ".."))

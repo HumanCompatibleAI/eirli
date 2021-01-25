@@ -2,6 +2,8 @@ import collections
 import copy
 import enum
 import urllib
+import torch
+from torchsummary import summary
 
 
 class StagesToRun(str, enum.Enum):
@@ -11,6 +13,7 @@ class StagesToRun(str, enum.Enum):
     REPL_ONLY = "REPL_ONLY"
     IL_ONLY = "IL_ONLY"
 
+
 class ReuseRepl(str, enum.Enum):
     """These enum flags are used to control whether
      pretrain_n_adapt reuses repl or not """
@@ -18,16 +21,18 @@ class ReuseRepl(str, enum.Enum):
     NO = "NO"
     IF_AVAILABLE = "IF_AVAILABLE"
 
-def update(d, u):
+
+def update(d, *updates):
     """Recursive dictionary update (pure)."""
     d = copy.copy(d)  # to make this pure
-    for k, v in u.items():
-        if isinstance(d.get(k), collections.Mapping):
-            # recursive insert into a mapping
-            d[k] = update(d[k], v)
-        else:
-            # if the existing value is not a mapping, then overwrite it
-            d[k] = v
+    for u in updates:
+        for k, v in u.items():
+            if isinstance(d.get(k), collections.Mapping):
+                # recursive insert into a mapping
+                d[k] = update(d[k], v)
+            else:
+                # if the existing value is not a mapping, then overwrite it
+                d[k] = v
     return d
 
 
@@ -62,3 +67,11 @@ def detect_ec2():
                 raise ValueError(f"Received unexpected response from '{EC2_ID_URL}'")
     except urllib.error.URLError:
         return False
+
+
+def print_policy_info(policy, obs_space):
+    """Print model information of the policy"""
+    print(policy)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    policy = policy.to(device)
+    summary(policy, (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2]))

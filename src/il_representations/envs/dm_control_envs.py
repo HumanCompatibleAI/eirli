@@ -2,6 +2,7 @@
 environments with Gym."""
 import glob
 import gzip
+import logging
 import os
 import random
 
@@ -103,6 +104,15 @@ def _get_data_cfg(dm_control_demo_patterns, data_root):
     return dm_control_demo_patterns, data_root
 
 
+def _load_pkl_gz_lists(data_paths):
+    loaded_trajs = []
+    for data_path in data_paths:
+        with gzip.GzipFile(data_path, 'rb') as fp:
+            new_data = cloudpickle.load(fp)
+        loaded_trajs.extend(new_data)
+    return loaded_trajs
+
+
 @env_cfg_ingredient.capture
 def load_dataset_dm_control(task_name, dm_control_full_env_names,
                             dm_control_frame_stack, n_traj=None):
@@ -111,16 +121,14 @@ def load_dataset_dm_control(task_name, dm_control_full_env_names,
     data_pattern = dm_control_demo_patterns[task_name]
     user_pattern = os.path.expanduser(data_pattern)
     data_paths = glob.glob(os.path.join(data_root, user_pattern))
-    loaded_trajs = []
-    for data_path in data_paths:
-        with gzip.GzipFile(data_path, 'rb') as fp:
-            new_data = cloudpickle.load(fp)
-        loaded_trajs.extend(new_data)
-
-    loaded_trajs = list(loaded_trajs)
+    loaded_trajs = _load_pkl_gz_lists(data_paths)
     random.shuffle(loaded_trajs)
     if n_traj is not None:
         loaded_trajs = loaded_trajs[:n_traj]
+
+    assert len(loaded_trajs) > 0, \
+        f"couldn't load any trajectories with data_root='{data_root}', " \
+        f"pattern='{user_pattern}'"
 
     # join together all trajectories into a single dataset
     dones_lists = [
@@ -155,6 +163,43 @@ def load_dataset_dm_control(task_name, dm_control_full_env_names,
     }
 
     return dataset_dict
+
+
+@env_cfg_ingredient.capture
+def rewrite_dataset_dm_control(task_name, dm_control_full_env_names, n_traj,
+                               new_data_root):
+    """Truncate a dm_control dataset to some new length."""
+    dm_control_demo_patterns, data_root = _get_data_cfg()
+    # load data from all relevant paths
+    data_pattern = dm_control_demo_patterns[task_name]
+    user_pattern = os.path.expanduser(data_pattern)
+    data_paths = glob.glob(os.path.join(data_root, user_pattern))
+    # having exactly one makes it unambiguous where the output should go under
+    # new_data_root (i.e. at the same relative path, but under new_data_root)
+    assert len(data_paths) == 1, \
+        "got {len(data_paths)}, but expected exactly one"
+
+    # load all trajectories from the files
+    loaded_trajs = _load_pkl_gz_lists(data_paths)
+
+    # shuffle and select as many as we need
+    random.shuffle(loaded_trajs)
+    assert len(loaded_trajs) >= n_traj, f"requested n_traj={n_traj}, but " \
+        "got only {len(loaded_trajs)} trajectories"
+    loaded_trajs = loaded_trajs[:n_traj]
+    assert len(loaded_trajs) == n_traj
+
+    # now determine output path from data_paths[0] & make destination directory
+    first_file_relpath = os.path.relpath(data_paths[0], data_root)
+    out_path = os.path.join(new_data_root, first_file_relpath)
+    out_dir = os.path.dirname(out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
+    # finally, use cloudpickle to write out the result
+    logging.info(f"Writing result to '{out_path}'")
+    with gzip.GzipFile(out_path, 'wb') as fp:
+        cloudpickle.dump(loaded_trajs, fp)
 
 
 register_dmc_envs()

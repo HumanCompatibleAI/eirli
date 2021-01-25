@@ -37,7 +37,8 @@ def default_config():
 
 
 @mkdataset_random_ex.main
-def run(seed, env_data, env_cfg, n_timesteps_min):
+def run(seed, env_data, env_cfg, n_timesteps_min, *,
+        _max_steps_to_write_at_once=16384):
     set_global_seeds(seed)
     logging.basicConfig(level=logging.INFO)
 
@@ -59,44 +60,53 @@ def run(seed, env_data, env_cfg, n_timesteps_min):
         nonlocal timestep_ctr, traj_ctr
         # keep generating trajectories until we meet or exceed the minimum time
         # step count
-        print(f'Generating {n_timesteps_min} timesteps')
-        new_trajs = rollout.generate_trajectories(
-            policy,
-            venv,
-            sample_until=rollout.min_timesteps(n_timesteps_min))
-        print(f'Generation done, will write {len(new_trajs)} trajectories')
-        if os.isatty(sys.stdout.fileno()):
-            prog_bar = tqdm(total=n_timesteps_min, desc='steps')
-        else:
-            prog_bar = None
-        for traj in new_trajs:
-            obs = traj.obs[:-1]
-            next_obs = traj.obs[1:]
-            T = len(obs)
-            assert T > 0, "empty trajectory?"
-            dones = np.zeros((T, ), dtype='int64')
-            dones[-1] = 1
-            # yield a dictionary for each frame in the retrieved
-            # trajectories
-            for idx in range(T):
-                yield {
-                    # Keys in dataset_dict: 'obs', 'next_obs', 'acts',
-                    # 'infos', 'rews', 'dones'.
-                    # Attributes of returned trajectories: obs, acts,
-                    # infos, rews.
-                    'obs': obs[idx],
-                    'next_obs': next_obs[idx],
-                    'acts': traj.acts[idx],
-                    'infos': traj.infos[idx],
-                    'rews': traj.rews[idx],
-                    'dones': dones[idx],
-                }
+        while timestep_ctr < n_timesteps_min:
+            n_to_generate = min(_max_steps_to_write_at_once,
+                                n_timesteps_min - timestep_ctr)
+            logging.info(f'Generating {n_to_generate} timesteps '
+                         f'({timestep_ctr}/{n_timesteps_min} generated so '
+                         'far)')
 
-                timestep_ctr += 1
-                if prog_bar is not None:
-                    prog_bar.update(1)
+            # random demos
+            new_trajs = rollout.generate_trajectories(
+                policy,
+                venv,
+                sample_until=rollout.min_timesteps(n_to_generate))
+            n_generated = sum(len(traj.acts) for traj in new_trajs)
+            logging.info(f'Got {n_generated} steps, will write '
+                         f'{len(new_trajs)} trajectories')
+            if os.isatty(sys.stdout.fileno()):
+                prog_bar = tqdm(total=n_generated, desc='steps')
+            else:
+                prog_bar = None
+            for traj in new_trajs:
+                obs = traj.obs[:-1]
+                next_obs = traj.obs[1:]
+                T = len(obs)
+                assert T > 0, "empty trajectory?"
+                dones = np.zeros((T, ), dtype='int64')
+                dones[-1] = 1
+                # yield a dictionary for each frame in the retrieved
+                # trajectories
+                for idx in range(T):
+                    yield {
+                        # Keys in dataset_dict: 'obs', 'next_obs', 'acts',
+                        # 'infos', 'rews', 'dones'.
+                        # Attributes of returned trajectories: obs, acts,
+                        # infos, rews.
+                        'obs': obs[idx],
+                        'next_obs': next_obs[idx],
+                        'acts': traj.acts[idx],
+                        'infos': traj.infos[idx],
+                        'rews': traj.rews[idx],
+                        'dones': dones[idx],
+                    }
 
-            traj_ctr += 1
+                    timestep_ctr += 1
+                    if prog_bar is not None:
+                        prog_bar.update(1)
+
+                traj_ctr += 1
 
     logging.info(
         f"Will write >={n_timesteps_min} timesteps to '{out_file_path}'")

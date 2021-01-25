@@ -18,12 +18,47 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
-from il_representations.envs.minecraft_envs import (load_dataset_minecraft,
+from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
-                                                    MinecraftVectorWrapper)
+                                                    load_dataset_minecraft)
 from il_representations.scripts.utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
+
+
+@env_cfg_ingredient.capture
+def benchmark_is_available(benchmark_name):
+    """Check whether the selected benchmark is actually available for use on
+    this machine. Useful for skipping tests when deps are not installed.
+
+    Returns a tuple of `(benchmark_available, message)`: if
+    `benchmark_available` is `False`, then the `message` is a string explaining
+    why the benchmark is not available; otherwise, `benchmark_available` is
+    `True`, and `message` is `None`."""
+
+    # 2020-01-04: for now this mostly a placeholder: we just assume
+    # magical/dm_control/atari are installed by default, and only have logic
+    # for skipping MineCraft (which is hard to install). In future, it would
+    # make sense to extend this function so that magical and dm_control are
+    # also optional (since those also have somewhat involved installation
+    # steps).
+
+    if benchmark_name == 'magical':
+        return True, None
+    elif benchmark_name == 'dm_control':
+        return True, None
+    elif benchmark_name == 'atari':
+        return True, None
+    elif benchmark_name == 'minecraft':
+        # we check whether minecraft is installed by importing minerl
+        try:
+            import minerl  # noqa: F401
+            return True, None
+        except ImportError as ex:
+            return False, "MineRL not installed, cannot use Minecraft " \
+                f"envs (error: {ex})"
+    else:
+        raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
 @env_cfg_ingredient.capture
@@ -46,6 +81,9 @@ def load_dict_dataset(benchmark_name, n_traj=None):
     num_dones = dataset_dict['dones'].flatten().sum()
     logging.info(f'Loaded dataset with {num_transitions} transitions. '
                  f'{num_dones} of these transitions have done == True')
+    if n_traj is not None and num_dones < n_traj:
+        raise ValueError(
+            f"Requested n_traj={n_traj}, but can only see {num_dones} dones")
 
     return dataset_dict
 
@@ -66,10 +104,10 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
 
 
 @venv_opts_ingredient.capture
-def _get_venv_opts(n_envs, venv_parallel):
+def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
     # helper to extract options from venv_opts, since we can't have two
     # captures on one function (see Sacred issue #206)
-    return n_envs, venv_parallel
+    return n_envs, venv_parallel, parallel_workers
 
 
 @env_cfg_ingredient.capture
@@ -77,12 +115,13 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                  dm_control_frame_stack, minecraft_max_env_steps):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
-    n_envs, venv_parallel = _get_venv_opts()
+    n_envs, venv_parallel, parallel_workers = _get_venv_opts()
     gym_env_name = get_gym_env_name()
     if benchmark_name == 'magical':
         return make_vec_env(gym_env_name,
                             n_envs=n_envs,
-                            parallel=venv_parallel)
+                            parallel=venv_parallel,
+                            parallel_workers=parallel_workers)
     elif benchmark_name == 'dm_control':
         raw_dmc_env = make_vec_env(gym_env_name,
                                    n_envs=n_envs,
@@ -108,6 +147,7 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         raw_atari_env = make_vec_env(gym_env_name,
                                      n_envs=n_envs,
                                      parallel=venv_parallel,
+                                     parallel_workers=parallel_workers,
                                      wrapper_class=AtariWrapper)
         final_env = VecFrameStack(VecTransposeImage(raw_atari_env), 4)
         assert final_env.observation_space.shape == (4, 84, 84), \
@@ -118,8 +158,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
             raise ValueError("MineRL environments can only be run with `venv_parallel`=False as a result of "
                              "issues with starting daemonic processes from SubprocVecEnv")
         return make_vec_env(gym_env_name,
-                            n_envs=1, # TODO fix this eventually; currently hitting error
-                                      # noted here: https://github.com/minerllabs/minerl/issues/177
+                            n_envs=1,  # TODO fix this eventually; currently hitting error
+                                       # noted here: https://github.com/minerllabs/minerl/issues/177
                             parallel=venv_parallel,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
@@ -179,15 +219,15 @@ def load_wds_datasets(configs):
         env_cfg = config['env_cfg']
         benchmark_name = env_cfg["benchmark_name"]
         task_key = env_cfg['task_name']
-        data_root = get_data_dir(
+        data_dir_for_config = get_data_dir(
             benchmark_name=benchmark_name, task_key=task_key,
             data_type=data_type)
 
-        tar_files = glob.glob(os.path.join(data_root, "*.tgz"))
+        tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tgz"))
         if len(tar_files) == 0:
             raise IOError(
-                f"did not find any files in '{data_root}' (for dataset config "
-                f"'{orig_config}')")
+                f"did not find any files in '{data_dir_for_config}' (for "
+                f"dataset config '{orig_config}')")
         all_datasets.append(load_ilr_datasets(tar_files))
 
     # get combined metadata for all datasets
