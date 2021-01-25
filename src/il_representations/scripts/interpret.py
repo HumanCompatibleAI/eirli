@@ -2,7 +2,7 @@ import torch
 import sacred
 import math
 import cv2
-import tkinter
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
@@ -20,9 +20,16 @@ from stable_baselines3.common.policies import ActorCriticCnnPolicy
 from il_representations.scripts.il_train import make_policy
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, RecurrentEncoder
 import il_representations.envs.auto as auto_env
-from il_representations.envs.config import benchmark_ingredient
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient,
+                                            venv_opts_ingredient)
 
-interp_ex = Experiment('interp', ingredients=[benchmark_ingredient])
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+interp_ex = Experiment('interp', ingredients=[
+                                            env_cfg_ingredient,
+                                            env_data_ingredient,
+                                            venv_opts_ingredient
+])
 
 @interp_ex.config
 def base_config():
@@ -33,6 +40,8 @@ def base_config():
     device = get_device("auto")
     imgs = [8]  # index of each image in the dataset (int)
     assert all(isinstance(im, int) for im in imgs), 'imgs list should contain integers only'
+    save_video = False
+    video_length = 250
 
     # If log_dir is set to None, then the images will not be saved. If it's "default", the images will be saved
     # in Sacred's default observer folder. Otherwise they will be saved in the path specified by log_dir
@@ -40,21 +49,21 @@ def base_config():
     show_imgs = False
     verbose = False
 
-    # Interpret settings: Choose a method by setting it as "1 / True".
-    # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
-    saliency = 0
-    integrated_gradient = 0
-    deep_lift = 0
+    # interp_algos = [
+    #     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
+    #     'saliency',
+    #     'integrated_gradient',
+    #     'deep_lift',
+    #     # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
+    #     'layer_conductance',
+    #     'layer_gradcam',
+    #     'layer_activation',
+    #     'layer_gradxact'
+    # ]
+    chosen_algo = 'saliency'
 
-    # Layer Attribution: Evaluates contribution of each neuron in a given layer to the output of the model.
-    layer_conductance = 0
-    layer_gradcam = 0
-    layer_activation = 0
-    layer_gradxact = 0
-    layer_gradxact = 1
     layer_kwargs = {
         'layer_conductance': {'module': 'encoder', 'layer_idx': 2},
-        'layer_conductance': {'module': 'encoder', 'layer_idx': 4},
         'layer_gradcam': {'module': 'encoder', 'layer_idx': 4},
         'layer_activation': {'module': 'encoder', 'layer_idx': 4},
         'layer_gradxact': {'module': 'encoder', 'layer_idx': 4},
@@ -73,30 +82,29 @@ class Network(nn.Module):
 
 
 @interp_ex.capture
-def prepare_network(venv, encoder_paths, verbose, device=None):
-    network_list = []
-    for encoder_path in encoder_paths:
-        encoder = torch.load(encoder_path, map_location=device)
-        if isinstance(encoder, ActorCriticCnnPolicy):
-            policy = encoder
-        else:
-            policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
-        network = Network(policy)
-        network.eval()
-        if verbose:
-            print('Network structure:')
-            print(network)
-        network_list.append(network)
-    return network_list
+def prepare_network(venv, encoder_path, verbose, device):
+    encoder = torch.load(encoder_path, map_location=device)
+    if isinstance(encoder, ActorCriticCnnPolicy):
+        policy = encoder
+    else:
+        policy = make_policy(venv.observation_space, venv.action_space, encoder, None, lr_schedule=None)
+    network = Network(policy).to(device)
+    network.eval()
+    if verbose:
+        print('Network structure:')
+        print(network)
+    return network
 
 
 @interp_ex.capture
-def process_data(imgs, device, benchmark):
+def process_data(imgs, device, env_cfg, save_video, video_length):
     img_list = []
     label_list = []
-    benchmark_name = benchmark['benchmark_name']
+    benchmark_name = env_cfg['benchmark_name']
     print(f'Loading benchmark {benchmark_name}...')
     data_dict = auto_env.load_dict_dataset(benchmark_name)
+    if save_video:
+        imgs = [x for x in range(video_length)]
     for img_idx in imgs:
         img = data_dict['obs'][img_idx]
         label = data_dict['acts'][img_idx]
@@ -226,6 +234,8 @@ def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, column
 
 
 def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
+    assert isinstance(layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
+                                               'convolutional layer in the network.'
     lgc = LayerGradCam(net, layer)
     gc_attr = lgc.attribute(image, target=label)
     upsampled_gc_attr = LayerAttribution.interpolate(gc_attr, image.shape[2:])  # Shape [1, 1, 84, 84]
@@ -335,64 +345,44 @@ def choose_layer(network, module_name, layer_idx):
 
 
 @interp_ex.main
-def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_conductance, layer_gradcam, layer_gradxact,
-        layer_activation, layer_kwargs):
+def run(show_imgs, log_dir, chosen_algo, layer_kwargs):
     # Load the network and images
+    assert f"{chosen_algo}_" in dir(sys.modules[__name__])
+
     venv = auto_env.load_vec_env()
-    networks = prepare_network(venv)
+    network = prepare_network(venv)
     images, labels = process_data()
 
     log_dir = interp_ex.observers[0].dir if log_dir == 'default' else log_dir
 
     for img, label in zip(images, labels):
         # Get policy prediction
-        original_img = img[0].permute(1, 2, 0).detach().numpy()
-        save_img(original_img, 'original_image', log_dir, show=show_imgs)
+        original_img = img[0].permute(1, 2, 0).detach().cpu().numpy()
+        # save_img(original_img, 'original_image', log_dir, show=show_imgs)
+
+        img = img.contiguous()  # Do we need this?
+        interp_algo_func = getattr(sys.modules[__name__], f"{chosen_algo}_")
+
+        if 'layer' in chosen_algo:
+            module, idx = layer_kwargs[chosen_algo]['module'], \
+                          layer_kwargs[chosen_algo]['layer_idx']
+            chosen_layer = choose_layer(network, module, idx)
+        interp_algo_func(network, img, label, original_img, log_dir, show_imgs)
 
 
-        if saliency:
-            for network in networks:
-                saliency_(network, img, label, original_img, log_dir, show_imgs)
-
-        if integrated_gradient:
-            for network in networks:
-                integrated_gradient_(network, img.contiguous(), label, original_img, log_dir, show_imgs)
-
-        if deep_lift:
-            for network in networks:
-                deep_lift_(network, img, label, original_img, log_dir, show_imgs)
-
-        if layer_conductance:
-            for network in networks:
-                module, idx = layer_kwargs['layer_conductance']['module'], \
-                              layer_kwargs['layer_conductance']['layer_idx']
-                chosen_layer = choose_layer(network, module, idx)
-                layer_conductance_(network, chosen_layer, img, label, log_dir)
-
-        if layer_gradcam:
-            for network in networks:
-                module, idx = layer_kwargs['layer_gradcam']['module'], \
-                              layer_kwargs['layer_gradcam']['layer_idx']
-                chosen_layer = choose_layer(network, module, idx)
-                assert isinstance(chosen_layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
-                                                                  'convolutional layer in the network.'
-                layer_gradcam_(network, chosen_layer, img, label, original_img, log_dir, show_imgs)
-
-        if layer_gradxact:
-            for network in networks:
-                module, idx = layer_kwargs['layer_gradxact']['module'], \
-                              layer_kwargs['layer_gradxact']['layer_idx']
-                chosen_layer = choose_layer(network, module, idx)
-                layer_act_(network, chosen_layer, LayerGradientXActivation, 'layer_GradXActivation',
-                           img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label})
-
-        if layer_activation:
-            for network in networks:
-                module, idx = layer_kwargs['layer_activation']['module'], \
-                              layer_kwargs['layer_activation']['layer_idx']
-                chosen_layer = choose_layer(network, module, idx)
-                layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
-                           img, log_dir, show_imgs=show_imgs, attr_kwargs={})
+        # if layer_gradxact:
+        #     module, idx = layer_kwargs['layer_gradxact']['module'], \
+        #                   layer_kwargs['layer_gradxact']['layer_idx']
+        #     chosen_layer = choose_layer(network, module, idx)
+        #     layer_act_(network, chosen_layer, LayerGradientXActivation, 'layer_GradXActivation',
+        #                img, log_dir, show_imgs=show_imgs, attr_kwargs={'target': label})
+        #
+        # if layer_activation:
+        #     module, idx = layer_kwargs['layer_activation']['module'], \
+        #                   layer_kwargs['layer_activation']['layer_idx']
+        #     chosen_layer = choose_layer(network, module, idx)
+        #     layer_act_(network, chosen_layer, LayerActivation, 'layer_Activation',
+        #                img, log_dir, show_imgs=show_imgs, attr_kwargs={})
 
 
 if __name__ == '__main__':
