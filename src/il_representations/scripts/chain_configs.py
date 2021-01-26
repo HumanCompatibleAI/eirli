@@ -454,6 +454,19 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_il_bc_20k_nofreeze():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'n_batches': 20000,
+            },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_il_bc_500k_nofreeze():
         il_train = {
             'algo': 'bc',
