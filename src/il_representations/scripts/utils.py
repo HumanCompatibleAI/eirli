@@ -4,7 +4,7 @@ import enum
 import urllib
 import torch
 from torchsummary import summary
-
+from functools import partialmethod
 
 class StagesToRun(str, enum.Enum):
     """These enum flags are used to control whether pretrain_n_adapt tunes RepL, or
@@ -75,3 +75,11 @@ def print_policy_info(policy, obs_space):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     policy = policy.to(device)
     summary(policy, (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2]))
+
+
+# copied from https://stackoverflow.com/a/38911383
+def partial_repl_class(cls, *args, **kwargs):
+    class PartialedRepLearner(cls):
+        __init__ = partialmethod(cls.__init__, *args, **kwargs)
+
+    return PartialedRepLearner
