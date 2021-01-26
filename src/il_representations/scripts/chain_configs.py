@@ -70,6 +70,24 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+
+    @experiment_obj.named_config
+    def cfg_base_skopt_1cpu_pt25gpu_no_retry():
+        # another config that is used for skopt tuning runs in lead-up to icml
+        use_skopt = True
+        tune_run_kwargs = dict(num_samples=1,
+                               # never retry, since these are just HP tuning
+                               # runs
+                               max_failures=0,
+                               fail_fast=True,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.25,
+                               ))
+
+        _ = locals()
+        del _
+
     @experiment_obj.named_config
     def cfg_base_3seed_1cpu_pt2gpu_2envs():
         """Another config that uses only one CPU per run, and .2 of a GPU. Good for
