@@ -344,9 +344,9 @@ def choose_layer(network, module_name, layer_idx):
 
 @interp_ex.main
 def run(log_dir, chosen_algo, layer_kwargs, save_video):
-    # Load the network and images
     assert f"{chosen_algo}_" in dir(sys.modules[__name__])
 
+    # Load the network and images
     venv = auto_env.load_vec_env()
     network = prepare_network(venv)
     images, labels = process_data()
@@ -368,10 +368,12 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video):
                           layer_kwargs[chosen_algo]['layer_idx']
             chosen_layer = choose_layer(network, module, idx)
         interpreted_img = interp_algo_func(network, img, label, original_img)
+        print('interpreted_img.shape', interpreted_img.shape)
         if save_video:
             # stacked_img = torch.cat((torch.FloatTensor(original_img),
             #                          torch.FloatTensor(interpreted_img)), dim=2)
             video_writer.add_tensor(normalize_image(torch.FloatTensor(interpreted_img.copy())))
+        plt.close('all')
 
         # if layer_gradxact:
         #     module, idx = layer_kwargs['layer_gradxact']['module'], \
