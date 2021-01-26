@@ -353,7 +353,11 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video):
 
     log_dir = interp_ex.observers[0].dir if log_dir == 'default' else log_dir
     if save_video:
-        video_writer = TensorFrameWriter(f"{log_dir}/{chosen_algo}.mp4", 'RGB', fps=8)
+        video_writer = TensorFrameWriter(f"{log_dir}/{chosen_algo}.mp4",
+                                         'RGB',
+                                         fps=8,
+                                         adjust_axis=False,
+                                         make_grid=False)
 
     for img, label in zip(images, labels):
         # Get policy prediction
@@ -368,10 +372,7 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video):
                           layer_kwargs[chosen_algo]['layer_idx']
             chosen_layer = choose_layer(network, module, idx)
         interpreted_img = interp_algo_func(network, img, label, original_img)
-        print('interpreted_img.shape', interpreted_img.shape)
         if save_video:
-            # stacked_img = torch.cat((torch.FloatTensor(original_img),
-            #                          torch.FloatTensor(interpreted_img)), dim=2)
             video_writer.add_tensor(normalize_image(torch.FloatTensor(interpreted_img.copy())))
         plt.close('all')
 
