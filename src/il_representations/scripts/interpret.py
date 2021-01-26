@@ -47,6 +47,7 @@ def base_config():
     # If log_dir is set to None, then the images will not be saved. If it's "default", the images will be saved
     # in Sacred's default observer folder. Otherwise they will be saved in the path specified by log_dir
     log_dir = "default"
+    filename = "default"
     show_imgs = False
     verbose = False
 
@@ -343,7 +344,7 @@ def choose_layer(network, module_name, layer_idx):
 
 
 @interp_ex.main
-def run(log_dir, chosen_algo, layer_kwargs, save_video):
+def run(log_dir, chosen_algo, layer_kwargs, save_video, filename):
     assert f"{chosen_algo}_" in dir(sys.modules[__name__])
 
     # Load the network and images
@@ -352,8 +353,10 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video):
     images, labels = process_data()
 
     log_dir = interp_ex.observers[0].dir if log_dir == 'default' else log_dir
+    filename = chosen_algo if filename == 'default' else filename
+
     if save_video:
-        video_writer = TensorFrameWriter(f"{log_dir}/{chosen_algo}.mp4",
+        video_writer = TensorFrameWriter(f"{log_dir}/{filename}.mp4",
                                          'RGB',
                                          fps=8,
                                          adjust_axis=False,
