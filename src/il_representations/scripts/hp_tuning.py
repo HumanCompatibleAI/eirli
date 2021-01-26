@@ -246,7 +246,7 @@ def make_hp_tuning_configs(experiment_obj):
             ('il_train:gail:ppo_adv_clip', (0.01, 0.15)),
             ('il_train:gail:disc_n_updates_per_round', (1, 8)),
             ('venv_opts:n_envs', (32, 48)),
-            ('il_train:gail:disc_lr', (1e-6, 1e-3, 'log-uniform'))
+            ('il_train:gail:disc_lr', (1e-6, 1e-3, 'log-uniform')),
             # lots of augmentation options
             ('il_train:gail:disc_augs:translate_ex', [True, False]),
             ('il_train:gail:disc_augs:rotate', [True, False]),
