@@ -226,58 +226,54 @@ def make_hp_tuning_configs(experiment_obj):
                 # base type should be dict
                 # (the space will customise this later on)
                 'disc_augs': {},
+                # things that seem reasonable but which I haven't quite decided
+                # on fixing yet
+                'ppo_batch_size': 48,
+                'disc_batch_size': 48,
             }
         }
         venv_opts = {
             'venv_parallel': True,
         }
         skopt_space = collections.OrderedDict([
-            ('il_train:gail:ppo_n_steps', (8, 64)),
+            ('il_train:gail:ppo_n_steps', (8, 32)),
             ('il_train:gail:ppo_n_epochs', (4, 12)),
-            ('il_train:gail:ppo_batch_size', (16, 64)),
             ('il_train:gail:ppo_init_learning_rate',
-             (1e-7, 1e-3, 'log-uniform')),
-            ('il_train:gail:ppo_gamma', (0.8, 0.9999, 'log-uniform')),
-            ('il_train:gail:ppo_gae_lambda', (0.8, 0.9999, 'log-uniform')),
-            ('il_train:gail:ppo_ent', (1e-10, 1.0, 'log-uniform')),
-            ('il_train:gail:ppo_adv_clip', (0.01, 0.3)),
+             (5e-6, 5e-4, 'log-uniform')),
+            ('il_train:gail:ppo_gamma', (0.85, 1.0, 'uniform')),
+            ('il_train:gail:ppo_gae_lambda', (0.6, 0.9, 'uniform')),
+            ('il_train:gail:ppo_ent', (1e-10, 1e-3, 'log-uniform')),
+            ('il_train:gail:ppo_adv_clip', (0.01, 0.15)),
             ('il_train:gail:disc_n_updates_per_round', (1, 8)),
-            ('venv_opts:n_envs', (8, 32)),
+            ('venv_opts:n_envs', (32, 48)),
+            ('il_train:gail:disc_lr', (1e-6, 1e-3, 'log-uniform'))
             # lots of augmentation options
             ('il_train:gail:disc_augs:translate_ex', [True, False]),
-            ('il_train:gail:disc_augs:rotate_mid', [True, False]),
+            ('il_train:gail:disc_augs:rotate', [True, False]),
             ('il_train:gail:disc_augs:color_jitter_mid', [True, False]),
-            ('il_train:gail:disc_augs:flip_ud', [True, False]),
             ('il_train:gail:disc_augs:flip_lr', [True, False]),
             ('il_train:gail:disc_augs:noise', [True, False]),
-            ('il_train:gail:disc_augs:rot90', [True, False]),
             ('il_train:gail:disc_augs:erase', [True, False]),
-            ('il_train:gail:disc_augs:gray', [True, False]),
             ('il_train:gail:disc_augs:gaussian_blur', [True, False]),
         ])
         skopt_ref_configs = [
             collections.OrderedDict([
                 ('il_train:gail:ppo_n_steps', 8),
-                ('il_train:gail:ppo_n_epochs', 8),
-                ('il_train:gail:ppo_batch_size', 32),
-                ('il_train:gail:ppo_init_learning_rate', 6e-5),
-                ('il_train:gail:ppo_gamma', 0.9),
-                ('il_train:gail:ppo_gae_lambda', 0.9),
+                ('il_train:gail:ppo_n_epochs', 12),
+                ('il_train:gail:ppo_init_learning_rate', 1e-4),
+                ('il_train:gail:ppo_gamma', 0.95),
+                ('il_train:gail:ppo_gae_lambda', 0.8),
                 ('il_train:gail:ppo_ent', 1e-7),
                 ('il_train:gail:ppo_adv_clip', 0.05),
-                ('il_train:gail:disc_n_updates_per_round', 2),
-                ('il_train:gail:disc_augs',
-                 'rotate_ex,translate_ex,erase,flip_ud,flip_lr,noise,gray'),
-                ('venv_opts:n_envs', 24),
+                ('il_train:gail:disc_n_updates_per_round', 4),
+                ('venv_opts:n_envs', 32),
+                ('il_train:gail:disc_lr', 2.5e-5),
                 ('il_train:gail:disc_augs:translate_ex', True),
-                ('il_train:gail:disc_augs:rotate_mid', True),
+                ('il_train:gail:disc_augs:rotate', True),
                 ('il_train:gail:disc_augs:color_jitter_mid', True),
-                ('il_train:gail:disc_augs:flip_ud', True),
                 ('il_train:gail:disc_augs:flip_lr', True),
                 ('il_train:gail:disc_augs:noise', True),
-                ('il_train:gail:disc_augs:rot90', True),
                 ('il_train:gail:disc_augs:erase', True),
-                ('il_train:gail:disc_augs:gray', True),
                 ('il_train:gail:disc_augs:gaussian_blur', True),
             ]),
         ]

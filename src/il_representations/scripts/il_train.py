@@ -89,7 +89,7 @@ def gail_defaults():
     ppo_reward_std = 0.01
 
     disc_n_updates_per_round = 12
-    disc_batch_size = 24
+    disc_batch_size = 48
     disc_lr = 2.5e-5
     disc_augs = "rotate,translate,noise"
 
