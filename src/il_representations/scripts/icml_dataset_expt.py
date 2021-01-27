@@ -17,13 +17,17 @@ from il_representations.algos import augmenters, pair_constructors, encoders, lo
 #
 
 contrastive_kwargs_standin = {}
-icml_ActionConditionedTemporalCPC = partial_repl_class(ActionConditionedTemporalCPC, **contrastive_kwargs_standin)
-icml_IdentityCPC = partial_repl_class(TemporalCPC,
-                                      target_pair_constructor=pair_constructors.IdentityPairConstructor,
-                                      **contrastive_kwargs_standin)
+ICMLActionConditionedTemporalCPC = partial_repl_class(ActionConditionedTemporalCPC,
+                                                      new_class_name="ICMLActionConditionedTemporalCPC",
+                                                      **contrastive_kwargs_standin)
+ICMLIdentityCPC = partial_repl_class(TemporalCPC,
+                                     new_class_name="ICMLIdentityCPC",
+                                     target_pair_constructor=pair_constructors.IdentityPairConstructor,
+                                     **contrastive_kwargs_standin)
 best_hp_vae_beta = 0 # fill in
-icml_VariationalAutoencoder = partial_repl_class(VariationalAutoencoder,
-                                                 loss_calculator_kwargs={'beta': best_hp_vae_beta})
+ICMLVariationalAutoencoder = partial_repl_class(VariationalAutoencoder,
+                                                new_class_name="ICMLVariationalAutoencoder",
+                                                loss_calculator_kwargs={'beta': best_hp_vae_beta})
 
 MAGICAL_MULTITASK_CONFIG = [
                 {
@@ -70,9 +74,9 @@ def make_dataset_experiment_configs(experiment_obj):
 
     @experiment_obj.named_config
     def algo_sweep():
-        spec = {'repl.algo': [DynamicsPrediction, InverseDynamicsPrediction,
-                              icml_IdentityCPC, icml_ActionConditionedTemporalCPC,
-                              icml_VariationalAutoencoder]}
+        spec = dict(repl=tune.grid_search([{'algo': algo} for algo in [InverseDynamicsPrediction, DynamicsPrediction,
+                              ICMLIdentityCPC, ICMLActionConditionedTemporalCPC,
+                              ICMLVariationalAutoencoder]]))
         _ = locals()
         del _
 
@@ -81,6 +85,8 @@ def make_dataset_experiment_configs(experiment_obj):
     @experiment_obj.named_config
     def repl_seed_sweep():
         stages_to_run = StagesToRun.REPL_ONLY
+        repl = { 'batches_per_epoch': 500,
+                 'n_epochs': 10}
         spec = {'repl.seed': SHARED_SEEDS}
         _ = locals()
         del _
@@ -99,6 +105,8 @@ def make_dataset_experiment_configs(experiment_obj):
     # To be used for DMC, where Sam said we might as well retrain RepL for each new IL seed
     @experiment_obj.named_config
     def il_on_repl_sweep():
+        repl = {'batches_per_epoch': 500,
+                'n_epochs': 10}
         stages_to_run = StagesToRun.REPL_AND_IL
         reuse_repl = ReuseRepl.NO
         tune_run_kwargs = dict(num_samples=NUM_IL_SEEDS * NUM_REPL_SEEDS)
