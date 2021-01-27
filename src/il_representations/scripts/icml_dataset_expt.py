@@ -129,5 +129,17 @@ def make_dataset_experiment_configs(experiment_obj):
 
 
 
+## Control sweep over initializations
+
+    @experiment_obj.named_config
+    def control_sweep():
+        stages_to_run = StagesToRun.IL_ONLY
+        spec = {'il_train.ortho_init': tune.grid_search([True, False]),
+                'il_train.log_std_init': tune.grid_search([])} # TODO reasonable values for log std init?
+        tune_run_kwargs = dict(num_samples=NUM_IL_SEEDS * NUM_REPL_SEEDS)
+        _ = locals()
+        del _
+
+
 
 
