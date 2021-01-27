@@ -49,10 +49,8 @@ MAGICAL_MULTITASK_CONFIG = [
             ]
 RAND_DEMOS_CONFIG = [{'type': 'demos'}, {'type': 'random'}]
 RAND_ONLY_CONFIG = [{'type': 'random'}]
-NUM_REPL_SEEDS = 3
-NUM_IL_SEEDS = 3
+NUM_SEEDS = 9
 
-SHARED_SEEDS = list(range(NUM_IL_SEEDS))
 
 
 def make_dataset_experiment_configs(experiment_obj):
@@ -80,28 +78,6 @@ def make_dataset_experiment_configs(experiment_obj):
         _ = locals()
         del _
 
-    # These next two are to be used for DMC, where Sam said
-    # we might as well retrain RepL for each new IL seed
-    @experiment_obj.named_config
-    def repl_seed_sweep():
-        stages_to_run = StagesToRun.REPL_ONLY
-        repl = { 'batches_per_epoch': 500,
-                 'n_epochs': 10}
-        spec = {'repl.seed': SHARED_SEEDS}
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def il_on_pretrained_repl_seed_sweep():
-        stages_to_run = StagesToRun.REPL_AND_IL
-        # will error if can't find pretrained repl
-        reuse_repl = ReuseRepl.YES
-        spec = {'repl.seed': tune.grid_search(SHARED_SEEDS)}
-        # Do 3 IL samples for every REPL seed
-        tune_run_kwargs = dict(num_samples=NUM_IL_SEEDS)
-        _ = locals()
-        del _
-
     # To be used for DMC, where Sam said we might as well retrain RepL for each new IL seed
     @experiment_obj.named_config
     def il_on_repl_sweep():
@@ -109,7 +85,7 @@ def make_dataset_experiment_configs(experiment_obj):
                 'n_epochs': 10}
         stages_to_run = StagesToRun.REPL_AND_IL
         reuse_repl = ReuseRepl.NO
-        tune_run_kwargs = dict(num_samples=NUM_IL_SEEDS * NUM_REPL_SEEDS)
+        tune_run_kwargs = dict(num_samples=NUM_SEEDS)
         _ = locals()
         del _
 
@@ -144,7 +120,7 @@ def make_dataset_experiment_configs(experiment_obj):
         stages_to_run = StagesToRun.IL_ONLY
         spec = {'il_train.ortho_init': tune.grid_search([True, False]),
                 'il_train.log_std_init': tune.grid_search([])} # TODO reasonable values for log std init?
-        tune_run_kwargs = dict(num_samples=NUM_IL_SEEDS * NUM_REPL_SEEDS)
+        tune_run_kwargs = dict(num_samples=NUM_SEEDS)
         _ = locals()
         del _
 
