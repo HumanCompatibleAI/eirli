@@ -52,6 +52,21 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_base_5seed_1cpu_pt3gpu():
+        use_skopt = False
+        tune_run_kwargs = dict(num_samples=5,
+                               # retry on (node) failure
+                               max_failures=2,
+                               fail_fast=False,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.32,
+                               ))
+
+        _ = locals()
+        del _
+
 
     @experiment_obj.named_config
     def cfg_base_skopt_4cpu_pt3gpu_no_retry():
