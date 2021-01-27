@@ -2,7 +2,7 @@ from ray import tune
 from il_representations.scripts.utils import StagesToRun, ReuseRepl, partial_repl_class
 from il_representations.algos import (ActionConditionedTemporalCPC, TemporalCPC,
                                       VariationalAutoencoder, DynamicsPrediction,
-                                      InverseDynamicsPrediction)
+                                      InverseDynamicsPrediction, GaussianPrior)
 from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders, decoders
 
 # This set of configs is meant to correspond to Hypothesis #3 in Test Conditions spreadsheet
@@ -29,7 +29,7 @@ ICMLVariationalAutoencoder = partial_repl_class(VariationalAutoencoder,
                                                 new_class_name="ICMLVariationalAutoencoder",
                                                 loss_calculator_kwargs={'beta': best_hp_vae_beta})
 
-MAGICAL_MULTITASK_CONFIG = [
+MAGICAL_MULTITASK_DEMOS_CONFIG = [
                 {
                     'type': 'demos',
                     'env_cfg': {
@@ -47,6 +47,30 @@ MAGICAL_MULTITASK_CONFIG = [
                     'ClusterShape',
                 ]
             ]
+
+MAGICAL_MULTITASK_RAND_DEMOS_CONFIG = [
+            [
+                {
+                    'type': dataset_type,
+                    'env_cfg': {
+                        'benchmark_name': 'magical',
+                        'task_name': magical_task_name,
+                    }
+                } for magical_task_name in [
+                    'MoveToCorner',
+                    'MoveToRegion',
+                    'MatchRegions',
+                    'MakeLine',
+                    'FixColour',
+                    'FindDupe',
+                    'ClusterColour',
+                    'ClusterShape',
+                ]
+            ]
+            for dataset_type in ["demos", "random"]
+    ]
+
+
 RAND_DEMOS_CONFIG = [{'type': 'demos'}, {'type': 'random'}]
 RAND_ONLY_CONFIG = [{'type': 'random'}]
 NUM_SEEDS = 9
@@ -58,7 +82,8 @@ def make_dataset_experiment_configs(experiment_obj):
     def dataset_sweep_with_multitask():
         # TODO
         spec = {'repl.dataset_configs': tune.grid_search([RAND_DEMOS_CONFIG,
-                                                          MAGICAL_MULTITASK_CONFIG,
+                                                          MAGICAL_MULTITASK_RAND_DEMOS_CONFIG,
+                                                          MAGICAL_MULTITASK_DEMOS_CONFIG,
                                                           RAND_ONLY_CONFIG])}
         _ = locals()
         del _
@@ -74,7 +99,7 @@ def make_dataset_experiment_configs(experiment_obj):
     def algo_sweep():
         spec = dict(repl=tune.grid_search([{'algo': algo} for algo in [InverseDynamicsPrediction, DynamicsPrediction,
                               ICMLIdentityCPC, ICMLActionConditionedTemporalCPC,
-                              ICMLVariationalAutoencoder]]))
+                              GaussianPrior, ICMLVariationalAutoencoder]]))
         _ = locals()
         del _
 
