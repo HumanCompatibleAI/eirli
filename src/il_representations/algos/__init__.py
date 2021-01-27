@@ -5,7 +5,7 @@ from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
     AsymmetricProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPrior
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -348,6 +348,20 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
+        super().__init__(**kwargs)
+
+
+class GaussianPriorControl(RepresentationLearner):
+    def __init__(self, **kwargs):
+
+        algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
+                                     decoder=NoOp,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=GaussianPrior,
+                                     target_pair_constructor=IdentityPairConstructor)
+
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished
