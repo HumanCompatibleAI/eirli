@@ -3,7 +3,7 @@ from il_representations.scripts.utils import StagesToRun, ReuseRepl, partial_rep
 from il_representations.algos import (ActionConditionedTemporalCPC, TemporalCPC,
                                       VariationalAutoencoder, DynamicsPrediction,
                                       InverseDynamicsPrediction, GaussianPrior)
-from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders, decoders
+from il_representations.algos import pair_constructors
 
 # This set of configs is meant to correspond to Hypothesis #3 in Test Conditions spreadsheet
 # It implements:
@@ -76,11 +76,9 @@ RAND_ONLY_CONFIG = [{'type': 'random'}]
 NUM_SEEDS = 9
 
 
-
 def make_dataset_experiment_configs(experiment_obj):
     @experiment_obj.named_config
     def dataset_sweep_with_multitask():
-        # TODO
         spec = {'repl.dataset_configs': tune.grid_search([RAND_DEMOS_CONFIG,
                                                           MAGICAL_MULTITASK_RAND_DEMOS_CONFIG,
                                                           MAGICAL_MULTITASK_DEMOS_CONFIG,
