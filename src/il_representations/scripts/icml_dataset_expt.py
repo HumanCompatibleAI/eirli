@@ -1,5 +1,5 @@
 from ray import tune
-from il_representations.scripts.utils import StagesToRun, ReuseRepl, partial_repl_class
+from il_representations.scripts.utils import StagesToRun, ReuseRepl
 from il_representations.algos import (ActionConditionedTemporalCPC, TemporalCPC,
                                       VariationalAutoencoder, DynamicsPrediction,
                                       InverseDynamicsPrediction, GaussianPriorControl)
