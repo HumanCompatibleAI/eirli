@@ -23,15 +23,19 @@ class MetaclassACTCPC(type):
     def __repr__(self):
         return "ICMLActionConditionedTemporalCPC"
 
+
 class MetaclassTCPC(type):
     def __repr__(self):
         return "ICMLTemporalCPC"
+
 
 class MetaclassVAE(type):
     def __repr__(self):
         return "ICMLVariationalAutoencoder"
 
+
 contrastive_kwargs_standin = {}
+
 
 class ICMLActionConditionedTemporalCPC(ActionConditionedTemporalCPC, metaclass=MetaclassACTCPC):
     __init__ = partialmethod(ActionConditionedTemporalCPC.__init__, **contrastive_kwargs_standin)
