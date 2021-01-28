@@ -4,7 +4,7 @@ declare -a tuning_configs=("tune_ceb" "tune_momentum"
 
 declare -a dmc_envs=("finger-spin" "cheetah-run")
 
-declare -a magical_envs=("MatchRegions" "MoveToRegion")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0")
 
 for algo_config in ${tuning_configs[@]}; do
   for dmc_env in ${dmc_envs[@]}; do

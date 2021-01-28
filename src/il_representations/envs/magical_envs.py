@@ -11,6 +11,7 @@ from typing import List
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
 from magical import register_envs, saved_trajectories
+from magical.benchmarks import EnvName
 from magical.evaluation import EvaluationProtocol
 import numpy as np
 import torch as th
@@ -102,11 +103,15 @@ def load_data(
 
 @env_cfg_ingredient.capture
 def get_env_name_magical(task_name, magical_preproc):
-    # for MAGICAL, the 'task_name' is a prefix like MoveToCorner or
-    # ClusterShape
-    orig_env_name = task_name + '-Demo-v0'
+    # For MAGICAL, the 'task_name' is a MAGICAL env name _without_ the
+    # preprocessor; think MoveToCorner-Demo-v0 or ClusterShape-TestAll-v0.
+    try:
+        EnvName(task_name)
+    except ValueError as ex:
+        raise ValueError(
+            f"Could not parse task_name='{task_name}' as a MAGICAL task: {ex}")
     gym_env_name = saved_trajectories.splice_in_preproc_name(
-        orig_env_name, magical_preproc)
+        task_name, magical_preproc)
     return gym_env_name
 
 

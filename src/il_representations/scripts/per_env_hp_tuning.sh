@@ -6,8 +6,9 @@ declare -a tuning_configs=("temporal_cpc_tune" "temporal_cpc_aug_tune"
 declare -a dmc_envs=("finger-spin" "cheetah-run" "walker-walk"
                      "cartpole-swingup" "reacher-easy" "ball-in-cup-catch")
 
-declare -a magical_envs=("MatchRegions" "MoveToRegion" "MoveToCorner"
-                         "MakeLine" "FindDupe" "ClusterShape")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0"
+                         "MoveToCorner-Demo-v0" "MakeLine-Demo-v0"
+                         "FindDupe-Demo-v0" "ClusterShape-Demo-v0")
 
 for algo_config in ${tuning_configs[@]}; do
   for dmc_env in ${dmc_envs[@]}; do

@@ -13,7 +13,7 @@ def make_chain_configs(experiment_obj):
             # MatchRegions is of intermediate difficulty
             # (TODO(sam): allow MAGICAL to load data from _all_ tasks at once, so
             # we can try multi-task repL)
-            'task_name': 'MatchRegions',
+            'task_name': 'MatchRegions-Demo-v0',
             # we really need magical_remove_null_actions=True for BC; for RepL it
             # shouldn't matter so much (for action-based RepL methods)
             'magical_remove_null_actions': False,
@@ -168,15 +168,15 @@ def make_chain_configs(experiment_obj):
                     'task_name': magical_env_name,
                     'magical_remove_null_actions': True,
                 } for magical_env_name in [
-                'MoveToCorner',
-                'MoveToRegion',
-                'FixColour',
-                'MatchRegions',
-                # 'FindDupe',
-                # 'MakeLine',
-                # 'ClusterColour',
-                # 'ClusterShape',
-            ]
+                    'MoveToCorner-Demo-v0',
+                    'MoveToRegion-Demo-v0',
+                    'FixColour-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    # 'FindDupe-Demo-v0',
+                    # 'MakeLine-Demo-v0',
+                    # 'ClusterColour-Demo-v0',
+                    # 'ClusterShape-Demo-v0',
+                ]
             ]))
 
         _ = locals()
@@ -218,8 +218,10 @@ def make_chain_configs(experiment_obj):
                     'task_name': magical_env_name,
                     'magical_remove_null_actions': True,
                 } for magical_env_name in [
-                'MoveToRegion', 'MatchRegions', 'MoveToCorner'
-            ]
+                    'MoveToRegion-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    'MoveToCorner-Demo-v0',
+                ]
             ]))
 
         _ = locals()
@@ -247,7 +249,7 @@ def make_chain_configs(experiment_obj):
         """Just one simple MAGICAL config."""
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MatchRegions',
+            'task_name': 'MatchRegions-Demo-v0',
             'magical_remove_null_actions': True,
         }
 
@@ -259,7 +261,7 @@ def make_chain_configs(experiment_obj):
         """Bench on MAGICAL MatchRegions."""
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MatchRegions',
+            'task_name': 'MatchRegions-Demo-v0',
             'magical_remove_null_actions': True,
         }
 
@@ -271,7 +273,7 @@ def make_chain_configs(experiment_obj):
         """Bench on MAGICAL MoveToCorner."""
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MoveToCorner',
+            'task_name': 'MoveToCorner-Demo-v0',
             'magical_remove_null_actions': True,
         }
 
@@ -395,14 +397,14 @@ def make_chain_configs(experiment_obj):
                         'task_name': magical_task_name,
                     }
                 } for magical_task_name in [
-                    'MoveToCorner',
-                    'MoveToRegion',
-                    'MatchRegions',
-                    'MakeLine',
-                    'FixColour',
-                    'FindDupe',
-                    'ClusterColour',
-                    'ClusterShape',
+                    'MoveToCorner-Demo-v0',
+                    'MoveToRegion-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    'MakeLine-Demo-v0',
+                    'FixColour-Demo-v0',
+                    'FindDupe-Demo-v0',
+                    'ClusterColour-Demo-v0',
+                    'ClusterShape-Demo-v0',
                 ]
             ],
         }

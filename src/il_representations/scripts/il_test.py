@@ -80,10 +80,12 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                                          color_space=auto.load_color_space())
 
     if env_cfg['benchmark_name'] == 'magical':
-        from il_representations.envs import magical_envs
-        env_prefix = env_cfg['task_name']
+        from magical.benchmarks import update_magical_env_name
+        from il_representations.envs import magical_envs  # noqa: I003
+        task_name = env_cfg['task_name']
         env_preproc = env_cfg['magical_preproc']
-        demo_env_name = f'{env_prefix}-Demo-{env_preproc}-v0'
+        demo_env_name = update_magical_env_name(
+            task_name, preproc=env_preproc, variant='Demo')
         eval_protocol = magical_envs.SB3EvaluationProtocol(
             demo_env_name=demo_env_name,
             policy=policy,
@@ -109,7 +111,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
             'return_mean': eval_data_frame['mean_score'].mean(),
         }
 
-    elif (env_cfg['benchmark_name'] in ('dm_control', 'atari', 'minecraft')):
+    elif env_cfg['benchmark_name'] in ('dm_control', 'atari', 'minecraft'):
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 

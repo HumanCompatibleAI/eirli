@@ -26,7 +26,7 @@ ENV_CFG_TEST_CONFIGS = [
     },
     {
         'benchmark_name': 'magical',
-        'task_name': 'MoveToRegion',
+        'task_name': 'MoveToRegion-Demo-v0',
     },
     {
         'benchmark_name': 'dm_control',

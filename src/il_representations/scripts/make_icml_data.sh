@@ -60,15 +60,15 @@ do_dmc() {
     gen_random ${dmc_env_opts[@]}
 }
 
-do_magical ClusterColour &
-do_magical ClusterShape &
-do_magical FixColour &
-do_magical FindDupe &
+do_magical ClusterColour-Demo-v0 &
+do_magical ClusterShape-Demo-v0 &
+do_magical FixColour-Demo-v0 &
+do_magical FindDupe-Demo-v0 &
 wait
-do_magical MatchRegions &
-do_magical MakeLine &
-do_magical MoveToCorner &
-do_magical MoveToRegion &
+do_magical MatchRegions-Demo-v0 &
+do_magical MakeLine-Demo-v0 &
+do_magical MoveToCorner-Demo-v0 &
+do_magical MoveToRegion-Demo-v0 &
 wait
 
 # These use more memory because the trajectories are long. Thus we run them
