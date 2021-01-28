@@ -31,6 +31,7 @@ from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
 from il_representations.utils import hash_configs, up
+from il_representations.algos.representation_learner import RepresentationLearner
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -595,6 +596,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
         reuse_repl, repl_encoder_path, on_cluster):
 
+    #import pdb; pdb.set_trace()
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)

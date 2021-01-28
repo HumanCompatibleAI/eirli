@@ -77,13 +77,3 @@ def print_policy_info(policy, obs_space):
     summary(policy, (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2]))
 
 
-# copied from https://stackoverflow.com/a/38911383
-def partial_repl_class(cls, new_class_name, *args, **kwargs):
-    class MC(type):
-        # metaclass nonsense from here: https://stackoverflow.com/a/55053439
-        def __repr__(self):
-            return new_class_name
-
-    class PartialedRepLearner(cls, metaclass=MC):
-        __init__ = partialmethod(cls.__init__, *args, **kwargs)
-    return PartialedRepLearner

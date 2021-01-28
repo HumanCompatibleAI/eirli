@@ -2,9 +2,10 @@ from ray import tune
 from il_representations.scripts.utils import StagesToRun, ReuseRepl, partial_repl_class
 from il_representations.algos import (ActionConditionedTemporalCPC, TemporalCPC,
                                       VariationalAutoencoder, DynamicsPrediction,
-                                      InverseDynamicsPrediction, GaussianPrior)
+                                      InverseDynamicsPrediction, GaussianPriorControl)
 from il_representations.algos import pair_constructors
-
+from functools import partialmethod
+from copy import deepcopy
 # This set of configs is meant to correspond to Hypothesis #3 in Test Conditions spreadsheet
 # It implements:
 # For each benchmark:
@@ -16,18 +17,39 @@ from il_representations.algos import pair_constructors
 #               # train k*j seeds of RepL+IL without reuse
 #
 
+
+# metaclass logic pulled from here: https://stackoverflow.com/a/55053439
+class MetaclassACTCPC(type):
+    def __repr__(self):
+        return "ICMLActionConditionedTemporalCPC"
+
+class MetaclassTCPC(type):
+    def __repr__(self):
+        return "ICMLTemporalCPC"
+
+class MetaclassVAE(type):
+    def __repr__(self):
+        return "ICMLVariationalAutoencoder"
+
 contrastive_kwargs_standin = {}
-ICMLActionConditionedTemporalCPC = partial_repl_class(ActionConditionedTemporalCPC,
-                                                      new_class_name="ICMLActionConditionedTemporalCPC",
-                                                      **contrastive_kwargs_standin)
-ICMLIdentityCPC = partial_repl_class(TemporalCPC,
-                                     new_class_name="ICMLIdentityCPC",
-                                     target_pair_constructor=pair_constructors.IdentityPairConstructor,
-                                     **contrastive_kwargs_standin)
-best_hp_vae_beta = 0 # fill in
-ICMLVariationalAutoencoder = partial_repl_class(VariationalAutoencoder,
-                                                new_class_name="ICMLVariationalAutoencoder",
-                                                loss_calculator_kwargs={'beta': best_hp_vae_beta})
+
+class ICMLActionConditionedTemporalCPC(ActionConditionedTemporalCPC, metaclass=MetaclassACTCPC):
+    __init__ = partialmethod(ActionConditionedTemporalCPC.__init__, **contrastive_kwargs_standin)
+
+
+tcpc_args = deepcopy(contrastive_kwargs_standin)
+tcpc_args["target_pair_constructor"] = pair_constructors.IdentityPairConstructor
+
+
+class ICMLIdentityCPC(TemporalCPC, metaclass=MetaclassTCPC):
+    __init__ = partialmethod(TemporalCPC.__init__, **contrastive_kwargs_standin)
+
+best_hp_vae_beta = 0.0
+vae_args = {'loss_calculator_kwargs': {'beta': best_hp_vae_beta}}
+
+
+class ICMLVariationalAutoencoder(VariationalAutoencoder, metaclass=MetaclassVAE):
+    __init__ = partialmethod(VariationalAutoencoder.__init__, **vae_args)
 
 MAGICAL_MULTITASK_DEMOS_CONFIG = [
                 {
@@ -95,9 +117,10 @@ def make_dataset_experiment_configs(experiment_obj):
 
     @experiment_obj.named_config
     def algo_sweep():
-        spec = dict(repl=tune.grid_search([{'algo': algo} for algo in [InverseDynamicsPrediction, DynamicsPrediction,
-                              ICMLIdentityCPC, ICMLActionConditionedTemporalCPC,
-                              GaussianPrior, ICMLVariationalAutoencoder]]))
+        spec = dict(repl=tune.grid_search([{'algo': algo}
+                                           for algo in [InverseDynamicsPrediction, DynamicsPrediction,
+                                                        ICMLActionConditionedTemporalCPC, # ICMLIdentityCPC, , ICMLVariationalAutoencoder
+                                                        GaussianPriorControl]]))
         _ = locals()
         del _
 

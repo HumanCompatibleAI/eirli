@@ -324,7 +324,7 @@ class CEBLoss(RepresentationLoss):
         return loss
 
 
-class GaussianPrior(RepresentationLoss):
+class GaussianPriorLoss(RepresentationLoss):
     """
     KL divergence between a Normal distribution prior on z and
     the conditioned-on-x z distribution

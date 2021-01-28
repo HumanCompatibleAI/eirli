@@ -5,7 +5,7 @@ from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
     AsymmetricProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPrior
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss
 
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -358,7 +358,7 @@ class GaussianPriorControl(RepresentationLearner):
                                      decoder=NoOp,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
-                                     loss_calculator=GaussianPrior,
+                                     loss_calculator=GaussianPriorLoss,
                                      target_pair_constructor=IdentityPairConstructor)
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
