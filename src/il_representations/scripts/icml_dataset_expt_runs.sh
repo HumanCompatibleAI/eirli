@@ -1,5 +1,7 @@
-declare -a testing_configs=("algo_sweep" "control_ortho_init_sweep"
-                            "control_log_std_init_sweep")
+declare -a testing_configs=("icml_inv_dyn" "icml_dynamics" "icml_ac_tcpc"
+                            "icml_identity_cpc" "icml_vae"
+                            "control_ortho_init" "control_no_ortho_init"
+                            "control_lsi_one" "control_lsi_zero")
 
 declare -a dmc_envs=("finger-spin" "cheetah-run")
 

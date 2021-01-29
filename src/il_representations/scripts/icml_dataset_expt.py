@@ -64,24 +64,63 @@ def make_dataset_experiment_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def algo_sweep():
-        spec = dict(repl=tune.grid_search([{'algo': algo}
-                                           for algo in [InverseDynamicsPrediction, DynamicsPrediction,
-                                                        ICMLActionConditionedTemporalCPC, ICMLIdentityCPC,
-                                                        ICMLVariationalAutoencoder,
-                                                        GaussianPriorControl]]))
+    def icml_inv_dyn():
+        repl = {'algo': InverseDynamicsPrediction}
         _ = locals()
         del _
 
     @experiment_obj.named_config
-    def control_ortho_init_sweep():
-        spec = dict(il_train=tune.grid_search([{'ortho_init': bv} for bv in [True, False]]))
+    def icml_dynamics():
+        repl = {'algo': DynamicsPrediction}
         _ = locals()
         del _
 
     @experiment_obj.named_config
-    def control_log_std_init_sweep():
-        # TODO what are reasonable values for log std init?
-        spec = dict(il_train=tune.grid_search([{'log_std_init': lsi} for lsi in [0.1, 0.25]]))
+    def icml_ac_tcpc():
+        repl = {'algo': ICMLActionConditionedTemporalCPC}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_identity_cpc():
+        repl = {'algo': ICMLIdentityCPC}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_vae():
+        repl = {'algo': ICMLVariationalAutoencoder}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_gaussian_prior():
+        repl = {'algo': GaussianPriorControl}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def control_ortho_init():
+        il_train = {'ortho_init': True}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def control_no_ortho_init():
+        il_train = {'ortho_init': False}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def control_lsi_one():
+        il_train = {'log_std_init': 1.0}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def control_lsi_zero():
+        # I think this is the SB default value, but having it here
+        # to make testing clearer
+        il_train = {'log_std_init': 0.0}
         _ = locals()
         del _
