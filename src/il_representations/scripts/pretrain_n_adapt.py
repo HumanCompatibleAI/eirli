@@ -591,7 +591,6 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
         reuse_repl, repl_encoder_path, on_cluster):
 
-    #import pdb; pdb.set_trace()
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
