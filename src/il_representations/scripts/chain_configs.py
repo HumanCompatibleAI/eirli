@@ -347,6 +347,7 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+
     @experiment_obj.named_config
     def cfg_data_repl_demos_magical_mt():
         """Multi-task training on all MAGICAL tasks."""
@@ -369,6 +370,35 @@ def make_chain_configs(experiment_obj):
                     'ClusterShape',
                 ]
             ],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_rand_demos_magical_mt():
+        """Multi-task training on all MAGICAL tasks."""
+        repl = {
+            'dataset_configs': [
+            [
+                {
+                    'type': dataset_type,
+                    'env_cfg': {
+                        'benchmark_name': 'magical',
+                        'task_name': magical_task_name,
+                    }
+                } for magical_task_name in [
+                    'MoveToCorner',
+                    'MoveToRegion',
+                    'MatchRegions',
+                    'MakeLine',
+                    'FixColour',
+                    'FindDupe',
+                    'ClusterColour',
+                    'ClusterShape',
+                ]
+            ]
+            for dataset_type in ["demos", "random"]
+    ],
         }
         _ = locals()
         del _
@@ -454,6 +484,19 @@ def make_chain_configs(experiment_obj):
             'algo': 'bc',
             'bc': {
                 'n_batches': 200000,
+            },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_20k_nofreeze():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'n_batches': 20000,
             },
             'freeze_encoder': False,
         }
