@@ -39,7 +39,7 @@ class ICMLIdentityCPC(TemporalCPC, metaclass=MetaclassTCPC):
     __init__ = partialmethod(TemporalCPC.__init__, **contrastive_kwargs_standin)
 
 
-best_hp_vae_beta = 0.0
+best_hp_vae_beta = 1e-5
 vae_args = {'loss_calculator_kwargs': {'beta': best_hp_vae_beta}}
 
 
