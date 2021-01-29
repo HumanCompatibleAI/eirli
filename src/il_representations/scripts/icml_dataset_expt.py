@@ -74,17 +74,13 @@ def make_dataset_experiment_configs(experiment_obj):
 
     @experiment_obj.named_config
     def control_ortho_init_sweep():
-        stages_to_run = StagesToRun.IL_ONLY
         spec = dict(il_train=tune.grid_search([{'ortho_init': bv} for bv in [True, False]]))
-        tune_run_kwargs = dict(num_samples=NUM_SEEDS)
         _ = locals()
         del _
 
     @experiment_obj.named_config
     def control_log_std_init_sweep():
-        stages_to_run = StagesToRun.IL_ONLY
         # TODO what are reasonable values for log std init?
         spec = dict(il_train=tune.grid_search([{'log_std_init': lsi} for lsi in [0.1, 0.25]]))
-        tune_run_kwargs = dict(num_samples=NUM_SEEDS)
         _ = locals()
         del _
