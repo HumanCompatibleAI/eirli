@@ -40,6 +40,8 @@ def default_config():
     policy_path = None
     n_rollouts = 100
     device_name = 'auto'
+    # use deterministic policy?
+    deterministic_policy = False
     # run_id is written into the produced DataFrame to indicate what model is
     # being tested
     run_id = 'test'
@@ -54,7 +56,7 @@ def default_config():
 
 @il_test_ex.main
 def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
-        write_video, video_file_name, torch_num_threads):
+        write_video, video_file_name, torch_num_threads, deterministic_policy):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
@@ -89,6 +91,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
             seed=seed,
             run_id=run_id,
             video_writer=video_writer if write_video else None,
+            deterministic_policy=deterministic_policy,
         )
         eval_data_frame = eval_protocol.do_eval(verbose=False)
         # display to stdout
@@ -116,7 +119,8 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         # sample some trajectories
         rng = np.random.RandomState(seed)
         trajectories = il_rollout.generate_trajectories(
-            policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
+            policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng,
+            deterministic_policy=deterministic_policy)
         # make sure all the actions are finite
         for traj in trajectories:
             assert np.all(np.isfinite(traj.acts)), traj.acts

@@ -7,7 +7,6 @@ import readline  # noqa: F401
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
-from imitation.augment import StandardAugmentations
 import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
 import sacred
@@ -21,6 +20,7 @@ from torch import nn
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
+from il_representations.data.read_dataset import datasets_to_loader
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -30,8 +30,7 @@ from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-from il_representations.utils import freeze_params
-from il_representations.scripts.utils import print_policy_info
+from il_representations.utils import augmenter_from_spec, freeze_params
 
 bc_ingredient = Ingredient('bc')
 
@@ -39,11 +38,6 @@ bc_ingredient = Ingredient('bc')
 @bc_ingredient.config
 def bc_defaults():
     # number of passes to make through dataset
-    # TODO(sam): it would be ideal to have these both 'None' as the default,
-    # and store the *real* default elsewhere. That way users can specify
-    # 'n_epochs' or 'n_batches' elsewhere without first having to set the other
-    # config value to None.
-    n_epochs = None
     n_batches = 5000
     augs = 'rotate,translate,noise'
     log_interval = 500
@@ -53,6 +47,14 @@ def bc_defaults():
 
     _ = locals()
     del _
+
+
+@bc_ingredient.capture
+def _bc_dummy(augs):
+    """This is a do-nothing function to indicate to sacred that `bc.augs` is
+    actually used. If we don't include this, then Sacred doesn't allow us to
+    set `bc.augs` to be a dictionary with arbitrary keys."""
+    raise NotImplementedError("this function is not meant to be called")
 
 
 gail_ingredient = Ingredient('gail')
@@ -87,7 +89,7 @@ def gail_defaults():
     ppo_reward_std = 0.01
 
     disc_n_updates_per_round = 12
-    disc_batch_size = 24
+    disc_batch_size = 48
     disc_lr = 2.5e-5
     disc_augs = "rotate,translate,noise"
 
@@ -100,6 +102,12 @@ def gail_defaults():
 
     _ = locals()
     del _
+
+
+@gail_ingredient.capture
+def _gail_dummy(disc_augs):
+    """Similar to _bc_dummy above, but for GAIL augmentations."""
+    raise NotImplementedError("this function is not meant to be called")
 
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
@@ -124,8 +132,6 @@ def default_config():
     # exp_ident is an arbitrary string. Set it to a meaningful value to help
     # you identify runs in viskit.
     exp_ident = None
-    # number of trajectories to load (default: all)
-    n_traj = None
     # manually set number of Torch threads
     torch_num_threads = 1
     # device to place all computations on
@@ -137,7 +143,13 @@ def default_config():
     encoder_path = None
     # file name for final policy
     final_pol_name = 'policy_final.pt'
-    # should we freeze waits of the encoder?
+    # dataset configurations for webdataset code
+    # (you probably don't want to change this)
+    dataset_configs = [{'type': 'demos'}]
+    # size of the buffer used for intermediate shuffling
+    # (smaller = lower memory usage, but less effective shuffling)
+    shuffle_buffer_size = 1024
+    # should we freeze weights of the encoder?
     freeze_encoder = False
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
@@ -201,28 +213,38 @@ def make_policy(observation_space,
     return policy
 
 
+def streaming_extract_keys(*keys_to_keep):
+    """Filter a generator of dicts to keep only the specified keys."""
+    def gen(data_iter):
+        for data_dict in data_iter:
+            yield {k: data_dict[k] for k in keys_to_keep}
+    return gen
+
+
+def add_infos(data_iter):
+    """Add a dummy 'infos' value to each dict in a data stream."""
+    for data_dict in data_iter:
+        yield {'infos': {}, **data_dict}
+
+
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
-                   device_name, final_pol_name):
+def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
+                   device_name, final_pol_name, shuffle_buffer_size):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        bc['augs'], stack_color_space=color_space)
+    augmenter = augmenter_from_spec(bc['augs'], color_space)
 
     # build dataset in the format required by imitation
-    dataset = il_types.TransitionsMinimal(obs=dataset_dict['obs'],
-                                          acts=dataset_dict['acts'],
-                                          infos=[{}] *
-                                          len(dataset_dict['obs']))
-    del dataset_dict
-    data_loader = th.utils.data.DataLoader(
-        dataset,
+    data_loader = datasets_to_loader(
+        demo_webdatasets,
         batch_size=bc['batch_size'],
+        # nominal_length is arbitrary, since nothing in BC uses len(dataset)
+        nominal_length=int(1e6),
         shuffle=True,
-        collate_fn=il_types.transitions_collate_fn)
-    del dataset
+        shuffle_buffer_size=shuffle_buffer_size,
+        preprocessors=[streaming_extract_keys("obs", "acts")])
 
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
@@ -247,7 +269,7 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
         optional_model_saver = None
 
     logging.info("Beginning BC training")
-    trainer.train(n_epochs=bc['n_epochs'],
+    trainer.train(n_epochs=None,
                   n_batches=bc['n_batches'],
                   log_interval=bc['log_interval'],
                   on_epoch_end=optional_model_saver)
@@ -260,13 +282,15 @@ def do_training_bc(venv_chans_first, dataset_dict, out_dir, bc, encoder,
 
 @il_train_ex.capture
 def do_training_gail(
+    *,
     venv_chans_first,
-    dataset_dict,
+    demo_webdatasets,
     device_name,
     encoder,
     out_dir,
     final_pol_name,
     gail,
+    shuffle_buffer_size,
 ):
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
@@ -316,24 +340,20 @@ def do_training_gail(
         max_grad_norm=gail['ppo_max_grad_norm'],
     )
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        gail['disc_augs'], stack_color_space=color_space)
+    augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
 
-    # build dataset in the format required by imitation
-    # (this time the dataset has more keys)
-    dataset = il_types.Transitions(obs=dataset_dict['obs'],
-                                   acts=dataset_dict['acts'],
-                                   next_obs=dataset_dict['next_obs'],
-                                   dones=dataset_dict['dones'],
-                                   infos=[{}] * len(dataset_dict['obs']))
-    del dataset_dict
-    data_loader = th.utils.data.DataLoader(
-        dataset,
+    data_loader = datasets_to_loader(
+        demo_webdatasets,
         batch_size=gail['disc_batch_size'],
+        # nominal_length is arbitrary; we could make it basically anything b/c
+        # nothing in GAIL depends on the 'length' of the expert dataset
+        nominal_length=int(1e6),
         shuffle=True,
+        shuffle_buffer_size=shuffle_buffer_size,
+        preprocessors=[streaming_extract_keys(
+            "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
-    del dataset
 
     trainer = GAIL(
         venv=venv_chans_first,
@@ -364,8 +384,8 @@ def do_training_gail(
 
 
 @il_train_ex.main
-def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads, n_traj,
-          _config):
+def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
+          dataset_configs, _config):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -378,6 +398,8 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads, n_traj,
         th.set_num_threads(torch_num_threads)
 
     venv = auto_env.load_vec_env()
+    demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
+        configs=dataset_configs)
 
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
@@ -393,14 +415,14 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads, n_traj,
 
     if algo == 'bc':
         final_path = do_training_bc(
-            dataset_dict=auto_env.load_dict_dataset(n_traj=n_traj),
+            demo_webdatasets=demo_webdatasets,
             venv_chans_first=venv,
             out_dir=log_dir,
             encoder=encoder)
 
     elif algo == 'gail':
         final_path = do_training_gail(
-            dataset_dict=auto_env.load_dict_dataset(n_traj=n_traj),
+            demo_webdatasets=demo_webdatasets,
             venv_chans_first=venv,
             out_dir=log_dir,
             encoder=encoder)

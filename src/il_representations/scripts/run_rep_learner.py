@@ -64,7 +64,7 @@ def default_config():
     # shorter dataset would run out before the longer one, and the network
     # would end up training on more samples from the longer dataset.
     batches_per_epoch = 1000
-    n_epochs = 10
+    n_epochs = 5
 
     # how often should we save repL batch data?
     # (set to None to disable completely)

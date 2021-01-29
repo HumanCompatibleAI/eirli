@@ -181,12 +181,14 @@ class SB3EvaluationProtocol(EvaluationProtocol):
     """MAGICAL 'evaluation protocol' for Stable Baselines 3 policies."""
 
     # TODO: more docs, document __init__ in particular
-    def __init__(self, policy, run_id, seed, video_writer=None, **kwargs):
+    def __init__(self, policy, run_id, seed, video_writer=None, *,
+                 deterministic_policy, **kwargs):
         super().__init__(**kwargs)
         self._run_id = run_id
         self.policy = policy
         self.seed = seed
         self.video_writer = video_writer
+        self.deterministic_policy = deterministic_policy
 
     @property
     def run_id(self):
@@ -206,7 +208,8 @@ class SB3EvaluationProtocol(EvaluationProtocol):
             self.policy,
             vec_env_chans_last,
             sample_until=il_rollout.min_episodes(self.n_rollouts),
-            rng=rng)
+            rng=rng,
+            deterministic_policy=self.deterministic_policy)
         scores = []
         for trajectory in trajectories[:self.n_rollouts]:
             scores.append(trajectory.infos[-1]['eval_score'])
