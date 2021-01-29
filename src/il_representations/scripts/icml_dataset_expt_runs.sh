@@ -20,6 +20,7 @@ for test_config in ${testing_configs[@]}; do
         $test_config $dmc_dataset_config cfg_il_bc_200k_nofreeze\
          exp_ident=$test_config"_"$dmc_dataset_config env_cfg.task_name=$dmc_env
     done
+  done
   for magical_env in ${magical_envs[@]}; do
     for mg_dataset_config in ${mg_dataset_configs[@]}; do
       printf "\n ***TRAINING $algo_config ON $magical_env *** \n "
