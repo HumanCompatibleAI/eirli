@@ -40,7 +40,8 @@ class ICMLIdentityCPC(TemporalCPC, metaclass=MetaclassTCPC):
 
 
 best_hp_vae_beta = 1e-5
-vae_args = {'loss_calculator_kwargs': {'beta': best_hp_vae_beta}}
+vae_args = {'loss_calculator_kwargs': {'beta': best_hp_vae_beta},
+            'batch_size': 64}
 
 
 class ICMLVariationalAutoencoder(VariationalAutoencoder, metaclass=MetaclassVAE):
