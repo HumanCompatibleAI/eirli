@@ -185,6 +185,8 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning
         'repl_loss': loss_record[-1],
+        # Used for serialization validation testing in test_base_algos.py.
+        'model': model,
     }
 
 

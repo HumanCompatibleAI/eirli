@@ -227,32 +227,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, datasets, batches_per_epoch, n_epochs, callbacks=(),
-              end_callbacks=()):
-        """Run repL training loop.
-
-        Args:
-            datasets ([wds.Dataset]): list of webdataset datasets which we will
-                sample from. Each one likely represents data from different
-                tasks, or different policies.
-            batches_per_epoch (int): each 'epoch' simply consists of a fixed
-                number of batches, with data drawn equally from the given
-                datasets (as opposed to each epoch consisting of a complete
-                cycle through all datasets).
-            n_epochs (int): the total number of 'epochs' of optimisation to
-                perform. Total number of updates will be `batches_per_epoch *
-                n_epochs`.
-            callbacks ([dict -> None]): list of functions to call at the
-                end of each batch, after computing the loss and updating the
-                network but before dumping logs. Will be provided with all
-                local variables.
-            end_callbacks ([dict -> None]): these callbacks will only be
-                called once, at the end of training.
-
-        Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
-            `loss_record` is a list of average loss values encountered at each
-            epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
-        """
+    def _make_data_loader(self, datasets, batches_per_epoch):
         # For each single-task dataset in the `datasets` list, we first apply a
         # target pair constructor to create targets from the incoming stream of
         # observations. We can then optionally apply a shuffler that retains a
@@ -287,7 +262,35 @@ class RepresentationLearner(BaseEnvironmentLearner):
         dataloader = DataLoader(interleaved_dataset,
                                 num_workers=self.dataset_max_workers,
                                 batch_size=int(self.batch_size))
+        return dataloader
 
+    def learn(self, datasets, batches_per_epoch, n_epochs, callbacks=(),
+              end_callbacks=()):
+        """Run repL training loop.
+
+        Args:
+            datasets ([wds.Dataset]): list of webdataset datasets which we will
+                sample from. Each one likely represents data from different
+                tasks, or different policies.
+            batches_per_epoch (int): each 'epoch' simply consists of a fixed
+                number of batches, with data drawn equally from the given
+                datasets (as opposed to each epoch consisting of a complete
+                cycle through all datasets).
+            n_epochs (int): the total number of 'epochs' of optimisation to
+                perform. Total number of updates will be `batches_per_epoch *
+                n_epochs`.
+            callbacks ([dict -> None]): list of functions to call at the
+                end of each batch, after computing the loss and updating the
+                network but before dumping logs. Will be provided with all
+                local variables.
+            end_callbacks ([dict -> None]): these callbacks will only be
+                called once, at the end of training.
+
+        Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
+            `loss_record` is a list of average loss values encountered at each
+            epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
+        """
+        dataloader = self._make_data_loader(datasets, batches_per_epoch)
         loss_record = []
 
         if self.scheduler_cls is not None:
