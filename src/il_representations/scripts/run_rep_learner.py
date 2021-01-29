@@ -14,7 +14,7 @@ from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
-from il_representations.utils import RepLSaveCallback
+from il_representations.utils import RepLSaveExampleBatchesCallback
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 represent_ex = Experiment(
@@ -70,6 +70,9 @@ def default_config():
     # (set to None to disable completely)
     repl_batch_save_interval = 1000
 
+    # set this to True if you want repL encoder hashing to ignore env_cfg
+    is_multitask = False
+
     _ = locals()
     del _
 
@@ -120,14 +123,21 @@ def initialize_non_features_extractor(sb3_model):
     return sb3_model
 
 
+def config_specifies_task_name(dataset_config_dict):
+    if 'env_cfg' not in dataset_config_dict:
+        return False
+    return 'task_name' in dataset_config_dict['env_cfg']
+
+
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
-        torch_num_threads, repl_batch_save_interval, _config):
+        torch_num_threads, repl_batch_save_interval, is_multitask, _config):
     # TODO fix to not assume FileStorageObserver always present
-
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
         torch.set_num_threads(torch_num_threads)
+
+    logging.basicConfig(level=logging.INFO)
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
@@ -141,9 +151,10 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
 
     # callbacks for saving example batches
     def make_batch_saver(interval):
-        return RepLSaveCallback(save_interval_batches=repl_batch_save_interval,
-                                dest_dir=os.path.join(log_dir, 'batch_saves'),
-                                color_space=color_space)
+        return RepLSaveExampleBatchesCallback(
+            save_interval_batches=repl_batch_save_interval,
+            dest_dir=os.path.join(log_dir, 'batch_saves'),
+            color_space=color_space)
     repl_callbacks = []
     repl_end_callbacks = []
     if repl_batch_save_interval is not None:
@@ -159,6 +170,14 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     repl_end_callbacks.append(make_batch_saver(0))
 
     # instantiate algo
+    dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
+                                        for config_dict in dataset_configs])
+    if is_multitask:
+        assert dataset_configs_multitask, "Parameter `is_multitask` is set, but dataset_configs contain configs " \
+                                          "referencing the current task_name"
+    else:
+        assert not dataset_configs_multitask, "dataset_configs implies a multitask training setup, but " \
+                                              "is_multitask is set to False; please fix to make consistent"
     assert issubclass(algo, RepresentationLearner)
     algo_params = dict(algo_params)
     algo_params['augmenter_kwargs'] = {

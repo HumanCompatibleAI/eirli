@@ -31,6 +31,7 @@ from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
+from il_representations.scripts.utils import print_policy_info
 
 bc_ingredient = Ingredient('bc')
 
@@ -147,6 +148,7 @@ def default_config():
     encoder_kwargs = dict(
         obs_encoder_cls='MAGICALCNN',
         representation_dim=128,
+        obs_encoder_cls_kwargs={}
     )
 
     _ = locals()

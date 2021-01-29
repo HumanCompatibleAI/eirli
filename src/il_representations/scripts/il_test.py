@@ -117,6 +117,9 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         rng = np.random.RandomState(seed)
         trajectories = il_rollout.generate_trajectories(
             policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
+        # make sure all the actions are finite
+        for traj in trajectories:
+            assert np.all(np.isfinite(traj.acts)), traj.acts
 
         # the "stats" dict has keys {return,len}_{min,max,mean,std}
         stats = il_rollout.rollout_stats(trajectories)

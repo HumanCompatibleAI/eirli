@@ -30,7 +30,12 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
 
     def forward(self, observations):
         features_dist = self.representation_encoder(observations, traj_info=None)
-        return features_dist.mean
+        mean = features_dist.mean
+        # make sure we're not getting NaN actions
+        # TODO(sam): this seems inefficient, since we need to sync with GPU.
+        # Might be better to run as a check against IL loss or something.
+        assert torch.all(torch.isfinite(mean)), mean
+        return mean
 
 
 class EncoderSimplePolicyHead(EncoderFeatureExtractor):

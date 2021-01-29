@@ -1,13 +1,14 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
 import hashlib
-import jsonpickle
+import json
 import math
 import os
 import pdb
 import pickle
 import re
 import sys
+from collections.abc import Sequence
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
@@ -30,11 +31,27 @@ class ForkedPdb(pdb.Pdb):
             sys.stdin = _stdin
 
 
+def recursively_sort(element):
+    """Ensures that any dicts in nested dict/list object
+    collection are converted to OrderedDicts"""
+    if isinstance(element, collections.Mapping):
+        sorted_dict = collections.OrderedDict()
+        for k in sorted(element.keys()):
+            sorted_dict[k] = recursively_sort(element[k])
+        return sorted_dict
+    elif isinstance(element, Sequence) and not isinstance(element, str):
+        return [recursively_sort(inner_el) for inner_el in element]
+    else:
+        return str(element)
+
+
 def hash_configs(merged_config):
     """MD5 hash of a dictionary."""
-    sorted_dict = collections.OrderedDict({k:merged_config[k] for k in sorted(merged_config.keys())})
-    encoded = jsonpickle.encode(sorted_dict).encode()
-    return hashlib.md5(encoded).hexdigest()
+    sorted_dict = recursively_sort(merged_config)
+    # Needs to be double-encoded because result of jsonpickle is Unicode
+    encoded = json.dumps(sorted_dict).encode('utf-8')
+    hash = hashlib.md5(encoded).hexdigest()
+    return hash
 
 
 def freeze_params(module):
@@ -230,7 +247,7 @@ def load_sacred_pickle(fp, **kwargs):
     return SacredUnpickler(fp, **kwargs).load()
 
 
-class RepLSaveCallback:
+class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
     def __init__(self, save_interval_batches, dest_dir, color_space):
@@ -297,3 +314,14 @@ class SigmoidRescale(th.nn.Module):
 
     def forward(self, x):
         return th.sigmoid(x) * self.val_range + self.min_val
+
+
+def up(p):
+    """Return the path *above* whatever object the path `p` points to.
+    Examples:
+
+        up("/foo/bar") == "/foo"
+        up("/foo/bar/") == "/foo
+        up(up(up("foo/bar"))) == ".."
+    """
+    return os.path.normpath(os.path.join(p, ".."))

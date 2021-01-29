@@ -81,6 +81,9 @@ def load_dict_dataset(benchmark_name, n_traj=None):
     num_dones = dataset_dict['dones'].flatten().sum()
     logging.info(f'Loaded dataset with {num_transitions} transitions. '
                  f'{num_dones} of these transitions have done == True')
+    if n_traj is not None and num_dones < n_traj:
+        raise ValueError(
+            f"Requested n_traj={n_traj}, but can only see {num_dones} dones")
 
     return dataset_dict
 
