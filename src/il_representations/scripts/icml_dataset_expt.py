@@ -38,12 +38,14 @@ tcpc_args["target_pair_constructor"] = pair_constructors.IdentityPairConstructor
 class ICMLIdentityCPC(TemporalCPC, metaclass=MetaclassTCPC):
     __init__ = partialmethod(TemporalCPC.__init__, **contrastive_kwargs_standin)
 
+
 best_hp_vae_beta = 0.0
 vae_args = {'loss_calculator_kwargs': {'beta': best_hp_vae_beta}}
 
 
 class ICMLVariationalAutoencoder(VariationalAutoencoder, metaclass=MetaclassVAE):
     __init__ = partialmethod(VariationalAutoencoder.__init__, **vae_args)
+
 
 NUM_SEEDS = 9
 
@@ -85,8 +87,3 @@ def make_dataset_experiment_configs(experiment_obj):
         tune_run_kwargs = dict(num_samples=NUM_SEEDS)
         _ = locals()
         del _
-
-
-
-
-
