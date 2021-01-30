@@ -65,13 +65,15 @@ def make_dataset_experiment_configs(experiment_obj):
 
     @experiment_obj.named_config
     def icml_inv_dyn():
-        repl = {'algo': InverseDynamicsPrediction}
+        repl = {'algo': InverseDynamicsPrediction,
+                'algo_params': {'batch_size': 64}}
         _ = locals()
         del _
 
     @experiment_obj.named_config
     def icml_dynamics():
-        repl = {'algo': DynamicsPrediction}
+        repl = {'algo': DynamicsPrediction,
+                'algo_params': {'batch_size': 64}}
         _ = locals()
         del _
 
