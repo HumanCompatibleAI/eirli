@@ -435,6 +435,7 @@ def make_chain_configs(experiment_obj):
                     'ClusterShape',
                 ]
             ],
+            'is_multitask': True,
         }
         _ = locals()
         del _
@@ -444,26 +445,27 @@ def make_chain_configs(experiment_obj):
         """Multi-task training on all MAGICAL tasks."""
         repl = {
             'dataset_configs': [
-            [
-                {
-                    'type': dataset_type,
-                    'env_cfg': {
-                        'benchmark_name': 'magical',
-                        'task_name': magical_task_name,
-                    }
-                } for magical_task_name in [
-                    'MoveToCorner',
-                    'MoveToRegion',
-                    'MatchRegions',
-                    'MakeLine',
-                    'FixColour',
-                    'FindDupe',
-                    'ClusterColour',
-                    'ClusterShape',
+                [
+                    {
+                        'type': dataset_type,
+                        'env_cfg': {
+                            'benchmark_name': 'magical',
+                            'task_name': magical_task_name,
+                        }
+                    } for magical_task_name in [
+                        'MoveToCorner',
+                        'MoveToRegion',
+                        'MatchRegions',
+                        'MakeLine',
+                        'FixColour',
+                        'FindDupe',
+                        'ClusterColour',
+                        'ClusterShape',
+                    ]
                 ]
-            ]
-            for dataset_type in ["demos", "random"]
-    ],
+                for dataset_type in ["demos", "random"]
+            ],
+            'is_multitask': True,
         }
         _ = locals()
         del _
