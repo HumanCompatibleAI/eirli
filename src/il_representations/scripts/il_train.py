@@ -162,6 +162,8 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
+    ortho_init = False
+    log_std_init = 0.0
 
     _ = locals()
     del _
@@ -172,6 +174,8 @@ def make_policy(observation_space,
                 action_space,
                 encoder_or_path,
                 encoder_kwargs,
+                ortho_init,
+                log_std_init,
                 lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
@@ -187,7 +191,8 @@ def make_policy(observation_space,
         # number).
         'lr_schedule':
         (lambda _: 1e100) if lr_schedule is None else lr_schedule,
-        'ortho_init': False,
+        'ortho_init': ortho_init,
+        'log_std_init': log_std_init
     }
     if encoder_or_path is not None:
         if isinstance(encoder_or_path, str):
