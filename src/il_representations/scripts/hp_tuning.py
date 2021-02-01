@@ -222,7 +222,7 @@ def make_hp_tuning_configs(experiment_obj):
                 # basically disable intermediate checkpoint saving
                 'save_every_n_steps': int(1e10),
                 # log, but not too often
-                'log_interval_steps': int(1e3),
+                'log_interval_steps': int(1e4),
                 # base type should be dict
                 # (the space will customise this later on)
                 'disc_augs': {},
@@ -234,19 +234,19 @@ def make_hp_tuning_configs(experiment_obj):
         }
         venv_opts = {
             'venv_parallel': True,
+            'n_envs': 32,
         }
         skopt_space = collections.OrderedDict([
-            ('il_train:gail:ppo_n_steps', (8, 32)),
+            ('il_train:gail:ppo_n_steps', (4, 12)),
             ('il_train:gail:ppo_n_epochs', (4, 12)),
             ('il_train:gail:ppo_init_learning_rate',
-             (5e-6, 5e-4, 'log-uniform')),
-            ('il_train:gail:ppo_gamma', (0.85, 1.0, 'uniform')),
+             (5e-5, 5e-4, 'log-uniform')),
+            ('il_train:gail:ppo_gamma', (0.98, 1.0, 'uniform')),
             ('il_train:gail:ppo_gae_lambda', (0.6, 0.9, 'uniform')),
             ('il_train:gail:ppo_ent', (1e-10, 1e-3, 'log-uniform')),
-            ('il_train:gail:ppo_adv_clip', (0.01, 0.15)),
+            ('il_train:gail:ppo_adv_clip', (0.001, 0.1)),
             ('il_train:gail:disc_n_updates_per_round', (1, 8)),
-            ('venv_opts:n_envs', (32, 48)),
-            ('il_train:gail:disc_lr', (1e-6, 1e-3, 'log-uniform')),
+            ('il_train:gail:disc_lr', (5e-4, 5e-3, 'log-uniform')),
             # lots of augmentation options
             ('il_train:gail:disc_augs:translate_ex', [True, False]),
             ('il_train:gail:disc_augs:rotate', [True, False]),
@@ -261,13 +261,12 @@ def make_hp_tuning_configs(experiment_obj):
                 ('il_train:gail:ppo_n_steps', 8),
                 ('il_train:gail:ppo_n_epochs', 12),
                 ('il_train:gail:ppo_init_learning_rate', 1e-4),
-                ('il_train:gail:ppo_gamma', 0.95),
+                ('il_train:gail:ppo_gamma', 0.99),
                 ('il_train:gail:ppo_gae_lambda', 0.8),
                 ('il_train:gail:ppo_ent', 1e-7),
                 ('il_train:gail:ppo_adv_clip', 0.05),
                 ('il_train:gail:disc_n_updates_per_round', 4),
-                ('venv_opts:n_envs', 32),
-                ('il_train:gail:disc_lr', 2.5e-5),
+                ('il_train:gail:disc_lr', 1e-3),
                 ('il_train:gail:disc_augs:translate_ex', True),
                 ('il_train:gail:disc_augs:rotate', True),
                 ('il_train:gail:disc_augs:color_jitter_mid', True),
