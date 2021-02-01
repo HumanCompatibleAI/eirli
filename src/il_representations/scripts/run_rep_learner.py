@@ -49,7 +49,8 @@ def default_config():
             # augmentations. Consult docstring for
             # imitation.augment.StandardAugmentations to see available
             # augmentations.
-            "augmenter_spec": "translate,rotate,gaussian_blur",
+            "augmenter_spec":
+            "translate,rotate,gaussian_blur,color_jitter_ex",
         },
     }
     device = "auto"
