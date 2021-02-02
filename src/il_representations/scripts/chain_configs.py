@@ -603,6 +603,7 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
     def cfg_il_gail_magical_250k_nofreeze():
         """GAIL config tailored to MAGICAL tasks."""
         il_train = {
@@ -639,6 +640,7 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
     def cfg_il_gail_dmc_250k_nofreeze():
         """GAIL config tailored to dm_control tasks. This was specifically
         tuned for HalfCheetah at 500k steps, but should work for other tasks
