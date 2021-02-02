@@ -21,9 +21,11 @@ ray[tune]~=1.0.1
 PyYAML~=5.3.1
 scikit-video~=1.1.11
 Pillow~=7.2.0
-torchsummary~=1.5.1
 webdataset~=0.1.40
 tqdm~=4.48.0
+
+# this fork of torchsummary can deal with layers that don't produce tensors
+git+git://github.com/qxcv/torchsummary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
 
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
