@@ -103,18 +103,21 @@ def make_dataset_experiment_configs(experiment_obj):
 
     @experiment_obj.named_config
     def control_ortho_init():
+        stages_to_run = StagesToRun.IL_ONLY
         il_train = {'ortho_init': True}
         _ = locals()
         del _
 
     @experiment_obj.named_config
     def control_no_ortho_init():
+        stages_to_run = StagesToRun.IL_ONLY
         il_train = {'ortho_init': False}
         _ = locals()
         del _
 
     @experiment_obj.named_config
     def control_lsi_one():
+        stages_to_run = StagesToRun.IL_ONLY
         il_train = {'log_std_init': 1.0}
         _ = locals()
         del _
@@ -123,6 +126,7 @@ def make_dataset_experiment_configs(experiment_obj):
     def control_lsi_zero():
         # I think this is the SB default value, but having it here
         # to make testing clearer
+        stages_to_run = StagesToRun.IL_ONLY
         il_train = {'log_std_init': 0.0}
         _ = locals()
         del _
