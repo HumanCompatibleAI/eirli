@@ -6,7 +6,7 @@ base_cfgs="cfg_base_3seed_1cpu_pt2gpu_2envs"
 cluster_cfg_path="./gcp_cluster_sam.yaml"
 
 # running ALL THE REPL ALGORITHMS so that we know what works/what doesn't
-for il in cfg_il_bc_nofreeze cfg_il_bc_freeze; do
+for il in cfg_il_bc_nofreeze cfg_il_bc_15k_freeze; do
     # FIXME(sam): append '_froco' to tasks with a frozen encoder! (at least in
     # il_train/il_test)
     froco="$([[ "$il" == *_nofreeze  ]] || echo '_froco')"

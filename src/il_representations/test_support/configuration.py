@@ -67,6 +67,12 @@ REPL_SMOKE_TEST_CONFIG = {
     'algo_params': {
         'representation_dim': 3,
         'batch_size': 7,
+        'augmenter_kwargs': {
+            # note that this will be run against (grayscale) Atari frames, so
+            # we can't add color jitter or other augmentations that require RGB
+            # frames
+            'augmenter_spec': 'translate,rotate,noise',
+        }
     },
 }
 CHAIN_CONFIG = {

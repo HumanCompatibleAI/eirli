@@ -201,6 +201,29 @@ def make_hp_tuning_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def froco_dynamics_tune():
+        """Standalone tuning config for froco. Does _not_ include the number of
+        BC batches to train for."""
+        use_skopt = True
+        skopt_search_mode = 'max'
+        metric = 'return_mean'
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {'algo': 'DynamicsPrediction', 'algo_params': {'batch_size': 64}}
+        il_test = {'freeze_encoder': True}
+        il_train = {'algo': 'bc'}
+        skopt_space = collections.OrderedDict([
+            ('repl:algo_params:representation_dim', (8, 512)),
+            ('il_train:postproc_arch', [
+                (),
+                (64,),
+                (64, 64),
+            ]),
+        ])
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def gail_tune():
         use_skopt = True
         skopt_search_mode = 'max'

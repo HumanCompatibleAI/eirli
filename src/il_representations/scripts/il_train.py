@@ -164,23 +164,53 @@ def default_config():
     )
     ortho_init = False
     log_std_init = 0.0
+    # This is the mlp architecture applied _after_ the encoder; after this MLP,
+    # Stable Baselines will apply a linear layer to ensure outputs (policy,
+    # value function) are of the right shape. By default this is empty, so the
+    # encoder output is just piped straight into the final linear layers for
+    # the policy and value function, respectively.
+    postproc_arch = []
 
     _ = locals()
     del _
 
 
 @il_train_ex.capture
-def make_policy(observation_space,
+def load_encoder(*,
+                 encoder_path,
+                 freeze_encoder,
+                 encoder_kwargs,
+                 observation_space):
+    if encoder_path is not None:
+        encoder = th.load(encoder_path)
+        assert isinstance(encoder, nn.Module)
+    else:
+        encoder = BaseEncoder(observation_space, **encoder_kwargs)
+    if freeze_encoder:
+        freeze_params(encoder)
+        assert len(list(encoder.parameters())) == 0
+    return encoder
+
+
+@il_train_ex.capture
+def make_policy(*,
+                observation_space,
                 action_space,
-                encoder_or_path,
-                encoder_kwargs,
                 ortho_init,
                 log_std_init,
+                postproc_arch,
+                freeze_encoder,
                 lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
-    common_policy_kwargs = {
+    encoder = load_encoder(observation_space=observation_space)
+    policy_kwargs = {
+        'features_extractor_class': EncoderFeatureExtractor,
+        'features_extractor_kwargs': {
+            "encoder": encoder,
+        },
+        'net_arch': postproc_arch,
         'observation_space': observation_space,
         'action_space': action_space,
         # SB3 policies require a learning rate for the embedded optimiser. BC
@@ -193,21 +223,6 @@ def make_policy(observation_space,
         (lambda _: 1e100) if lr_schedule is None else lr_schedule,
         'ortho_init': ortho_init,
         'log_std_init': log_std_init
-    }
-    if encoder_or_path is not None:
-        if isinstance(encoder_or_path, str):
-            encoder = th.load(encoder_or_path)
-        else:
-            encoder = encoder_or_path
-        assert isinstance(encoder, nn.Module)
-    else:
-        encoder = BaseEncoder(observation_space, **encoder_kwargs)
-    policy_kwargs = {
-        'features_extractor_class': EncoderFeatureExtractor,
-        'features_extractor_kwargs': {
-            "encoder": encoder,
-        },
-        **common_policy_kwargs,
     }
     policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
     return policy
@@ -228,11 +243,10 @@ def add_infos(data_iter):
 
 
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
+def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                    device_name, final_pol_name, shuffle_buffer_size):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
-                         action_space=venv_chans_first.action_space,
-                         encoder_or_path=encoder)
+                         action_space=venv_chans_first.action_space)
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
@@ -286,17 +300,18 @@ def do_training_gail(
     venv_chans_first,
     demo_webdatasets,
     device_name,
-    encoder,
     out_dir,
     final_pol_name,
     gail,
     shuffle_buffer_size,
+    encoder_path,
 ):
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
-        encoder=encoder,
+        encoder=load_encoder(
+            observation_space=venv_chans_first.observation_space),
     )
 
     def policy_constructor(observation_space,
@@ -308,7 +323,6 @@ def do_training_gail(
         assert not use_sde
         return make_policy(observation_space=observation_space,
                            action_space=action_space,
-                           encoder_or_path=encoder,
                            lr_schedule=lr_schedule)
 
     def linear_lr_schedule(prog_remaining):
@@ -401,31 +415,19 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
         configs=dataset_configs)
 
-    if encoder_path:
-        logging.info(f"Loading pretrained encoder from '{encoder_path}'")
-        encoder = th.load(encoder_path)
-        if freeze_encoder:
-            freeze_params(encoder)
-            assert len(list(encoder.parameters())) == 0
-    else:
-        logging.info("No encoder provided, will init from scratch")
-        encoder = None
-
     logging.info(f"Setting up '{algo}' IL algorithm")
 
     if algo == 'bc':
         final_path = do_training_bc(
             demo_webdatasets=demo_webdatasets,
             venv_chans_first=venv,
-            out_dir=log_dir,
-            encoder=encoder)
+            out_dir=log_dir)
 
     elif algo == 'gail':
         final_path = do_training_gail(
             demo_webdatasets=demo_webdatasets,
             venv_chans_first=venv,
-            out_dir=log_dir,
-            encoder=encoder)
+            out_dir=log_dir)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")

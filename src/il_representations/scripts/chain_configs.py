@@ -571,7 +571,7 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def cfg_il_bc_freeze():
+    def cfg_il_bc_15k_freeze():
         il_train = {
             'algo': 'bc',
             'bc': {
