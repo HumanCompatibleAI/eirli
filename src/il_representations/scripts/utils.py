@@ -2,9 +2,7 @@ import collections
 import copy
 import enum
 import urllib
-import torch
-from torchsummary import summary
-from functools import partialmethod
+
 
 class StagesToRun(str, enum.Enum):
     """These enum flags are used to control whether pretrain_n_adapt tunes RepL, or
@@ -67,13 +65,3 @@ def detect_ec2():
                 raise ValueError(f"Received unexpected response from '{EC2_ID_URL}'")
     except urllib.error.URLError:
         return False
-
-
-def print_policy_info(policy, obs_space):
-    """Print model information of the policy"""
-    print(policy)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    policy = policy.to(device)
-    summary(policy, (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2]))
-
-

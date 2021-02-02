@@ -30,7 +30,8 @@ from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-from il_representations.utils import augmenter_from_spec, freeze_params
+from il_representations.utils import (augmenter_from_spec, freeze_params,
+                                      print_policy_info)
 
 bc_ingredient = Ingredient('bc')
 
@@ -98,6 +99,8 @@ def gail_defaults():
     # save intermediate snapshot after this many environment time steps
     save_every_n_steps = 5e4
     # dump logs every <this many> steps (at most)
+    # (5000 is about right for MAGICAL; something like 25000 is probably better
+    # for DMC)
     log_interval_steps = 5e3
 
     _ = locals()
@@ -143,6 +146,9 @@ def default_config():
     encoder_path = None
     # file name for final policy
     final_pol_name = 'policy_final.pt'
+    # Should we print a summary of the policy on init? This will show the
+    # architecture of the policy.
+    print_policy_summary = True
     # dataset configurations for webdataset code
     # (you probably don't want to change this)
     dataset_configs = [{'type': 'demos'}]
@@ -200,7 +206,8 @@ def make_policy(*,
                 log_std_init,
                 postproc_arch,
                 freeze_encoder,
-                lr_schedule=None):
+                lr_schedule=None,
+                print_policy_summary=True):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
@@ -225,6 +232,12 @@ def make_policy(*,
         'log_std_init': log_std_init
     }
     policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
+
+    if print_policy_summary:
+        # print policy info in case it is useful for the caller
+        print("Policy info:")
+        print_policy_info(policy, observation_space)
+
     return policy
 
 

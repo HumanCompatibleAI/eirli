@@ -15,6 +15,7 @@ from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
 from skvideo.io import FFmpegWriter
 import torch as th
+from torchsummary import summary
 import torchvision.utils as vutils
 
 
@@ -348,6 +349,21 @@ class WrappedConfig:
     def __init__(self, config_dict):
         self.config_dict = config_dict
 
+    # TODO(sam): this class would benefit from __eq__ and __hash__ methods so
+    # that we can reload instances of this object from pickles while preserving
+    # equality (I think the default __eq__ and __hash__ just compare based on
+    # object identity, but an object with a given identity can sometimes be
+    # duplicated into two different objects when it is written to a pickle).
+
     def __repr__(self):
         """Shorter repr in case this object gets printed."""
         return f'WrappedConfig@{hex(id(self))}'
+
+
+def print_policy_info(policy, obs_space):
+    """Print model information of the policy"""
+    print(policy)
+    device = th.device("cuda" if th.cuda.is_available() else "cpu")
+    policy = policy.to(device)
+    obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
+    summary(policy, obs_shape)
