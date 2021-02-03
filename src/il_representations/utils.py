@@ -1,5 +1,7 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
+from collections.abc import Sequence
+import functools
 import hashlib
 import json
 import math
@@ -8,7 +10,6 @@ import pdb
 import pickle
 import re
 import sys
-from collections.abc import Sequence
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
@@ -367,3 +368,35 @@ def print_policy_info(policy, obs_space):
     policy = policy.to(device)
     obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
     summary(policy, obs_shape)
+
+
+@functools.total_ordering
+class SacredProofTuple(Sequence):
+    """Pseudo-tuple that can be passed through Sacred without
+    being silently cast to a list."""
+    def __init__(self, *elems):
+        self._elems = elems
+
+    def __eq__(self, other):
+        if not isinstance(other, SacredProofTuple):
+            return NotImplemented
+        return other._elems == self._elems
+
+    def __hash__(self, other):
+        return hash(self._elems)
+
+    def __lt__(self, other):
+        if not isinstance(other, SacredProofTuple):
+            return NotImplemented
+        return other._elems < self._elems
+
+    # __len__ and __getitem__ are required by Sequence (__iter__(),
+    # __reversed__(), count(), and index() are provided automatically)
+    def __len__(self):
+        return len(self._elems)
+
+    def __getitem__(self, idx):
+        return self._elems[idx]
+
+    def __repr__(self):
+        return 'NotATuple' + repr(self._elems)

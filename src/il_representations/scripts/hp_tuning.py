@@ -1,7 +1,9 @@
-from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders
 import collections
-from copy import deepcopy
+
+from il_representations.algos import augmenters, batch_extenders, encoders, losses, pair_constructors
 from il_representations.scripts.utils import StagesToRun
+from il_representations.utils import SacredProofTuple
+
 
 def get_space_and_ref_configs(contrastive=True):
     if contrastive:
@@ -213,9 +215,7 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_space = collections.OrderedDict([
             ('repl:algo_params:representation_dim', (8, 512)),
             ('il_train:postproc_arch', [
-                # Use of frozenset is super weird here (it won't preserve
-                # order, for instance). HOWEVER, two things back us into a
-                # corner:
+                # Note that
                 #
                 # 1. skopt wants the values here to be hashable, which limits
                 #    us to hashable sequences like tuples, rather than lists.
@@ -223,13 +223,12 @@ def make_hp_tuning_configs(experiment_obj):
                 #    dicts) by pushing every config value through a JSON
                 #    encoder before passing it to your function.
                 #
-                # frozenset is hashable but does _not_ get cast to a list by
-                # the JSON encoder. (ideally we'd fix Sacred, or failing that
-                # have a flexible object proxy class that _deliberately_ fails
-                # isinstance checks, but whatever, this works)
-                frozenset(()),
-                frozenset((64,)),
-                frozenset((64, 64)),
+                # Thus we have a silly class that behaves a bit like a tuple,
+                # but is not a tuple subclass and so is safe from Sacred's
+                # serialiser.
+                SacredProofTuple(),
+                SacredProofTuple(64),
+                SacredProofTuple(64, 64),
             ]),
         ])
 
