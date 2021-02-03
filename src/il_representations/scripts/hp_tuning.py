@@ -209,8 +209,7 @@ def make_hp_tuning_configs(experiment_obj):
         metric = 'return_mean'
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {'algo': 'DynamicsPrediction', 'algo_params': {'batch_size': 64}}
-        il_test = {'freeze_encoder': True}
-        il_train = {'algo': 'bc'}
+        il_train = {'algo': 'bc', 'freeze_encoder': True}
         skopt_space = collections.OrderedDict([
             ('repl:algo_params:representation_dim', (8, 512)),
             ('il_train:postproc_arch', [
