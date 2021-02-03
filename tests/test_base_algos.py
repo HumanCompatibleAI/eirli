@@ -25,8 +25,11 @@ def test_algo(algo, env_cfg, represent_ex):
     if not bench_available:
         pytest.skip(why)
     run = represent_ex.run(config_updates={
-        **REPL_SMOKE_TEST_CONFIG, 'algo': algo, 'env_cfg': env_cfg,
+        **REPL_SMOKE_TEST_CONFIG,
+        'algo': algo,
+        'env_cfg': env_cfg,
         'env_data': ENV_DATA_TEST_CONFIG,
+        'debug_return_model': True,
     })
     assert run.status == "COMPLETED"
 
