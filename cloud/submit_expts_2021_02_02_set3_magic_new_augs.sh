@@ -2,7 +2,7 @@
 
 set -e
 
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu")
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=1")
 
 cluster_cfg_path="./gcp_cluster_sam.yaml"
 

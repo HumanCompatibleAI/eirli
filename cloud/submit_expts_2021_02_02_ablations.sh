@@ -2,7 +2,7 @@
 
 set -e
 
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu")
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=1")
 cluster_cfg_path="./gcp_cluster_sam.yaml"
 declare -a testing_configs=("icml_identity_cpc" "icml_temporal_cpc_asym_proj"
                             "icml_tcpc_no_augs" "icml_tceb"

@@ -66,7 +66,7 @@ head_node:
   # you'll probably need something much beefier (possibly something with GPUs)
   # for real experiments.
   # machineType: n1-standard-8
-  machineType: custom-12-49152
+  machineType: custom-24-65536
   disks:
     - boot: true
       autoDelete: true
