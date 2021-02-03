@@ -25,7 +25,7 @@ from il_representations.scripts import experimental_conditions  # noqa: F401
 from il_representations.scripts.chain_configs import make_chain_configs
 from il_representations.scripts.hp_tuning import make_hp_tuning_configs
 from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
-from il_representations.scripts.icml_dataset_expt import make_dataset_experiment_configs
+from il_representations.scripts.icml_experiment_configs import make_dataset_experiment_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
