@@ -6,7 +6,7 @@ declare -a dmc_envs=("finger-spin" "cheetah-run")
 
 declare -a magical_envs=("MatchRegions" "MoveToCorner", "MoveToRegion")
 
-declare -a dataset_configs=("cfg_data_repl_demos_random")
+declare -a dataset_configs=("cfg_data_repl_random")
 
 
 for dmc_env in ${dmc_envs[@]}; do
