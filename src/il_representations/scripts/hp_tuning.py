@@ -213,9 +213,23 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_space = collections.OrderedDict([
             ('repl:algo_params:representation_dim', (8, 512)),
             ('il_train:postproc_arch', [
-                (),
-                (64,),
-                (64, 64),
+                # Use of frozenset is super weird here (it won't preserve
+                # order, for instance). HOWEVER, two things back us into a
+                # corner:
+                #
+                # 1. skopt wants the values here to be hashable, which limits
+                #    us to hashable sequences like tuples, rather than lists.
+                # 2. Sacred forcibly casts tuples to lists (and OrderedDicts to
+                #    dicts) by pushing every config value through a JSON
+                #    encoder before passing it to your function.
+                #
+                # frozenset is hashable but does _not_ get cast to a list by
+                # the JSON encoder. (ideally we'd fix Sacred, or failing that
+                # have a flexible object proxy class that _deliberately_ fails
+                # isinstance checks, but whatever, this works)
+                frozenset(()),
+                frozenset((64,)),
+                frozenset((64, 64)),
             ]),
         ])
 

@@ -175,7 +175,7 @@ def default_config():
     # value function) are of the right shape. By default this is empty, so the
     # encoder output is just piped straight into the final linear layers for
     # the policy and value function, respectively.
-    postproc_arch = []
+    postproc_arch = ()
 
     _ = locals()
     del _
