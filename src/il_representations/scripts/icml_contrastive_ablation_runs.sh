@@ -1,11 +1,10 @@
-declare -a testing_configs=("icml_temporal_cpc", "icml_ac_tcpc",
-                            "icml_identity_cpc", "icml_temporal_cpc_asym_proj",
+declare -a testing_configs=("icml_identity_cpc", "icml_temporal_cpc_asym_proj",
                             "icml_tcpc_no_augs" "icml_tceb"
                             "icml_tcpc_momentum")
 
 declare -a dmc_envs=("finger-spin" "cheetah-run")
 
-declare -a magical_envs=("MatchRegions" "MoveToRegion")
+declare -a magical_envs=("MatchRegions" "MoveToCorner", "MoveToRegion")
 
 declare -a dataset_configs=("cfg_data_repl_demos_random")
 
