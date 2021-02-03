@@ -245,7 +245,7 @@ head_start_ray_commands:
   # AUTOSCALER_MAX_NUM_FAILURES line.
   - >-
     ulimit -n 65536;
-    export AUTOSCALER_MAX_NUM_FAILURES=100;
+    export AUTOSCALER_MAX_NUM_FAILURES=1000;
     ray start
     --head
     --port=6379
@@ -256,7 +256,7 @@ worker_start_ray_commands:
   - ray stop
   - >-
     ulimit -n 65536;
-    export AUTOSCALER_MAX_NUM_FAILURES=100;
+    export AUTOSCALER_MAX_NUM_FAILURES=1000;
     ray start
     --address=$RAY_HEAD_IP:6379
     --object-manager-port=8076

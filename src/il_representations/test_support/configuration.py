@@ -36,12 +36,13 @@ ENV_CFG_TEST_CONFIGS = [
         'benchmark_name': 'minecraft',
         'task_name': 'NavigateVectorObf',
         'minecraft_max_env_steps': 100
-    }
+    },
 
 ]
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
         'n_batches': 1,
+        'augs': 'translate,rotate,noise',
     },
     'gail': {
         # ppo_n_steps, ppo_batch_size and disc_batch_size are the smallest
@@ -57,6 +58,7 @@ FAST_IL_TRAIN_CONFIG = {
         # ppo_n_epochs and disc_n_updates_per_round are at minimum values
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
+        'disc_augs': 'translate,rotate,noise',
     },
     # we don't need a large shuffle buffer for tests
     'shuffle_buffer_size': 3,

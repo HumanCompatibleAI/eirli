@@ -40,7 +40,7 @@ bc_ingredient = Ingredient('bc')
 def bc_defaults():
     # number of passes to make through dataset
     n_batches = 5000
-    augs = 'rotate,translate,noise'
+    augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
