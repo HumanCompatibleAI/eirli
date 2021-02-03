@@ -3,7 +3,8 @@ from il_representations.scripts.utils import StagesToRun, ReuseRepl
 from il_representations.algos import (ActionConditionedTemporalCPC, TemporalCPC,
                                       VariationalAutoencoder, DynamicsPrediction,
                                       InverseDynamicsPrediction, GaussianPriorControl)
-from il_representations.algos import pair_constructors
+from il_representations.algos import (pair_constructors, decoders, augmenters,
+                                      losses, encoders, batch_extenders)
 from functools import partialmethod
 from copy import deepcopy
 
@@ -36,7 +37,8 @@ tcpc_args["target_pair_constructor"] = pair_constructors.IdentityPairConstructor
 
 
 class ICMLIdentityCPC(TemporalCPC, metaclass=MetaclassTCPC):
-    __init__ = partialmethod(TemporalCPC.__init__, **contrastive_kwargs_standin)
+    ## NOTE this is changed from January 31 runs
+    __init__ = partialmethod(TemporalCPC.__init__, **tcpc_args)
 
 
 best_hp_vae_beta = 1e-5
@@ -53,13 +55,21 @@ NUM_SEEDS = 9
 
 def make_dataset_experiment_configs(experiment_obj):
     # To be used for DMC, where Sam said we might as well retrain RepL for each new IL seed
+
+    @experiment_obj.named_config
+    def icml_control():
+        stages_to_run = StagesToRun.IL_ONLY
+        tune_run_kwargs = dict(num_samples=NUM_SEEDS)
+        _ = locals()
+        del _
+
     @experiment_obj.named_config
     def icml_il_on_repl_sweep():
         repl = {'batches_per_epoch': 500,
                 'n_epochs': 10}
         stages_to_run = StagesToRun.REPL_AND_IL
         reuse_repl = ReuseRepl.NO
-        tune_run_kwargs = dict(num_samples=NUM_SEEDS)
+        spec = dict(repl=tune.grid_search([{'seed': el} for el in range(NUM_SEEDS)]))
         _ = locals()
         del _
 
@@ -128,5 +138,49 @@ def make_dataset_experiment_configs(experiment_obj):
         # to make testing clearer
         stages_to_run = StagesToRun.IL_ONLY
         il_train = {'log_std_init': 0.0}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_temporal_cpc():
+        repl = {'algo': TemporalCPC}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_temporal_cpc_asym_proj():
+        repl = {'algo': TemporalCPC,
+                'algo_params': {'decoder': decoders.AsymmetricProjectionHead}}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_tcpc_no_augs():
+        repl = {'algo': TemporalCPC,
+                'algo_params': {'augmenter': augmenters.NoAugmentation}}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_tceb():
+        repl = {'algo': TemporalCPC,
+                'algo_params': {'loss_calculator': losses.CEBLoss}}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_four_tcpc():
+        repl = {'algo': TemporalCPC,
+                'algo_params': {'target_pair_constructor_kwargs':
+                                    {'temporal_offset': 4}}}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_tcpc_momentum():
+        repl = {'algo': TemporalCPC,
+                'algo_params': {'encoder': encoders.MomentumEncoder,
+                                'batch_extender': batch_extenders.QueueBatchExtender,
+                                'loss_calculator': losses.QueueAsymmetricContrastiveLoss}}
         _ = locals()
         del _
