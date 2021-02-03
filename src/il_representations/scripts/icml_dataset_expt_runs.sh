@@ -1,5 +1,5 @@
 declare -a testing_configs=("icml_inv_dyn" "icml_dynamics" "icml_ac_tcpc"
-                            "icml_identity_cpc" "icml_vae"
+                            "icml_identity_cpc" "icml_vae" "icml_four_tcpc"
                             "control_ortho_init" "control_no_ortho_init")
 # Sam: skipping control_lsi_… configs because I don't expect them to make a difference.
 # (this hyperparameter is also only used in DMC)
