@@ -41,6 +41,11 @@ class ICMLIdentityCPC(TemporalCPC, metaclass=MetaclassTCPC):
     __init__ = partialmethod(TemporalCPC.__init__, **tcpc_args)
 
 
+class ICMLTemporalCPC(TemporalCPC, metaclass=MetaclassTCPC):
+    # this ACTUALLY does temporal CPC, and not identity CPC
+    pass
+
+
 best_hp_vae_beta = 1e-5
 vae_args = {'loss_calculator_kwargs': {'beta': best_hp_vae_beta},
             'batch_size': 64}
@@ -90,6 +95,12 @@ def make_dataset_experiment_configs(experiment_obj):
     @experiment_obj.named_config
     def icml_ac_tcpc():
         repl = {'algo': ICMLActionConditionedTemporalCPC}
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def icml_tcpc():
+        repl = {'algo': ICMLTemporalCPC}
         _ = locals()
         del _
 
