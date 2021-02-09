@@ -6,19 +6,24 @@ from ray import tune
 from il_representations import algos
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
+
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
+
 VENV_OPTS_TEST_CONFIG = {
     'venv_parallel': False,
     'n_envs': 2,
 }
+
 ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
 }
+
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
     'env_data': ENV_DATA_TEST_CONFIG,
     'venv_opts': VENV_OPTS_TEST_CONFIG,
 }
+
 ENV_CFG_TEST_CONFIGS = [
     {
         'benchmark_name': 'atari',
@@ -37,8 +42,8 @@ ENV_CFG_TEST_CONFIGS = [
         'task_name': 'NavigateVectorObf',
         'minecraft_max_env_steps': 100
     },
-
 ]
+
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
         'n_batches': 1,
@@ -63,6 +68,7 @@ FAST_IL_TRAIN_CONFIG = {
     # we don't need a large shuffle buffer for tests
     'shuffle_buffer_size': 3,
 }
+
 REPL_SMOKE_TEST_CONFIG = {
     'batches_per_epoch': 2,
     'n_epochs': 1,
@@ -77,6 +83,7 @@ REPL_SMOKE_TEST_CONFIG = {
         }
     },
 }
+
 CHAIN_CONFIG = {
     'spec': {
         'repl': {
@@ -118,6 +125,7 @@ CHAIN_CONFIG = {
     },
     **ENV_DATA_VENV_OPTS_TEST_CONFIG,
 }
+
 CHAIN_CONFIG_SKOPT = {
     **CHAIN_CONFIG,
     'use_skopt': True,

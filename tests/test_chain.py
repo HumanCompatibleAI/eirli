@@ -7,7 +7,7 @@ from ray import tune
 
 from il_representations import algos
 from il_representations.envs import auto
-from il_representations.scripts.utils import StagesToRun, ReuseRepl
+from il_representations.scripts.utils import ReuseRepl, StagesToRun
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, CHAIN_CONFIG_SKOPT, ENV_CFG_TEST_CONFIGS)
 from il_representations.test_support.utils import files_are_identical

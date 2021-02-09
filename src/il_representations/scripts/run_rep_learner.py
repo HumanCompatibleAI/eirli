@@ -39,7 +39,6 @@ def default_config():
     dataset_configs = [{'type': 'demos'}]
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
-    n_envs = 1
     algo_params = {
         'representation_dim': 128,
         'optimizer': torch.optim.Adam,
