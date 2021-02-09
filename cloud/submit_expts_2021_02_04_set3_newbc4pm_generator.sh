@@ -4,7 +4,7 @@ set -e
 
 dest="submit_expts_2021_02_04_set3_newbc4pm_filtered.sh"
 
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=1")
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu")
 
 cluster_cfg_path="./gcp_cluster_sam_4pm.yaml"
 
@@ -42,6 +42,7 @@ for magical_env in "${magical_envs[@]}"; do
         for mg_dataset_config in "${mg_dataset_configs[@]}"; do
             echo submit_expt icml_il_on_repl_sweep cfg_use_magical \
                 "$repl_config" "$mg_dataset_config" cfg_il_bc_20k_nofreeze  \
+                "tune_run_kwargs.num_samples=1" \
                 exp_ident="newbcaugs_${repl_config}_${mg_dataset_config}" \
                 "env_cfg.task_name=$magical_env" >> "$dest"
         done
@@ -50,6 +51,7 @@ for magical_env in "${magical_envs[@]}"; do
     for control_config in "${control_configs[@]}"; do
         echo submit_expt icml_control cfg_use_magical \
             "$control_config" cfg_il_bc_20k_nofreeze  \
+            "tune_run_kwargs.num_samples=9" \
             exp_ident="newbcaugs_${control_config}" \
             "env_cfg.task_name=$magical_env" >> "$dest"
     done
