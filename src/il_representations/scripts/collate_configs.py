@@ -32,7 +32,8 @@ def config_generator(search_dir: str,
                      *,
                      config_name: str = 'config.json') -> Iterator[str]:
     """Recursively walk a directory looking for config.json files."""
-    for root_dir, subdirs, files in os.walk(search_dir, followlinks=True,
+    for root_dir, subdirs, files in os.walk(search_dir,
+                                            followlinks=True,
                                             topdown=True):
         if config_name in files:
             yield os.path.join(root_dir, config_name)
@@ -61,11 +62,13 @@ def load_config(config_path: str) -> dict:
         return jsonpickle.decode(config_string)
 
 
-def hash_config(config_dict: dict) -> str:
-    """Filter config dict, modulo seed."""
+def hash_config(config_dict: dict, *,
+                forbidden=('seed', 'encoder_path')) -> str:
+    """Filter config dict, modulo seed, encoder path, etc."""
     filtered = copy.copy(config_dict)
-    if 'seed' in filtered:
-        del filtered['seed']
+    for forbidden_key in forbidden:
+        if forbidden_key in filtered:
+            del filtered[forbidden_key]
     return _hash_configs(filtered)
 
 
@@ -138,8 +141,9 @@ def common_prefix_len(strs: List[str]) -> int:
     first_string = strs[0]
     longest_init = len(first_string)
     for this_string in strs[1:]:
-        enum_zip_iter = enumerate(
-            zip(first_string[:longest_init], this_string), start=1)
+        enum_zip_iter = enumerate(zip(first_string[:longest_init],
+                                      this_string),
+                                  start=1)
         for prefix_len, (c1, c2) in enum_zip_iter:
             if c1 == c2:
                 longest_init = prefix_len
@@ -179,7 +183,8 @@ def do_final_printing(hash_dict: dict):
         print(f"  Hash corresponds to path {hash_dict['paths']}")
     else:
         print(f'  Hash corresponds to {n_paths} paths in {path_prefix}:')
-        pprint.pprint(with_path_prefix_removed, width=120,
+        pprint.pprint(with_path_prefix_removed,
+                      width=120,
                       stream=indent_stream_4)
 
 
