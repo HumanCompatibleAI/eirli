@@ -12,7 +12,10 @@ from il_representations.envs.config import (env_cfg_ingredient,
 
 @env_cfg_ingredient.capture
 def get_env_name_minecraft(task_name):
-    return f"MineRL{task_name}-v0"
+    if task_name in ('FindCaves'):
+        return f"{task_name}-v0"
+    else:
+        return f"MineRL{task_name}-v0"
 
 
 @env_data_ingredient.capture
@@ -27,20 +30,29 @@ def _get_data_root(data_root):
 @env_cfg_ingredient.capture
 def load_dataset_minecraft(n_traj=None, chunk_length=100):
     import minerl  # lazy-load in case it is not installed
+    import realistic_benchmarks.envs.envs # Registers new environments
     data_root = _get_data_root()
     env_name = get_env_name_minecraft()
     minecraft_data_root = os.path.join(data_root, 'minecraft')
     data_iterator = minerl.data.make(environment=env_name,
-                                     data_dir=minecraft_data_root,
-                                     max_recordings=n_traj)
+                                     data_dir=minecraft_data_root)
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
     start_time = time.time()
+    # It looks like we can pull the env spec from the data iterator with data_iterator.spec
+    # You can then get _action_space and _observation_space
+    # These are nice gym observation/action spaces
     for current_state, action, reward, next_state, done in data_iterator.batch_iter(batch_size=1,
                                                                                     num_epochs=1,
+                                                                                    epoch_size=n_traj, # TODO does this make sense?
                                                                                     seq_len=chunk_length):
         # Data returned from the data_iterator is in batches of size `batch_size` x `chunk_size`
         # The zero-indexing is to remove the extra extraneous `batch_size` dimension,
         # which has been hardcoded to 1
+
+        # Currently, we use the same obs/action transformations for everything (MinecraftVectorWrapper)
+        # We could instead have a more general wrapper that uses the existing observation/action wrappers
+        # Though I think that would also have to be passed into the policy so that the categorical
+        # actions are done properly
         appended_trajectories['obs'].append(MinecraftVectorWrapper.transform_obs(current_state)[0])
         appended_trajectories['acts'].append(MinecraftVectorWrapper.extract_action(action)[0])
         appended_trajectories['dones'].append(done[0])
