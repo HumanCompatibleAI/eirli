@@ -22,7 +22,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
 from il_representations.scripts import experimental_conditions  # noqa: F401
-from il_representations.scripts.chain_configs import make_chain_configs
+from il_representations.scripts.pretrain_n_adapt_configs import make_configs
 from il_representations.scripts.hp_tuning import make_hp_tuning_configs
 from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
 from il_representations.scripts.icml_experiment_configs import make_dataset_experiment_configs
@@ -56,7 +56,7 @@ make_hp_tuning_configs(chain_ex)
 
 # Add all other configs
 # DO NOT ADD MORE CONFIGS TO pretrain_n_adapt.py! Add them to a separate file
-make_chain_configs(chain_ex)
+make_configs(chain_ex)
 
 
 def get_stages_to_run(stages_to_run):

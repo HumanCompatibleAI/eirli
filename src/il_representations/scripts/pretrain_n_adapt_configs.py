@@ -3,7 +3,7 @@ from ray import tune
 # TODO(sam): GAIL configs
 
 
-def make_chain_configs(experiment_obj):
+def make_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_use_magical():
