@@ -5,6 +5,12 @@ vecenvs (`venv_opts_ingredient`), and for loading data
 import os
 
 from sacred import Ingredient
+from il_representations.envs.utils import MinecraftPOVWrapper
+try:
+    from realistic_benchmarks.wrappers import ActionFlatteningWrapper
+except ImportError:
+    raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+
 
 ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
 
@@ -69,10 +75,16 @@ def env_cfg_defaults():
     # Minecraft-specific config variables
     # ###############################
     minecraft_max_env_steps = None
-
+    minecraft_wrappers = list()
     _ = locals()
     del _
 
+
+@env_cfg_ingredient.named_config
+def use_dict_wrappers():
+    minecraft_wrappers = [ActionFlatteningWrapper, MinecraftPOVWrapper]
+    _ = locals()
+    del _
 
 # see venv_opts_defaults docstring for description of this ingredient
 venv_opts_ingredient = Ingredient('venv_opts')

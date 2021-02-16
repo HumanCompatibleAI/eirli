@@ -8,7 +8,28 @@ import numpy as np
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
+from il_representations.envs.utils import wrap_env
 
+
+def optional_observation_map(env, inner_obs):
+    if hasattr(env, 'inner_to_outer_observation_map'):
+        return env.inner_to_outer_observation_map(inner_obs)
+    else:
+        return inner_obs
+
+
+def optional_action_map(env, inner_action):
+    if hasattr(env, 'inner_to_outer_action_map'):
+        return env.inner_to_outer_action_map(inner_action)
+    else:
+        return inner_action
+
+
+def remove_iterator_dimension(dict_obs_or_act):
+    output_dict = dict()
+    for k in dict_obs_or_act.keys():
+        output_dict[k] = dict_obs_or_act[k][0]
+    return output_dict
 
 @env_cfg_ingredient.capture
 def get_env_name_minecraft(task_name):
@@ -28,9 +49,10 @@ def _get_data_root(data_root):
 # even though it can only be notated as a capture function for one
 # ingredient at a time
 @env_cfg_ingredient.capture
-def load_dataset_minecraft(n_traj=None, chunk_length=100):
+def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
     import minerl  # lazy-load in case it is not installed
     import realistic_benchmarks.envs.envs # Registers new environments
+    from realistic_benchmarks.utils import DummyEnv
     data_root = _get_data_root()
     env_name = get_env_name_minecraft()
     minecraft_data_root = os.path.join(data_root, 'minecraft')
@@ -38,10 +60,17 @@ def load_dataset_minecraft(n_traj=None, chunk_length=100):
                                      data_dir=minecraft_data_root)
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
     start_time = time.time()
-    # It looks like we can pull the env spec from the data iterator with data_iterator.spec
-    # You can then get _action_space and _observation_space
-    # These are nice gym observation/action spaces
-    for current_state, action, reward, next_state, done in data_iterator.batch_iter(batch_size=1,
+
+    env_spec = data_iterator.spec
+
+    # TODO undo this hack when nearbySmelt is no longer a string
+    cleaned_action_space = spaces.Dict({k:v for k,v in env_spec._action_space.spaces.items() if k != 'nearbySmelt'})
+    dummy_env = DummyEnv(action_space=cleaned_action_space,
+                         observation_space=env_spec._observation_space)
+
+    wrapped_dummy_env = wrap_env(dummy_env, minecraft_wrappers)
+
+    for current_obs, action, reward, next_obs, done in data_iterator.batch_iter(batch_size=1,
                                                                                     num_epochs=1,
                                                                                     epoch_size=n_traj, # TODO does this make sense?
                                                                                     seq_len=chunk_length):
@@ -53,8 +82,16 @@ def load_dataset_minecraft(n_traj=None, chunk_length=100):
         # We could instead have a more general wrapper that uses the existing observation/action wrappers
         # Though I think that would also have to be passed into the policy so that the categorical
         # actions are done properly
-        appended_trajectories['obs'].append(MinecraftVectorWrapper.transform_obs(current_state)[0])
-        appended_trajectories['acts'].append(MinecraftVectorWrapper.extract_action(action)[0])
+
+        reshaped_obs = remove_iterator_dimension(current_obs)
+        reshaped_action = remove_iterator_dimension(action)
+        # TODO this is temporary while figuring out why nearbySmelt is a string
+        reshaped_action = {k:v for k,v in reshaped_action.items() if k != 'nearbySmelt'}
+        wrapped_obs = optional_observation_map(wrapped_dummy_env, reshaped_obs)
+        wrapped_action = optional_action_map(wrapped_dummy_env, reshaped_action)
+
+        appended_trajectories['obs'].append(wrapped_obs)
+        appended_trajectories['acts'].append(wrapped_action)
         appended_trajectories['dones'].append(done[0])
     # Now, we need to go through and construct `next_obs` values, which aren't natively returned
     # by the environment

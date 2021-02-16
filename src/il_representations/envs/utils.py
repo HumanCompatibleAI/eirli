@@ -1,15 +1,48 @@
 import gym
+import numpy as np
 
+try:
+    from realistic_benchmarks.wrappers import ObservationWrapper
+
+    class MinecraftPOVWrapper(ObservationWrapper):
+        def __init__(self, env):
+            super(ObservationWrapper, self).__init__(env)
+            non_transposed_obs_space = self.env.observation_space['pov']
+            transposed_low = non_transposed_obs_space.low.transpose(2, 0, 1)
+            transposed_high = non_transposed_obs_space.high.transpose(2, 0, 1)
+            # Note: this assumes the Box is of the form where low/high values are vector but need to be scalar
+            transposed_obs_space = gym.spaces.Box(low=transposed_low,
+                                                  high=transposed_high,
+                                                  shape=None)
+            self.observation_space = transposed_obs_space
+
+        def inner_to_outer_observation_map(self, obs):
+            # Minecraft returns shapes in NHWC by default
+            return obs['pov'].transpose(0,3,1,2)
+
+except ImportError:
+    raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+
+def wrap_env(env, wrappers):
+    for wrapper in wrappers:
+        env = wrapper(env)
+    return env
 
 def serialize_gym_space(space):
     """Convert Gym space to a format suitable for long-term pickle storage
     (i.e. for pickles that will be transferred between machines running
     different versions of Gym)."""
     if isinstance(space, gym.spaces.Box):
+        if not np.isscalar(space.low):
+            # This is to fix a weird issue where Box requires the shape to not be a vector if the
+            # low and high values also are
+            space_shape = None
+        else:
+            space_shape = space.shape
         return _KwargSerialisableObject(gym.spaces.Box, {
             'low': space.low,
             'high': space.high,
-            'shape': space.shape,
+            'shape': space_shape,
             'dtype': space.dtype,
         })
     elif isinstance(space, gym.spaces.Discrete):
