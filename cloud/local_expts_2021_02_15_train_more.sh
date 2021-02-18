@@ -19,8 +19,9 @@ for bench in \
     python -m il_representations.scripts.pretrain_n_adapt with \
         "${base_cfgs[@]}" $bench cfg_repl_none cfg_il_bc_20k_nofreeze \
         il_train.bc.n_batches=10000000 il_train.bc.lr=0.0001 \
-        encoder_kwargs.obs_encoder_cls=Resnet18 \
-        encoder_kwargs.representation_dim=512 exp_ident=control_il_resnet18_10m &
+        il_train.encoder_kwargs.obs_encoder_cls=Resnet18 \
+        il_train.encoder_kwargs.representation_dim=512 \
+        exp_ident=control_il_resnet18_10m &
     sleep 1
 done
 
