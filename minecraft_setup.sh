@@ -11,4 +11,6 @@ apt-get install -y openjdk-8-jdk=8u162-b12-1
 
 git clone --recurse-submodules https://github.com/HumanCompatibleAI/minerl.git
 cd minerl
+# TODO change this when fix_process_action is merged, which should happen before this PR gets merged
+git checkout fix_proccess_action
 CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -e .
