@@ -9,7 +9,6 @@ apt-get install -y openjdk-8-jdk-headless=8u162-b12-1
 apt-get install -y openjdk-8-jre=8u162-b12-1
 apt-get install -y openjdk-8-jdk=8u162-b12-1
 
-git clone --recurse-submodules https://github.com/decodyng/minerl.git
+git clone --recurse-submodules https://github.com/HumanCompatibleAI/minerl.git
 cd minerl
-git checkout limited_data_iterator
 CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -e .
