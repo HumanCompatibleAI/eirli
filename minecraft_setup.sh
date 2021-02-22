@@ -13,5 +13,5 @@ git clone --recurse-submodules https://github.com/HumanCompatibleAI/minerl.git
 cd minerl
 # TODO change this when fix_process_action is merged
 #  This should happen before _this_ PR gets merged
-git checkout fix_proccess_action
+git checkout fix_process_action
 CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -e .
