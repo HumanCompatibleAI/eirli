@@ -462,7 +462,6 @@ class ActionEncodingEncoder(BaseEncoder):
             return super().forward(x, traj_info)
 
         actions = x
-        import pdb; pdb.set_trace()
         assert actions.ndim >= 2, actions.shape
         assert actions.shape[2:] == self.action_shape, actions.shape
         batch_dim, time_dim = actions.shape[:2]
