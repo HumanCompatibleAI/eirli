@@ -35,7 +35,7 @@ from il_representations.scripts.utils import detect_ec2, sacred_copy, update, St
 from il_representations.utils import hash_configs, up, WrappedConfig
 
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 chain_ex = Experiment(
     'chain',
     ingredients=[
@@ -143,7 +143,7 @@ def run_single_exp(merged_config, log_dir, exp_name):
     """
     # we need to run the workaround in each raylet, so we do it at the start of
     # run_single_exp
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+    sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
     from il_representations.scripts.il_test import il_test_ex
     from il_representations.scripts.il_train import il_train_ex
     from il_representations.scripts.run_rep_learner import represent_ex

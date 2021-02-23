@@ -18,7 +18,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
 from il_representations.utils import RepLSaveExampleBatchesCallback
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 represent_ex = Experiment(
     # We take env_cfg_ingredient to determine which task we need to load data
     # for, and env_data_ingredient gives us the paths to that data.

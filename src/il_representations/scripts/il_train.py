@@ -115,7 +115,7 @@ def _gail_dummy(disc_augs):
     raise NotImplementedError("this function is not meant to be called")
 
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 il_train_ex = Experiment(
     'il_train',
     ingredients=[
