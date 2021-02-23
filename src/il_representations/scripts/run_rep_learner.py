@@ -115,7 +115,7 @@ def random_demos():
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some
     # of the components of a SB3 policy upon creation, and we in fact want to
-    # keep the loaded representation frozen, but orthogonally initalize other
+    # keep the loaded representation frozen, but orthogonally initialize other
     # components.
     sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
     sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)

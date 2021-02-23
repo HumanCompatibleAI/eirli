@@ -251,11 +251,12 @@ def load_sacred_pickle(fp, **kwargs):
 class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
-    def __init__(self, save_interval_batches, dest_dir, color_space):
+    def __init__(self, save_interval_batches, dest_dir, color_space, save_video=False):
         self.save_interval_batches = save_interval_batches
         self.dest_dir = dest_dir
         self.last_save = None
         self.color_space = color_space
+        self.save_video = save_video
 
     def __call__(self, repl_locals):
         batches_trained = repl_locals['batches_trained']
@@ -299,6 +300,11 @@ class RepLSaveExampleBatchesCallback:
                 save_image = save_value.float().clamp(0, 1)
                 as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
                 save_rgb_tensor(as_rgb, save_path)
+
+                if self.save_video:
+                    video_out_path = save_path_no_suffix + '.mp4'
+                    video_writer = TensorFrameWriter(video_out_path, color_space=self.color_space)
+                    video_writer.add_tensor(as_rgb)
             else:
                 # probably not an image
                 save_path = save_path_no_suffix + '.pt'
