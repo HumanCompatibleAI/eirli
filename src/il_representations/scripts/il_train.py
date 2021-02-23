@@ -373,7 +373,6 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads, n_traj,
         th.set_num_threads(torch_num_threads)
 
     venv = auto_env.load_vec_env()
-
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
         encoder = th.load(encoder_path)
