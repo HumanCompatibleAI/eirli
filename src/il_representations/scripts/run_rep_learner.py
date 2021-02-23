@@ -139,9 +139,6 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
 
     logging.basicConfig(level=logging.INFO)
 
-    if isinstance(algo, str):
-        algo = getattr(algos, algo)
-
     # setup environment & dataset
     webdatasets, combined_meta = auto.load_wds_datasets(
         configs=dataset_configs)
@@ -151,10 +148,13 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
 
     # callbacks for saving example batches
     def make_batch_saver(interval):
+        save_video = algo in ['Autoencoder', 'VariationalAutoencoder']
+        print(f'In run_rep_learner, save_video={save_video}')
         return RepLSaveExampleBatchesCallback(
             save_interval_batches=repl_batch_save_interval,
             dest_dir=os.path.join(log_dir, 'batch_saves'),
-            color_space=color_space)
+            color_space=color_space,
+            save_video=save_video)
     repl_callbacks = []
     repl_end_callbacks = []
     if repl_batch_save_interval is not None:
@@ -168,6 +168,9 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     # this callback gets called once at the end to guarantee that we always
     # save the last batch
     repl_end_callbacks.append(make_batch_saver(0))
+
+    if isinstance(algo, str):
+        algo = getattr(algos, algo)
 
     # instantiate algo
     dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)

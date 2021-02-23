@@ -276,6 +276,7 @@ class RepLSaveExampleBatchesCallback:
             'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
             'decoded_targets', 'traj_ts_info',
         ]
+
         for save_name in to_save:
             save_value = repl_locals[save_name]
 
@@ -298,13 +299,18 @@ class RepLSaveExampleBatchesCallback:
                 save_path = save_path_no_suffix + '.png'
                 # save as image
                 save_image = save_value.float().clamp(0, 1)
-                as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
-                save_rgb_tensor(as_rgb, save_path)
 
+                # Save decoded contexts as videos
                 if self.save_video:
                     video_out_path = save_path_no_suffix + '.mp4'
                     video_writer = TensorFrameWriter(video_out_path, color_space=self.color_space)
-                    video_writer.add_tensor(as_rgb)
+                    for image in save_image:
+                        image = image_tensor_to_rgb_grid(image, self.color_space)
+                        video_writer.add_tensor(image)
+                    video_writer.close()
+
+                as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
+                save_rgb_tensor(as_rgb, save_path)
             else:
                 # probably not an image
                 save_path = save_path_no_suffix + '.pt'

@@ -218,30 +218,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return extra_context
         return self._preprocess(extra_context)
 
-    def _save_batch_data(self, save_name, save_dict):
-        """Save some input and/or output data to a directory for future
-        analysis. Useful for saving input batches for visual inspection."""
-        out_dir = os.path.join(self.log_dir, save_name)
-        os.makedirs(out_dir, exist_ok=True)
-        for key, value in save_dict.items():
-            # replace special chars with '-'
-            out_filename_prefix = re.sub(r'[^\w_ \-]', '-', key)
-            out_path_prefix = os.path.join(out_dir, out_filename_prefix)
-
-            # first save as Torch pickle
-            torch.save(value, out_path_prefix + '.th')
-
-            # also save as image if it looks like a stack of observations
-            # (this is super heuristic, but if it breaks we at least have the
-            # .th files to fall back on)
-            obs_shape = self.observation_space.shape
-            obs_ndim = len(obs_shape)
-
-            if torch.is_tensor(value) and value.shape[-obs_ndim:] == obs_shape:
-                rgb_grid = image_tensor_to_rgb_grid(value, self.color_space)
-                save_rgb_tensor(rgb_grid, out_path_prefix + '.png')
-
-
     # TODO maybe make static?
     def unpack_batch(self, batch):
         """
