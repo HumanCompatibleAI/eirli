@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
 import collections
+import faulthandler
 import json
 import logging
+import signal
 import tempfile
 
 import imitation.data.rollout as il_rollout

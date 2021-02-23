@@ -1,9 +1,11 @@
 import collections
 import copy
+import faulthandler
 from glob import glob
 import logging
 import os
 import os.path as osp
+import signal
 from time import time
 import weakref
 
@@ -590,6 +592,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
         reuse_repl, repl_encoder_path, on_cluster):
+    faulthandler.register(signal.SIGUSR1)
 
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)

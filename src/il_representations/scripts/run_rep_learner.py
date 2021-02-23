@@ -1,5 +1,7 @@
+import faulthandler
 import logging
 import os
+import signal
 
 import numpy as np
 import sacred
@@ -10,7 +12,7 @@ import torch
 from il_representations import algos
 from il_representations.algos.representation_learner import \
     RepresentationLearner
-from il_representations.algos.utils import LinearWarmupCosine
+from il_representations.algos.utils import LinearWarmupCosine, set_global_seeds
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
@@ -132,6 +134,9 @@ def config_specifies_task_name(dataset_config_dict):
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask, _config):
+    faulthandler.register(signal.SIGUSR1)
+    set_global_seeds(seed)
+
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:

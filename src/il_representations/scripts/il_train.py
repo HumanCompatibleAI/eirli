@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
+import faulthandler
 import logging
 import os
 # readline import is black magic to stop PDB from segfaulting; do not remove it
 import readline  # noqa: F401
+import signal
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
@@ -413,6 +415,7 @@ def do_training_gail(
 @il_train_ex.main
 def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
           dataset_configs, _config):
+    faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
