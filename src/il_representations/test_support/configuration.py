@@ -22,7 +22,7 @@ ENV_DATA_TEST_CONFIG = {
     },
     'dm_control_demo_patterns': {
         'reacher-easy':
-        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz'),
+        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz')
     },
 
 }
@@ -56,12 +56,19 @@ FAST_IL_TRAIN_CONFIG = {
         'n_batches': 1,
     },
     'gail': {
-        'total_timesteps': 2,
+        # ppo_n_steps, ppo_batch_size and disc_batch_size are the smallest
+        # "non-trivial" values (disc_batch_size in particular needs to be at
+        # least 2 so that the discriminator sees both a positive and a
+        # negative)
         'ppo_n_steps': 2,
         'ppo_batch_size': 2,
+        'disc_batch_size': 2,
+        # imitation requires total_timesteps needs to be at least 4 to let PPO
+        # train with a n_envs * n_steps = 2 * 2 = 4 samples per PPO epoch
+        'total_timesteps': 4,
+        # ppo_n_epochs and disc_n_updates_per_round are at minimum values
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
-        'disc_batch_size': 6,
     },
 }
 REPL_SMOKE_TEST_CONFIG = {
@@ -96,7 +103,6 @@ CHAIN_CONFIG = {
         # Ray has been mysteriously complaining about the amount of memory
         # available on CircleCI, even though the machines have heaps of RAM.
         # Setting sane defaults so this doesn't happen.
-        'memory': int(0.2 * 1e9),
         'object_store_memory': int(0.2 * 1e9),
         'num_cpus': 2,
     },
@@ -113,4 +119,19 @@ CHAIN_CONFIG = {
         **REPL_SMOKE_TEST_CONFIG,
     },
     **ENV_DATA_VENV_OPTS_TEST_CONFIG,
+}
+CHAIN_CONFIG_SKOPT = {
+    **CHAIN_CONFIG,
+    'use_skopt': True,
+    'skopt_search_mode': 'max',
+    'metric': 'return_mean',
+    'stages_to_run': 'REPL_AND_IL',
+    'spec': {},
+    'env_cfg': ENV_CFG_TEST_CONFIGS[0],
+    'skopt_space': {
+        'repl:algo_params:augmenter_kwargs:augmenter_spec': [
+            "translate", "rotate",
+        ],
+        'il_train:bc:lr': (1e-7, 1.0, 'log-uniform'),
+    }
 }

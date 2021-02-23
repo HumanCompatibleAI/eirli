@@ -5,6 +5,7 @@ import collections
 import logging
 import os
 import random
+import shutil
 from typing import List
 
 import imitation.data.rollout as il_rollout
@@ -141,6 +142,39 @@ def load_dataset_magical(
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
     return dataset_dict
+
+
+@env_cfg_ingredient.capture
+def rewrite_dataset_magical(task_name, n_traj, new_data_root):
+    """Truncate a MAGICAL dataset to some new length."""
+    # select the demo paths we want to load
+    magical_demo_dirs, data_root = _get_magical_data_cfg()
+    demo_dir = os.path.join(data_root, magical_demo_dirs[task_name])
+    demo_paths = [
+        os.path.join(demo_dir, f) for f in os.listdir(demo_dir)
+        if f.endswith('.pkl.gz')
+    ]
+    if not demo_paths:
+        raise IOError(f"Could not find any demo pickle files in '{demo_dir}'")
+    if len(demo_paths) < n_traj:
+        raise IOError(
+            f"Requested n_traj={n_traj} trajectories, but only have "
+            f"{len(demo_paths)} demo files")
+    random.shuffle(demo_paths)
+    if n_traj is not None:
+        demo_paths = demo_paths[:n_traj]
+    assert len(demo_paths) == n_traj
+
+    # copy those paths over directly to the output directory
+    out_dir = os.path.join(new_data_root, magical_demo_dirs[task_name])
+    os.makedirs(out_dir, exist_ok=True)
+    logging.info(f"Copying {len(demo_paths)} trajectory files to '{out_dir}':")
+    for count, demo_path in enumerate(demo_paths, start=1):
+        base_name = os.path.basename(demo_path)
+        out_demo_path = os.path.join(out_dir, base_name)
+        logging.info(
+            f"  [{count}/{n_traj}] Copying '{demo_path}' -> '{out_demo_path}'")
+        shutil.copy2(demo_path, out_demo_path)
 
 
 class SB3EvaluationProtocol(EvaluationProtocol):

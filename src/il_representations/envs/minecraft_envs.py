@@ -1,12 +1,13 @@
+import logging
+import os
+import time
+
+from gym import Wrapper, spaces
+import numpy as np
+
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-import os
-import minerl
-import numpy as np
-from gym import Wrapper, spaces, Env, register
-import time
-import logging
 
 
 @env_cfg_ingredient.capture
@@ -25,6 +26,7 @@ def _get_data_root(data_root):
 # ingredient at a time
 @env_cfg_ingredient.capture
 def load_dataset_minecraft(n_traj=None, chunk_length=100):
+    import minerl  # lazy-load in case it is not installed
     data_root = _get_data_root()
     env_name = get_env_name_minecraft()
     minecraft_data_root = os.path.join(data_root, 'minecraft')

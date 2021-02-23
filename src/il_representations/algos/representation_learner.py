@@ -2,6 +2,7 @@ import inspect
 import logging
 import os
 import re
+import time
 
 import imitation.util.logger as logger
 import numpy as np
@@ -48,6 +49,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  observation_space,
                  action_space,
                  log_dir,
+                 log_interval=100,
+                 calc_log_interval=10,
                  encoder=None,
                  decoder=None,
                  loss_calculator=None,
@@ -89,6 +92,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             assert el is not None
         # TODO clean up this kwarg parsing at some point
         self.log_dir = log_dir
+        self.log_interval = log_interval
+        self.calc_log_interval = calc_log_interval
         logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
         self.encoder_checkpoints_path = os.path.join(self.log_dir, 'checkpoints', 'representation_encoder')
@@ -150,7 +155,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         if batch_extender is QueueBatchExtender:
             # TODO maybe clean this up?
-            batch_extender_kwargs = batch_extender_kwargs or {}
+            if batch_extender_kwargs is None:
+                batch_extender_kwargs = {}
+            else:
+                batch_extender_kwargs = dict(batch_extender_kwargs)
             batch_extender_kwargs['queue_dim'] = projection_dim
             batch_extender_kwargs['device'] = self.device
 
@@ -264,6 +272,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 rgb_grid = image_tensor_to_rgb_grid(value, self.color_space)
                 save_rgb_tensor(rgb_grid, out_path_prefix + '.png')
 
+
     # TODO maybe make static?
     def unpack_batch(self, batch):
         """
@@ -277,7 +286,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, datasets, batches_per_epoch, n_epochs):
+    def learn(self, datasets, batches_per_epoch, n_epochs, callbacks=(),
+              end_callbacks=()):
         """Run repL training loop.
 
         Args:
@@ -291,6 +301,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
             n_epochs (int): the total number of 'epochs' of optimisation to
                 perform. Total number of updates will be `batches_per_epoch *
                 n_epochs`.
+            callbacks ([dict -> None]): list of functions to call at the
+                end of each batch, after computing the loss and updating the
+                network but before dumping logs. Will be provided with all
+                local variables.
+            end_callbacks ([dict -> None]): these callbacks will only be
+                called once, at the end of training.
 
         Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
             `loss_record` is a list of average loss values encountered at each
@@ -358,6 +374,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                                  color_space=self.color_space)
 
             samples_seen = 0
+            timer_start = time.time()
+            timer_last_batches_trained = batches_trained
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
@@ -374,26 +392,17 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
 
-                if (self.save_first_last_batches and step == 0
-                    and epoch_num == 1):
-                    self._save_batch_data(
-                        'first_batch',
-                        dict(contexts=contexts,
-                             targets=targets,
-                             extra_context=extra_context,
-                             traj_ts_info=traj_ts_info))
-
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
                 encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
                 encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
                 # Typically the identity function
-                extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
+                encoded_extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
-                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, extra_context)
-                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, extra_context)
+                decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
+                decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, encoded_extra_context)
 
                 # Optionally add to the batch before loss. By default, this is an identity operation, but
                 # can also implement momentum queue logic
@@ -403,27 +412,40 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
-                loss_item = loss.item()
-                assert not np.isnan(loss_item), "Loss is not NAN"
-                loss_meter.update(loss_item)
+                if batches_trained % self.calc_log_interval == 0:
+                    loss_item = loss.item()
+                    assert not np.isnan(loss_item), "Loss is NaN"
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
                 del loss  # so we don't use again
 
-                gradient_norm, weight_norm = self._calculate_norms()
+                for callback in callbacks:
+                    callback(locals())
 
-                # FIXME(sam): don't plot this every batch, plot it every k
-                # batches (will make log files much smaller & let us stream
-                # them to head node on Ray cluster)
-                loss_meter.update(loss_item)
-                logger.record('loss', loss_item)
-                logger.record('gradient_norm', gradient_norm.item())
-                logger.record('weight_norm', weight_norm.item())
-                logger.record('epoch', epoch_num)
-                logger.record('within_epoch_step', step)
-                logger.record('batches_trained', batches_trained)
-                logger.dump(step=batches_trained)
+                # measure time per batch & restart counted
+                time_per_batch = (time.time() - timer_start) \
+                    / max(1, batches_trained - timer_last_batches_trained)
+                timer_start = time.time()
+                timer_last_batches_trained = batches_trained
+
+                if batches_trained % self.calc_log_interval == 0:
+                    gradient_norm, weight_norm = self._calculate_norms()
+
+                    loss_meter.update(loss_item)
+                    logger.sb_logger.record_mean('loss', loss_item)
+                    logger.sb_logger.record_mean(
+                        'gradient_norm', gradient_norm.item())
+                    logger.sb_logger.record_mean('weight_norm', weight_norm.item())
+                    logger.record('epoch', epoch_num)
+                    logger.record('within_epoch_step', step)
+                    logger.record('batches_trained', batches_trained)
+                    logger.record('time_per_batch', time_per_batch)
+                    logger.record('time_per_ksample', 1000 * time_per_batch / self.batch_size)
+
+                if batches_trained % self.log_interval == 0:
+                    logger.dump(step=batches_trained)
+
                 batches_trained += 1
                 samples_seen += len(contexts)
 
@@ -452,6 +474,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg)
 
             # save checkpoint on last epoch, or at regular interval
+            # TODO(sam): replace this saving code with callbacks
             is_last_epoch = epoch_num == n_epochs
             should_save_checkpoint = (is_last_epoch or
                                       epoch_num % self.save_interval == 0)
@@ -462,13 +485,13 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 torch.save(self.decoder, os.path.join(
                     self.decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
 
-            # optionally save batch on last batch of last epoch
-            if self.save_first_last_batches and is_last_epoch:
-                self._save_batch_data('last_batch',
-                                      dict(contexts=contexts,
-                                           targets=targets,
-                                           extra_context=extra_context,
-                                           traj_ts_info=traj_ts_info))
+        for callback in end_callbacks:
+            callback(locals())
+
+        # if we were not scheduled to dump on the last batch we trained on,
+        # then do one last log dump to make sure everything is there
+        if not (batches_trained % self.log_interval == 0):
+            logger.dump(step=batches_trained)
 
             if self.save_video:
                 video_writer.close()

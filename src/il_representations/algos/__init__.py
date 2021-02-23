@@ -28,7 +28,7 @@ def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
             merged_kwargs[param_name] = validate_and_update_kwargs(merged_kwargs[param_name], param_value)
         # If there's a shared non-dict param, warn that a param hardcoded by the algorithm
         # will be ignored and the user-input param used instead
-        elif param_name in merged_kwargs:
+        elif param_name in merged_kwargs and merged_kwargs[param_name] != param_value:
             logging.warning(
                 f"Overwriting algorithm-hardcoded value {param_value} of "
                 f"param {param_name} with user value {merged_kwargs[param_name]}")
@@ -73,7 +73,7 @@ class TemporalCPC(RepresentationLearner):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=NoOp,
                                      loss_calculator=BatchAsymmetricContrastiveLoss,
-                                     augmenter=NoAugmentation,
+                                     augmenter=AugmentContextAndTarget,
                                      batch_extender=IdentityBatchExtender,
                                      target_pair_constructor=TemporalOffsetPairConstructor)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
@@ -360,7 +360,7 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
         algo_hardcoded_kwargs = dict(encoder=ActionEncodingEncoder,
                                      decoder=ActionConditionedVectorDecoder,
                                      batch_extender=IdentityBatchExtender,
-                                     augmenter=NoAugmentation,
+                                     augmenter=AugmentContextAndTarget,
                                      loss_calculator=BatchAsymmetricContrastiveLoss,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      preprocess_extra_context=False,
