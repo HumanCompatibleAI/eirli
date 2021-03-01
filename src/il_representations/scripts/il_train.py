@@ -301,7 +301,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     trainer.train(n_epochs=None,
                   n_batches=bc['n_batches'],
                   log_interval=bc['log_interval'],
-                  on_epoch_end=optional_model_saver)
+                  epoch_end_callbacks=[optional_model_saver])
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
