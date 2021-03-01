@@ -32,7 +32,7 @@ docker:
   # the image below is taken from .circleci/config.yml
   # (if you change this file or that file, then remember to change the other
   # too)
-  image: "humancompatibleai/il-representations:2021.02.22"
+  image: "humancompatibleai/il-representations:2021.03.01-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
