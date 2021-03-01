@@ -47,17 +47,11 @@ def bc_defaults():
     batch_size = 32
     save_every_n_batches = None
     lr = 1e-4
+    lr_scheduler_cls = None
+    lr_scheduler_kwargs = None
 
     _ = locals()
     del _
-
-
-@bc_ingredient.capture
-def _bc_dummy(augs):
-    """This is a do-nothing function to indicate to sacred that `bc.augs` is
-    actually used. If we don't include this, then Sacred doesn't allow us to
-    set `bc.augs` to be a dictionary with arbitrary keys."""
-    raise NotImplementedError("this function is not meant to be called")
 
 
 gail_ingredient = Ingredient('gail')
@@ -287,6 +281,8 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         optimizer_kwargs=dict(lr=bc['lr']),
         ent_weight=1e-3,
         l2_weight=1e-5,
+        lr_scheduler_cls=bc['lr_scheduler_cls'],
+        lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
     )
 
     save_interval = bc['save_every_n_batches']
