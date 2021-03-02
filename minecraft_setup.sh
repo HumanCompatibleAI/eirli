@@ -12,3 +12,6 @@ apt-get install -y openjdk-8-jdk=8u162-b12-1
 git clone --recurse-submodules https://github.com/HumanCompatibleAI/minerl.git
 cd minerl
 CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -e .
+# for some reason the typing package gets installed unconditionally, even on new
+# Python versions that don't need it
+pip uninstall -y typing
