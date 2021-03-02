@@ -326,9 +326,11 @@ def make_hp_tuning_configs(experiment_obj):
         il_train = {
             'algo': 'bc',
             'bc': {
-                # starting with relatively small n_batches
+                # starting with relatively small n_batches so we get quick
+                # iteration
                 'n_batches': 50000,
                 'batch_size': 256,
+                'log_interval': 1000,
                 # 5 steps down, multiply by lr_lambda each time
                 'nominal_num_epochs': 5,
                 'lr_sceduler_cls': lr_scheduler.MultiplicativeLR,
