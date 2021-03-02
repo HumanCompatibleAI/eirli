@@ -109,9 +109,25 @@ def gail_defaults():
     del _
 
 
+@bc_ingredient.capture
+def _bc_dummy(augs, optimizer_kwargs, lr_scheduler_kwargs):
+    """Dummy function to indicate to sacred that the given arguments are
+    actually used somewhere.
+
+    (Sacred has a bug in ingredient parsing where it fails to correctly detect
+    that config options for sub-ingredients of a command are actually used.
+    This only happens when you try to set an attribute of such an option, like
+    when you set `bc.optimizer_kwargs.some_thing=42` for instance.)
+
+    PLEASE DO NOT REMOVE THIS, IT WILL BREAK SACRED."""
+    raise NotImplementedError("this function is not meant to be called")
+
+
 @gail_ingredient.capture
 def _gail_dummy(disc_augs):
-    """Similar to _bc_dummy above, but for GAIL augmentations."""
+    """Similar to _bc_dummy above, but for GAIL augmentations.
+
+    PLEASE DO NOT REMOVE THIS, IT WILL BREAK SACRED."""
     raise NotImplementedError("this function is not meant to be called")
 
 

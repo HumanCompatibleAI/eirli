@@ -323,6 +323,7 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_search_mode = 'max'
         metric = 'return_mean'
         stages_to_run = StagesToRun.IL_ONLY
+        tune_run_kwargs = dict(num_samples=200)
         il_train = {
             'algo': 'bc',
             'bc': {
@@ -331,7 +332,7 @@ def make_hp_tuning_configs(experiment_obj):
                 'batch_size': 256,
                 # 5 steps down, multiply by lr_lambda each time
                 'nominal_num_epochs': 5,
-                'lr_sceduler_cls': lr_scheduler.MultiplicativeLR,
+                'lr_scheduler_cls': lr_scheduler.MultiplicativeLR,
                 'lr_scheduler_kwargs': {
                     'lr_lambda': 0.1,
                 },
@@ -348,8 +349,8 @@ def make_hp_tuning_configs(experiment_obj):
             'n_envs': 10,
         }
         skopt_space = collections.OrderedDict([
-            ('il_train:bc:optimizer_kwargs:lr', 1e-4),
-            ('il_train:bc:lr_scheduler_kwargs:lr_lambda', 1.0),
+            ('il_train:bc:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+            ('il_train:bc:lr_scheduler_kwargs:lr_lambda', (0.1, 1.0)),
             ('il_train:bc:augs:translate', [True, False]),
             ('il_train:bc:augs:rotate', [True, False]),
             ('il_train:bc:augs:color_jitter_mid', [True, False]),
@@ -360,9 +361,8 @@ def make_hp_tuning_configs(experiment_obj):
         ])
         skopt_ref_configs = [
             collections.OrderedDict([
-                ('il_train:bc:optimizer_kwargs:lr',
-                 (1e-6, 1e-2, 'log-uniform')),
-                ('il_train:bc:lr_scheduler_kwargs:lr_lambda', (0.1, 1.0)),
+                ('il_train:bc:optimizer_kwargs:lr', 1e-4),
+                ('il_train:bc:lr_scheduler_kwargs:lr_lambda', 1.0),
                 ('il_train:bc:augs:translate', True),
                 ('il_train:bc:augs:rotate', True),
                 ('il_train:bc:augs:color_jitter_mid', True),
