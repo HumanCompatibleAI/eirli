@@ -1,6 +1,6 @@
 import collections
 
-from torch.optim import lr_scheduler
+from torch.optim import lr_scheduler, SGD
 
 from il_representations.algos import augmenters, batch_extenders, encoders, losses, pair_constructors
 from il_representations.scripts.utils import StagesToRun
@@ -332,14 +332,16 @@ def make_hp_tuning_configs(experiment_obj):
                 'n_batches': 50000,
                 'batch_size': 256,
                 'log_interval': 1000,
-                # 5 steps down, multiply by lr_lambda each time
+                # 5 steps down, multiply by gamma each time
                 'nominal_num_epochs': 5,
-                'lr_scheduler_cls': lr_scheduler.MultiplicativeLR,
+                'lr_sceduler_cls': lr_scheduler.ExponentialLR,
                 'lr_scheduler_kwargs': {
-                    'lr_lambda': 0.1,
+                    'gamma': 0.1,
                 },
+                'optimizer_cls': SGD,
                 'optimizer_kwargs': {
                     'lr': 1e-4,
+                    'momentum': 0.95,
                 },
                 # TODO(sam): switch to SGD with momentum. Tune over the
                 # momentum term, as well as initial learning rate, final
@@ -351,8 +353,9 @@ def make_hp_tuning_configs(experiment_obj):
             'n_envs': 10,
         }
         skopt_space = collections.OrderedDict([
-            ('il_train:bc:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
-            ('il_train:bc:lr_scheduler_kwargs:lr_lambda', (0.1, 1.0)),
+            ('il_train:bc:optimizer_kwargs:lr', (1e-5, 0.1, 'log-uniform')),
+            ('il_train:bc:optimizer_kwargs:momentum', (0.8, 0.99)),
+            ('il_train:bc:lr_scheduler_kwargs:gamma', (0.2, 1.0)),
             ('il_train:bc:augs:translate', [True, False]),
             ('il_train:bc:augs:rotate', [True, False]),
             ('il_train:bc:augs:color_jitter_mid', [True, False]),
@@ -364,14 +367,15 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_ref_configs = [
             collections.OrderedDict([
                 ('il_train:bc:optimizer_kwargs:lr', 1e-4),
-                ('il_train:bc:lr_scheduler_kwargs:lr_lambda', 1.0),
+                ('il_train:bc:optimizer_kwargs:momentum', 0.9),
+                ('il_train:bc:lr_scheduler_kwargs:gamma', 1.0),
                 ('il_train:bc:augs:translate', True),
                 ('il_train:bc:augs:rotate', True),
                 ('il_train:bc:augs:color_jitter_mid', True),
-                ('il_train:bc:augs:flip_lr', True),
+                ('il_train:bc:augs:flip_lr', False),
                 ('il_train:bc:augs:noise', True),
                 ('il_train:bc:augs:erase', True),
-                ('il_train:bc:augs:gaussian_blur', True),
+                ('il_train:bc:augs:gaussian_blur', False),
             ]),
         ]
 
