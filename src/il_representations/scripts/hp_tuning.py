@@ -1,5 +1,7 @@
 import collections
 
+from torch.optim import lr_scheduler
+
 from il_representations.algos import augmenters, batch_extenders, encoders, losses, pair_constructors
 from il_representations.scripts.utils import StagesToRun
 from il_representations.utils import SacredProofTuple
@@ -309,6 +311,65 @@ def make_hp_tuning_configs(experiment_obj):
                 ('il_train:gail:disc_augs:noise', True),
                 ('il_train:gail:disc_augs:erase', True),
                 ('il_train:gail:disc_augs:gaussian_blur', True),
+            ]),
+        ]
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def bc_tune():
+        use_skopt = True
+        skopt_search_mode = 'max'
+        metric = 'return_mean'
+        stages_to_run = StagesToRun.IL_ONLY
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                # starting with relatively small n_batches
+                'n_batches': 50000,
+                'batch_size': 256,
+                # 5 steps down, multiply by lr_lambda each time
+                'nominal_num_epochs': 5,
+                'lr_sceduler_cls': lr_scheduler.MultiplicativeLR,
+                'lr_scheduler_kwargs': {
+                    'lr_lambda': 0.1,
+                },
+                'optimizer_kwargs': {
+                    'lr': 1e-4,
+                },
+                # TODO(sam): switch to SGD with momentum. Tune over the
+                # momentum term, as well as initial learning rate, final
+                # learning rate, etc. etc.
+            }
+        }
+        venv_opts = {
+            'venv_parallel': False,
+            'n_envs': 10,
+        }
+        skopt_space = collections.OrderedDict([
+            ('il_train:bc:optimizer_kwargs:lr', 1e-4),
+            ('il_train:bc:lr_scheduler_kwargs:lr_lambda', 1.0),
+            ('il_train:bc:augs:translate', [True, False]),
+            ('il_train:bc:augs:rotate', [True, False]),
+            ('il_train:bc:augs:color_jitter_mid', [True, False]),
+            ('il_train:bc:augs:flip_lr', [True, False]),
+            ('il_train:bc:augs:noise', [True, False]),
+            ('il_train:bc:augs:erase', [True, False]),
+            ('il_train:bc:augs:gaussian_blur', [True, False]),
+        ])
+        skopt_ref_configs = [
+            collections.OrderedDict([
+                ('il_train:bc:optimizer_kwargs:lr',
+                 (1e-6, 1e-2, 'log-uniform')),
+                ('il_train:bc:lr_scheduler_kwargs:lr_lambda', (0.1, 1.0)),
+                ('il_train:bc:augs:translate', True),
+                ('il_train:bc:augs:rotate', True),
+                ('il_train:bc:augs:color_jitter_mid', True),
+                ('il_train:bc:augs:flip_lr', True),
+                ('il_train:bc:augs:noise', True),
+                ('il_train:bc:augs:erase', True),
+                ('il_train:bc:augs:gaussian_blur', True),
             ]),
         ]
 

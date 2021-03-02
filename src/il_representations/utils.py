@@ -14,6 +14,7 @@ import sys
 from PIL import Image
 from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
+from scipy.stats import gmean
 from skvideo.io import FFmpegWriter
 import torch as th
 from torchsummary import summary

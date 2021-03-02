@@ -11,6 +11,7 @@ from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
+import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
@@ -46,9 +47,14 @@ def bc_defaults():
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
-    lr = 1e-4
+    optimizer_cls = th.optim.Adam
+    optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
     lr_scheduler_kwargs = None
+    # the number of 'epochs' is used by the LR scheduler
+    # (we still do `n_batches` total training, the scheduler just gets a chance
+    # to update after every `n_batches / nominal_num_epochs` batches)
+    nominal_num_epochs = 10
 
     _ = locals()
     del _
@@ -263,8 +269,9 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
-        # nominal_length is arbitrary, since nothing in BC uses len(dataset)
-        nominal_length=int(1e6),
+        nominal_length=int(np.ceil(
+            bc['batch_size'] * bc['n_batches']
+            / bc['nominal_num_epochs'])),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
         preprocessors=[streaming_extract_keys("obs", "acts")])
@@ -277,27 +284,27 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         expert_data=data_loader,
         device=device_name,
         augmentation_fn=augmenter,
-        optimizer_cls=th.optim.Adam,
-        optimizer_kwargs=dict(lr=bc['lr']),
-        ent_weight=1e-3,
-        l2_weight=1e-5,
+        optimizer_cls=bc['optimizer_cls'],
+        optimizer_kwargs=bc['optimizer_kwargs'],
         lr_scheduler_cls=bc['lr_scheduler_cls'],
         lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
+        ent_weight=1e-3,
+        l2_weight=1e-5,
     )
 
     save_interval = bc['save_every_n_batches']
     if save_interval is not None:
-        optional_model_saver = BCModelSaver(policy,
+        epoch_end_callbacks = [BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
-                                            save_interval)
+                                            save_interval)]
     else:
-        optional_model_saver = None
+        epoch_end_callbacks = []
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=None,
                   n_batches=bc['n_batches'],
                   log_interval=bc['log_interval'],
-                  on_epoch_end=optional_model_saver)
+                  epoch_end_callbacks=epoch_end_callbacks)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
