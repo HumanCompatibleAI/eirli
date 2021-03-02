@@ -224,6 +224,8 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         demo_webdatasets,
         batch_size=bc['batch_size'],
         # nominal_length is arbitrary, since nothing in BC uses len(dataset)
+        # (however, large numbers prevent us from having to recreate the
+        # loader frequently)
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
