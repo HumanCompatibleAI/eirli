@@ -355,7 +355,7 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_space = collections.OrderedDict([
             ('il_train:bc:ent_weight', (1e-10, 1e-1, 'log-uniform')),
             ('il_train:bc:l2_weight', (1e-10, 1e-1, 'log-uniform')),
-            ('il_train:bc:optimizer_kwargs:lr', (1e-5, 0.1, 'log-uniform')),
+            ('il_train:bc:optimizer_kwargs:lr', (1e-4, 1e-2, 'log-uniform')),
             ('il_train:bc:optimizer_kwargs:momentum', (0.8, 0.99)),
             ('il_train:bc:lr_scheduler_kwargs:gamma', (0.2, 1.0)),
             ('il_train:bc:augs:translate', [True, False]),
