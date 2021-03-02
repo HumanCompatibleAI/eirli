@@ -388,7 +388,7 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     venv = auto_env.load_vec_env()
     demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
         configs=dataset_configs)
-
+ 
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
         encoder = th.load(encoder_path)

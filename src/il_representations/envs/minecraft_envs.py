@@ -31,13 +31,13 @@ def load_dataset_minecraft(n_traj=None, chunk_length=100):
     env_name = get_env_name_minecraft()
     minecraft_data_root = os.path.join(data_root, 'minecraft')
     data_iterator = minerl.data.make(environment=env_name,
-                                     data_dir=minecraft_data_root,
-                                     max_recordings=n_traj)
+                                     data_dir=minecraft_data_root)
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
     start_time = time.time()
     for current_state, action, reward, next_state, done in data_iterator.batch_iter(batch_size=1,
                                                                                     num_epochs=1,
-                                                                                    seq_len=chunk_length):
+                                                                                    seq_len=chunk_length,
+                                                                                    epoch_size=n_traj):
         # Data returned from the data_iterator is in batches of size `batch_size` x `chunk_size`
         # The zero-indexing is to remove the extra extraneous `batch_size` dimension,
         # which has been hardcoded to 1
