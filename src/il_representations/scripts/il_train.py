@@ -55,6 +55,9 @@ def bc_defaults():
     # (we still do `n_batches` total training, the scheduler just gets a chance
     # to update after every `n_batches / nominal_num_epochs` batches)
     nominal_num_epochs = 10
+    # regularisation
+    ent_weight = 1e-3
+    l2_weight = 1e-5
 
     _ = locals()
     del _
@@ -305,8 +308,8 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         optimizer_kwargs=bc['optimizer_kwargs'],
         lr_scheduler_cls=bc['lr_scheduler_cls'],
         lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
-        ent_weight=1e-3,
-        l2_weight=1e-5,
+        ent_weight=bc['ent_weight'],
+        l2_weight=bc['l2_weight'],
     )
 
     save_interval = bc['save_every_n_batches']

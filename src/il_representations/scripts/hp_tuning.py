@@ -353,6 +353,8 @@ def make_hp_tuning_configs(experiment_obj):
             'n_envs': 10,
         }
         skopt_space = collections.OrderedDict([
+            ('il_train:bc:ent_weight', (1e-10, 1e-1, 'log-uniform')),
+            ('il_train:bc:l2_weight', (1e-10, 1e-1, 'log-uniform')),
             ('il_train:bc:optimizer_kwargs:lr', (1e-5, 0.1, 'log-uniform')),
             ('il_train:bc:optimizer_kwargs:momentum', (0.8, 0.99)),
             ('il_train:bc:lr_scheduler_kwargs:gamma', (0.2, 1.0)),
@@ -366,6 +368,8 @@ def make_hp_tuning_configs(experiment_obj):
         ])
         skopt_ref_configs = [
             collections.OrderedDict([
+                ('il_train:bc:ent_weight', 1e-3),
+                ('il_train:bc:l2_weight', 1e-5),
                 ('il_train:bc:optimizer_kwargs:lr', 1e-4),
                 ('il_train:bc:optimizer_kwargs:momentum', 0.9),
                 ('il_train:bc:lr_scheduler_kwargs:gamma', 1.0),
