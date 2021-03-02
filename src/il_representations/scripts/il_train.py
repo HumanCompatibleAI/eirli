@@ -116,8 +116,9 @@ def _bc_dummy(augs, optimizer_kwargs, lr_scheduler_kwargs):
 
     (Sacred has a bug in ingredient parsing where it fails to correctly detect
     that config options for sub-ingredients of a command are actually used.
-    This only happens when you try to set an attribute of such an option, like
-    when you set `bc.optimizer_kwargs.some_thing=42` for instance.)
+    This only happens when you try to set an attribute of such an option that
+    was not initially declared in the config, like when you set
+    `bc.optimizer_kwargs.some_thing=42` for instance.)
 
     PLEASE DO NOT REMOVE THIS, IT WILL BREAK SACRED."""
     raise NotImplementedError("this function is not meant to be called")

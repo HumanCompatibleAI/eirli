@@ -334,7 +334,7 @@ def make_hp_tuning_configs(experiment_obj):
                 'log_interval': 1000,
                 # 5 steps down, multiply by gamma each time
                 'nominal_num_epochs': 5,
-                'lr_sceduler_cls': lr_scheduler.ExponentialLR,
+                'lr_scheduler_cls': lr_scheduler.ExponentialLR,
                 'lr_scheduler_kwargs': {
                     'gamma': 0.1,
                 },
