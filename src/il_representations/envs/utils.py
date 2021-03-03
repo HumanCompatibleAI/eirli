@@ -7,18 +7,20 @@ try:
     class MinecraftPOVWrapper(ObservationWrapper):
         def __init__(self, env):
             super(ObservationWrapper, self).__init__(env)
-            non_transposed_obs_space = self.env.observation_space['pov']
-            transposed_low = non_transposed_obs_space.low.transpose(2, 0, 1)
-            transposed_high = non_transposed_obs_space.high.transpose(2, 0, 1)
+            non_transposed_shape = self.env.observation_space['pov'].shape
+            self.high = np.max(self.env.observation_space['pov'].high)
+            transposed_shape = (non_transposed_shape[2],
+                                non_transposed_shape[0],
+                                non_transposed_shape[1])
             # Note: this assumes the Box is of the form where low/high values are vector but need to be scalar
-            transposed_obs_space = gym.spaces.Box(low=transposed_low,
-                                                  high=transposed_high,
-                                                  shape=None)
+            transposed_obs_space = gym.spaces.Box(low=0,
+                                                  high=1,
+                                                  shape=transposed_shape)
             self.observation_space = transposed_obs_space
 
         def inner_to_outer_observation_map(self, obs):
-            # Minecraft returns shapes in NHWC by default
-            return obs['pov'].transpose(0,3,1,2)
+            # Minecraft returns shapes in NHWC by default, and with unnormalized pixel ranges
+            return obs['pov'].transpose(0,3,1,2)/self.high
 
 except ImportError:
     raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")

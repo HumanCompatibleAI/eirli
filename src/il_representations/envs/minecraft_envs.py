@@ -64,16 +64,15 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
     env_spec = data_iterator.spec
 
     # TODO undo this hack when nearbySmelt is no longer a string
-    cleaned_action_space = spaces.Dict({k:v for k,v in env_spec._action_space.spaces.items() if k != 'nearbySmelt'})
-    dummy_env = DummyEnv(action_space=cleaned_action_space,
+    dummy_env = DummyEnv(action_space=env_spec._action_space,
                          observation_space=env_spec._observation_space)
 
     wrapped_dummy_env = wrap_env(dummy_env, minecraft_wrappers)
 
     for current_obs, action, reward, next_obs, done in data_iterator.batch_iter(batch_size=1,
-                                                                                    num_epochs=1,
-                                                                                    epoch_size=n_traj, # TODO does this make sense?
-                                                                                    seq_len=chunk_length):
+                                                                                num_epochs=1,
+                                                                                epoch_size=n_traj, # TODO does this make sense as a value of epoch_size?
+                                                                                seq_len=chunk_length):
         # Data returned from the data_iterator is in batches of size `batch_size` x `chunk_size`
         # The zero-indexing is to remove the extra extraneous `batch_size` dimension,
         # which has been hardcoded to 1
@@ -85,11 +84,8 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
 
         reshaped_obs = remove_iterator_dimension(current_obs)
         reshaped_action = remove_iterator_dimension(action)
-        # TODO this is temporary while figuring out why nearbySmelt is a string
-        reshaped_action = {k:v for k,v in reshaped_action.items() if k != 'nearbySmelt'}
         wrapped_obs = optional_observation_map(wrapped_dummy_env, reshaped_obs)
         wrapped_action = optional_action_map(wrapped_dummy_env, reshaped_action)
-
         appended_trajectories['obs'].append(wrapped_obs)
         appended_trajectories['acts'].append(wrapped_action)
         appended_trajectories['dones'].append(done[0])

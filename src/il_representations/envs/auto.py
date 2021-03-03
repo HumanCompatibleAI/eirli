@@ -158,7 +158,7 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         return final_env
     elif benchmark_name == 'minecraft':
         if venv_parallel:
-            raise ValueError("MineRL environments can only be run with `venv_parallel`=False as a result of "
+            raise ValueError("MineRL environments can only be rfun with `venv_parallel`=False as a result of "
                              "issues with starting daemonic processes from SubprocVecEnv")
         return make_vec_env(gym_env_name,
                             n_envs=1,  # TODO fix this eventually; currently hitting error
