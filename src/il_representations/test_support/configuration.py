@@ -14,17 +14,6 @@ VENV_OPTS_TEST_CONFIG = {
 }
 ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
-    'atari_demo_paths': {
-        'PongNoFrameskip-v4': path.join(TEST_DATA_DIR, 'atari', 'pong.npz'),
-    },
-    'magical_demo_dirs': {
-        'MoveToRegion': path.join(TEST_DATA_DIR, 'magical', 'move-to-region'),
-    },
-    'dm_control_demo_patterns': {
-        'reacher-easy':
-        path.join(TEST_DATA_DIR, 'dm_control', 'reacher-easy-*.pkl.gz')
-    },
-
 }
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
     'env_data': ENV_DATA_TEST_CONFIG,
@@ -52,7 +41,6 @@ ENV_CFG_TEST_CONFIGS = [
 ]
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
-        'n_epochs': None,
         'n_batches': 1,
     },
     'gail': {
@@ -70,6 +58,8 @@ FAST_IL_TRAIN_CONFIG = {
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
     },
+    # we don't need a large shuffle buffer for tests
+    'shuffle_buffer_size': 3,
 }
 REPL_SMOKE_TEST_CONFIG = {
     'batches_per_epoch': 2,

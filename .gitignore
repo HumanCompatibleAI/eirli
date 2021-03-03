@@ -7,10 +7,10 @@ demos
 *_runs
 *.pyc
 *.egg-info
-# data/ is used to set up symlinks to datasets
-data
+# /data is used for symlinks to datasets
+/data
 # data-icml is like data but with different trajectory sizes (for ICML)
-data-icml
+/data-icml
 progress.csv
 params.json
 *.tgz
