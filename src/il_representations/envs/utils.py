@@ -1,6 +1,6 @@
 import gym
 import numpy as np
-
+from il_representations.utils import ForkedPdb
 try:
     from realistic_benchmarks.wrappers import ObservationWrapper
 
@@ -20,7 +20,7 @@ try:
 
         def inner_to_outer_observation_map(self, obs):
             # Minecraft returns shapes in NHWC by default, and with unnormalized pixel ranges
-            return obs['pov'].transpose(0,3,1,2)/self.high
+            return np.swapaxes(obs['pov'], -1, -3)/self.high
 
 except ImportError:
     raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
