@@ -323,7 +323,9 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_search_mode = 'max'
         metric = 'return_mean'
         stages_to_run = StagesToRun.IL_ONLY
-        tune_run_kwargs = dict(num_samples=200)
+        # fail_fast=False needed to avoid the entire tuning run terminating on
+        # the first trial failure
+        tune_run_kwargs = dict(num_samples=200, fail_fast=False)
         il_train = {
             'algo': 'bc',
             'bc': {
@@ -355,7 +357,7 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_space = collections.OrderedDict([
             ('il_train:bc:ent_weight', (1e-10, 1e-1, 'log-uniform')),
             ('il_train:bc:l2_weight', (1e-10, 1e-1, 'log-uniform')),
-            ('il_train:bc:optimizer_kwargs:lr', (1e-5, 0.1, 'log-uniform')),
+            ('il_train:bc:optimizer_kwargs:lr', (1e-4, 1e-2, 'log-uniform')),
             ('il_train:bc:optimizer_kwargs:momentum', (0.8, 0.99)),
             ('il_train:bc:lr_scheduler_kwargs:gamma', (0.2, 1.0)),
             ('il_train:bc:augs:translate', [True, False]),
@@ -370,9 +372,9 @@ def make_hp_tuning_configs(experiment_obj):
             collections.OrderedDict([
                 ('il_train:bc:ent_weight', 1e-3),
                 ('il_train:bc:l2_weight', 1e-5),
-                ('il_train:bc:optimizer_kwargs:lr', 1e-4),
+                ('il_train:bc:optimizer_kwargs:lr', 2e-4),
                 ('il_train:bc:optimizer_kwargs:momentum', 0.9),
-                ('il_train:bc:lr_scheduler_kwargs:gamma', 1.0),
+                ('il_train:bc:lr_scheduler_kwargs:gamma', 0.99),
                 ('il_train:bc:augs:translate', True),
                 ('il_train:bc:augs:rotate', True),
                 ('il_train:bc:augs:color_jitter_mid', True),

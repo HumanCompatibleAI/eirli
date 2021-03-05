@@ -1,6 +1,6 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
-from collections.abc import Sequence
+from collections.abc import Sequence, Mapping, Iterable
 import functools
 import hashlib
 import json
@@ -344,6 +344,21 @@ def augmenter_from_spec(spec, color_space):
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
 
+def pyhash_mutable_types(mutable):
+    """A Python hash() implementation for nested mutable types."""
+    # note that we do hash(tuple(sorted(...))) to deal with nondeterministic
+    # iteration order
+    try:
+        return hash(mutable)
+    except TypeError:
+        if isinstance(mutable, Mapping):
+            return hash(tuple(sorted(
+                pyhash_mutable_types(t) for t in mutable.items())))
+        elif isinstance(mutable, Iterable):
+            return hash(tuple(sorted((pyhash_mutable_types(t) for t in mutable))))
+        raise
+
+
 class WrappedConfig:
     """Dumb wrapper class used in pretrain_n_adapt to hide things from skopt.
     It's in a separate module so that we can pickle it when pretrain_n_adapt is
@@ -351,11 +366,13 @@ class WrappedConfig:
     def __init__(self, config_dict):
         self.config_dict = config_dict
 
-    # TODO(sam): this class would benefit from __eq__ and __hash__ methods so
-    # that we can reload instances of this object from pickles while preserving
-    # equality (I think the default __eq__ and __hash__ just compare based on
-    # object identity, but an object with a given identity can sometimes be
-    # duplicated into two different objects when it is written to a pickle).
+    def __eq__(self, other):
+        if not isinstance(other, WrappedConfig):
+            return NotImplemented
+        return other.config_dict == self.config_dict
+
+    def __hash__(self):
+        return pyhash_mutable_types(self.config_dict)
 
     def __repr__(self):
         """Shorter repr in case this object gets printed."""
