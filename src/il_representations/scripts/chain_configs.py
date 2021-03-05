@@ -90,7 +90,7 @@ def make_chain_configs(experiment_obj):
                                # never retry, since these are just HP tuning
                                # runs
                                max_failures=0,
-                               fail_fast=True,
+                               fail_fast=False,
                                resources_per_trial=dict(
                                    cpu=4,
                                    gpu=0.32,
@@ -108,7 +108,7 @@ def make_chain_configs(experiment_obj):
                                # never retry, since these are just HP tuning
                                # runs
                                max_failures=0,
-                               fail_fast=True,
+                               fail_fast=False,
                                resources_per_trial=dict(
                                    cpu=1,
                                    gpu=0.25,
