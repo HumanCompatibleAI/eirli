@@ -86,6 +86,20 @@ class Network(nn.Module):
         return mean_actions
 
 
+class InterpAlgos:
+    def __init__(self):
+        self._algos = {}
+
+    def get(self, name):
+        return self._algos[name]
+
+    def register(self, f):
+        self._algos[f.__name__] = f
+
+
+interp_algos = InterpAlgos()
+
+
 @interp_ex.capture
 def prepare_network(combined_meta, encoder_path, verbose, device):
     encoder = torch.load(encoder_path, map_location=device)
@@ -186,33 +200,39 @@ def attribute_image_features(network, algorithm, image, label, **kwargs):
     return tensor_attributions
 
 
-def saliency_(net, image, label, original_img):
+@interp_algos.register
+def saliency(net, tensor_image, label):
     saliency = Saliency(net)
-    grads = saliency.attribute(image, target=label)
+    grads = saliency.attribute(tensor_image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    saliency_viz = viz.visualize_image_attr(grads, original_img, method="blended_heat_map",
+    saliency_viz = viz.visualize_image_attr(grads,
+                                            tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
+                                            method="blended_heat_map",
                                             sign="absolute_value",
                                             show_colorbar=True,
                                             title="Overlayed Gradient Magnitudes")
     return figure_2_tensor(saliency_viz[0])
 
 
-def integrated_gradient_(net, image, label, original_img, log_dir, show_imgs):
+@interp_algos.register
+# def integrated_gradient(net, image, label, original_img, log_dir, show_imgs):
+def integrated_gradient(net, tensor_image, label):
     ig = IntegratedGradients(net)
-    attr_ig, delta = attribute_image_features(net, ig, image, label,
-                                              baselines=image * 0,
-                                              return_convergence_delta=True,)
+    attr_ig, delta = attribute_image_features(net, ig, tensor_image, label,
+                                              baselines=tensor_image * 0,
+                                              return_convergence_delta=True, )
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    ig_viz = viz.visualize_image_attr(attr_ig, original_img,
+    ig_viz = viz.visualize_image_attr(attr_ig,
+                                      tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
                                       method="blended_heat_map",
                                       sign="all",
                                       show_colorbar=True,
                                       title="Overlayed Integrated Gradients")
-    save_img(figure_2_tensor(ig_viz[0]), 'integrated_gradients', log_dir, show=show_imgs)
-    return attr_ig
+    return figure_2_tensor(ig_viz[0])
 
 
-def deep_lift_(net, image, label, original_img, log_dir, show_imgs):
+@interp_algos.register
+def deep_lift(net, image, label, original_img, log_dir, show_imgs):
     dl = DeepLift(net)
     attr_dl = attribute_image_features(net, dl, image, label,
                                        baselines=image * 0,)
@@ -226,7 +246,8 @@ def deep_lift_(net, image, label, original_img, log_dir, show_imgs):
     return attr_dl
 
 
-def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, columns=10):
+@interp_algos.register
+def layer_conductance(net, layer, image, label, log_dir, show_imgs=True, columns=10):
     layer_cond = LayerConductance(net, layer)
     attribution = layer_cond.attribute(image,
                                        n_steps=100,
@@ -247,7 +268,8 @@ def layer_conductance_(net, layer, image, label, log_dir, show_imgs=True, column
     return attribution
 
 
-def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
+@interp_algos.register
+def layer_gradcam(net, layer, image, label, original_img, log_dir, show_imgs):
     assert isinstance(layer, torch.nn.Conv2d), 'GradCAM is usually applied to the last ' \
                                                'convolutional layer in the network.'
     lgc = LayerGradCam(net, layer)
@@ -265,7 +287,8 @@ def layer_gradcam_(net, layer, image, label, original_img, log_dir, show_imgs):
     save_img(figure_2_tensor(lg_viz_neg[0]), 'layer_gradcam_neg', log_dir, show=show_imgs)
 
 
-def layer_act_(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
+@interp_algos.register
+def layer_act(net, layer, algo, algo_name, image, log_dir, attr_kwargs=None, show_imgs=True, columns=10):
     layer_a = algo(net, layer)
     a_attr = layer_a.attribute(image, **attr_kwargs)
     if len(a_attr.shape) == 2:  # Attribution has 2 axes - usually seen in linear layers.
@@ -360,8 +383,6 @@ def choose_layer(network, module_name, layer_idx):
 
 @interp_ex.main
 def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_configs):
-    assert f"{chosen_algo}_" in dir(sys.modules[__name__])
-
     # setup environment & dataset
     datasets, combined_meta = auto_env.load_wds_datasets(configs=dataset_configs)
     # color_space = combined_meta['color_space']
@@ -381,19 +402,17 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_config
                                          adjust_axis=False,
                                          make_grid=False)
 
-    for itr, (img, label) in enumerate(zip(images, labels)):
+    for itr, (tensor_image, label) in enumerate(zip(images, labels)):
         # Get policy prediction
-        original_img = img[0].permute(1, 2, 0).detach().cpu().numpy()  # shape (96, 96, 12)
-
         # img = img.contiguous()  # Do we need this?
-        interp_algo_func = getattr(sys.modules[__name__], f"{chosen_algo}_")
+        interp_algo_func = interp_algos.get(chosen_algo)
 
         if 'layer' in chosen_algo:
             module, idx = layer_kwargs[chosen_algo]['module'], \
                           layer_kwargs[chosen_algo]['layer_idx']
             chosen_layer = choose_layer(network, module, idx)
 
-        interpreted_img = interp_algo_func(network, img, label, original_img)  # shape (600, 600, 3)
+        interpreted_img = interp_algo_func(network, tensor_image, label)  # shape (600, 600, 3)
 
         if save_video:
             video_writer.add_tensor(preprocess_obs(interpreted_img,
