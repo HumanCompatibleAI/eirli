@@ -215,7 +215,6 @@ def saliency(net, tensor_image, label):
 
 
 @interp_algos.register
-# def integrated_gradient(net, image, label, original_img, log_dir, show_imgs):
 def integrated_gradient(net, tensor_image, label):
     ig = IntegratedGradients(net)
     attr_ig, delta = attribute_image_features(net, ig, tensor_image, label,
@@ -232,18 +231,18 @@ def integrated_gradient(net, tensor_image, label):
 
 
 @interp_algos.register
-def deep_lift(net, image, label, original_img, log_dir, show_imgs):
+def deep_lift(net, tensor_image, label):
     dl = DeepLift(net)
-    attr_dl = attribute_image_features(net, dl, image, label,
-                                       baselines=image * 0,)
+    attr_dl = attribute_image_features(net, dl, tensor_image, label,
+                                       baselines=tensor_image * 0,)
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
-    dl_viz = viz.visualize_image_attr(attr_dl, original_img,
+    dl_viz = viz.visualize_image_attr(attr_dl,
+                                      tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
                                       method="blended_heat_map",
                                       sign="all",
                                       show_colorbar=True,
                                       title="Overlayed DeepLift")
-    save_img(figure_2_tensor(dl_viz[0]), 'deep_lift', log_dir, show=show_imgs)
-    return attr_dl
+    return figure_2_tensor(dl_viz[0])
 
 
 @interp_algos.register
@@ -404,7 +403,7 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_config
 
     for itr, (tensor_image, label) in enumerate(zip(images, labels)):
         # Get policy prediction
-        # img = img.contiguous()  # Do we need this?
+        tensor_image = tensor_image.contiguous()
         interp_algo_func = interp_algos.get(chosen_algo)
 
         if 'layer' in chosen_algo:
