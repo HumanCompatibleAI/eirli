@@ -399,6 +399,9 @@ def do_training_gail(
         batch_size=gail['disc_batch_size'],
         # nominal_length is arbitrary; we could make it basically anything b/c
         # nothing in GAIL depends on the 'length' of the expert dataset
+        # (we are not currently using an LR scheduler for the discriminator,
+        # so we do not bother allowing a configurable length like the one used
+        # in BC)
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
