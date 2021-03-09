@@ -75,6 +75,9 @@ def default_config():
     # set this to True if you want repL encoder hashing to ignore env_cfg
     is_multitask = False
 
+    # If True, return the representation model as `run.results['model']`.
+    debug_return_model = False
+
     _ = locals()
     del _
 
@@ -133,7 +136,8 @@ def config_specifies_task_name(dataset_config_dict):
 
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
-        torch_num_threads, repl_batch_save_interval, is_multitask, _config):
+        torch_num_threads, repl_batch_save_interval, is_multitask, debug_return_model,
+        _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
 
@@ -205,11 +209,17 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         callbacks=repl_callbacks,
         end_callbacks=repl_end_callbacks)
 
-    return {
+    result = {
         'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning
         'repl_loss': loss_record[-1],
     }
+
+    if debug_return_model:
+        # Used for serialization validation testing in test_base_algos.py.
+        result['model'] = model
+
+    return result
 
 
 if __name__ == '__main__':
