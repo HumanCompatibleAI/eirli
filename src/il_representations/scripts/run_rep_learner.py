@@ -66,6 +66,9 @@ def default_config():
     batches_per_epoch = 1000
     n_epochs = 10
 
+    # Set number of trajectories needed in the dataset. If None, use the whole dataset.
+    n_trajs = 3
+
     # how often should we save repL batch data?
     # (set to None to disable completely)
     repl_batch_save_interval = 1000
@@ -130,7 +133,7 @@ def config_specifies_task_name(dataset_config_dict):
 
 
 @represent_ex.main
-def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
+def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs, n_trajs,
         torch_num_threads, repl_batch_save_interval, is_multitask, _config):
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
@@ -197,6 +200,7 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         datasets=webdatasets,
         batches_per_epoch=batches_per_epoch,
         n_epochs=n_epochs,
+        n_trajs=n_trajs,
         callbacks=repl_callbacks,
         end_callbacks=repl_end_callbacks)
 

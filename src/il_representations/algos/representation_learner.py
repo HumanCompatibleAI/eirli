@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
-from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -227,7 +227,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
-    def learn(self, datasets, batches_per_epoch, n_epochs, callbacks=(),
+    def learn(self, datasets, batches_per_epoch, n_epochs, n_trajs=None, callbacks=(),
               end_callbacks=()):
         """Run repL training loop.
 
@@ -242,6 +242,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             n_epochs (int): the total number of 'epochs' of optimisation to
                 perform. Total number of updates will be `batches_per_epoch *
                 n_epochs`.
+            n_trajs (int): the total number of trajectories we want to use
+                for training. The default 'None' will use the whole dataset.
             callbacks ([dict -> None]): list of functions to call at the
                 end of each batch, after computing the loss and updating the
                 network but before dumping logs. Will be provided with all
@@ -253,13 +255,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
             `loss_record` is a list of average loss values encountered at each
             epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
+        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+        logging.info(f"Training RepL with {n_trajs} trajectories.")
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=batches_per_epoch * self.batch_size,
             max_workers=self.dataset_max_workers,
             shuffle_buffer_size=self.shuffle_buffer_size,
             shuffle=self.shuffle_batches,
-            preprocessors=(self.target_pair_constructor, ))
+            preprocessors=(subdataset_extractor, self.target_pair_constructor, ))
 
         loss_record = []
 
