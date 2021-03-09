@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env python3
 """Recursively collate repL and IL training configs from some directory.
 Deduplicate the configs (using equivalence modulo seed), group the configs by
 exp_ident and benchmark/task name, and print out to console."""
