@@ -8,6 +8,7 @@ from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
+import torchvision.models as tvm
 import torch
 from torch import nn
 from pyro.distributions import Delta
@@ -265,11 +266,94 @@ class MAGICALCNN(nn.Module):
         warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
+
+class CoordConv(nn.Module):
+    """Add coordinates in [0,1] to an image, like CoordConv paper."""
+    def forward(self, x):
+        # needs N,C,H,W inputs
+        assert x.ndim == 4
+        h, w = x.shape[2:]
+        ones_h = x.new_ones((h, 1))
+        type_dev = dict(dtype=x.dtype, device=x.device)
+        lin_h = torch.linspace(-1, 1, h, **type_dev)[:, None]
+        ones_w = x.new_ones((1, w))
+        lin_w = torch.linspace(-1, 1, w, **type_dev)[None, :]
+        new_maps_2d = torch.stack((lin_h * ones_w, lin_w * ones_h), dim=0)
+        new_maps_4d = new_maps_2d[None]
+        assert new_maps_4d.shape == (1, 2, h, w), (x.shape, new_maps_4d.shape)
+        batch_size = x.size(0)
+        new_maps_4d_batch = new_maps_4d.repeat(batch_size, 1, 1, 1)
+        result = torch.cat((x, new_maps_4d_batch), dim=1)
+        return result
+
+
+class Resnet18(tvm.resnet.ResNet):
+    """Version of Torch's resnet18 model. Copied from resnet.py, with some
+    modifications:
+
+    - Can handle an arbitrary number of input channels, instead of just three
+      channels.
+    - Applies CoordConv to counter the way resnet discards spatial information
+      by average-pooling. I haven't tested it, but expect it will help a bit
+      (or at least not hurt)."""
+    def __init__(self, observation_space, representation_dim, *,
+                 width_per_group=64, block=tvm.resnet.BasicBlock, groups=1,
+                 layers=(2, 2, 2, 2)):
+        super(tvm.resnet.ResNet, self).__init__()
+
+        # copied from Torch resnet.py, modified to work with arbitrary number
+        # of input channels
+        self._norm_layer = nn.BatchNorm2d
+
+        self.inplanes = 64
+        self.dilation = 1
+        self.groups = groups
+        self.base_width = width_per_group
+        self.coord_conv = CoordConv()
+        self.conv1 = nn.Conv2d(observation_space.shape[0] + 2, self.inplanes,
+                               kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = self._norm_layer(self.inplanes)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(512 * block.expansion, representation_dim)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out',
+                                        nonlinearity='relu')
+            elif isinstance(m, self._norm_layer):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        warn_on_non_image_tensor(x)
+        # also copied from Torch resnet.py (modulo CoordConv stuff, etc.)
+        x = self.coord_conv(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
+
+
 # string names for convolutional networks; this makes it easier to choose
 # between them from the command line
 NETWORK_SHORT_NAMES = {
     'BasicCNN': BasicCNN,
     'MAGICALCNN': MAGICALCNN,
+    'Resnet18': Resnet18,
 }
 
 
