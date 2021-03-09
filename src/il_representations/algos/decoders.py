@@ -437,6 +437,10 @@ class PixelDecoder(LossDecoder):
         # Project z to have the number of dimensions needed to reshape into (channels, shape, shape)
         if self.action_representation_dim is not None:
             action_representation = self.get_vector(extra_context)
+            if len(action_representation.shape) == 1:
+                batch_dim = action_representation.shape[0]
+                action_representation = torch.reshape(action_representation, (batch_dim, 1))
+
             logging.debug(f"Action Representation shape: {action_representation.shape}")
             projected_z = self.initial_layer(torch.cat([z, action_representation], dim=1))
         else:
