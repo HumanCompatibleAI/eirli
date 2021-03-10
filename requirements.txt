@@ -22,7 +22,8 @@ PyYAML~=5.3.1
 scikit-video~=1.1.11
 Pillow~=7.2.0
 torchsummary~=1.5.1
-webdataset~=0.1.40
+#webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
+webdataset==0.1.40
 tqdm~=4.48.0
 
 # Jupyter Lab is used for our experiment analysis notebook
