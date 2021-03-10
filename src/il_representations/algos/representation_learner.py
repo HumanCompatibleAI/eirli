@@ -115,6 +115,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                  decoder_kwargs.get('learn_scale', False))
         assert not duplicate_learn_scale, "learn_scale should be set on either " \
                                           "the encoder or the decoder at one time"
+
         self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **decoder_kwargs).to(self.device)
 
@@ -385,6 +386,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # then do one last log dump to make sure everything is there
         if not (batches_trained % self.log_interval == 0):
             logger.dump(step=batches_trained)
+
 
         assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"

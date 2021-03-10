@@ -181,6 +181,7 @@ class TensorFrameWriter:
         }
         if config is not None:
             ffmpeg_out_config.update(config)
+
         self.writer = FFmpegWriter(out_path, outputdict=ffmpeg_out_config)
         self.adjust_axis = adjust_axis
         self.make_grid = make_grid
@@ -256,11 +257,12 @@ def load_sacred_pickle(fp, **kwargs):
 class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
-    def __init__(self, save_interval_batches, dest_dir, color_space):
+    def __init__(self, save_interval_batches, dest_dir, color_space, save_video=False):
         self.save_interval_batches = save_interval_batches
         self.dest_dir = dest_dir
         self.last_save = None
         self.color_space = color_space
+        self.save_video = save_video
 
     def __call__(self, repl_locals):
         batches_trained = repl_locals['batches_trained']
@@ -280,6 +282,7 @@ class RepLSaveExampleBatchesCallback:
             'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
             'decoded_targets', 'traj_ts_info',
         ]
+
         for save_name in to_save:
             save_value = repl_locals[save_name]
 
@@ -302,6 +305,16 @@ class RepLSaveExampleBatchesCallback:
                 save_path = save_path_no_suffix + '.png'
                 # save as image
                 save_image = save_value.float().clamp(0, 1)
+
+                # Save decoded contexts as videos
+                if self.save_video:
+                    video_out_path = save_path_no_suffix + '.mp4'
+                    video_writer = TensorFrameWriter(video_out_path, color_space=self.color_space)
+                    for image in save_image:
+                        image = image_tensor_to_rgb_grid(image, self.color_space)
+                        video_writer.add_tensor(image)
+                    video_writer.close()
+
                 as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
                 save_rgb_tensor(as_rgb, save_path)
             else:
