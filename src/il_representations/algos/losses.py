@@ -297,6 +297,21 @@ class VAELoss(RepresentationLoss):
         return loss
 
 
+class AELoss(RepresentationLoss):
+    """
+    Compute the reconstruction (MSE) loss between the generated image and the original image.
+    """
+    def __init__(self, device, sample=False):
+        super().__init__(device, sample)
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        (ground_truth_pixels,) = self.get_vector_forms(target_dist)
+        predicted_pixels = decoded_context_dist.mean
+
+        loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
+        return loss
+
+
 class CEBLoss(RepresentationLoss):
     """
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form

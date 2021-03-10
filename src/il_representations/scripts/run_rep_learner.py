@@ -75,6 +75,9 @@ def default_config():
     # set this to True if you want repL encoder hashing to ignore env_cfg
     is_multitask = False
 
+    # If True, return the representation model as `run.results['model']`.
+    debug_return_model = False
+
     _ = locals()
     del _
 
@@ -117,7 +120,7 @@ def random_demos():
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some
     # of the components of a SB3 policy upon creation, and we in fact want to
-    # keep the loaded representation frozen, but orthogonally initalize other
+    # keep the loaded representation frozen, but orthogonally initialize other
     # components.
     sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
     sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)
@@ -133,7 +136,8 @@ def config_specifies_task_name(dataset_config_dict):
 
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
-        torch_num_threads, repl_batch_save_interval, is_multitask, _config):
+        torch_num_threads, repl_batch_save_interval, is_multitask,
+        debug_return_model, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
 
@@ -144,9 +148,6 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
 
     logging.basicConfig(level=logging.INFO)
 
-    if isinstance(algo, str):
-        algo = getattr(algos, algo)
-
     # setup environment & dataset
     webdatasets, combined_meta = auto.load_wds_datasets(
         configs=dataset_configs)
@@ -156,10 +157,13 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
 
     # callbacks for saving example batches
     def make_batch_saver(interval):
+        save_video = algo in ['Autoencoder', 'VariationalAutoencoder']
+        print(f'In run_rep_learner, save_video={save_video}')
         return RepLSaveExampleBatchesCallback(
             save_interval_batches=repl_batch_save_interval,
             dest_dir=os.path.join(log_dir, 'batch_saves'),
-            color_space=color_space)
+            color_space=color_space,
+            save_video=save_video)
     repl_callbacks = []
     repl_end_callbacks = []
     if repl_batch_save_interval is not None:
@@ -173,6 +177,9 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     # this callback gets called once at the end to guarantee that we always
     # save the last batch
     repl_end_callbacks.append(make_batch_saver(0))
+
+    if isinstance(algo, str):
+        algo = getattr(algos, algo)
 
     # instantiate algo
     dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
@@ -205,11 +212,17 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         callbacks=repl_callbacks,
         end_callbacks=repl_end_callbacks)
 
-    return {
+    result = {
         'encoder_path': most_recent_encoder_path,
         # return average loss from final epoch for HP tuning
         'repl_loss': loss_record[-1],
     }
+
+    if debug_return_model:
+        # Used for serialization validation testing in test_base_algos.py.
+        result['model'] = model
+
+    return result
 
 
 if __name__ == '__main__':
