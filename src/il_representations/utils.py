@@ -171,7 +171,7 @@ def save_rgb_tensor(rgb_tensor, file_path):
 
 class TensorFrameWriter:
     """Writes N*(F*C)*H*W tensor frames to a video file."""
-    def __init__(self, out_path, color_space, fps=25, config=None):
+    def __init__(self, out_path, color_space, fps=25, config=None, adjust_axis=True, make_grid=True):
         self.out_path = out_path
         self.color_space = color_space
         ffmpeg_out_config = {
@@ -182,6 +182,8 @@ class TensorFrameWriter:
         if config is not None:
             ffmpeg_out_config.update(config)
         self.writer = FFmpegWriter(out_path, outputdict=ffmpeg_out_config)
+        self.adjust_axis = adjust_axis
+        self.make_grid = make_grid
 
     def add_tensor(self, tensor):
         """Add a tensor of shape [..., C, H, W] representing the frame stacks
@@ -189,9 +191,13 @@ class TensorFrameWriter:
         want to add."""
         if self.writer is None:
             raise RuntimeError("Cannot run add_tensor() again after closing!")
-        grid = image_tensor_to_rgb_grid(tensor, self.color_space)
-        # convert to (H, W, 3) numpy array
-        np_grid = grid.numpy().transpose((1, 2, 0))
+        grid = tensor
+        if self.make_grid:
+            grid = image_tensor_to_rgb_grid(tensor, self.color_space)
+        np_grid = grid.numpy()
+        if self.adjust_axis:
+            # convert to (H, W, 3) numpy array
+            np_grid = np_grid.transpose((1, 2, 0))
         byte_grid = (np_grid * 255).round().astype('uint8')
         self.writer.writeFrame(byte_grid)
 
@@ -325,3 +331,10 @@ def up(p):
         up(up(up("foo/bar"))) == ".."
     """
     return os.path.normpath(os.path.join(p, ".."))
+
+
+def normalize_image(image):
+    """Normalize an image tensor to be in the range of [0,1]."""
+    image -= image.min()
+    image /= image.max()
+    return image
