@@ -5,7 +5,7 @@ import pickle
 import warnings
 
 import numpy as np
-from torch.utils.data import IterableDataset
+from torch.utils.data import DataLoader, IterableDataset
 import webdataset as wds
 from webdataset.dataset import group_by_keys
 
@@ -126,3 +126,75 @@ def load_ilr_datasets(file_paths):
     return ILRDataset(urls) \
         .decode() \
         .pipe(strip_extensions)
+
+
+def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
+                       shuffle=True, shuffle_buffer_size=1024, max_workers=0,
+                       preprocessors=(), drop_last=True, collate_fn=None):
+    """Turn a sequence of webdataset `Dataset`s into a single Torch data
+    loader that mixes the datasets equally.
+
+    Args:
+        datasets ([Dataset]): sequence of datasets to mix.
+        batch_size (int): size of batches to yield.
+        nominal_length (Optional[int]): supposed length of the dataset (number
+            of samples, not number of batches). This governs how long you
+            can draw samples from the `DataLoader` for before it raises
+            `StopIteration`. If you aren't relying on `DataLoader` raising
+            `StopIteration`, then you can make this "length" as large as you
+            like.
+        shuffle (bool): should we use an intermediate buffer to shuffle
+            samples, after applying preprocessors but before forming batches?
+        shuffle_buffer_size (int): size of the intermediate buffer to use for
+            shuffling.
+        max_workers (int): number of workers to use for data loader.
+        preprocessors ([fn]): a list of preprocessors which will be applied to
+            each dataset using `.pipe()`. Note that these preprocessors get to
+            see samples in the order they were written to disk, which can be
+            useful for things like target pair construction.
+
+    Returns:
+        data_loader (torch.DataLoader): a Torch DataLoader that returns batches
+            of the required size, with elements drawn with equal probability
+            from all constituent datasets.
+    """
+
+    # For each single-task dataset in the `datasets` list, we first apply a
+    # target pair constructor to create targets from the incoming stream of
+    # observations. We can then optionally apply a shuffler that retains a
+    # small pool of constructed targets in memory and yields
+    # randomly-selected items from that pool (this approximates
+    # full-dataset shuffling without having to read the whole dataset into
+    # memory).
+
+    for sub_ds in datasets:
+        for preprocessor in preprocessors:
+            # Construct representation learning dataset of correctly paired
+            # (context, target) pairs
+            sub_ds.pipe(preprocessor)
+        if shuffle:
+            # TODO(sam): if we're low on memory due to shuffle buffer memory
+            # consumption, then consider shuffling *after* interleaving (more
+            # complicated, but also takes up less memory).
+            sub_ds.shuffle(shuffle_buffer_size)
+
+    if not shuffle:
+        assert len(datasets) <= 1, \
+            "InterleavedDataset will intrinsically shuffle batches by " \
+            "randomly selecting which dataset to draw from at each " \
+            "iteration; do not use multi-task training if " \
+            f"shuffle_batches=False is required (got {len(datasets)}" \
+            "datasets)"
+        assert max_workers <= 1, \
+            "Using more than one dataset worker may shuffle the " \
+            "dataset; got max_workers={max_workers}"
+    interleaved_dataset = InterleavedDataset(
+        datasets, nominal_length=nominal_length)
+
+    dataloader = DataLoader(interleaved_dataset,
+                            num_workers=max_workers,
+                            batch_size=int(batch_size),
+                            drop_last=drop_last,
+                            collate_fn=collate_fn)
+
+    return dataloader
