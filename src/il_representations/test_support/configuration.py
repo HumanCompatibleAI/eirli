@@ -6,19 +6,24 @@ from ray import tune
 from il_representations import algos
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
+
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
+
 VENV_OPTS_TEST_CONFIG = {
     'venv_parallel': False,
     'n_envs': 2,
 }
+
 ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
 }
+
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
     'env_data': ENV_DATA_TEST_CONFIG,
     'venv_opts': VENV_OPTS_TEST_CONFIG,
 }
+
 ENV_CFG_TEST_CONFIGS = [
     {
         'benchmark_name': 'atari',
@@ -36,12 +41,13 @@ ENV_CFG_TEST_CONFIGS = [
         'benchmark_name': 'minecraft',
         'task_name': 'NavigateVectorObf',
         'minecraft_max_env_steps': 100
-    }
-
+    },
 ]
+
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
         'n_batches': 1,
+        'augs': 'translate,rotate,noise',
     },
     'gail': {
         # ppo_n_steps, ppo_batch_size and disc_batch_size are the smallest
@@ -57,18 +63,27 @@ FAST_IL_TRAIN_CONFIG = {
         # ppo_n_epochs and disc_n_updates_per_round are at minimum values
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
+        'disc_augs': 'translate,rotate,noise',
     },
     # we don't need a large shuffle buffer for tests
     'shuffle_buffer_size': 3,
 }
+
 REPL_SMOKE_TEST_CONFIG = {
     'batches_per_epoch': 2,
     'n_epochs': 1,
     'algo_params': {
         'representation_dim': 3,
         'batch_size': 7,
+        'augmenter_kwargs': {
+            # note that this will be run against (grayscale) Atari frames, so
+            # we can't add color jitter or other augmentations that require RGB
+            # frames
+            'augmenter_spec': 'translate,rotate,noise',
+        }
     },
 }
+
 CHAIN_CONFIG = {
     'spec': {
         'repl': {
@@ -110,6 +125,7 @@ CHAIN_CONFIG = {
     },
     **ENV_DATA_VENV_OPTS_TEST_CONFIG,
 }
+
 CHAIN_CONFIG_SKOPT = {
     **CHAIN_CONFIG,
     'use_skopt': True,

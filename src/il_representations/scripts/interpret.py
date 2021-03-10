@@ -396,6 +396,6 @@ def run(show_imgs, log_dir, saliency, integrated_gradient, deep_lift, layer_cond
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+    sacred.SETTINGS['CAPTURE_MODE'] = 'no'
     interp_ex.observers.append(FileStorageObserver('runs/interpret_runs'))
     interp_ex.run_commandline()

@@ -212,7 +212,7 @@ def load_wds_datasets(configs):
         # generate config dict, including defaults
         assert isinstance(config, dict) and config.keys() <= {
             'type', 'env_cfg'
-        }
+        }, config
         orig_config = config
         config = dict_update(defaults, config)
         data_type = config['type']

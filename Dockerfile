@@ -69,11 +69,13 @@ RUN conda update -n base -c defaults conda \
   && conda install -c anaconda python=3.7 \
   && conda clean -ay
 
-# Install dependencies
-COPY requirements.txt /root/requirements.txt
-RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
+# MineRL installed separately because pip installs from Github don't work with submodules
 COPY minecraft_setup.sh /root/minecraft_setup.sh
 RUN bash /root/minecraft_setup.sh
+
+# Install remaining dependencies
+COPY requirements.txt /root/requirements.txt
+RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
 
 # This is useful for making the X server work (but will break unless the X
 # server is on the right port)

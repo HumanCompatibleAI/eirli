@@ -323,3 +323,24 @@ class CEBLoss(RepresentationLoss):
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
         return loss
 
+
+class GaussianPriorLoss(RepresentationLoss):
+    """
+    KL divergence between a Normal distribution prior on z and
+    the conditioned-on-x z distribution
+    """
+    def __init__(self, device, sample=False, prior_scale=1.0):
+        super().__init__(device, sample)
+        self.prior_scale = prior_scale  # The scale parameter used to construct prior used in KLD
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +
+                                                       encoded_context_dist.event_shape).to(self.device),
+                                           self.prior_scale)
+        independent_prior = torch.distributions.Independent(prior,
+                                                            len(encoded_context_dist.event_shape))
+        kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
+
+        loss = torch.mean(kld)
+        return loss
+

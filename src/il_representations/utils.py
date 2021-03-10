@@ -1,5 +1,7 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
+from collections.abc import Sequence, Mapping, Iterable
+import functools
 import hashlib
 import json
 import math
@@ -8,13 +10,14 @@ import pdb
 import pickle
 import re
 import sys
-from collections.abc import Sequence
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
+from scipy.stats import gmean
 from skvideo.io import FFmpegWriter
 import torch as th
+from torchsummary import summary
 import torchvision.utils as vutils
 
 
@@ -51,8 +54,8 @@ def hash_configs(merged_config):
     sorted_dict = recursively_sort(merged_config)
     # Needs to be double-encoded because result of jsonpickle is Unicode
     encoded = json.dumps(sorted_dict).encode('utf-8')
-    hash = hashlib.md5(encoded).hexdigest()
-    return hash
+    digest = hashlib.md5(encoded).hexdigest()
+    return digest
 
 
 def freeze_params(module):
@@ -341,6 +344,21 @@ def augmenter_from_spec(spec, color_space):
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
 
+def pyhash_mutable_types(mutable):
+    """A Python hash() implementation for nested mutable types."""
+    # note that we do hash(tuple(sorted(...))) to deal with nondeterministic
+    # iteration order
+    try:
+        return hash(mutable)
+    except TypeError:
+        if isinstance(mutable, Mapping):
+            return hash(tuple(sorted(
+                pyhash_mutable_types(t) for t in mutable.items())))
+        elif isinstance(mutable, Iterable):
+            return hash(tuple(sorted((pyhash_mutable_types(t) for t in mutable))))
+        raise
+
+
 class WrappedConfig:
     """Dumb wrapper class used in pretrain_n_adapt to hide things from skopt.
     It's in a separate module so that we can pickle it when pretrain_n_adapt is
@@ -348,6 +366,55 @@ class WrappedConfig:
     def __init__(self, config_dict):
         self.config_dict = config_dict
 
+    def __eq__(self, other):
+        if not isinstance(other, WrappedConfig):
+            return NotImplemented
+        return other.config_dict == self.config_dict
+
+    def __hash__(self):
+        return pyhash_mutable_types(self.config_dict)
+
     def __repr__(self):
         """Shorter repr in case this object gets printed."""
         return f'WrappedConfig@{hex(id(self))}'
+
+
+def print_policy_info(policy, obs_space):
+    """Print model information of the policy"""
+    print(policy)
+    device = th.device("cuda" if th.cuda.is_available() else "cpu")
+    policy = policy.to(device)
+    obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
+    summary(policy, obs_shape)
+
+
+@functools.total_ordering
+class SacredProofTuple(Sequence):
+    """Pseudo-tuple that can be passed through Sacred without
+    being silently cast to a list."""
+    def __init__(self, *elems):
+        self._elems = elems
+
+    def __eq__(self, other):
+        if not isinstance(other, SacredProofTuple):
+            return NotImplemented
+        return other._elems == self._elems
+
+    def __hash__(self, other):
+        return hash(self._elems)
+
+    def __lt__(self, other):
+        if not isinstance(other, SacredProofTuple):
+            return NotImplemented
+        return other._elems < self._elems
+
+    # __len__ and __getitem__ are required by Sequence (__iter__(),
+    # __reversed__(), count(), and index() are provided automatically)
+    def __len__(self):
+        return len(self._elems)
+
+    def __getitem__(self, idx):
+        return self._elems[idx]
+
+    def __repr__(self):
+        return 'NotATuple' + repr(self._elems)

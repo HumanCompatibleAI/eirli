@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
+import faulthandler
 import logging
 import os
 # readline import is black magic to stop PDB from segfaulting; do not remove it
 import readline  # noqa: F401
+import signal
 
 from imitation.algorithms.adversarial import GAIL
 from imitation.algorithms.bc import BC
 import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
+import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
@@ -30,7 +33,8 @@ from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
-from il_representations.utils import augmenter_from_spec, freeze_params
+from il_representations.utils import (augmenter_from_spec, freeze_params,
+                                      print_policy_info)
 
 bc_ingredient = Ingredient('bc')
 
@@ -39,22 +43,24 @@ bc_ingredient = Ingredient('bc')
 def bc_defaults():
     # number of passes to make through dataset
     n_batches = 5000
-    augs = 'rotate,translate,noise'
+    augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
-    lr = 1e-4
+    optimizer_cls = th.optim.Adam
+    optimizer_kwargs = dict(lr=1e-4)
+    lr_scheduler_cls = None
+    lr_scheduler_kwargs = None
+    # the number of 'epochs' is used by the LR scheduler
+    # (we still do `n_batches` total training, the scheduler just gets a chance
+    # to update after every `n_batches / nominal_num_epochs` batches)
+    nominal_num_epochs = 10
+    # regularisation
+    ent_weight = 1e-3
+    l2_weight = 1e-5
 
     _ = locals()
     del _
-
-
-@bc_ingredient.capture
-def _bc_dummy(augs):
-    """This is a do-nothing function to indicate to sacred that `bc.augs` is
-    actually used. If we don't include this, then Sacred doesn't allow us to
-    set `bc.augs` to be a dictionary with arbitrary keys."""
-    raise NotImplementedError("this function is not meant to be called")
 
 
 gail_ingredient = Ingredient('gail')
@@ -98,19 +104,38 @@ def gail_defaults():
     # save intermediate snapshot after this many environment time steps
     save_every_n_steps = 5e4
     # dump logs every <this many> steps (at most)
+    # (5000 is about right for MAGICAL; something like 25000 is probably better
+    # for DMC)
     log_interval_steps = 5e3
 
     _ = locals()
     del _
 
 
-@gail_ingredient.capture
-def _gail_dummy(disc_augs):
-    """Similar to _bc_dummy above, but for GAIL augmentations."""
+@bc_ingredient.capture
+def _bc_dummy(augs, optimizer_kwargs, lr_scheduler_kwargs):
+    """Dummy function to indicate to sacred that the given arguments are
+    actually used somewhere.
+
+    (Sacred has a bug in ingredient parsing where it fails to correctly detect
+    that config options for sub-ingredients of a command are actually used.
+    This only happens when you try to set an attribute of such an option that
+    was not initially declared in the config, like when you set
+    `bc.optimizer_kwargs.some_thing=42` for instance.)
+
+    PLEASE DO NOT REMOVE THIS, IT WILL BREAK SACRED."""
     raise NotImplementedError("this function is not meant to be called")
 
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+@gail_ingredient.capture
+def _gail_dummy(disc_augs):
+    """Similar to _bc_dummy above, but for GAIL augmentations.
+
+    PLEASE DO NOT REMOVE THIS, IT WILL BREAK SACRED."""
+    raise NotImplementedError("this function is not meant to be called")
+
+
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 il_train_ex = Experiment(
     'il_train',
     ingredients=[
@@ -143,6 +168,9 @@ def default_config():
     encoder_path = None
     # file name for final policy
     final_pol_name = 'policy_final.pt'
+    # Should we print a summary of the policy on init? This will show the
+    # architecture of the policy.
+    print_policy_summary = True
     # dataset configurations for webdataset code
     # (you probably don't want to change this)
     dataset_configs = [{'type': 'demos'}]
@@ -162,21 +190,56 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
+    ortho_init = False
+    log_std_init = 0.0
+    # This is the mlp architecture applied _after_ the encoder; after this MLP,
+    # Stable Baselines will apply a linear layer to ensure outputs (policy,
+    # value function) are of the right shape. By default this is empty, so the
+    # encoder output is just piped straight into the final linear layers for
+    # the policy and value function, respectively.
+    postproc_arch = ()
 
     _ = locals()
     del _
 
 
 @il_train_ex.capture
-def make_policy(observation_space,
+def load_encoder(*,
+                 encoder_path,
+                 freeze_encoder,
+                 encoder_kwargs,
+                 observation_space):
+    if encoder_path is not None:
+        encoder = th.load(encoder_path)
+        assert isinstance(encoder, nn.Module)
+    else:
+        encoder = BaseEncoder(observation_space, **encoder_kwargs)
+    if freeze_encoder:
+        freeze_params(encoder)
+        assert len(list(encoder.parameters())) == 0
+    return encoder
+
+
+@il_train_ex.capture
+def make_policy(*,
+                observation_space,
                 action_space,
-                encoder_or_path,
-                encoder_kwargs,
-                lr_schedule=None):
+                ortho_init,
+                log_std_init,
+                postproc_arch,
+                freeze_encoder,
+                lr_schedule=None,
+                print_policy_summary=True):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
-    common_policy_kwargs = {
+    encoder = load_encoder(observation_space=observation_space)
+    policy_kwargs = {
+        'features_extractor_class': EncoderFeatureExtractor,
+        'features_extractor_kwargs': {
+            "encoder": encoder,
+        },
+        'net_arch': postproc_arch,
         'observation_space': observation_space,
         'action_space': action_space,
         # SB3 policies require a learning rate for the embedded optimiser. BC
@@ -187,24 +250,16 @@ def make_policy(observation_space,
         # number).
         'lr_schedule':
         (lambda _: 1e100) if lr_schedule is None else lr_schedule,
-        'ortho_init': False,
-    }
-    if encoder_or_path is not None:
-        if isinstance(encoder_or_path, str):
-            encoder = th.load(encoder_or_path)
-        else:
-            encoder = encoder_or_path
-        assert isinstance(encoder, nn.Module)
-    else:
-        encoder = BaseEncoder(observation_space, **encoder_kwargs)
-    policy_kwargs = {
-        'features_extractor_class': EncoderFeatureExtractor,
-        'features_extractor_kwargs': {
-            "encoder": encoder,
-        },
-        **common_policy_kwargs,
+        'ortho_init': ortho_init,
+        'log_std_init': log_std_init
     }
     policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
+
+    if print_policy_summary:
+        # print policy info in case it is useful for the caller
+        print("Policy info:")
+        print_policy_info(policy, observation_space)
+
     return policy
 
 
@@ -223,11 +278,10 @@ def add_infos(data_iter):
 
 
 @il_train_ex.capture
-def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
+def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                    device_name, final_pol_name, shuffle_buffer_size):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
-                         action_space=venv_chans_first.action_space,
-                         encoder_or_path=encoder)
+                         action_space=venv_chans_first.action_space)
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
@@ -235,8 +289,9 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
-        # nominal_length is arbitrary, since nothing in BC uses len(dataset)
-        nominal_length=int(1e6),
+        nominal_length=int(np.ceil(
+            bc['batch_size'] * bc['n_batches']
+            / bc['nominal_num_epochs'])),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
         preprocessors=[streaming_extract_keys("obs", "acts")])
@@ -249,25 +304,27 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         expert_data=data_loader,
         device=device_name,
         augmentation_fn=augmenter,
-        optimizer_cls=th.optim.Adam,
-        optimizer_kwargs=dict(lr=bc['lr']),
-        ent_weight=1e-3,
-        l2_weight=1e-5,
+        optimizer_cls=bc['optimizer_cls'],
+        optimizer_kwargs=bc['optimizer_kwargs'],
+        lr_scheduler_cls=bc['lr_scheduler_cls'],
+        lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
+        ent_weight=bc['ent_weight'],
+        l2_weight=bc['l2_weight'],
     )
 
     save_interval = bc['save_every_n_batches']
     if save_interval is not None:
-        optional_model_saver = BCModelSaver(policy,
+        epoch_end_callbacks = [BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
-                                            save_interval)
+                                            save_interval)]
     else:
-        optional_model_saver = None
+        epoch_end_callbacks = []
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=None,
                   n_batches=bc['n_batches'],
                   log_interval=bc['log_interval'],
-                  on_epoch_end=optional_model_saver)
+                  epoch_end_callbacks=epoch_end_callbacks)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
@@ -281,17 +338,18 @@ def do_training_gail(
     venv_chans_first,
     demo_webdatasets,
     device_name,
-    encoder,
     out_dir,
     final_pol_name,
     gail,
     shuffle_buffer_size,
+    encoder_path,
 ):
     device = get_device(device_name)
     discrim_net = ImageDiscrimNet(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
-        encoder=encoder,
+        encoder=load_encoder(
+            observation_space=venv_chans_first.observation_space),
     )
 
     def policy_constructor(observation_space,
@@ -303,7 +361,6 @@ def do_training_gail(
         assert not use_sde
         return make_policy(observation_space=observation_space,
                            action_space=action_space,
-                           encoder_or_path=encoder,
                            lr_schedule=lr_schedule)
 
     def linear_lr_schedule(prog_remaining):
@@ -342,6 +399,9 @@ def do_training_gail(
         batch_size=gail['disc_batch_size'],
         # nominal_length is arbitrary; we could make it basically anything b/c
         # nothing in GAIL depends on the 'length' of the expert dataset
+        # (we are not currently using an LR scheduler for the discriminator,
+        # so we do not bother allowing a configurable length like the one used
+        # in BC)
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
@@ -381,6 +441,7 @@ def do_training_gail(
 @il_train_ex.main
 def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
           dataset_configs, _config):
+    faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -395,7 +456,6 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     venv = auto_env.load_vec_env()
     demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
         configs=dataset_configs)
-
     if encoder_path:
         logging.info(f"Loading pretrained encoder from '{encoder_path}'")
         encoder = th.load(encoder_path)
@@ -412,15 +472,13 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
         final_path = do_training_bc(
             demo_webdatasets=demo_webdatasets,
             venv_chans_first=venv,
-            out_dir=log_dir,
-            encoder=encoder)
+            out_dir=log_dir)
 
     elif algo == 'gail':
         final_path = do_training_gail(
             demo_webdatasets=demo_webdatasets,
             venv_chans_first=venv,
-            out_dir=log_dir,
-            encoder=encoder)
+            out_dir=log_dir)
 
     else:
         raise NotImplementedError(f"Can't handle algorithm '{algo}'")

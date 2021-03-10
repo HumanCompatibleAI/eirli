@@ -59,7 +59,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  device=None,
                  shuffle_batches=True,
                  shuffle_buffer_size=1024,
-                 batch_size=256,
+                 batch_size=384,
                  preprocess_extra_context=True,
                  preprocess_target=True,
                  save_interval=100,

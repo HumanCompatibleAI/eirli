@@ -18,7 +18,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 mkdataset_random_ex = Experiment('mkdataset_random',
                                  ingredients=[
                                      env_cfg_ingredient, env_data_ingredient,

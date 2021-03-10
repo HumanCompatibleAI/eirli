@@ -131,7 +131,7 @@ def load_ilr_datasets(file_paths):
 def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
                        shuffle=True, shuffle_buffer_size=1024, max_workers=0,
                        preprocessors=(), drop_last=True, collate_fn=None):
-    """Turn a sequence of webdataset `Dataset`s into a a single Torch data
+    """Turn a sequence of webdataset `Dataset`s into a single Torch data
     loader that mixes the datasets equally.
 
     Args:

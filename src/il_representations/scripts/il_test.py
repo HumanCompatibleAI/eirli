@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
 import collections
+import faulthandler
 import json
 import logging
+import signal
 import tempfile
 
 import imitation.data.rollout as il_rollout
@@ -20,7 +22,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             venv_opts_ingredient)
 from il_representations.utils import TensorFrameWriter
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 il_test_ex = Experiment('il_test',
                         ingredients=[
                             # We need env_cfg_ingredient to know which

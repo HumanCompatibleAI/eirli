@@ -7,7 +7,7 @@ from ray import tune
 
 from il_representations import algos
 from il_representations.envs import auto
-from il_representations.scripts.utils import StagesToRun, ReuseRepl
+from il_representations.scripts.utils import ReuseRepl, StagesToRun
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, CHAIN_CONFIG_SKOPT, ENV_CFG_TEST_CONFIGS)
 from il_representations.test_support.utils import files_are_identical
@@ -151,6 +151,6 @@ def test_hash_config():
                                            "identical config dict do not match"
     assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \
                                               "hash_config result in identical hashes"
-    assert config_hash_1 == '1b88af9e0bdc4a254d5c186fc2931e10', "Hash differs from that on canonical testing machine; " \
+    assert config_hash_1 == 'f6537d94138b8ede0f442cc596648d42', "Hash differs from that on canonical testing machine; " \
                                                                 "either base config has been updated, or consistency" \
                                                                 "has broken"

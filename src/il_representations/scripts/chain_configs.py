@@ -52,6 +52,35 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_base_5seed_1cpu_pt3gpu():
+        use_skopt = False
+        tune_run_kwargs = dict(num_samples=5,
+                               # retry on (node) failure
+                               max_failures=2,
+                               fail_fast=False,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.32,
+                               ))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_base_5seed_1cpu_pt25gpu():
+        use_skopt = False
+        tune_run_kwargs = dict(num_samples=5,
+                               # retry on (node) failure
+                               max_failures=5,
+                               fail_fast=False,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.25,
+                               ))
+
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_base_skopt_4cpu_pt3gpu_no_retry():
@@ -61,7 +90,7 @@ def make_chain_configs(experiment_obj):
                                # never retry, since these are just HP tuning
                                # runs
                                max_failures=0,
-                               fail_fast=True,
+                               fail_fast=False,
                                resources_per_trial=dict(
                                    cpu=4,
                                    gpu=0.32,
@@ -79,7 +108,7 @@ def make_chain_configs(experiment_obj):
                                # never retry, since these are just HP tuning
                                # runs
                                max_failures=0,
-                               fail_fast=True,
+                               fail_fast=False,
                                resources_per_trial=dict(
                                    cpu=1,
                                    gpu=0.25,
@@ -385,6 +414,7 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+
     @experiment_obj.named_config
     def cfg_data_repl_demos_magical_mt():
         """Multi-task training on all MAGICAL tasks."""
@@ -407,6 +437,35 @@ def make_chain_configs(experiment_obj):
                     'ClusterShape-Demo-v0',
                 ]
             ],
+            'is_multitask': True,
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_rand_demos_magical_mt():
+        """Multi-task training on all MAGICAL tasks."""
+        repl = {
+            'dataset_configs': [
+                {
+                    'type': dataset_type,
+                    'env_cfg': {
+                        'benchmark_name': 'magical',
+                        'task_name': magical_task_name,
+                    }
+                } for magical_task_name in [
+                    'MoveToCorner',
+                    'MoveToRegion',
+                    'MatchRegions',
+                    'MakeLine',
+                    'FixColour',
+                    'FindDupe',
+                    'ClusterColour',
+                    'ClusterShape',
+                ]
+                for dataset_type in ["demos", "random"]
+            ],
+            'is_multitask': True,
         }
         _ = locals()
         del _
@@ -473,18 +532,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-    @experiment_obj.named_config
-    def cfg_il_bc_20k_nofreeze():
-        il_train = {
-            'algo': 'bc',
-            'bc': {
-                'n_batches': 20000,
-            },
-            'freeze_encoder': False,
-        }
-
-        _ = locals()
-        del _
 
     @experiment_obj.named_config
     def cfg_il_bc_500k_nofreeze():
@@ -513,7 +560,20 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def cfg_il_bc_freeze():
+    def cfg_il_bc_20k_nofreeze():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'n_batches': 20000,
+            },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_15k_freeze():
         il_train = {
             'algo': 'bc',
             'bc': {
@@ -535,6 +595,90 @@ def make_chain_configs(experiment_obj):
                 'total_timesteps': 200000,
             },
             'freeze_encoder': False,
+        }
+        venv_opts = {
+            'n_envs': 32,
+            'venv_parallel': True,
+            'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_gail_magical_250k_nofreeze():
+        """GAIL config tailored to MAGICAL tasks."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                # These HP values based on defaults in il_train.py as of
+                # 2020-02-01 (which I believe I had already tuned for MAGICAL)
+                'total_timesteps': 250000,
+                'ppo_n_steps': 8,
+                'ppo_n_epochs': 12,
+                'ppo_batch_size': 64,
+                'ppo_init_learning_rate': 6e-5,
+                'ppo_gamma': 0.8,
+                'ppo_gae_lambda': 0.8,
+                'ppo_ent': 1e-5,
+                'ppo_adv_clip': 0.01,
+                'disc_n_updates_per_round': 12,
+                'disc_batch_size': 48,
+                'disc_lr': 2.5e-5,
+                'disc_augs': {
+                    'rotate': True,
+                    'noise': True,
+                    'translate': True,
+                }
+            },
+            'freeze_encoder': False,
+        }
+        venv_opts = {
+            'n_envs': 32,
+            'venv_parallel': True,
+            'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_gail_dmc_250k_nofreeze():
+        """GAIL config tailored to dm_control tasks. This was specifically
+        tuned for HalfCheetah at 500k steps, but should work for other tasks
+        too (HalfCheetah is just the hardest one)."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                # Tuning guide for HalfCheetah is at
+                # https://docs.google.com/document/d/1k6cEgszHWEmYZG7X8R3m6XySHqr_inoFTuNLbRnSZ8M/edit#bookmark=id.n3ge30xuplwx
+                # (in Jan/Feb shared notebook)
+                'total_timesteps': 250000,
+                'ppo_n_steps': 8,
+                'ppo_n_epochs': 12,
+                'ppo_batch_size': 64,
+                'ppo_init_learning_rate': 1e-4,
+                'ppo_gamma': 0.99,
+                'ppo_gae_lambda': 0.8,
+                'ppo_ent': 1e-8,
+                'ppo_adv_clip': 0.02,
+                'disc_n_updates_per_round': 6,
+                'disc_batch_size': 48,
+                'disc_lr': 1e-3,
+                'disc_augs': {
+                    'rotate': True,
+                    'noise': True,
+                    'erase': True,
+                    'gaussian_blur': True,
+                    # note lack of color_jitter_mid, flip_lr, translate_ex; I
+                    # put those into HP optimiser, but didn't find that they
+                    # worked well
+                }
+            },
+            'freeze_encoder': False,
+        }
+        il_test = {
+            'deterministic_policy': True,
         }
         venv_opts = {
             'n_envs': 32,

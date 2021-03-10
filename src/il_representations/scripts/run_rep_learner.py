@@ -1,5 +1,7 @@
+import faulthandler
 import logging
 import os
+import signal
 
 import numpy as np
 import sacred
@@ -10,13 +12,13 @@ import torch
 from il_representations import algos
 from il_representations.algos.representation_learner import \
     RepresentationLearner
-from il_representations.algos.utils import LinearWarmupCosine
+from il_representations.algos.utils import LinearWarmupCosine, set_global_seeds
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
 from il_representations.utils import RepLSaveExampleBatchesCallback
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 represent_ex = Experiment(
     # We take env_cfg_ingredient to determine which task we need to load data
     # for, and env_data_ingredient gives us the paths to that data.
@@ -39,7 +41,6 @@ def default_config():
     dataset_configs = [{'type': 'demos'}]
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
-    n_envs = 1
     algo_params = {
         'representation_dim': 128,
         'optimizer': torch.optim.Adam,
@@ -49,7 +50,8 @@ def default_config():
             # augmentations. Consult docstring for
             # imitation.augment.StandardAugmentations to see available
             # augmentations.
-            "augmenter_spec": "translate,rotate,gaussian_blur",
+            "augmenter_spec":
+            "translate,rotate,gaussian_blur,color_jitter_ex",
         },
     }
     device = "auto"
@@ -132,6 +134,9 @@ def config_specifies_task_name(dataset_config_dict):
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask, _config):
+    faulthandler.register(signal.SIGUSR1)
+    set_global_seeds(seed)
+
     # TODO fix to not assume FileStorageObserver always present
     log_dir = represent_ex.observers[0].dir
     if torch_num_threads is not None:
