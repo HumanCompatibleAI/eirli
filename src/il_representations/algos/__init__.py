@@ -1,13 +1,15 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, infer_action_shape_info
+    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
+    infer_action_shape_info
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
-    BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
-    AsymmetricProjectionHead
+    BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
+    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
     QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, AELoss
 
-from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation
+from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
+    AugmentContextAndExtraContext
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
 from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
@@ -309,6 +311,40 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
                                      decoder_kwargs=dict(action_space=kwargs['action_space']),
                                      preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class ContrastiveInverseDynamicsPrediction(RepresentationLearner):
+    """
+    Like InverseDynamicsPrediction above, except it uses a contrastive loss function.
+
+    A contrastive loss here means we predict a representation of the action given the
+    current and next state, and try to match that against the embedding of the true
+    action, with negatives provided by the embedding of other actions in the batch.
+
+    During the decoder stage, instead of predicting an action, we simply concatenate
+    the representations of s and s' together, and then predict an action representation
+    from the concatenation using a projection head. During the encoder stage, we need to
+    also encode the actions.
+
+    """
+    def __init__(self, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        action_representation_dim = get_action_representation_dim(kwargs['action_space'], encoder_kwargs)
+        algo_hardcoded_kwargs = dict(encoder=ActionEncodingInverseDynamicsEncoder,
+                                     decoder=ContrastiveInverseDynamicsConcatenationHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=AugmentContextAndExtraContext,
+                                     loss_calculator=BatchAsymmetricContrastiveLoss,
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
+                                     encoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     # By default, have the bare minimum projection: a linear layer
+                                     decoder_kwargs=dict(projection_architecture=[]),
+                                     preprocess_target=False,
+                                     projection_dim=action_representation_dim)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
         super().__init__(**kwargs)

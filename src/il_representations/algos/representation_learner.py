@@ -299,6 +299,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
+                # This is typically a noop, but sometimes we also augment the extra context
+                extra_context = self.augmenter.augment_extra_context(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
