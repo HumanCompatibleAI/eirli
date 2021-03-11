@@ -4,7 +4,7 @@ from os import path
 from ray import tune
 
 from il_representations import algos
-
+from il_representations.envs.auto import benchmark_is_available
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
@@ -42,14 +42,24 @@ ENV_CFG_TEST_CONFIGS = [
     {
         'benchmark_name': 'dm_control',
         'task_name': 'reacher-easy',
-    },
-    {
-        'benchmark_name': 'minecraft',
-        'task_name': 'NavigateVectorObf',
-        'minecraft_max_env_steps': 100
     }
-
 ]
+
+if benchmark_is_available('minecraft'):
+    # Doing this this way because we need to import configuration elements from RB
+    from realistic_benchmarks import wrappers as rb_wrappers
+    from il_representations.envs.utils import MinecraftPOVWrapper, TestingFiftyStepLimitWrapper
+    ENV_CFG_TEST_CONFIGS.append(
+        {
+            'benchmark_name': 'minecraft',
+            'task_name': 'NavigateVectorObf',
+            'minecraft_max_env_steps': 100,
+            'minecraft_wrappers': [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, TestingFiftyStepLimitWrapper]
+        }
+    )
+
+
+
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
         'n_epochs': None,

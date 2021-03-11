@@ -299,7 +299,8 @@ def do_training_gail(
         """Construct a policy with the right LR schedule (since PPO will
         actually use it, unlike BC)."""
         assert not use_sde
-        return make_policy(observation_space=observation_space,
+        return make_policy(venv=venv_chans_first,
+                           observation_space=observation_space,
                            action_space=action_space,
                            encoder_or_path=encoder,
                            lr_schedule=lr_schedule)

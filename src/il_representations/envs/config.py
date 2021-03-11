@@ -6,7 +6,7 @@ import os
 
 from sacred import Ingredient
 from gym.wrappers import TimeLimit
-from il_representations.envs.utils import MinecraftPOVWrapper
+from il_representations.envs.utils import MinecraftPOVWrapper, TestingFiftyStepLimitWrapper
 try:
     import realistic_benchmarks.wrappers as rb_wrappers
 except ImportError:
@@ -80,11 +80,7 @@ def env_cfg_defaults():
     _ = locals()
     del _
 
-# TODO This is just a hack for dealing with the fact that currently FindCaves
-# never reaches an episode termination condition
-class TestingFiftyStepLimitWrapper(TimeLimit):
-    def __init__(self, env):
-        super().__init__(env, 50)
+
 
 @env_cfg_ingredient.named_config
 def use_dict_wrappers():

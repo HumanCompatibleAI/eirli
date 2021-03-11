@@ -54,6 +54,7 @@ def benchmark_is_available(benchmark_name):
         # we check whether minecraft is installed by importing minerl
         try:
             import minerl  # noqa: F401
+            import realistic_benchmarks
             return True, None
         except ImportError as ex:
             return False, "MineRL not installed, cannot use Minecraft " \

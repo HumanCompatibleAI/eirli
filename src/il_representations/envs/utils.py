@@ -1,5 +1,6 @@
 import gym
 from gym import ObservationWrapper
+from gym.wrappers import TimeLimit
 import numpy as np
 from il_representations.utils import ForkedPdb
 
@@ -22,6 +23,12 @@ class MinecraftPOVWrapper(ObservationWrapper):
         # Minecraft returns shapes in NHWC by default, and with unnormalized pixel ranges
         return np.swapaxes(obs['pov'], -1, -3)/self.high
 
+
+# TODO This is just a hack for dealing with the fact that currently FindCaves
+# never reaches an episode termination condition
+class TestingFiftyStepLimitWrapper(TimeLimit):
+    def __init__(self, env):
+        super().__init__(env, 50)
 
 def wrap_env(env, wrappers):
     for wrapper in wrappers:
