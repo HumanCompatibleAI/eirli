@@ -52,4 +52,3 @@ git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf254907
 # NOTE TO SELF: Developing locally with updated RB, need to change that here once that PR is merged
 # Target RB branch: ilr_wrappers
 git+ssh://git@github.com/HumanCompatibleAI/realistic-benchmarks@4044befd28e2499d4aa906765a363a2e1e3ca703#egg=realistic-benchmarks
-git+ssh://git@github.com/HumanCompatibleAI/minerl@master
