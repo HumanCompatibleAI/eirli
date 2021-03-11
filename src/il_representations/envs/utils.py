@@ -2,7 +2,6 @@ import gym
 from gym import ObservationWrapper
 from gym.wrappers import TimeLimit
 import numpy as np
-from il_representations.utils import ForkedPdb
 
 
 class MinecraftPOVWrapper(ObservationWrapper):
