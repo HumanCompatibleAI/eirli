@@ -21,7 +21,7 @@ from torch import nn
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -40,6 +40,7 @@ bc_ingredient = Ingredient('bc')
 def bc_defaults():
     # number of passes to make through dataset
     n_batches = 5000
+    n_trajs = None
     augs = 'rotate,translate,noise'
     log_interval = 500
     batch_size = 32
@@ -220,6 +221,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         bc['augs'], stack_color_space=color_space)
 
     # build dataset in the format required by imitation
+    subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
@@ -229,7 +231,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys("obs", "acts")])
+        preprocessors=[subdataset_extractor, streaming_extract_keys("obs", "acts")])
 
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
