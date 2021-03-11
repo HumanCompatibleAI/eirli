@@ -5,9 +5,10 @@ vecenvs (`venv_opts_ingredient`), and for loading data
 import os
 
 from sacred import Ingredient
+from gym.wrappers import TimeLimit
 from il_representations.envs.utils import MinecraftPOVWrapper
 try:
-    from realistic_benchmarks.wrappers import ActionFlatteningWrapper
+    import realistic_benchmarks.wrappers as rb_wrappers
 except ImportError:
     raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
 
@@ -79,12 +80,20 @@ def env_cfg_defaults():
     _ = locals()
     del _
 
+# TODO This is just a hack for dealing with the fact that currently FindCaves
+# never reaches an episode termination condition
+class TestingFiftyStepLimitWrapper(TimeLimit):
+    def __init__(self, env):
+        super().__init__(env, 50)
 
 @env_cfg_ingredient.named_config
 def use_dict_wrappers():
-    minecraft_wrappers = [ActionFlatteningWrapper, MinecraftPOVWrapper]
+    minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, TestingFiftyStepLimitWrapper]
     _ = locals()
     del _
+
+
+
 
 # see venv_opts_defaults docstring for description of this ingredient
 venv_opts_ingredient = Ingredient('venv_opts')

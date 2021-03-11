@@ -19,8 +19,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
-from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
-                                                    get_env_name_minecraft,
+from il_representations.envs.minecraft_envs import (get_env_name_minecraft,
                                                     load_dataset_minecraft)
 from il_representations.scripts.utils import update as dict_update
 from il_representations.envs.utils import wrap_env

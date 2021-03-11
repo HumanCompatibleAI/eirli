@@ -48,6 +48,7 @@ magical-il~=0.0.1a4
 dm_control~=0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
 
-
+# NOTE TO SELF: Developing locally with updated RB, need to change that here once that PR is merged
+# Target RB branch: ilr_wrappers
 git+ssh://git@github.com/HumanCompatibleAI/realistic-benchmarks@828f55a8ea9d1f117b031660b8dbba26591541ff#egg=realistic-benchmarks
 git+ssh://git@github.com/HumanCompatibleAI/minerl@render_pipeline

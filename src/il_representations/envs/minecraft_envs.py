@@ -6,21 +6,20 @@ from gym import Wrapper, spaces
 import numpy as np
 
 from il_representations.envs.config import (env_cfg_ingredient,
-                                            env_data_ingredient,
-                                            venv_opts_ingredient)
+                                            env_data_ingredient )
 from il_representations.envs.utils import wrap_env
 
 
 def optional_observation_map(env, inner_obs):
-    if hasattr(env, 'inner_to_outer_observation_map'):
-        return env.inner_to_outer_observation_map(inner_obs)
+    if hasattr(env, 'observation'):
+        return env.observation(inner_obs)
     else:
         return inner_obs
 
 
 def optional_action_map(env, inner_action):
-    if hasattr(env, 'inner_to_outer_action_map'):
-        return env.inner_to_outer_action_map(inner_action)
+    if hasattr(env, 'reverse_action'):
+        return env.reverse_action(inner_action)
     else:
         return inner_action
 
@@ -76,12 +75,6 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
         # Data returned from the data_iterator is in batches of size `batch_size` x `chunk_size`
         # The zero-indexing is to remove the extra extraneous `batch_size` dimension,
         # which has been hardcoded to 1
-
-        # Currently, we use the same obs/action transformations for everything (MinecraftVectorWrapper)
-        # We could instead have a more general wrapper that uses the existing observation/action wrappers
-        # Though I think that would also have to be passed into the policy so that the categorical
-        # actions are done properly
-
         reshaped_obs = remove_iterator_dimension(current_obs)
         reshaped_action = remove_iterator_dimension(action)
         wrapped_obs = optional_observation_map(wrapped_dummy_env, reshaped_obs)
@@ -132,44 +125,3 @@ def channels_first(el):
 
     else:
         raise NotImplementedError("Input must be either array or tuple")
-
-
-class MinecraftVectorWrapper(Wrapper):
-    """
-    Currently, RepL code only works with pixel inputs, and imitation can only work with vector (rather than dict)
-    action spaces. So, we currently (1) only allow VectorObfuscated environments (where the action dictionary
-    has been processed into a vector), and (2) extract the observation space to only save the pixels, before we load
-    the data in as a il_representations dataset
-    """
-    def __init__(self, env):
-        super().__init__(env)
-        assert 'vector' in env.action_space.spaces.keys(), "Wrapper is only implemented to work with Vector Obfuscated envs"
-        self.action_space = env.action_space.spaces['vector']
-        pov_space = env.observation_space.spaces['pov']
-        transposed_pov_space = spaces.Box(low=channels_first(pov_space.low),
-                                          high=channels_first(pov_space.high),
-                                          shape=channels_first(pov_space.shape),
-                                          dtype=np.uint8)
-        self.observation_space = transposed_pov_space
-
-    @staticmethod
-    def transform_obs(obs):
-        return channels_first(obs['pov']).astype(np.uint8)
-
-    @staticmethod
-    def extract_action(action):
-        return action['vector']
-
-    @staticmethod
-    def dictify_action(action):
-        return {'vector': action}
-
-    def step(self, action):
-        obs, rew, dones, infos = self.env.step(MinecraftVectorWrapper.dictify_action(action))
-        transformed_obs = MinecraftVectorWrapper.transform_obs(obs)
-        return transformed_obs, rew, dones, infos
-
-    def reset(self):
-        obs = self.env.reset()
-        return MinecraftVectorWrapper.transform_obs(obs)
-

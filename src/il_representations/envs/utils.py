@@ -1,34 +1,33 @@
 import gym
+from gym import ObservationWrapper
 import numpy as np
 from il_representations.utils import ForkedPdb
-try:
-    from realistic_benchmarks.wrappers import ObservationWrapper
 
-    class MinecraftPOVWrapper(ObservationWrapper):
-        def __init__(self, env):
-            super(ObservationWrapper, self).__init__(env)
-            non_transposed_shape = self.env.observation_space['pov'].shape
-            self.high = np.max(self.env.observation_space['pov'].high)
-            transposed_shape = (non_transposed_shape[2],
-                                non_transposed_shape[0],
-                                non_transposed_shape[1])
-            # Note: this assumes the Box is of the form where low/high values are vector but need to be scalar
-            transposed_obs_space = gym.spaces.Box(low=0,
-                                                  high=1,
-                                                  shape=transposed_shape)
-            self.observation_space = transposed_obs_space
 
-        def inner_to_outer_observation_map(self, obs):
-            # Minecraft returns shapes in NHWC by default, and with unnormalized pixel ranges
-            return np.swapaxes(obs['pov'], -1, -3)/self.high
+class MinecraftPOVWrapper(ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        non_transposed_shape = self.env.observation_space['pov'].shape
+        self.high = np.max(self.env.observation_space['pov'].high)
+        transposed_shape = (non_transposed_shape[2],
+                            non_transposed_shape[0],
+                            non_transposed_shape[1])
+        # Note: this assumes the Box is of the form where low/high values are vector but need to be scalar
+        transposed_obs_space = gym.spaces.Box(low=0,
+                                              high=1,
+                                              shape=transposed_shape)
+        self.observation_space = transposed_obs_space
 
-except ImportError:
-    raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+    def observation(self, obs):
+        # Minecraft returns shapes in NHWC by default, and with unnormalized pixel ranges
+        return np.swapaxes(obs['pov'], -1, -3)/self.high
+
 
 def wrap_env(env, wrappers):
     for wrapper in wrappers:
         env = wrapper(env)
     return env
+
 
 def serialize_gym_space(space):
     """Convert Gym space to a format suitable for long-term pickle storage
