@@ -93,6 +93,7 @@ def gail_defaults():
     save_every_n_steps = 5e4
     # dump logs every <this many> steps (at most)
     log_interval_steps = 5e3
+    n_trajs = None
 
     _ = locals()
     del _
@@ -330,6 +331,7 @@ def do_training_gail(
     augmenter = StandardAugmentations.from_string_spec(
         gail['disc_augs'], stack_color_space=color_space)
 
+    subdataset_extractor = SubdatasetExtractor(n_trajs=gail['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=gail['disc_batch_size'],
@@ -340,8 +342,9 @@ def do_training_gail(
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys(
-            "obs", "acts", "next_obs", "dones"), add_infos],
+        preprocessors=[subdataset_extractor,
+                       streaming_extract_keys(
+                           "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
