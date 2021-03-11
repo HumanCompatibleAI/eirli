@@ -26,7 +26,7 @@ for test_config in "${testing_configs[@]}"; do
                     exp_ident="froco_${test_config}_${mg_dataset_config}" \
                     il_train.freeze_encoder=True \
                     tune_run_kwargs.num_samples=8 \
-                    "env_cfg.task_name=MatchRegions"
-                    # "env_cfg.task_name=MoveToRegion"
+                    "env_cfg.task_name=MatchRegions-Demo-v0"
+                    # "env_cfg.task_name=MoveToRegion-Demo-v0"
     done
 done

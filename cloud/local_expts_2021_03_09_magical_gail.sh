@@ -11,8 +11,8 @@ cluster_cfg_path="./gcp_cluster_sam.yaml"
 # ~identical to the VAE)
 declare -a repl_configs=("icml_inv_dyn" "icml_identity_cpc" "icml_vae")
 declare -a control_configs=("control_no_ortho_init")
-declare -a magical_envs=("MatchRegions" "MoveToCorner")
-# declare -a magical_envs=("MatchRegions" "MoveToRegion" "MoveToCorner")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToCorner-Demo-v0")
+# declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0" "MoveToCorner-Demo-v0")
 # declare -a mg_dataset_configs=("cfg_data_repl_random" "cfg_data_repl_rand_demos_magical_mt")
 declare -a mg_dataset_configs=("cfg_data_repl_rand_demos_magical_mt")
 

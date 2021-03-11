@@ -10,7 +10,7 @@ def make_chain_configs(experiment_obj):
         # see il_representations/envs/config for examples of what should go here
         env_cfg = {
             'benchmark_name': 'magical',
-            # MatchRegions is of intermediate difficulty
+            # MatchRegions-Demo-v0 is of intermediate difficulty
             # (TODO(sam): allow MAGICAL to load data from _all_ tasks at once, so
             # we can try multi-task repL)
             'task_name': 'MatchRegions-Demo-v0',
@@ -287,7 +287,7 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_bench_magical_mr():
-        """Bench on MAGICAL MatchRegions."""
+        """Bench on MAGICAL MatchRegions-Demo-v0."""
         env_cfg = {
             'benchmark_name': 'magical',
             'task_name': 'MatchRegions-Demo-v0',
@@ -299,7 +299,7 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_bench_magical_mtc():
-        """Bench on MAGICAL MoveToCorner."""
+        """Bench on MAGICAL MoveToCorner-Demo-v0."""
         env_cfg = {
             'benchmark_name': 'magical',
             'task_name': 'MoveToCorner-Demo-v0',
@@ -454,14 +454,14 @@ def make_chain_configs(experiment_obj):
                         'task_name': magical_task_name,
                     }
                 } for magical_task_name in [
-                    'MoveToCorner',
-                    'MoveToRegion',
-                    'MatchRegions',
-                    'MakeLine',
-                    'FixColour',
-                    'FindDupe',
-                    'ClusterColour',
-                    'ClusterShape',
+                    'MoveToCorner-Demo-v0',
+                    'MoveToRegion-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    'MakeLine-Demo-v0',
+                    'FixColour-Demo-v0',
+                    'FindDupe-Demo-v0',
+                    'ClusterColour-Demo-v0',
+                    'ClusterShape-Demo-v0',
                 ]
                 for dataset_type in ["demos", "random"]
             ],
