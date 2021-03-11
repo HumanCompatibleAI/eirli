@@ -256,7 +256,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
         subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
-        logging.info(f"Training RepL with {n_trajs} trajectories.")
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=batches_per_epoch * self.batch_size,
