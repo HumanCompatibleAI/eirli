@@ -2,10 +2,9 @@
 
 set -e
 
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=1"
-           "cfg_il_gail_dmc_250k_nofreeze" "tune_run_kwargs.num_samples=3"
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "cfg_il_gail_dmc_250k_nofreeze"
+           "tune_run_kwargs.num_samples=3"
            "ray_init_kwargs.address=localhost:42000")
-cluster_cfg_path="./gcp_cluster_sam.yaml"
 # declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "icml_identity_cpc" "icml_vae")
 # (dropping dynamics on the basis that it's probably testing something
 # ~identical to the VAE)

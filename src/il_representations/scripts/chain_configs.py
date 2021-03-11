@@ -385,6 +385,16 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_repl_demos_magical_test():
+        """Training on demos for the current environment + MAGICAL test
+        vairants."""
+        repl = {
+            'dataset_configs': [{'type': 'demos'}, {'type': 'demos'}],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_demos_random():
         """Training on both demos and random rollouts for the current
         environment."""
@@ -462,6 +472,36 @@ def make_chain_configs(experiment_obj):
                     'FindDupe-Demo-v0',
                     'ClusterColour-Demo-v0',
                     'ClusterShape-Demo-v0',
+                ]
+                for dataset_type in ["demos", "random"]
+            ],
+            'is_multitask': True,
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_rand_demos_magical_mt_test():
+        """Multi-task training on all MAGICAL tasks."""
+        repl = {
+            'dataset_configs': [
+                {
+                    'type': dataset_type,
+                    'env_cfg': {
+                        'benchmark_name': 'magical',
+                        'task_name': magical_task_name,
+                    }
+                }
+                for variant in ['Demo', 'TestAll']
+                for magical_task_name in [
+                    f'MoveToCorner-{variant}-v0',
+                    f'MoveToRegion-{variant}-v0',
+                    f'MatchRegions-{variant}-v0',
+                    f'MakeLine-{variant}-v0',
+                    f'FixColour-{variant}-v0',
+                    f'FindDupe-{variant}-v0',
+                    f'ClusterColour-{variant}-v0',
+                    f'ClusterShape-{variant}-v0',
                 ]
                 for dataset_type in ["demos", "random"]
             ],
