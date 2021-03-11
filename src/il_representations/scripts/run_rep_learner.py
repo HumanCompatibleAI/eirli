@@ -67,7 +67,7 @@ def default_config():
     n_epochs = 10
 
     # Set number of trajectories needed in the dataset. If None, use the whole dataset.
-    n_trajs = 3
+    n_trajs = None
 
     # how often should we save repL batch data?
     # (set to None to disable completely)
