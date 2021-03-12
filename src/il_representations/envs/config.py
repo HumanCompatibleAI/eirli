@@ -3,14 +3,13 @@ variables for creating environments (`env_cfg_ingredient`), for creating
 vecenvs (`venv_opts_ingredient`), and for loading data
 (`env_data_ingredient`)."""
 import os
-
+import logging
 from sacred import Ingredient
-from gym.wrappers import TimeLimit
 from il_representations.envs.utils import MinecraftPOVWrapper, TestingFiftyStepLimitWrapper
 try:
     import realistic_benchmarks.wrappers as rb_wrappers
 except ImportError:
-    raise Warning("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+    logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
 
 
 ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
