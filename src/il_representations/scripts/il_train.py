@@ -254,7 +254,6 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
         preprocessors=[streaming_extract_keys("obs", "acts")])
-
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
@@ -307,7 +306,6 @@ def do_training_gail(
         action_space=venv_chans_first.action_space,
         encoder=encoder,
     )
-
     def policy_constructor(observation_space,
                            action_space,
                            lr_schedule,

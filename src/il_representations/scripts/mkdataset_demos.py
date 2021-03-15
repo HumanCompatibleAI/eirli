@@ -94,7 +94,6 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     if shuffle_traj_order:
         # write trajectories in random order
         random.shuffle(trajectories)
-
     def frame_gen():
         for traj_num, traj in enumerate(trajectories):
             traj_len = len(traj['obs'])

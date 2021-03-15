@@ -93,6 +93,7 @@ def warn_on_non_image_tensor(x):
     v_min = torch.min(x).item()
     v_max = torch.max(x).item()
     if v_min < -0.01 or v_max > 1.01:
+        breakpoint()
         do_warning(
             f"Input image tensor has values in range [{v_min}, {v_max}], "
             "not expected range [0, 1]")
