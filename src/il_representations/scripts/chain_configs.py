@@ -385,11 +385,11 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def cfg_data_repl_demos_magical_test():
-        """Training on demos for the current environment + MAGICAL test
-        vairants."""
+    def cfg_data_repl_demos():
+        """Training on both demos and random rollouts for the current
+        environment."""
         repl = {
-            'dataset_configs': [{'type': 'demos'}, {'type': 'demos'}],
+            'dataset_configs': [{'type': 'demos'}],
         }
         _ = locals()
         del _
@@ -477,6 +477,105 @@ def make_chain_configs(experiment_obj):
             ],
             'is_multitask': True,
         }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_movetocorner_demos_magical_test():
+        """Train on demo and test variant demos for MoveToCorner"""
+        repl = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                },
+            } for task_name in ['MoveToCorner-Demo-v0', 'MoveToCorner-TestAll-v0']]
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_movetocorner_rand_demos_magical_test():
+        """Train on random rollouts and demos from demo and test variant demos
+        for MoveToCorner"""
+        repl = {'dataset_configs': [{
+                'type': data_type,
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                }}
+            for task_name in ['MoveToCorner-Demo-v0', 'MoveToCorner-TestAll-v0']
+            for data_type in ['demos', 'random']
+        ]}
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_movetoregion_demos_magical_test():
+        """Train on demo and test variant demos for MoveToRegion"""
+        repl = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                },
+            } for task_name in ['MoveToRegion-Demo-v0', 'MoveToRegion-TestAll-v0']]
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_movetoregion_rand_demos_magical_test():
+        """Train on random rollouts and demos from demo and test variant demos
+        for MoveToRegion"""
+        repl = {'dataset_configs': [{
+                'type': data_type,
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                }}
+            for task_name in ['MoveToRegion-Demo-v0', 'MoveToRegion-TestAll-v0']
+            for data_type in ['demos', 'random']
+        ]}
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_matchregions_demos_magical_test():
+        """Train on demo and test variant demos for MatchRegions"""
+        repl = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                },
+            } for task_name in ['MatchRegions-Demo-v0', 'MatchRegions-TestAll-v0']]
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_matchregions_rand_demos_magical_test():
+        """Train on random rollouts and demos from demo and test variant demos
+        for MatchRegions"""
+        repl = {'dataset_configs': [{
+                'type': data_type,
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                }}
+            for task_name in ['MatchRegions-Demo-v0', 'MatchRegions-TestAll-v0']
+            for data_type in ['demos', 'random']
+        ]}
+
         _ = locals()
         del _
 
