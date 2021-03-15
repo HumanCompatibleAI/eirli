@@ -36,7 +36,7 @@ from il_representations.scripts.utils import print_policy_info
 try:
     import realistic_benchmarks.policies as rb_policies
 except ImportError:
-    print("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+    logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
 
 
 bc_ingredient = Ingredient('bc')
