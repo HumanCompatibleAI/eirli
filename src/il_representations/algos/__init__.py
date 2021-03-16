@@ -270,6 +270,34 @@ class VariationalAutoencoder(RepresentationLearner):
         super().__init__(**kwargs)
 
 
+class TemporalAugmentedVAE(RepresentationLearner):
+    """
+    Weird VAE that augments context & target separately, and also uses a
+    long temporal offset (5 frames) for some reason.
+
+    (ulterior motive: this produces nice interpretable images at each stage of
+    the repL pipeline, so that I can demonstrate the action of the augmenter,
+    the decoder, etc. etc.)
+    """
+    def __init__(self, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+
+        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
+                                     decoder=PixelDecoder,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=AugmentContextAndTarget,
+                                     loss_calculator=VAELoss,
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(temporal_offset=4),
+                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
+                                                         encoder_arch_key=encoder_cls_key,
+                                                         sample=True))
+
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        super().__init__(**kwargs)
+
+
 class Autoencoder(RepresentationLearner):
     """
     A basic autoencoder that tries to reconstruct the

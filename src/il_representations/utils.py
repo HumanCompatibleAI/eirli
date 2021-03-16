@@ -261,7 +261,8 @@ def load_sacred_pickle(fp, **kwargs):
 class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
-    def __init__(self, save_interval_batches, dest_dir, color_space, save_video=False):
+    def __init__(self, save_interval_batches, dest_dir, color_space,
+                 save_video=False):
         self.save_interval_batches = save_interval_batches
         self.dest_dir = dest_dir
         self.last_save = None
@@ -284,7 +285,7 @@ class RepLSaveExampleBatchesCallback:
         to_save = [
             'contexts', 'targets', 'extra_context', 'encoded_contexts',
             'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
-            'decoded_targets', 'traj_ts_info',
+            'decoded_targets', 'traj_ts_info', 'raw_contexts', 'raw_targets',
         ]
 
         for save_name in to_save:
