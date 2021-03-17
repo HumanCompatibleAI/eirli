@@ -168,17 +168,16 @@ def run(n_traj: int, frames_per_traj: int, out_dir: str, dataset_config: dict,
     # now write same trajectories to out_dir
     os.makedirs(out_dir, exist_ok=True)
     trajectories = it.islice(trajectory_iter(webdataset), n_traj)
-    for trajectory in trajectories:
+    for idx, trajectory in enumerate(trajectories):
         traj_dict = concat_traj(trajectory)
-        all_obs = traj_dict['obs']
-        all_next_obs = traj_dict['next_obs']
-        save_kwargs = dict(
-            keep_only_latest=keep_only_latest, border_size=border_size,
-            frames_per_traj=frames_per_traj)
-        save_obs_as_film(
-            all_obs, os.path.join(out_dir, 'obs.png'), **save_kwargs)
-        save_obs_as_film(
-            all_next_obs, os.path.join(out_dir, 'next_obs.png'), **save_kwargs)
+        num_str = f'{idx:06d}'
+        for key in ('obs', 'next_obs'):
+            save_obs_as_film(
+                traj_dict[key],
+                os.path.join(out_dir, f'{key}_{num_str}.png'),
+                keep_only_latest=keep_only_latest,
+                border_size=border_size,
+                frames_per_traj=frames_per_traj)
 
 
 if __name__ == '__main__':
