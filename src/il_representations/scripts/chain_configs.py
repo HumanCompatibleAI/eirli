@@ -2,21 +2,9 @@ from il_representations.scripts.utils import StagesToRun
 import logging
 from ray import tune
 # TODO(sam): GAIL configs
-try:
-    import realistic_benchmarks.policies as rb_policies
-except ImportError:
-    logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
 
 
 def make_chain_configs(experiment_obj):
-
-    @experiment_obj.named_config
-    def minecraft_action_wrapped():
-        # TODO need to define specific just-POV features extractor
-        policy_class = rb_policies.SpaceFlatteningActorCriticPolicy
-        add_env_to_policy_kwargs = True
-        _ = locals()
-        del _
 
     @experiment_obj.named_config
     def cfg_use_magical():

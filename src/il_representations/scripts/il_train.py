@@ -34,6 +34,11 @@ from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
 from il_representations.scripts.utils import print_policy_info
 
+try:
+    import realistic_benchmarks.policies as rb_policies
+except ImportError:
+    logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+
 bc_ingredient = Ingredient('bc')
 
 
@@ -156,6 +161,13 @@ def default_config():
     _ = locals()
     del _
 
+@il_train_ex.named_config
+def minecraft_action_wrapped():
+    # TODO need to define specific just-POV features extractor
+    policy_class = rb_policies.SpaceFlatteningActorCriticPolicy
+    add_env_to_policy_kwargs = True
+    _ = locals()
+    del _
 
 @il_train_ex.capture
 def make_policy(venv,
