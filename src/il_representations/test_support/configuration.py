@@ -37,13 +37,13 @@ ENV_CFG_TEST_CONFIGS = [
 if benchmark_is_available('minecraft'):
     # Doing this this way because we need to import configuration elements from RB
     from realistic_benchmarks import wrappers as rb_wrappers
-    from il_representations.envs.utils import MinecraftPOVWrapper, TestingFiftyStepLimitWrapper
+    from il_representations.envs.utils import MinecraftPOVWrapper, Testing2500StepLimitWrapper
     ENV_CFG_TEST_CONFIGS.append(
         {
             'benchmark_name': 'minecraft',
             'task_name': 'NavigateVectorObf',
             'minecraft_max_env_steps': 100,
-            'minecraft_wrappers': [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, TestingFiftyStepLimitWrapper]
+            'minecraft_wrappers': [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, Testing2500StepLimitWrapper]
         }
     )
 

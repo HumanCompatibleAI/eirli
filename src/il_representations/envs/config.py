@@ -5,7 +5,7 @@ vecenvs (`venv_opts_ingredient`), and for loading data
 import os
 import logging
 from sacred import Ingredient
-from il_representations.envs.utils import MinecraftPOVWrapper, TestingFiftyStepLimitWrapper
+from il_representations.envs.utils import MinecraftPOVWrapper, Testing2500StepLimitWrapper
 try:
     import realistic_benchmarks.wrappers as rb_wrappers
 except ImportError:
@@ -83,11 +83,9 @@ def env_cfg_defaults():
 
 @env_cfg_ingredient.named_config
 def use_dict_wrappers():
-    minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, TestingFiftyStepLimitWrapper]
+    minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, Testing2500StepLimitWrapper]
     _ = locals()
     del _
-
-
 
 
 # see venv_opts_defaults docstring for description of this ingredient

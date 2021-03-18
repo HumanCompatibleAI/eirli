@@ -25,9 +25,9 @@ class MinecraftPOVWrapper(ObservationWrapper):
 
 # TODO This is just a hack for dealing with the fact that currently FindCaves
 # never reaches an episode termination condition
-class TestingFiftyStepLimitWrapper(TimeLimit):
+class Testing2500StepLimitWrapper(TimeLimit):
     def __init__(self, env):
-        super().__init__(env, 50)
+        super().__init__(env, 2500)
 
 def wrap_env(env, wrappers):
     for wrapper in wrappers:
