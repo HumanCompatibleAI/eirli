@@ -580,6 +580,51 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_il_movetocorner_demos_magical_test():
+        """Train on demo and test variant demos for MoveToCorner"""
+        il_train = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                },
+            } for task_name in ['MoveToCorner-Demo-v0', 'MoveToCorner-TestAll-v0']]
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_il_movetoregion_demos_magical_test():
+        """Train on demo and test variant demos for MoveToRegion"""
+        il_train = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                },
+            } for task_name in ['MoveToRegion-Demo-v0', 'MoveToRegion-TestAll-v0']]
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_il_matchregions_demos_magical_test():
+        """Train on demo and test variant demos for MatchRegions"""
+        il_train = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_cfg': {
+                    'benchmark_name': 'magical',
+                    'task_name': task_name,
+                },
+            } for task_name in ['MatchRegions-Demo-v0', 'MatchRegions-TestAll-v0']]
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_rand_demos_magical_mt_test():
         """Multi-task training on all MAGICAL tasks."""
         repl = {
@@ -751,23 +796,31 @@ def make_chain_configs(experiment_obj):
             'algo': 'gail',
             'gail': {
                 # These HP values based on defaults in il_train.py as of
-                # 2020-02-01 (which I believe I had already tuned for MAGICAL)
-                'total_timesteps': 250000,
+                # 2021-02-01 (which I believe I had already tuned for MAGICAL)
+                # Update 2021-03-17: looks like those didn't work; now trying
+                # hyperparams that I used for tuning (which were surprisingly
+                # good).
+                'total_timesteps': 500000,
                 'ppo_n_steps': 8,
                 'ppo_n_epochs': 12,
-                'ppo_batch_size': 64,
-                'ppo_init_learning_rate': 6e-5,
-                'ppo_gamma': 0.8,
+                'ppo_batch_size': 48,
+                'ppo_init_learning_rate': 1e-4,
+                'ppo_gamma': 0.99,
                 'ppo_gae_lambda': 0.8,
-                'ppo_ent': 1e-5,
-                'ppo_adv_clip': 0.01,
-                'disc_n_updates_per_round': 12,
+                'ppo_ent': 1e-7,
+                'ppo_adv_clip': 0.05,
+                'disc_n_updates_per_round': 4,
                 'disc_batch_size': 48,
-                'disc_lr': 2.5e-5,
+                'disc_lr': 1e-3,
                 'disc_augs': {
+                    'translate_ex': True,
                     'rotate': True,
+                    'color_jitter_mid': True,
+                    # this looks a bit sus (but still leaving it in)
+                    'flip_lr': True,
                     'noise': True,
-                    'translate': True,
+                    'erase': True,
+                    'gaussian_blur': True,
                 }
             },
             'freeze_encoder': False,
