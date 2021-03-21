@@ -44,7 +44,7 @@ def bc_defaults():
     augs = 'rotate,translate,noise'
     log_interval = 500
     batch_size = 32
-    save_every_n_batches = None
+    save_every_n_epochs = None
     lr = 1e-4
 
     _ = locals()
@@ -248,7 +248,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         l2_weight=1e-5,
     )
 
-    save_interval = bc['save_every_n_batches']
+    save_interval = bc['save_every_n_epochs']
     if save_interval is not None:
         optional_model_saver = BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
