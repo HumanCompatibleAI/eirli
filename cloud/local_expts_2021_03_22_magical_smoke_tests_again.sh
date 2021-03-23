@@ -21,12 +21,13 @@ submit_expt() {
 }
 
 launch_repl_for_env() {
-    echo -e "\n *** TRAINING $repl_config WITH $@ *** \n "
+    echo -e "\n *** REPL+IL RUN WITH $@ *** \n "
     submit_expt stages_to_run=REPL_AND_IL cfg_use_magical \
         cfg_il_bc_20k_nofreeze "$@"
 }
 
 launch_control_for_env() {
+    echo -e "\n *** CONTROL RUN WITH $@ *** \n "
     submit_expt stages_to_run=IL_ONLY cfg_use_magical control_no_ortho_init \
         cfg_il_bc_20k_nofreeze "$@"
 }
@@ -88,4 +89,5 @@ for repl_config in "${repl_configs[@]}"; do
 
     launch_repl_for_env exp_ident="mtest_st_${repl_config}_test_rand_demos" "${repl_config[@]}" env_cfg.task_name=MoveToCorner-Demo-v0 \
         cfg_data_repl_movetocorner_rand_demos_magical_test repl.is_multitask=True
+done
 wait
