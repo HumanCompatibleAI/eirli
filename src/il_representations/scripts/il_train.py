@@ -386,7 +386,7 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
 
-    with contextlib.closing(auto_env.load_vec_env) as venv:
+    with contextlib.closing(auto_env.load_vec_env()) as venv:
         demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
             configs=dataset_configs)
 
