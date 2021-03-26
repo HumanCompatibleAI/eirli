@@ -800,27 +800,34 @@ def make_chain_configs(experiment_obj):
                 # Update 2021-03-17: looks like those didn't work; now trying
                 # hyperparams that I used for tuning (which were surprisingly
                 # good).
-                'total_timesteps': 500000,
-                'ppo_n_steps': 8,
-                'ppo_n_epochs': 12,
+                # Update 2021-03-19: updating these AGAIN to match best run
+                # during MatchRegions tuning. Still NFI why this is so hard to
+                # train :(
+                # (current hypothesis: the HPs don't really matter, but the
+                # fact that I'm only using 5 trajectories is killing
+                # performance)
+                'total_timesteps': 250000,
+                'ppo_n_steps': 5,
+                'ppo_n_epochs': 10,
                 'ppo_batch_size': 48,
-                'ppo_init_learning_rate': 1e-4,
+                'ppo_init_learning_rate': 8.87e-5,
+                'ppo_final_learning_rate': 0.0,
                 'ppo_gamma': 0.99,
-                'ppo_gae_lambda': 0.8,
-                'ppo_ent': 1e-7,
-                'ppo_adv_clip': 0.05,
-                'disc_n_updates_per_round': 4,
+                'ppo_gae_lambda': 0.70,
+                'ppo_ent': 1.5e-7,
+                'ppo_adv_clip': 0.037,
+                'disc_n_updates_per_round': 3,
                 'disc_batch_size': 48,
-                'disc_lr': 1e-3,
+                'disc_lr': 0.001,
                 'disc_augs': {
-                    'translate_ex': True,
-                    'rotate': True,
-                    'color_jitter_mid': True,
+                    'color_jitter_mid': False,
+                    'erase': True,
                     # this looks a bit sus (but still leaving it in)
                     'flip_lr': True,
-                    'noise': True,
-                    'erase': True,
                     'gaussian_blur': True,
+                    'noise': True,
+                    'rotate': False,
+                    'translate': True,
                 }
             },
             'freeze_encoder': False,
