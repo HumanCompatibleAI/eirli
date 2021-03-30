@@ -1,6 +1,5 @@
 from il_representations.scripts.utils import StagesToRun
 from ray import tune
-# TODO(sam): GAIL configs
 
 
 def make_chain_configs(experiment_obj):
@@ -883,6 +882,63 @@ def make_chain_configs(experiment_obj):
             'n_envs': 32,
             'venv_parallel': True,
             'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def gail_mr_config_2021_03_29():
+        """500k-step GAIL config tuned (and tested) for MatchRegions. Should get
+        between ~0.42 and ~0.49 mean score (averaged across all variants)."""
+        il_train = {
+            "algo": "gail",
+            "dataset_configs": [{"type": "demos"}],
+            "freeze_encoder": False,
+            "gail": {
+                "disc_augs": {
+                    "color_jitter_mid": True,
+                    "erase": True,
+                    "flip_lr": True,
+                    "gaussian_blur": True,
+                    "noise": True,
+                    "rotate": True,
+                    "translate_ex": False
+                },
+                "disc_batch_size": 48,
+                "disc_lr": 0.0005718485231390044,
+                "disc_n_updates_per_round": 2,
+                "log_interval_steps": 10000,
+                "ppo_adv_clip": 0.006035475207613115,
+                "ppo_batch_size": 48,
+                "ppo_clip_reward": float('inf'),
+                "ppo_ent": 4.5401344442176644e-08,
+                "ppo_final_learning_rate": 0.0,
+                "ppo_gae_lambda": 0.7648620566937083,
+                "ppo_gamma": 0.9853500136087187,
+                "ppo_init_learning_rate": 0.00025070798829149955,
+                "ppo_max_grad_norm": 1.0,
+                "ppo_n_epochs": 7,
+                "ppo_n_steps": 7,
+                "ppo_norm_reward": True,
+                "ppo_reward_std": 0.01,
+                "save_every_n_steps": 10000000000,
+                "total_timesteps": 500000
+            },
+            "log_std_init": 0.0,
+            "ortho_init": False,
+            "postproc_arch": [],
+            "print_policy_summary": True,
+            "shuffle_buffer_size": 1024,
+            "torch_num_threads": 1
+        }
+        env_cfg = {
+            "benchmark_name": "magical",
+            "task_name": "MatchRegions-Demo-v0"
+        }
+        venv_opts = {
+            "n_envs": 32,
+            "venv_parallel": True
         }
 
         _ = locals()
