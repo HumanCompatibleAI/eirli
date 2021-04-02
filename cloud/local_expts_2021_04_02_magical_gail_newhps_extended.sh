@@ -38,7 +38,7 @@ for repl_config in "${repl_configs[@]}"; do
             exp_ident="magigail_${repl_config}_rand_demos_test"
         # with frozen discriminator encoder, but nothing else frozen
         do_magical_repl_run "$repl_config" $env_dataset_config \
-            "freeze_encoder=False" "gail.freeze_disc_encoder=True" \
+            "il_train.freeze_encoder=False" "il_train.gail.freeze_disc_encoder=True" \
             exp_ident="magigail_${repl_config}_frozenc_rand_demos_test"
     done
 done
