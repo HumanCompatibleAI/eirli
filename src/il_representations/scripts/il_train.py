@@ -93,6 +93,10 @@ def gail_defaults():
     ppo_clip_reward = float('inf')
     # target standard deviation for rewards
     ppo_reward_std = 0.01
+    # set these to True/False (or non-None, tru-ish/false-ish values) in order
+    # to override the root freeze_encoder setting (they will produce warnings)
+    freeze_pol_encoder = None
+    freeze_disc_encoder = None
 
     disc_n_updates_per_round = 12
     disc_batch_size = 48
@@ -178,6 +182,8 @@ def default_config():
     # (smaller = lower memory usage, but less effective shuffling)
     shuffle_buffer_size = 1024
     # should we freeze weights of the encoder?
+    # TODO(sam): remove this global setting entirely & replace it with BC and
+    # GAIL-specific settings so that we can control which models get frozen
     freeze_encoder = False
     # these defaults are mostly optimised for GAIL, but should be fine for BC
     # too (it only uses the venv for evaluation)
@@ -206,7 +212,7 @@ def default_config():
 @il_train_ex.capture
 def load_encoder(*,
                  encoder_path,
-                 freeze_encoder,
+                 freeze,
                  encoder_kwargs,
                  observation_space):
     if encoder_path is not None:
@@ -214,7 +220,7 @@ def load_encoder(*,
         assert isinstance(encoder, nn.Module)
     else:
         encoder = BaseEncoder(observation_space, **encoder_kwargs)
-    if freeze_encoder:
+    if freeze:
         freeze_params(encoder)
         assert len(list(encoder.parameters())) == 0
     return encoder
@@ -227,13 +233,14 @@ def make_policy(*,
                 ortho_init,
                 log_std_init,
                 postproc_arch,
-                freeze_encoder,
+                freeze_pol_encoder,
                 lr_schedule=None,
                 print_policy_summary=True):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
-    encoder = load_encoder(observation_space=observation_space)
+    encoder = load_encoder(observation_space=observation_space,
+                           freeze=freeze_pol_encoder)
     policy_kwargs = {
         'features_extractor_class': EncoderFeatureExtractor,
         'features_extractor_kwargs': {
@@ -279,9 +286,11 @@ def add_infos(data_iter):
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
-                   device_name, final_pol_name, shuffle_buffer_size):
+                   device_name, final_pol_name, shuffle_buffer_size,
+                   freeze_encoder):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
-                         action_space=venv_chans_first.action_space)
+                         action_space=venv_chans_first.action_space,
+                         freeze_pol_encoder=freeze_encoder)
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
@@ -333,6 +342,22 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
 
 
 @il_train_ex.capture
+def _gail_should_freeze(thing, *, freeze_encoder, gail):
+    """Determine whether we should freeze policy/discriminator. There's a
+    root-level freeze_encoder setting in il_train, but we can override it with
+    gail.freeze_{pol,disc}_encoder (if those are not None)."""
+    assert thing in ('pol', 'disc')
+    specific_freeze_name = f'freeze_{thing}_encoder'
+    specific_freeze = gail[specific_freeze_name]
+    if specific_freeze is not None and specific_freeze != freeze_encoder:
+        logging.warning(f"Overriding global freeze_encoder={freeze_encoder} "
+                        f"with {specific_freeze_name}={specific_freeze} for "
+                        f"{thing}")
+        return specific_freeze
+    return thing
+
+
+@il_train_ex.capture
 def do_training_gail(
     *,
     venv_chans_first,
@@ -349,8 +374,8 @@ def do_training_gail(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
         encoder=load_encoder(
-            observation_space=venv_chans_first.observation_space),
-    )
+            observation_space=venv_chans_first.observation_space,
+            freeze=_gail_should_freeze('disc')))
 
     def policy_constructor(observation_space,
                            action_space,
@@ -361,7 +386,8 @@ def do_training_gail(
         assert not use_sde
         return make_policy(observation_space=observation_space,
                            action_space=action_space,
-                           lr_schedule=lr_schedule)
+                           lr_schedule=lr_schedule,
+                           freeze_pol_encoder=_gail_should_freeze('pol'))
 
     def linear_lr_schedule(prog_remaining):
         """Linearly anneal LR from `init` to `final` (both taken from context).
