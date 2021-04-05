@@ -1,6 +1,6 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, infer_action_shape_info
+    RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, \
     AsymmetricProjectionHead
@@ -278,7 +278,7 @@ class Jigsaw(RepresentationLearner):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
-        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
+        algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
                                      decoder=PixelDecoder,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,

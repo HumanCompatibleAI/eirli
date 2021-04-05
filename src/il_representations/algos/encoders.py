@@ -1,5 +1,6 @@
 import copy
 import os
+import math
 import traceback
 import warnings
 import inspect
@@ -501,6 +502,43 @@ class VAEEncoder(BaseEncoder):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
         # So we just create a Dirac Delta distribution around the pixel values
         return Delta(x)
+
+
+class JigsawEncoder(BaseEncoder):
+    """
+    A siamese-ennead network as defined in Unsupervised Learning of Visual
+    Representations by Solving Jigsaw Puzzles. It takes n_tiles images one
+    by one, then concat their output representations.
+    """
+    def __init__(self, obs_space, representation_dim, latent_dim=None, n_tiles=9):
+        self.n_tiles = n_tiles
+        if self.n_tiles != 9:
+            raise NotImplementedError('Currently only support n_tiles=9')
+        super().__init__(obs_space, representation_dim, latent_dim=latent_dim)
+
+    def encode_context(self, x, traj_info):
+        x = self.img_to_tiles(x)
+        encoder_output = []
+        for i in range(self.n_tiles):
+            input_i = x[:, i, :, :, :]
+            output_i = self.forward(input_i, traj_info)
+            encoder_output.append(output_i)
+        return torch.cat(encoder_output, axis=1)
+
+    def img_to_tiles(self, img):
+        """
+        Input:
+            img (tensor) - image to be processed, with shape [batch_size, 3, H, W]
+        Return:
+            img_tiles (tensor) - Processed image tiles with shape [batch_size, 9, 3, H/3, W/3]
+        """
+        batch_size, c, h, w = img.shape
+        unit_size = math.sqrt(self.n_tiles)
+
+        h_unit = h/unit_size
+        w_unit = w/unit_size
+        return img.view(batch_size, self.n_tiles, h_unit, w_unit)
+
 
 class TargetStoringActionEncoder(ActionEncodingEncoder):
     """
