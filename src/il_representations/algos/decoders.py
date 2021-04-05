@@ -254,6 +254,22 @@ class BYOLProjectionHead(MomentumProjectionHead):
                                                    prediction_dist.stddev)
 
 
+class JigsawProjectionHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, *, sample=False,
+                 learn_scale=False, architecture=None):
+
+        super(JigsawProjectionHead, self).__init__(representation_dim, projection_shape,
+                                                   sample=sample, learn_scale=learn_scale)
+        if architecture is None:
+            architecture = DEFAULT_PROJECTION_ARCHITECTURE
+        self.projection_layers = get_sequential_from_architecture(architecture,
+                                                                  representation_dim,
+                                                                  projection_shape)
+
+    def forward(self, z, traj_info, extra_context=None):
+        return self.projection_layers(z)
+
+
 class ActionConditionedVectorDecoder(LossDecoder):
     """
     A decoder that concatenates the frame representation

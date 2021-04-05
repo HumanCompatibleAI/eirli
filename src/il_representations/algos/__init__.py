@@ -3,7 +3,7 @@ from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEn
     RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
-    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
+    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
     QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, AELoss
 
@@ -280,7 +280,7 @@ class Jigsaw(RepresentationLearner):
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
 
         algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
-                                     decoder=PixelDecoder,
+                                     decoder=JigsawProjectionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
                                      loss_calculator=VAELoss,
