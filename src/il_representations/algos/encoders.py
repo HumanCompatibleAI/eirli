@@ -105,7 +105,6 @@ def warn_on_non_image_tensor(x):
             f"[{v_min}, {v_max}])")
 
 
-
 NETWORK_ARCHITECTURE_DEFINITIONS = {
     'BasicCNN': [
             {'out_dim': 32, 'kernel_size': 8, 'stride': 4},
@@ -125,6 +124,11 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
         ],
     'MAGICALCNN-resnet-128': [
             {'out_dim': 64, 'stride': 4, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+        ],
+    'MAGICALCNN-resnet-128-x2': [
+            {'out_dim': 64, 'stride': 2, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
         ],
