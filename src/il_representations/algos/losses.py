@@ -262,6 +262,16 @@ class MSELoss(RepresentationLoss):
         return self.criterion(decoded_contexts, targets)
 
 
+class CrossEntropyLoss(RepresentationLoss):
+    def __init__(self, device, sample=False):
+        super().__init__(device, sample)
+        self.criterion = torch.nn.CrossEntropyLoss()
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
+        return self.criterion(decoded_contexts, targets)
+
+
 class VAELoss(RepresentationLoss):
     """
     An additive combination of negative log likelihood and

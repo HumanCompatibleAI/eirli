@@ -5,8 +5,8 @@ from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
     ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, AELoss
-
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, AELoss, \
+    CrossEntropyLoss
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
     AugmentContextAndExtraContext
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
@@ -283,7 +283,7 @@ class Jigsaw(RepresentationLearner):
                                      decoder=JigsawProjectionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
-                                     loss_calculator=VAELoss,
+                                     loss_calculator=CrossEntropyLoss,
                                      target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
                                                          encoder_arch_key=encoder_cls_key,
