@@ -488,6 +488,28 @@ class ActionEncodingEncoder(BaseEncoder):
         return Delta(action_encoding_vector)
 
 
+class ActionEncodingInverseDynamicsEncoder(ActionEncodingEncoder):
+    def __init__(self, obs_space, representation_dim, action_space, learn_scale=False,
+                 obs_encoder_cls=None, action_encoding_dim=48, action_encoder_layers=1,
+                 action_embedding_dim=5, use_lstm=None):
+        super().__init__(
+            obs_space, representation_dim, action_space,
+            learn_scale=learn_scale,
+            obs_encoder_cls=obs_encoder_cls,
+            action_encoding_dim=action_encoding_dim,
+            action_encoder_layers=action_encoder_layers,
+            action_embedding_dim=action_embedding_dim,
+            use_lstm=use_lstm)
+
+    def encode_extra_context(self, x, traj_info):
+        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
+        return self.encode_context(x, traj_info)
+
+    def encode_target(self, x, traj_info):
+        # X here consists of the true actions, which is the "target"
+        return super().__call__(x, traj_info, action=True)
+
+
 class VAEEncoder(BaseEncoder):
     """
     An encoder that uses a normal encoder's logic for encoding
