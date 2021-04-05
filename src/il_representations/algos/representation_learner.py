@@ -115,6 +115,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                                  decoder_kwargs.get('learn_scale', False))
         assert not duplicate_learn_scale, "learn_scale should be set on either " \
                                           "the encoder or the decoder at one time"
+
         self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **decoder_kwargs).to(self.device)
 
@@ -301,6 +302,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
+                # This is typically a noop, but sometimes we also augment the extra context
+                extra_context = self.augmenter.augment_extra_context(extra_context)
 
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
@@ -388,6 +391,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # then do one last log dump to make sure everything is there
         if not (batches_trained % self.log_interval == 0):
             logger.dump(step=batches_trained)
+
 
         assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"
