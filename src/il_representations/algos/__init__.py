@@ -270,6 +270,28 @@ class VariationalAutoencoder(RepresentationLearner):
         super().__init__(**kwargs)
 
 
+class Jigsaw(RepresentationLearner):
+    """
+    A basic Jigsaw task that requires a network to solve Jigsaw puzzles.
+    """
+    def __init__(self, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+
+        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
+                                     decoder=PixelDecoder,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=VAELoss,
+                                     target_pair_constructor=IdentityPairConstructor,
+                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
+                                                         encoder_arch_key=encoder_cls_key,
+                                                         sample=True))
+
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        super().__init__(**kwargs)
+
+
 class InverseDynamicsPrediction(RepresentationLearner):
     """
     An implementation of an inverse dynamics model that tries to predict the action taken
