@@ -128,7 +128,11 @@ class LossDecoder(nn.Module):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
         if stdev_layer is None:
-            stddev = z_dist.stddev
+            # We better not have had a learned standard deviation in
+            # the encoder, since there's no clear way on how to pass
+            # it forward
+            assert np.all((z_dist.stddev == 1).numpy())
+            stddev = self.ones_like_projection_dim(mean)
         else:
             stddev = stdev_layer(z_vector)
         return independent_multivariate_normal(mean, stddev)
@@ -290,6 +294,30 @@ class ActionConditionedVectorDecoder(LossDecoder):
                                                stddev=scale)
 
 
+class ContrastiveInverseDynamicsConcatenationHead(SymmetricProjectionHead):
+    def __init__(self, representation_dim, projection_shape, sample=False, projection_architecture=None,
+                 learn_scale=False):
+        # For now, we assume the basic setup
+        assert not sample
+        assert not learn_scale
+        super().__init__(2 * representation_dim, projection_shape, sample=sample,
+                         projection_architecture=projection_architecture, learn_scale=learn_scale)
+
+    def forward(self, z_dist, traj_info, extra_context=None):
+        # vector representations of current and future frames
+        z = self.get_vector(z_dist)
+        z_future = self.get_vector(extra_context)
+
+        # concatenate current and future frames together
+        z_merged = torch.cat([z, z_future], dim=1)
+        stddev_merged = torch.cat([z_dist.stddev, z_dist.stddev], dim=1)
+        z_dist_merged = independent_multivariate_normal(mean=z_merged, stddev=stddev_merged)
+        return super().forward(z_dist_merged, traj_info)
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
+
+
 class ActionPredictionHead(LossDecoder):
     """
     A decoder that takes in two vector representations of frames
@@ -437,6 +465,10 @@ class PixelDecoder(LossDecoder):
         # Project z to have the number of dimensions needed to reshape into (channels, shape, shape)
         if self.action_representation_dim is not None:
             action_representation = self.get_vector(extra_context)
+            if len(action_representation.shape) == 1:
+                batch_dim = action_representation.shape[0]
+                action_representation = torch.reshape(action_representation, (batch_dim, 1))
+
             logging.debug(f"Action Representation shape: {action_representation.shape}")
             projected_z = self.initial_layer(torch.cat([z, action_representation], dim=1))
         else:
