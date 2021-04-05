@@ -30,6 +30,8 @@ admittedly a somewhat fuzzy match to the actual variety of techniques.
 
 from abc import ABC, abstractmethod
 import itertools
+import math
+import random
 
 import numpy as np
 
@@ -167,3 +169,60 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 act_queue.reset()
             else:
                 timestep += 1
+
+
+class JigsawPairConstructor(TargetPairConstructor):
+    def __init__(self, permutation_path='data/jigsaw_permutations_1000.npy', n_tiles=9):
+        # TODO: Find the actual path
+        self.permutation_path = permutation_path
+        self.permutation = np.load(self.permutation_path)
+        self.n_tiles = n_tiles
+        pass
+
+    def __call__(self, data_iter):
+        timestep = 0
+        traj_ind = 0
+
+        # Get tile dim
+        first_dict = next(data_iter)
+        original_h, original_w = first_dict['obs'][0].shape[-2], \
+                                 first_dict['obs'][0].shape[-1]
+
+        # We -2 after division here because, as the original paper indicated,
+        # preserving the whole image tile may let the network exploit edge information
+        # and not really learn useful representations. Therefore, here we are using
+        # the central-cropped version of these image tiles.
+        tile_h, tile_w = original_h / math.sqrt(self.n_tiles) - 2, \
+                         original_w / math.sqrt(self.n_tiles) - 2
+
+        permutation_class = [x for x in range(len(self.permutation))]
+        random.shuffle(permutation_class)
+        permute_idx = 0
+
+        for step_dict in data_iter:
+            # Process images into image tiles
+            obs = step_dict['obs']
+            processed_obs_list = []
+            target_list = []
+            for o in obs:
+                processed_obs = self.make_jigsaw_puzzle(o, permutation_class[permute_idx])
+                processed_obs_list.append(processed_obs)
+                target_list.append(permutation_class[permute_idx])
+                permute_idx = (permute_idx + 1) % len(self.permutation)
+
+            yield {
+                'context': processed_obs_list,
+                'target': target_list,
+                'extra_context': [],
+                'traj_ts_ids': [traj_ind, timestep],
+            }
+            if step_dict['dones']:
+                traj_ind += 1
+                timestep = 0
+            else:
+                timestep += 1
+
+    def make_jigsaw_puzzle(self, image, permutation_type):
+        permute = self.permutation[permutation_type]
+        return 0
+
