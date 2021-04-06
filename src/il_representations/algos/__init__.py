@@ -9,7 +9,8 @@ from il_representations.algos.losses import SymmetricContrastiveLoss, Asymmetric
     CrossEntropyLoss
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
     AugmentContextAndExtraContext
-from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
+from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor, \
+    JigsawPairConstructor
 from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
@@ -284,10 +285,7 @@ class Jigsaw(RepresentationLearner):
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
                                      loss_calculator=CrossEntropyLoss,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
-                                                         sample=True))
+                                     target_pair_constructor=IdentityPairConstructor)
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
