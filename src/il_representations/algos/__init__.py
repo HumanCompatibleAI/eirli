@@ -1,6 +1,7 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info
+    RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info, \
+    ActionEncodingInverseDynamicsEncoder
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
     ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
