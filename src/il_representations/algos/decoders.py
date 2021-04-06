@@ -68,7 +68,10 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
         layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
-    return nn.Sequential(*layers)
+    network = nn.Sequential(*layers)
+    if torch.cuda.is_available():
+        network = network.to(torch.device('cuda'))
+    return network
 
 
 class LossDecoder(nn.Module):
@@ -262,12 +265,25 @@ class JigsawProjectionHead(LossDecoder):
                                                    sample=sample, learn_scale=learn_scale)
         if architecture is None:
             architecture = DEFAULT_PROJECTION_ARCHITECTURE
+
+        self.architecture = architecture
+        self.projection_shape = projection_shape
         self.projection_layers = get_sequential_from_architecture(architecture,
                                                                   representation_dim,
                                                                   projection_shape)
 
     def forward(self, z, traj_info, extra_context=None):
+        # For Jigsaw, the z input dimension depends on state observation shape;
+        # hence we might need to adjust projection_layers input dimension on the fly.
+        z_dim = z.shape[1]
+        if z_dim != self.projection_layers[0].in_features:
+            self.projection_layers = get_sequential_from_architecture(self.architecture,
+                                                                      z_dim,
+                                                                      self.projection_shape)
         return self.projection_layers(z)
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
 
 
 class ActionConditionedVectorDecoder(LossDecoder):

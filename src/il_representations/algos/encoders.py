@@ -552,7 +552,6 @@ class JigsawEncoder(BaseEncoder):
         encoder_output = []
         for i in range(self.n_tiles):
             input_i = x[:, i, :, :, :]
-            breakpoint()
             output_i = self.forward(input_i, traj_info).mean
             encoder_output.append(output_i)
         return torch.cat(encoder_output, axis=1)
@@ -571,6 +570,11 @@ class JigsawEncoder(BaseEncoder):
         w_unit = int(w/unit_size)
 
         return img.view(batch_size, self.n_tiles, c, h_unit, w_unit)
+
+    def encode_target(self, x, traj_info):
+        # X here is the correct class number of the jigsaw permutation. We don't
+        # need any modification / encoding here.
+        return Delta(x)
 
 
 class TargetStoringActionEncoder(ActionEncodingEncoder):
