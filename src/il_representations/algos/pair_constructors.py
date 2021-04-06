@@ -34,6 +34,7 @@ import math
 import random
 
 import numpy as np
+from torchvision.transforms import functional as F
 
 
 class TargetPairConstructor(ABC):
@@ -205,7 +206,10 @@ class JigsawPairConstructor(TargetPairConstructor):
             processed_obs_list = []
             target_list = []
             for o in obs:
-                processed_obs = self.make_jigsaw_puzzle(o, permutation_class[permute_idx])
+                processed_obs = self.make_jigsaw_puzzle(o,
+                                                        permutation_class[permute_idx],
+                                                        tile_h,
+                                                        tile_w)
                 processed_obs_list.append(processed_obs)
                 target_list.append(permutation_class[permute_idx])
                 permute_idx = (permute_idx + 1) % len(self.permutation)
@@ -222,7 +226,20 @@ class JigsawPairConstructor(TargetPairConstructor):
             else:
                 timestep += 1
 
-    def make_jigsaw_puzzle(self, image, permutation_type):
-        permute = self.permutation[permutation_type]
-        return 0
+    def make_jigsaw_puzzle(self, image, permutation_type, tile_h, tile_w):
+        permute = self.permutation[permutation_type]  # len(permute) = 9
+        n_tiles_sqrt = math.sqrt(self.n_tiles)  # If n_tiles = 9, n_tiles_sqrt = 3
+
+        img_tiles = []
+        unit_h = int(image.shape[0] / n_tiles_sqrt)
+        unit_w = int(image.shape[1] / n_tiles_sqrt)
+
+        for pos in permute:
+            pos_h = int(pos // n_tiles_sqrt) * unit_h
+            pos_w = int(pos % n_tiles_sqrt) * unit_w
+
+            # We +1 after pos_h and pos_w to center crop
+            img_tiles.append(F.crop(image, pos_h + 1, pos_w + 1, tile_h, tile_w))
+
+        return img_tiles
 
