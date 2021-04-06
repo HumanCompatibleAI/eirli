@@ -574,7 +574,7 @@ class JigsawEncoder(BaseEncoder):
     def encode_target(self, x, traj_info):
         # X here is the correct class number of the jigsaw permutation. We don't
         # need any modification / encoding here.
-        return Delta(x)
+        return x
 
 
 class TargetStoringActionEncoder(ActionEncodingEncoder):
