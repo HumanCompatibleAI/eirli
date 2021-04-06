@@ -287,9 +287,11 @@ class Jigsaw(RepresentationLearner):
                                      augmenter=NoAugmentation,
                                      loss_calculator=CrossEntropyLoss,
                                      target_pair_constructor=JigsawPairConstructor,
+                                     preprocess_target=False,
+                                     projection_dim=1000,
                                      encoder_kwargs=dict(obs_encoder_cls_kwargs={'contain_fc_layer': False}),
                                      decoder_kwargs=dict(architecture=[{'output_dim': 128},
-                                                                       {'output_dim': 127}]))
+                                                                       {'output_dim': 128}]))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
