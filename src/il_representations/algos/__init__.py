@@ -285,7 +285,7 @@ class Jigsaw(RepresentationLearner):
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
                                      loss_calculator=CrossEntropyLoss,
-                                     target_pair_constructor=IdentityPairConstructor)
+                                     target_pair_constructor=JigsawPairConstructor)
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
