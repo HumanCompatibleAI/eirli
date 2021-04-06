@@ -193,8 +193,8 @@ class JigsawPairConstructor(TargetPairConstructor):
         # preserving the whole image tile may let the network exploit edge information
         # and not really learn useful representations. Therefore, here we are using
         # the central-cropped version of these image tiles.
-        tile_h, tile_w = original_h / math.sqrt(self.n_tiles) - 2, \
-                         original_w / math.sqrt(self.n_tiles) - 2
+        tile_h, tile_w = int(original_h / math.sqrt(self.n_tiles)) - 2, \
+                         int(original_w / math.sqrt(self.n_tiles)) - 2
 
         permutation_class = [x for x in range(len(self.permutation))]
         random.shuffle(permutation_class)
@@ -239,7 +239,7 @@ class JigsawPairConstructor(TargetPairConstructor):
             pos_w = int(pos % n_tiles_sqrt) * unit_w
 
             # We +1 after pos_h and pos_w to center crop
-            img_tiles.append(F.crop(image, pos_h + 1, pos_w + 1, tile_h, tile_w))
+            img_tiles.append(image[pos_h + 1:pos_h + 1 + tile_h, pos_w + 1:pos_w + 1 + tile_w])
 
         return img_tiles
 
