@@ -214,6 +214,8 @@ class JigsawPairConstructor(TargetPairConstructor):
                 target_list.append(permutation_class[permute_idx])
                 permute_idx = (permute_idx + 1) % len(self.permutation)
 
+            processed_obs_list = np.array(processed_obs_list)
+            target_list = np.array(target_list)
             yield {
                 'context': processed_obs_list,
                 'target': target_list,
@@ -239,7 +241,12 @@ class JigsawPairConstructor(TargetPairConstructor):
             pos_w = int(pos % n_tiles_sqrt) * unit_w
 
             # We +1 after pos_h and pos_w to center crop
-            img_tiles.append(image[pos_h + 1:pos_h + 1 + tile_h, pos_w + 1:pos_w + 1 + tile_w])
+            processed_image = image[pos_h + 1:pos_h + 1 + tile_h, pos_w + 1:pos_w + 1 + tile_w]
+            img_tiles.append(processed_image)
 
+        new_img_h = int(img_tiles[0].shape[0] * n_tiles_sqrt)
+        new_img_w = int(img_tiles[0].shape[1] * n_tiles_sqrt)
+
+        img_tiles = np.array(img_tiles).reshape([new_img_h, new_img_w])
         return img_tiles
 
