@@ -201,6 +201,7 @@ class MAGICALCNN(nn.Module):
                  dropout=None,
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet-128',
+                 contain_fc_layer=True,
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
@@ -249,19 +250,21 @@ class MAGICALCNN(nn.Module):
             conv_layers.append(nn.Conv2d(in_dim, 32, 1))
         conv_layers.append(nn.Flatten())
 
-        # another FC layer to make feature maps the right size
-        fc_in_size, = compute_output_shape(observation_space, conv_layers)
-        fc_layers = [
-            nn.Linear(fc_in_size, 128 * w),
-            ActivationCls(),
-            nn.Linear(128 * w, representation_dim),
-        ]
-        if use_sn:
-            # apply SN to linear layers too
+        fc_layers = []
+        if contain_fc_layer:
+            # another FC layer to make feature maps the right size
+            fc_in_size, = compute_output_shape(observation_space, conv_layers)
             fc_layers = [
-                nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
-                for layer in fc_layers
+                nn.Linear(fc_in_size, 128 * w),
+                ActivationCls(),
+                nn.Linear(128 * w, representation_dim),
             ]
+            if use_sn:
+                # apply SN to linear layers too
+                fc_layers = [
+                    nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
+                    for layer in fc_layers
+                ]
 
         all_layers = [*conv_layers, *fc_layers]
         self.shared_network = nn.Sequential(*all_layers)
@@ -536,34 +539,38 @@ class JigsawEncoder(BaseEncoder):
     Representations by Solving Jigsaw Puzzles. It takes n_tiles images one
     by one, then concat their output representations.
     """
-    def __init__(self, obs_space, representation_dim, latent_dim=None, n_tiles=9):
+    def __init__(self, obs_space, representation_dim, latent_dim=None, n_tiles=9,
+                 obs_encoder_cls_kwargs=None):
         self.n_tiles = n_tiles
         if self.n_tiles != 9:
             raise NotImplementedError('Currently only support n_tiles=9')
-        super().__init__(obs_space, representation_dim, latent_dim=latent_dim)
+        super().__init__(obs_space, representation_dim, latent_dim=latent_dim,
+                         obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
 
     def encode_context(self, x, traj_info):
         x = self.img_to_tiles(x)
         encoder_output = []
         for i in range(self.n_tiles):
             input_i = x[:, i, :, :, :]
-            output_i = self.forward(input_i, traj_info)
+            breakpoint()
+            output_i = self.forward(input_i, traj_info).mean
             encoder_output.append(output_i)
         return torch.cat(encoder_output, axis=1)
 
     def img_to_tiles(self, img):
         """
         Input:
-            img (tensor) - image to be processed, with shape [batch_size, 3, H, W]
+            img (tensor) - image to be processed, with shape [batch_size, C, H, W]
         Return:
-            img_tiles (tensor) - Processed image tiles with shape [batch_size, 9, 3, H/3, W/3]
+            img_tiles (tensor) - Processed image tiles with shape [batch_size, 9, C, H/3, W/3]
         """
         batch_size, c, h, w = img.shape
         unit_size = math.sqrt(self.n_tiles)
 
-        h_unit = h/unit_size
-        w_unit = w/unit_size
-        return img.view(batch_size, self.n_tiles, h_unit, w_unit)
+        h_unit = int(h/unit_size)
+        w_unit = int(w/unit_size)
+
+        return img.view(batch_size, self.n_tiles, c, h_unit, w_unit)
 
 
 class TargetStoringActionEncoder(ActionEncodingEncoder):
