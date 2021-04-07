@@ -62,12 +62,11 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
 
     env_spec = data_iterator.spec
 
-    # TODO undo this hack when nearbySmelt is no longer a string
     dummy_env = DummyEnv(action_space=env_spec._action_space,
                          observation_space=env_spec._observation_space)
 
     wrapped_dummy_env = wrap_env(dummy_env, minecraft_wrappers)
-
+    timesteps = 0
     for current_obs, action, reward, next_obs, done in data_iterator.batch_iter(batch_size=1,
                                                                                 num_epochs=1,
                                                                                 epoch_size=n_traj, # TODO does this make sense as a value of epoch_size?
@@ -82,6 +81,9 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
         appended_trajectories['obs'].append(wrapped_obs)
         appended_trajectories['acts'].append(wrapped_action)
         appended_trajectories['dones'].append(done[0])
+        timesteps += chunk_length
+        if timesteps % 1000 == 0:
+            print(f"{timesteps} timesteps loaded")
     # Now, we need to go through and construct `next_obs` values, which aren't natively returned
     # by the environment
     merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
