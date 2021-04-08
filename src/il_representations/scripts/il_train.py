@@ -359,7 +359,7 @@ def _gail_should_freeze(thing, *, freeze_encoder, gail):
                         f"with {specific_freeze_name}={specific_freeze} for "
                         f"{thing}")
         return specific_freeze
-    return thing
+    return freeze_encoder
 
 
 @il_train_ex.capture
