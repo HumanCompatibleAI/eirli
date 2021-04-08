@@ -84,7 +84,7 @@ def gail_defaults():
     ppo_final_learning_rate = 0.0
     ppo_gamma = 0.985
     ppo_gae_lambda = 0.76
-    ppo_ent = 4.5
+    ppo_ent = 4.5e-8
     ppo_adv_clip = 0.006
     ppo_max_grad_norm = 1.0
     # normalisation + clipping is experimental; previously I just did
