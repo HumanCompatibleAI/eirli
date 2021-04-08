@@ -937,6 +937,8 @@ def make_chain_configs(experiment_obj):
             "task_name": "MatchRegions-Demo-v0"
         }
         venv_opts = {
+            # FIXME(sam): figure out whether having only 8 procs (instead of
+            # 32) crashes perf---might be a bug in my env stuff
             "n_envs": 32,
             "venv_parallel": True
         }

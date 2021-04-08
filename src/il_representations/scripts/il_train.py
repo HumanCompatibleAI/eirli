@@ -7,7 +7,7 @@ import os
 import readline  # noqa: F401
 import signal
 
-from imitation.algorithms.adversarial import GAIL
+from imitation.algorithms.adversarial import AIRL, GAIL
 from imitation.algorithms.bc import BC
 import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
@@ -29,7 +29,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
 from il_representations.il.bc_support import BCModelSaver
-from il_representations.il.disc_rew_nets import ImageDiscrimNet
+from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
@@ -75,17 +75,17 @@ def gail_defaults():
     # hyperparameter. I set this to 32 in the MAGICAL paper, but 24 should work
     # too.
 
-    ppo_n_steps = 8
-    ppo_n_epochs = 12
+    ppo_n_steps = 7
+    ppo_n_epochs = 7
     # "batch size" is actually the size of a _minibatch_. The amount of data
     # used for each training update is ppo_n_steps*n_envs.
-    ppo_batch_size = 64
-    ppo_init_learning_rate = 6e-5
+    ppo_batch_size = 48
+    ppo_init_learning_rate = 0.00025
     ppo_final_learning_rate = 0.0
-    ppo_gamma = 0.8
-    ppo_gae_lambda = 0.8
-    ppo_ent = 1e-5
-    ppo_adv_clip = 0.01
+    ppo_gamma = 0.985
+    ppo_gae_lambda = 0.76
+    ppo_ent = 4.5
+    ppo_adv_clip = 0.006
     ppo_max_grad_norm = 1.0
     # normalisation + clipping is experimental; previously I just did
     # normalisation (to stddev of 0.1) with no clipping
@@ -98,19 +98,24 @@ def gail_defaults():
     freeze_pol_encoder = None
     freeze_disc_encoder = None
 
-    disc_n_updates_per_round = 12
+    disc_n_updates_per_round = 2
     disc_batch_size = 48
-    disc_lr = 2.5e-5
-    disc_augs = "rotate,translate,noise"
+    disc_lr = 0.0006
+    disc_augs = "color_jitter_mid,erase,flip_lr,gaussian_blur,noise,rotate"
 
     # number of env time steps to perform during reinforcement learning
-    total_timesteps = int(1e6)
+    total_timesteps = 500000
     # save intermediate snapshot after this many environment time steps
     save_every_n_steps = 5e4
     # dump logs every <this many> steps (at most)
     # (5000 is about right for MAGICAL; something like 25000 is probably better
     # for DMC)
-    log_interval_steps = 5e3
+    log_interval_steps = 10000
+
+    # use AIRL objective instead of GAIL objective
+    # TODO(sam): remove this if AIRL doesn't work; if AIRL does work, rename
+    # `gail_ingredient` to `adv_il_ingredient` or similar
+    use_airl = False
 
     _ = locals()
     del _
@@ -370,12 +375,6 @@ def do_training_gail(
     encoder_path,
 ):
     device = get_device(device_name)
-    discrim_net = ImageDiscrimNet(
-        observation_space=venv_chans_first.observation_space,
-        action_space=venv_chans_first.action_space,
-        encoder=load_encoder(
-            observation_space=venv_chans_first.observation_space,
-            freeze=_gail_should_freeze('disc')))
 
     def policy_constructor(observation_space,
                            action_space,
@@ -436,21 +435,42 @@ def do_training_gail(
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
-    trainer = GAIL(
-        venv=venv_chans_first,
-        expert_data=data_loader,
-        gen_algo=ppo_algo,
-        n_disc_updates_per_round=gail['disc_n_updates_per_round'],
-        expert_batch_size=gail['disc_batch_size'],
-        discrim_kwargs=dict(discrim_net=discrim_net, normalize_images=True),
-        normalize_obs=False,
-        normalize_reward=gail['ppo_norm_reward'],
-        normalize_reward_std=gail['ppo_reward_std'],
-        clip_reward=gail['ppo_clip_reward'],
-        disc_opt_kwargs=dict(lr=gail['disc_lr']),
-        disc_augmentation_fn=augmenter,
-        gen_callbacks=[SB3ScoreLoggingCallback()],
+    common_adv_il_kwargs = dict(
+            venv=venv_chans_first,
+            expert_data=data_loader,
+            gen_algo=ppo_algo,
+            n_disc_updates_per_round=gail['disc_n_updates_per_round'],
+            expert_batch_size=gail['disc_batch_size'],
+            normalize_obs=False,
+            normalize_reward=gail['ppo_norm_reward'],
+            normalize_reward_std=gail['ppo_reward_std'],
+            clip_reward=gail['ppo_clip_reward'],
+            disc_opt_kwargs=dict(lr=gail['disc_lr']),
+            disc_augmentation_fn=augmenter,
+            gen_callbacks=[SB3ScoreLoggingCallback()],
     )
+    if gail['use_airl']:
+        trainer = AIRL(
+            **common_adv_il_kwargs,
+            reward_net_cls=ImageRewardNet,
+            reward_net_kwargs=dict(
+                encoder=load_encoder(
+                    observation_space=venv_chans_first.observation_space,
+                    freeze=_gail_should_freeze('disc'))
+            )
+        )
+    else:
+        discrim_net = ImageDiscrimNet(
+            observation_space=venv_chans_first.observation_space,
+            action_space=venv_chans_first.action_space,
+            encoder=load_encoder(
+                observation_space=venv_chans_first.observation_space,
+                freeze=_gail_should_freeze('disc')))
+        trainer = GAIL(
+            discrim_kwargs=dict(discrim_net=discrim_net,
+                                normalize_images=True),
+            **common_adv_il_kwargs,
+        )
     save_callback = GAILSavePolicyCallback(
         ppo_algo=ppo_algo, save_every_n_steps=gail['save_every_n_steps'],
         save_dir=out_dir)
