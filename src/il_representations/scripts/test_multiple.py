@@ -2,11 +2,11 @@ import os
 import sacred
 import pandas as pd
 import json
+import time
+import datetime
 
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-
-from il_representations.scripts.il_test import il_test_ex
 
 test_multiple_ex = Experiment('test_multiple')
 
@@ -18,10 +18,12 @@ def base_config():
 
     # How many ckpts to test?
     num_test_ckpts = 20
+    cuda_device = 1
+    test_script_path = 'src/il_representations/scripts/il_test.py'
 
 
 @test_multiple_ex.main
-def run(exp_path, ckpt_dir, num_test_ckpts):
+def run(exp_path, ckpt_dir, num_test_ckpts, cuda_device, test_script_path):
     progress_df = pd.read_csv(os.path.join(exp_path, 'progress.csv'))
     total_updates = list(progress_df['n_updates'])[-1]
 
@@ -37,15 +39,20 @@ def run(exp_path, ckpt_dir, num_test_ckpts):
     print(f"Total saved ckpts: {len(module_ckpt_names)} for {total_updates} recorded updates. \n"
           f"Updates per ckpt: {updates_per_ckpt}")
 
+    count = 0
+    start_time = time.time()
     for ckpt_idx in range(0, num_ckpts, test_ckpt_interval):
+        count += 1
+        print(f"Start testing [{count}/{num_test_ckpts}] model...")
         policy_path = os.path.join(ckpt_dir, module_ckpt_names[ckpt_idx])
-        il_test_ex.observers.append(FileStorageObserver('runs/il_test_runs'))
-        result = il_test_ex.run(config_updates={'policy_path': policy_path,
-                                                'env_cfg': {
-                                                    'benchmark_name': exp_config['env_cfg']['benchmark_name'],
-                                                    'task_name': exp_config['env_cfg']['task_name']
-                                                }})
-        print(result)
+
+        os.system(f"CUDA_VISIBLE_DEVICES={cuda_device} xvfb-run -a python {test_script_path} with "
+                  f"policy_path={policy_path} "
+                  f"env_cfg.benchmark_name={exp_config['env_cfg']['benchmark_name']} "
+                  f"env_cfg.task_name={exp_config['env_cfg']['task_name']}")
+
+        print(f"Finished testing [{count}/{num_test_ckpts}] models. "
+              f"Time elapsed: {str(datetime.timedelta(seconds=time.time() - start_time))}")
 
 
 if __name__ == '__main__':
