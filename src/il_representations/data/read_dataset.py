@@ -166,8 +166,6 @@ def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
             `StopIteration`. If you aren't relying on `DataLoader` raising
             `StopIteration`, then you can make this "length" as large as you
             like.
-        n_trajs (Optional[int]): the total number of trajectories we want to use
-            for training. The default 'None' will use the whole dataset.
         shuffle (bool): should we use an intermediate buffer to shuffle
             samples, after applying preprocessors but before forming batches?
         shuffle_buffer_size (int): size of the intermediate buffer to use for

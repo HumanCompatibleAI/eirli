@@ -46,6 +46,10 @@ def bc_defaults():
     batch_size = 32
     save_every_n_epochs = None
     lr = 1e-4
+    # nominal_length is arbitrary, since nothing in BC uses len(dataset)
+    # (however, large numbers prevent us from having to recreate the
+    # data iterator frequently)
+    nominal_length = int(1e6)
 
     _ = locals()
     del _
@@ -226,10 +230,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
-        # nominal_length is arbitrary, since nothing in BC uses len(dataset)
-        # (however, large numbers prevent us from having to recreate the
-        # data iterator frequently)
-        nominal_length=int(1e6),
+        nominal_length=bc['nominal_length'],
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
         preprocessors=[subdataset_extractor, streaming_extract_keys("obs", "acts")])
@@ -252,6 +253,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     if save_interval is not None:
         optional_model_saver = BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
+                                            bc['nominal_length'],
                                             save_interval)
     else:
         optional_model_saver = None
