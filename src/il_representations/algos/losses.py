@@ -1,8 +1,9 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Independent
+import stable_baselines3.common.logger as sb_logger
+from pyro.distributions import Delta
+import imitation.util.logger as logger
 
 
 class RepresentationLoss(ABC):
@@ -10,14 +11,12 @@ class RepresentationLoss(ABC):
         self.device = device
         self.sample = sample
 
+    @abstractmethod
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
         pass
 
-    def get_vector_forms(self, decoded_context_dist, target_dist, encoded_context_dist):
-        decoded_contexts = decoded_context_dist.sample() if self.sample else decoded_context_dist.loc
-        targets = target_dist.sample() if self.sample else target_dist.loc
-        encoded_contexts = encoded_context_dist.sample() if self.sample else encoded_context_dist.loc
-        return decoded_contexts, targets, encoded_contexts
+    def get_vector_forms(self, *args):
+        return [el.rsample() if self.sample else el.mean for el in args]
 
 
 class AsymmetricContrastiveLoss(RepresentationLoss):
@@ -46,7 +45,7 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
-        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
 
         z_i = decoded_contexts
         z_j = targets
@@ -73,8 +72,10 @@ class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
     original images, and (3) all the images in the queue as negative examples. This is implemented with setting
     use_batch_neg=True.
     """
+
     def __init__(self, device, sample=False, temp=0.1, use_batch_neg=False):
         super(QueueAsymmetricContrastiveLoss, self).__init__(device, sample)
+
         self.temp = temp
         self.use_batch_neg = use_batch_neg  # Use other images in current batch as negative samples
 
@@ -159,8 +160,10 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     A contrastive loss that does prediction "in both directions," i.e. that calculates logits of IJ similarity against
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
+
     def __init__(self, device, sample=False, temp=0.1, normalize=True):
         super(SymmetricContrastiveLoss, self).__init__(device, sample)
+
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
 
@@ -177,7 +180,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
-        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
         z_i = decoded_contexts
         z_j = targets
         batch_size = z_i.shape[0]
@@ -193,14 +196,20 @@ class SymmetricContrastiveLoss(RepresentationLoss):
 
         # Values on the diagonal line are each image's similarity with itself
         logits_aa = logits_aa - mask
-
         # Similarity of the augmented images with all other augmented images.
         logits_bb = torch.matmul(z_j, z_j.T)  # NxN
         logits_bb = logits_bb - mask
-
         # Similarity of original images and augmented images
         logits_ab = torch.matmul(z_i, z_j.T)  # NxN
         logits_ba = torch.matmul(z_j, z_i.T)  # NxN
+
+        avg_self_similarity = logits_ab.diag().mean().item()
+        logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+
+        sb_logger.record('avg_self_similarity', avg_self_similarity)
+        sb_logger.record('avg_other_similarity', avg_other_similarity)
+        sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
 
         # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
         # to both original and augmented images (hence "symmetric").
@@ -217,14 +226,90 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         return self.criterion(logits, labels)
 
 
-class MSELoss(RepresentationLoss):
+class NegativeLogLikelihood(RepresentationLoss):
+    """
+    A version of negative log likelihood that directly calculates from distributions
+    Uses the mean of target_dist as ground truth, calculates log_prob under
+    decoded_context_dist, negates and averages across batch
+    """
     def __init__(self, device, sample=False):
-        super(MSELoss, self).__init__(device, sample)
+        super().__init__(device, sample)
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        assert isinstance(target_dist, Delta), "Target distribution should be a " \
+                                               "Delta distribution around a ground truth value"
+        # target dist is a Dirac Delta distribution containing the ground truth values
+        # decoded_context_dist is a predicted distribution we want to put high probability on the ground truth values
+
+        # Negative log likelihood loss. Using this rather than torch.nn.NLLLoss() so I can work directly
+        # with Torch distribution objects
+        ground_truth = torch.squeeze(target_dist.mean)
+        log_probas = decoded_context_dist.log_prob(ground_truth)
+        return torch.mean(-1*log_probas)
+
+
+class MSELoss(RepresentationLoss):
+    """
+    A loss that calculates Mean Squared Error between samples or means drawn from
+    target_dist and context_dist
+    """
+    def __init__(self, device, sample=False):
+        super().__init__(device, sample)
         self.criterion = torch.nn.MSELoss()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-        decoded_contexts, targets, _ = self.get_vector_forms(decoded_context_dist, target_dist, encoded_context_dist)
+        decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
         return self.criterion(decoded_contexts, targets)
+
+
+class VAELoss(RepresentationLoss):
+    """
+    An additive combination of negative log likelihood and
+    KL divergence between a Normal distribution prior on z and
+    the conditioned-on-x z distribution
+
+    Note that beta of 1e-6 gives ~perfect autoencoding on finger-spin after
+    10,000 batches. Pushing it up to 1e-5 makes it slightly noisier. Starts to
+    struggle around 1e-4, and doesn't learn anything around 1e-3.
+    """
+    def __init__(self, device, sample=False, beta=1e-5, prior_scale=1.0):
+        super().__init__(device, sample)
+        self.beta = beta  # The relative weight on the KL Divergence/regularization loss, relative to reconstruction
+        self.prior_scale = prior_scale  # The scale parameter used to construct prior used in KLD
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        (ground_truth_pixels,) = self.get_vector_forms(target_dist)
+        predicted_pixels = decoded_context_dist.mean
+
+        recon_loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
+
+        prior = torch.distributions.Normal(torch.zeros(encoded_context_dist.batch_shape +
+                                                       encoded_context_dist.event_shape).to(self.device),
+                                           self.prior_scale)
+        independent_prior = torch.distributions.Independent(prior,
+                                                            len(encoded_context_dist.event_shape))
+        kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
+
+        logger.record('loss_recon', recon_loss.item())
+        logger.record('loss_kld', torch.mean(kld).item())
+
+        loss = recon_loss + self.beta * torch.mean(kld)
+        return loss
+
+
+class AELoss(RepresentationLoss):
+    """
+    Compute the reconstruction (MSE) loss between the generated image and the original image.
+    """
+    def __init__(self, device, sample=False):
+        super().__init__(device, sample)
+
+    def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
+        (ground_truth_pixels,) = self.get_vector_forms(target_dist)
+        predicted_pixels = decoded_context_dist.mean
+
+        loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
+        return loss
 
 
 class CEBLoss(RepresentationLoss):
@@ -232,20 +317,21 @@ class CEBLoss(RepresentationLoss):
     A variational contrastive loss that implements information bottlenecking, but in a less conservative form
     than done by traditional VIB techniques
     """
-    def __init__(self, device, beta=.1):
-        super().__init__(device, sample=True)
+
+    def __init__(self, device, beta=.1, sample=True):
+        super().__init__(device, sample=sample)
         # TODO allow for beta functions
         self.beta = beta
+        self.sample = sample
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
-
-        z = decoded_context_dist.sample() # B x Z
+        z = decoded_context_dist.rsample()
 
         log_ezx = decoded_context_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution it was sampled from
         log_bzy = target_dist.log_prob(z) # B -> Log proba of each vector in z under the distribution conditioned on its corresponding target
-
-        cross_probas = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z under _all_ target distributions
-        catgen = torch.distributions.Categorical(logits=cross_probas) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
+        cross_probas_logits = torch.stack([target_dist.log_prob(z[i]) for i in range(z.shape[0])], dim=0) # BxB Log proba of each vector z[i] under _all_ target distributions
+        # The return shape of target_dist.log_prob(z[i]) is the probability of z[i] under each distribution in the batch
+        catgen = torch.distributions.Categorical(logits=cross_probas_logits) # logits of shape BxB -> Batch categorical, one distribution per element in z over possible
                                                                       # targets/y values
         inds = (torch.arange(start=0, end=len(z))).to(self.device)
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)

@@ -1,5 +1,6 @@
 import torch
 from stable_baselines3.common.policies import BaseFeaturesExtractor
+from il_representations.algos.encoders import compute_rep_shape_encoder
 
 
 class EncoderFeatureExtractor(BaseFeaturesExtractor):
@@ -16,12 +17,7 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
 
         # do forward prop to infer the feature dim
         if features_dim is None:
-            # the [None] adds a batch dimension
-            sample_obs = torch.FloatTensor(observation_space.sample()[None])
-            device_encoder = encoder.to(sample_obs.device)
-            sample_dist = device_encoder(sample_obs, traj_info=None)
-            sample_out, = sample_dist.sample()
-            features_dim, = sample_out.shape
+            features_dim, = compute_rep_shape_encoder(observation_space, representation_encoder)
 
         super().__init__(observation_space, features_dim)
 
@@ -34,7 +30,12 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
 
     def forward(self, observations):
         features_dist = self.representation_encoder(observations, traj_info=None)
-        return features_dist.loc
+        mean = features_dist.mean
+        # make sure we're not getting NaN actions
+        # TODO(sam): this seems inefficient, since we need to sync with GPU.
+        # Might be better to run as a check against IL loss or something.
+        assert torch.all(torch.isfinite(mean)), mean
+        return mean
 
 
 class EncoderSimplePolicyHead(EncoderFeatureExtractor):

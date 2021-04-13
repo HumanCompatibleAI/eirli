@@ -2,8 +2,8 @@
 
 import torch as th
 from torch import nn
-from stable_baselines3.common.torch_layers import NatureCNN
 from stable_baselines3.common.preprocessing import get_flattened_obs_dim
+from il_representations.algos.encoders import compute_rep_shape_encoder, BaseEncoder
 
 
 class ImageDiscrimNet(nn.Module):
@@ -11,31 +11,46 @@ class ImageDiscrimNet(nn.Module):
     `discrim_net` argument to `DiscrimNetGAIL` in
     `imitation.rewards.discrim_net`."""
 
+    # TODO(sam): make this take an `Encoder` (either `StochasticEncoder` or
+    # `DeterministicEncoder`) instead.
+
     def __init__(self,
                  observation_space,
                  action_space,
-                 image_feature_extractor=NatureCNN,
-                 features_dim=256):
+                 encoder=None,
+                 encoder_cls=None,
+                 encoder_kwargs=None,
+                 fc_dim=256):
         super().__init__()
 
-        # image_feature_extractor produces features for the image, but not the
-        # action
-        self.image_feature_extractor = image_feature_extractor(
-            observation_space=observation_space, features_dim=features_dim)
+        if encoder is not None:
+            assert encoder_cls is None, "cannot supply both encoder and encoder_cls"
+            self.obs_encoder = encoder
+            obs_out_dim, = compute_rep_shape_encoder(observation_space, self.obs_encoder)
+        else:
+            if encoder_cls is None:
+                encoder_cls = BaseEncoder
+            if encoder_kwargs is None:
+                encoder_kwargs = {}
+            self.obs_encoder = encoder_cls(obs_space=observation_space, representation_dim=fc_dim,
+                                           **encoder_kwargs)
+            obs_out_dim = fc_dim
 
         # postprocess_mlp takes both the raw action and the image features
         action_dim = get_flattened_obs_dim(action_space)
-        mlp_in = features_dim + action_dim
+        mlp_in = obs_out_dim + action_dim
         self.postprocess_mlp = nn.Sequential(
-            nn.Linear(mlp_in, features_dim),
+            nn.Linear(mlp_in, fc_dim),
             nn.ReLU(),
-            nn.Linear(features_dim, features_dim),
+            nn.Linear(fc_dim, fc_dim),
             nn.ReLU(),
-            nn.Linear(features_dim, 1),
+            nn.Linear(fc_dim, 1),
         )
 
-    def forward(self, observation, action):
-        obs_feats = self.image_feature_extractor(observation)
+    def forward(self, observation, action, traj_info=None):
+        obs_dist = self.obs_encoder(observation, traj_info=traj_info)
+        assert isinstance(obs_dist, th.distributions.Distribution)
+        obs_feats = obs_dist.mean
         obs_feats_and_act = th.cat((obs_feats, action), dim=1)
         final_result = self.postprocess_mlp(obs_feats_and_act)
 

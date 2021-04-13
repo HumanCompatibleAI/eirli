@@ -1,11 +1,18 @@
 import glob
 import os
 
+import pytest
+
 from il_representations.algos import MoCo
-from il_representations.test_support.configuration import BENCHMARK_CONFIGS
+from il_representations.test_support.configuration import (
+    ENV_CFG_TEST_CONFIGS, ENV_DATA_TEST_CONFIG, ENV_DATA_VENV_OPTS_TEST_CONFIG,
+    FAST_IL_TRAIN_CONFIG)
 
 
-def test_reload_policy(represent_ex, il_train_ex, file_observer):
+@pytest.mark.parametrize("algo", ["bc", "gail"])
+@pytest.mark.parametrize("freeze_encoder", [False, True])
+def test_reload_policy(algo, freeze_encoder, represent_ex, il_train_ex,
+                       file_observer):
     """Test saving a policy with one specific representation learner, then loading
     it with the IL code.
 
@@ -13,26 +20,29 @@ def test_reload_policy(represent_ex, il_train_ex, file_observer):
     because the process is roughly the same in all cases)"""
     represent_ex.run(
         config_updates={
-            'pretrain_epochs': 1,
-            'batch_size': 7,
-            'unit_test_max_train_steps': 2,
-            'representation_dim': 3,
+            'batches_per_epoch': 1,
+            'n_epochs': 1,
+            'algo_params': {'representation_dim': 3, 'batch_size': 7},
             'algo': MoCo,
-            'use_random_rollouts': False,
-            'benchmark': BENCHMARK_CONFIGS[0],
-            'ppo_finetune': False,
+            'env_cfg': ENV_CFG_TEST_CONFIGS[0],
+            'env_data': ENV_DATA_TEST_CONFIG,
         })
 
     # train BC using learnt representation
     encoder_list = glob.glob(
         os.path.join(
             file_observer.dir,
-            'training_logs/checkpoints/representation_encoder/*.ckpt'))
+            'checkpoints/representation_encoder/*.ckpt'))
     policy_path = encoder_list[0]
     il_train_ex.run(
         config_updates={
-            'bc_n_epochs': 1,
+            'algo': algo,
             'device_name': 'cpu',
-            'benchmark': BENCHMARK_CONFIGS[0],
+            # we only test against once benchmark, since this process should be
+            # similar for all
+            'env_cfg': ENV_CFG_TEST_CONFIGS[0],
             'encoder_path': policy_path,
+            'freeze_encoder': freeze_encoder,
+            **ENV_DATA_VENV_OPTS_TEST_CONFIG,
+            **FAST_IL_TRAIN_CONFIG,
         })

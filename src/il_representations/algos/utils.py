@@ -1,29 +1,26 @@
-import torch
-import numpy as np
+import matplotlib
+matplotlib.use('agg')
 import random
 import gym
 import math
 from torch.optim.lr_scheduler import _LRScheduler
 import os
+import struct
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 from PIL import Image
-from numbers import Number
 import cv2
 
 
-def independent_multivariate_normal(loc, scale):
-    batch_dim = loc.shape[0]
-    if isinstance(scale, Number):
-        # If the scale was passed in as a scalar, convert it to the same shape as loc
-        scale = torch.ones(loc.shape, device=loc.device)*scale
-
-    # Turn each <feature-dim>-length vector in the batch into a diagonal matrix, because we want an
-    # independent multivariate normal
-    merged_covariance_matrix = torch.stack([torch.diag(scale[i]) for i in range(batch_dim)])
-    return torch.distributions.MultivariateNormal(loc=loc, covariance_matrix=merged_covariance_matrix)
+def independent_multivariate_normal(mean, stddev):
+    # Create a normal distribution, which by default will assume all dimensions but one are a batch dimension
+    dist = torch.distributions.Normal(mean, stddev, validate_args=True)
+    # Wrap the distribution in an Independent wrapper, which reclassifies all but one dimension as part of the actual
+    # sample shape, but keeps variances defined only on the diagonal elements of what would be the MultivariateNormal
+    multivariate_mimicking_dist = torch.distributions.Independent(dist, len(mean.shape) - 1)
+    return multivariate_mimicking_dist
 
 
 def add_noise(state, noise_std_dev):
@@ -45,6 +42,8 @@ def gaussian_blur(img):
 
 
 def show_plt_image(img):
+    if(img.shape[0]) == 4:
+        img = img.permute(1, 2, 0)
     plt.imshow(img)
     plt.show()
 
@@ -100,8 +99,8 @@ class Logger:
 
 
 class LinearWarmupCosine(_LRScheduler):
-    def __init__(self, optimizer, warmup_epoch, total_epochs, eta_min=0.0, last_epoch=-1):
-        assert warmup_epoch >= 0
+    def __init__(self, optimizer, T_max, warmup_epoch=30, eta_min=0, last_epoch=-1):
+        self.T_max = T_max
         self.eta_min = eta_min
         self.warmup_epoch = warmup_epoch
         self.cosine_epochs = total_epochs - warmup_epoch
@@ -126,14 +125,20 @@ def set_global_seeds(seed):
     """
     set the seed for python random, tensorflow, numpy and gym spaces
 
-    :param seed: (int) the seed
+    :param seed: (int or None) the seed
     """
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
+    if seed is None:
+        # seed from os.urandom if no seed given
+        seed, = struct.unpack('<I', os.urandom(4))
+
+    # we use this rng to create a separate seed for each random stream
+    rng = np.random.RandomState(seed)
+    torch.manual_seed(rng.randint((1 << 31) - 1))
+    np.random.seed(rng.randint((1 << 31) - 1))
+    random.seed(rng.randint((1 << 31) - 1))
     # prng was removed in latest gym version
     if hasattr(gym.spaces, 'prng'):
-        gym.spaces.prng.seed(seed)
+        gym.spaces.prng.seed(rng.randint((1 << 31) - 1))
 
 
 def accuracy(output, target, topk=(1,)):

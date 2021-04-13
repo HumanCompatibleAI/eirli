@@ -1,70 +1,127 @@
-from glob import glob
-import inspect
 import logging
 import os
 
 import numpy as np
+import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common.policies import ActorCriticPolicy
-from stable_baselines3.ppo import PPO
+import torch
 
 from il_representations import algos
-from il_representations.algos.representation_learner import RepresentationLearner
+from il_representations.algos.representation_learner import \
+    RepresentationLearner
 from il_representations.algos.utils import LinearWarmupCosine
-import il_representations.envs.auto as auto_env
-from il_representations.envs.config import benchmark_ingredient
-from il_representations.policy_interfacing import EncoderFeatureExtractor
+from il_representations.envs import auto
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient)
+from il_representations.utils import RepLSaveExampleBatchesCallback
 
-represent_ex = Experiment('representation_learning',
-                          ingredients=[benchmark_ingredient])
+sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+represent_ex = Experiment(
+    # We take env_cfg_ingredient to determine which task we need to load data
+    # for, and env_data_ingredient gives us the paths to that data.
+    'repl', ingredients=[env_cfg_ingredient, env_data_ingredient])
 
 
 @represent_ex.config
 def default_config():
-    algo = "MoCo"
-    use_random_rollouts = False
+    # exp_ident is an arbitrary string. Set it to a meaningful value to help
+    # you identify runs in viskit.
+    exp_ident = None
+
+    # `dataset_configs` is a list of data sources to use for representation
+    # learning. During representation learning, batches will be constructed by
+    # drawing from each of these data sources with equal probability. For
+    # instance, using `dataset_configs = [{'type': 'demos'}, {'type':
+    # 'random'}]` interleaves demonstrations and (saved) random rollouts in
+    # equal proportion. See docs for `load_new_style_ilr_dataset()` for more
+    # information on the syntax of `dataset_configs`.
+    dataset_configs = [{'type': 'demos'}]
+    algo = "ActionConditionedTemporalCPC"
+    torch_num_threads = 1
     n_envs = 1
-    timesteps = 640
-    pretrain_only = False
-    pretrain_epochs = 50
-    scheduler = None
-    representation_dim = 128
-    ppo_finetune = True
-    batch_size = 256
+    algo_params = {
+        'representation_dim': 128,
+        'optimizer': torch.optim.Adam,
+        'optimizer_kwargs': {'lr': 1e-4},
+        'augmenter_kwargs': {
+            # augmenter_spec is a comma-separated list of enabled
+            # augmentations. Consult docstring for
+            # imitation.augment.StandardAugmentations to see available
+            # augmentations.
+            "augmenter_spec": "translate,rotate,gaussian_blur",
+        },
+    }
     device = "auto"
-    scheduler_kwargs = dict()
-    # this is useful for constructing tests where we want to truncate the
-    # dataset to be small
-    unit_test_max_train_steps = None
+
+    # For repL, an 'epoch' is just a fixed number of batches, configured with
+    # batches_per_epoch.
+    #
+    # This makes it possible to balance data sources when we do multitask
+    # training. For instance, if the datasets for two different tasks are
+    # different lengths, then we truncate or repeat them so they are both of
+    # length `batches_per_epoch / 2`. If we did not truncate/repeat, then the
+    # shorter dataset would run out before the longer one, and the network
+    # would end up training on more samples from the longer dataset.
+    batches_per_epoch = 1000
+    n_epochs = 10
+
+    # Set number of trajectories needed in the dataset. If None, use the whole dataset.
+    n_trajs = None
+
+    # how often should we save repL batch data?
+    # (set to None to disable completely)
+    repl_batch_save_interval = 1000
+
+    # set this to True if you want repL encoder hashing to ignore env_cfg
+    is_multitask = False
+
+    # If True, return the representation model as `run.results['model']`.
+    debug_return_model = False
+
     _ = locals()
     del _
 
 
 @represent_ex.named_config
 def cosine_warmup_scheduler():
-    scheduler = LinearWarmupCosine
-    scheduler_kwargs = {'warmup_epoch': 2, 'T_max': 10}
+    algo_params = {
+        "scheduler": LinearWarmupCosine,
+        "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}
+    }
     _ = locals()
     del _
 
 
-def get_random_traj(env, timesteps):
-    # Currently not designed for VecEnvs with n>1
-    trajectory = {'obs': [], 'acts': [], 'dones': []}
-    obs = env.reset()
-    for i in range(timesteps):
-        trajectory['obs'].append(obs.squeeze())
-        action = np.array([env.action_space.sample() for _ in range(env.num_envs)])
-        obs, rew, dones, info = env.step(action)
-        trajectory['acts'].append(action[0])
-        trajectory['dones'].append(dones[0])
-    return trajectory
+@represent_ex.named_config
+def ceb_breakout():
+    env_id = 'BreakoutNoFrameskip-v4'
+    train_from_expert = True
+    algo = algos.FixedVarianceCEB
+    batches_per_epoch = 5
+    n_epochs = 1
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def expert_demos():
+    dataset_configs = [{'type': 'demos'}]
+    _ = locals()
+    del _
+
+
+@represent_ex.named_config
+def random_demos():
+    dataset_configs = [{'type': 'random'}]
+    _ = locals()
+    del _
 
 
 def initialize_non_features_extractor(sb3_model):
-    # This is a hack to get around the fact that you can't initialize only some of the components of a SB3 policy
-    # upon creation, and we in fact want to keep the loaded representation frozen, but orthogonally initalize other
+    # This is a hack to get around the fact that you can't initialize only some
+    # of the components of a SB3 policy upon creation, and we in fact want to
+    # keep the loaded representation frozen, but orthogonally initialize other
     # components.
     sb3_model.policy.init_weights(sb3_model.policy.mlp_extractor, np.sqrt(2))
     sb3_model.policy.init_weights(sb3_model.policy.action_net, 0.01)
@@ -72,60 +129,101 @@ def initialize_non_features_extractor(sb3_model):
     return sb3_model
 
 
+def config_specifies_task_name(dataset_config_dict):
+    if 'env_cfg' not in dataset_config_dict:
+        return False
+    return 'task_name' in dataset_config_dict['env_cfg']
+
+
 @represent_ex.main
-def run(benchmark, use_random_rollouts,
-        seed, algo, n_envs, timesteps, representation_dim,
-        ppo_finetune, pretrain_epochs, _config):
+def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
+        torch_num_threads, repl_batch_save_interval, is_multitask, _config,
+        debug_return_model, n_trajs):
     # TODO fix to not assume FileStorageObserver always present
-    log_dir = os.path.join(represent_ex.observers[0].dir, 'training_logs')
-    os.mkdir(log_dir)
+    log_dir = represent_ex.observers[0].dir
+    if torch_num_threads is not None:
+        torch.set_num_threads(torch_num_threads)
+
+    logging.basicConfig(level=logging.INFO)
+
+    # setup environment & dataset
+    webdatasets, combined_meta = auto.load_wds_datasets(
+        configs=dataset_configs)
+    color_space = combined_meta['color_space']
+    observation_space = combined_meta['observation_space']
+    action_space = combined_meta['action_space']
+
+    # callbacks for saving example batches
+    def make_batch_saver(interval):
+        save_video = algo in ['Autoencoder', 'VariationalAutoencoder']
+        print(f'In run_rep_learner, save_video={save_video}')
+        return RepLSaveExampleBatchesCallback(
+            save_interval_batches=repl_batch_save_interval,
+            dest_dir=os.path.join(log_dir, 'batch_saves'),
+            color_space=color_space,
+            save_video=save_video)
+    repl_callbacks = []
+    repl_end_callbacks = []
+    if repl_batch_save_interval is not None:
+        # this gets called at every batch, so we need a nonzero interval
+        reg_save_callback = make_batch_saver(repl_batch_save_interval)
+    else:
+        # if there's no specified interval, we set the interval so high that it
+        # will only run once (at the start)
+        reg_save_callback = make_batch_saver(n_epochs * batches_per_epoch + 1)
+    repl_callbacks.append(reg_save_callback)
+    # this callback gets called once at the end to guarantee that we always
+    # save the last batch
+    repl_end_callbacks.append(make_batch_saver(0))
 
     if isinstance(algo, str):
         algo = getattr(algos, algo)
 
-    # setup environment & dataset
-    venv = auto_env.load_vec_env()
-    color_space = auto_env.load_color_space()
-    if use_random_rollouts:
-        dataset_dict = get_random_traj(env=venv,
-                                       timesteps=timesteps)
+    # instantiate algo
+    dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
+                                        for config_dict in dataset_configs])
+    if is_multitask:
+        assert dataset_configs_multitask, "Parameter `is_multitask` is set, but dataset_configs contain configs " \
+                                          "referencing the current task_name"
     else:
-        dataset_dict = auto_env.load_dataset()
-
-    # FIXME(sam): this creates weird action-at-a-distance, and doesn't save us
-    # from specifying parameters in the default config anyway (Sacred will
-    # complain if we include a param that isn't in the default config). Should
-    # do one of the following:
-    # 1. Decorate RepresentationLearner constructor with a Sacred ingredient.
-    # 2. Just pass things manually.
+        assert not dataset_configs_multitask, "dataset_configs implies a multitask training setup, but " \
+                                              "is_multitask is set to False; please fix to make consistent"
     assert issubclass(algo, RepresentationLearner)
-    init_sig = inspect.signature(RepresentationLearner.__init__)
-    rep_learner_params = [p for p in init_sig.parameters if p != 'self']
-    algo_params = {k: v for k, v in _config.items() if k in rep_learner_params}
-    algo_params['color_space'] = color_space
+    algo_params = dict(algo_params)
+    algo_params['augmenter_kwargs'] = {
+        'color_space': color_space,
+        **algo_params['augmenter_kwargs'],
+    }
     logging.info(f"Running {algo} with parameters: {algo_params}")
-    model = algo(venv, log_dir=log_dir, **algo_params)
+    model = algo(
+        observation_space=observation_space,
+        action_space=action_space,
+        color_space=color_space,
+        log_dir=log_dir,
+        **algo_params)
 
     # setup model
-    model.learn(dataset_dict, pretrain_epochs)
-    if ppo_finetune and not isinstance(model, algos.RecurrentCPC):
-        encoder_checkpoint = model.encoder_checkpoints_path
-        all_checkpoints = glob(os.path.join(encoder_checkpoint, '*'))
-        latest_checkpoint = max(all_checkpoints, key=os.path.getctime)
-        encoder_feature_extractor_kwargs = {'features_dim': representation_dim, 'encoder_path': latest_checkpoint}
+    loss_record, most_recent_encoder_path = model.learn(
+        datasets=webdatasets,
+        batches_per_epoch=batches_per_epoch,
+        n_epochs=n_epochs,
+        n_trajs=n_trajs,
+        callbacks=repl_callbacks,
+        end_callbacks=repl_end_callbacks)
 
-        # TODO figure out how to not have to set `ortho_init` to False for the whole policy
-        policy_kwargs = {'features_extractor_class': EncoderFeatureExtractor,
-                         'features_extractor_kwargs': encoder_feature_extractor_kwargs,
-                         'ortho_init': False}
-        ppo_model = PPO(policy=ActorCriticPolicy, env=venv,
-                        verbose=1, policy_kwargs=policy_kwargs)
-        ppo_model = initialize_non_features_extractor(ppo_model)
-        ppo_model.learn(total_timesteps=1000)
+    result = {
+        'encoder_path': most_recent_encoder_path,
+        # return average loss from final epoch for HP tuning
+        'repl_loss': loss_record[-1],
+    }
 
-    venv.close()
+    if debug_return_model:
+        # Used for serialization validation testing in test_base_algos.py.
+        result['model'] = model
+
+    return result
 
 
 if __name__ == '__main__':
-    represent_ex.observers.append(FileStorageObserver('rep_learning_runs'))
+    represent_ex.observers.append(FileStorageObserver('runs/rep_learning_runs'))
     represent_ex.run_commandline()

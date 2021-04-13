@@ -2,8 +2,11 @@ version: 2.1
 
 jobs:
   build-and-test:
+    resource_class: large
     docker:
-      - image: humancompatibleai/il-representations:2020.08.03-r3
+      # this is also used in gcp_cluster_template.yaml (if you change this file,
+      # remember to update all your cluster configs too)
+      - image: humancompatibleai/il-representations:2021.02.22
     steps:
       - checkout
       - run:
