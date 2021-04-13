@@ -19,7 +19,7 @@ class BCModelSaver:
         self.batch_count += self.epoch_length
         if self.batch_count >= self.last_save_batches + self.save_interval_batches:
             os.makedirs(self.save_dir, exist_ok=True)
-            save_fn = f'policy_{self.batch_count:08d}_epochs.pt'
+            save_fn = f'policy_{self.batch_count:08d}_batches.pt'
             save_path = os.path.join(self.save_dir, save_fn)
             th.save(self.policy, save_path)
             print(f"Saved policy to {save_path}!")
