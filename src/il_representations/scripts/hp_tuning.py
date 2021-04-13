@@ -1,5 +1,6 @@
 from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders
 import collections
+import os
 from copy import deepcopy
 from il_representations.scripts.utils import StagesToRun
 
@@ -186,12 +187,30 @@ def make_hp_tuning_configs(experiment_obj):
     def jigsaw_tune():
         repl = {'algo': 'Jigsaw', 'algo_params': {'batch_size': 64}}
         skopt_space, skopt_ref_configs = get_space_and_ref_configs(contrastive=False)
+
+        # Note that in Jigsaw, representation_dim is not used. Here we still set it to some value
+        # to avoid bugs.
+        skopt_space['repl:algo_params:representation_dim'] = [128]
+        skopt_space['repl:algo_params:encoder_kwargs:obs_encoder_cls'] = ['MAGICALCNN']
         skopt_space['repl:algo_params:encoder_kwargs:obs_encoder_cls_kwargs:arch_str'] = [
             'MAGICALCNN-resnet-128',
             'MAGICALCNN-resnet-128-x2'
         ]
+        skopt_space['repl:algo_params:target_pair_constructor_kwargs:permutation_path'] = [
+            os.path.join(os.getcwd(), 'data/jigsaw_permutations_1000.npy')
+        ]
         _ = skopt_space.pop('repl:algo_params:representation_dim')
         _ = skopt_ref_configs[0].pop('repl:algo_params:representation_dim')
+        _ = skopt_space.pop('il_train:freeze_encoder')
+        _ = skopt_ref_configs[0].pop('il_train:freeze_encoder')
+        skopt_ref_configs[0]['repl:algo_params:encoder_kwargs:'
+                             'obs_encoder_cls_kwargs:arch_str'] = 'MAGICALCNN-resnet-128'
+        skopt_ref_configs[0]['repl:algo_params:target_pair_constructor_kwargs:'
+                             'permutation_path'] = os.path.join(os.getcwd(),
+                                                                'data/jigsaw_permutations_1000.npy')
+
+        # We only set 10 runs here because it is only searching over the lr space.
+        tune_run_kwargs = dict(num_samples=10)
         _ = locals()
         del _
 

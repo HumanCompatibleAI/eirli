@@ -544,6 +544,8 @@ class JigsawEncoder(BaseEncoder):
         self.n_tiles = n_tiles
         if self.n_tiles != 9:
             raise NotImplementedError('Currently only support n_tiles=9')
+
+        # Note that in Jigsaw, representation_dim is not used because it will set 'contain_fc_layer' to False.
         super().__init__(obs_space, representation_dim, obs_encoder_cls=obs_encoder_cls,
                          latent_dim=latent_dim, obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
 
