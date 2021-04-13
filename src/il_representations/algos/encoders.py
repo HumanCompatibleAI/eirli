@@ -539,13 +539,13 @@ class JigsawEncoder(BaseEncoder):
     Representations by Solving Jigsaw Puzzles. It takes n_tiles images one
     by one, then concat their output representations.
     """
-    def __init__(self, obs_space, representation_dim, latent_dim=None, n_tiles=9,
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, n_tiles=9,
                  obs_encoder_cls_kwargs=None):
         self.n_tiles = n_tiles
         if self.n_tiles != 9:
             raise NotImplementedError('Currently only support n_tiles=9')
-        super().__init__(obs_space, representation_dim, latent_dim=latent_dim,
-                         obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
+        super().__init__(obs_space, representation_dim, obs_encoder_cls=obs_encoder_cls,
+                         latent_dim=latent_dim, obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
 
     def encode_context(self, x, traj_info):
         x = self.img_to_tiles(x)

@@ -183,6 +183,19 @@ def make_hp_tuning_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def jigsaw_tune():
+        repl = {'algo': 'Jigsaw', 'algo_params': {'batch_size': 64}}
+        skopt_space, skopt_ref_configs = get_space_and_ref_configs(contrastive=False)
+        skopt_space['repl:algo_params:encoder_kwargs:obs_encoder_cls_kwargs:arch_str'] = [
+            'MAGICALCNN-resnet-128',
+            'MAGICALCNN-resnet-128-x2'
+        ]
+        _ = skopt_space.pop('repl:algo_params:representation_dim')
+        _ = skopt_ref_configs[0].pop('repl:algo_params:representation_dim')
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def dynamics_tune():
         repl = {'algo': 'DynamicsPrediction', 'algo_params': {'batch_size': 64}}
         skopt_space, skopt_ref_configs = get_space_and_ref_configs(contrastive=False)
