@@ -423,6 +423,14 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_jigsaw():
+        repl = {
+            'algo': 'Jigsaw',
+            'algo_params': {'batch_size': 64,
+                            'optimizer_kwargs': {'lr': 1e-5}}
+        }
+
+    @experiment_obj.named_config
     def cfg_il_bc_nofreeze():
         il_train = {
             'algo': 'bc',
