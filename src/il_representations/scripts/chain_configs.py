@@ -1,5 +1,6 @@
 from il_representations.scripts.utils import StagesToRun
 from ray import tune
+import os
 # TODO(sam): GAIL configs
 
 
@@ -421,6 +422,17 @@ def make_chain_configs(experiment_obj):
         }
         _ = locals()
         del _
+
+    @experiment_obj.named_config
+    def cfg_repl_jigsaw():
+        repl = {
+            'algo': 'Jigsaw',
+            'algo_params': {'batch_size': 64,
+                            'optimizer_kwargs': {'lr': 1e-5},
+                            'target_pair_constructor_kwargs':
+                                {'permutation_path': os.path.join(os.getcwd(),
+                                                                  'data/jigsaw_permutations_1000.npy')}}
+        }
 
     @experiment_obj.named_config
     def cfg_il_bc_nofreeze():

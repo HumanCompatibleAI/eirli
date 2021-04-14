@@ -188,6 +188,20 @@ def make_policy(observation_space,
         else:
             encoder = encoder_or_path
         assert isinstance(encoder, nn.Module)
+
+        # Sometimes we are not using FC layers in encoders, e.g., Jigsaw.
+        # Hence in il training we need to recover this part of the encoder.
+        if not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
+            full_encoder = BaseEncoder(observation_space, **encoder_kwargs)
+
+            partial_encoder_dict = encoder.state_dict()
+            full_encoder_dict = full_encoder.state_dict()
+            pretrained_dict = {k: v for k, v in partial_encoder_dict.items() if
+                               k in full_encoder_dict}
+            full_encoder_dict.update(pretrained_dict)
+            full_encoder.load_state_dict(full_encoder_dict)
+
+            encoder = full_encoder
     else:
         encoder = BaseEncoder(observation_space, **encoder_kwargs)
     policy_kwargs = {
