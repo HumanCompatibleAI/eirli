@@ -8,7 +8,8 @@ from sacred import Ingredient
 from il_representations.envs.utils import MinecraftPOVWrapper, Testing2500StepLimitWrapper
 try:
     import realistic_benchmarks.wrappers as rb_wrappers
-except ImportError:
+except ImportError as e:
+    print(f"Hit error: {e}")
     logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
 
 
@@ -83,7 +84,15 @@ def env_cfg_defaults():
 
 @env_cfg_ingredient.named_config
 def use_dict_wrappers():
-    minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper, MinecraftPOVWrapper, Testing2500StepLimitWrapper]
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper, Testing2500StepLimitWrapper] #
+    _ = locals()
+    del _
+
+@env_cfg_ingredient.named_config
+def use_dict_wrappers_obs_flatten():
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          rb_wrappers.ObservationFlatteningWrapper, Testing2500StepLimitWrapper]
     _ = locals()
     del _
 

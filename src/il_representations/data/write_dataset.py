@@ -59,6 +59,7 @@ def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None):
     with wds.TarWriter(out_file_path, keep_meta=True, compress=True) \
           as writer:  # noqa: E207
         # first write _metadata.meta.pickle containing the benchmark config
+        meta_dict['frames'] = len(frame_dicts)
         writer.dwrite(key='_metadata', meta_pickle=meta_dict)
         # now write each frame in each trajectory
         for frame_num, frame_dict in enumerate(frame_dicts):

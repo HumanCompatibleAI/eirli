@@ -33,13 +33,13 @@ def default_config():
     # put an upper limit on number of trajectories to load
     n_traj_total = None
     # TODO(sam): support sharding
-
+    data_type = "demos"
     _ = locals()
     del _
 
 
 @mkdataset_demos_ex.main
-def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
+def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total, data_type):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
@@ -86,7 +86,7 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     out_file_path = os.path.join(
         auto_env.get_data_dir(benchmark_name=env_cfg['benchmark_name'],
                               task_key=env_cfg['task_name'],
-                              data_type='demos'), 'demos.tgz')
+                              data_type=data_type), 'demos.tgz')
 
     # get metadata for the dataset
     meta_dict = get_meta_dict()

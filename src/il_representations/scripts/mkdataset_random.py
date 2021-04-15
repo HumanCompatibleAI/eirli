@@ -89,6 +89,9 @@ def run(seed, env_data, env_cfg, n_timesteps_min, *,
                 # yield a dictionary for each frame in the retrieved
                 # trajectories
                 for idx in range(T):
+                    if dones[idx]:
+                        if 'rollout' in traj.infos[idx]:
+                            del traj.infos[idx]['rollout']
                     yield {
                         # Keys in dataset_dict: 'obs', 'next_obs', 'acts',
                         # 'infos', 'rews', 'dones'.

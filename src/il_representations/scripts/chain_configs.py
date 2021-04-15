@@ -330,7 +330,7 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_data_repl_random():
-        """Training on both demos and random rollouts for the current
+        """Training on only random rollouts for the current
         environment."""
         repl = {
             'dataset_configs': [{'type': 'random'}],

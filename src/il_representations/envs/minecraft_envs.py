@@ -4,7 +4,7 @@ import time
 
 from gym import Wrapper, spaces
 import numpy as np
-
+from copy import deepcopy
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient )
 from il_representations.envs.utils import wrap_env
@@ -18,8 +18,8 @@ def optional_observation_map(env, inner_obs):
 
 
 def optional_action_map(env, inner_action):
-    if hasattr(env, 'reverse_action'):
-        return env.reverse_action(inner_action)
+    if hasattr(env, 'wrap_action'):
+        return env.wrap_action(inner_action)
     else:
         return inner_action
 
@@ -27,7 +27,10 @@ def optional_action_map(env, inner_action):
 def remove_iterator_dimension(dict_obs_or_act):
     output_dict = dict()
     for k in dict_obs_or_act.keys():
-        output_dict[k] = dict_obs_or_act[k][0]
+        if isinstance(dict_obs_or_act[k], dict):
+            output_dict[k] = remove_iterator_dimension(dict_obs_or_act[k])
+        else:
+            output_dict[k] = dict_obs_or_act[k][0]
     return output_dict
 
 @env_cfg_ingredient.capture
@@ -60,8 +63,7 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
     appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
     start_time = time.time()
 
-    env_spec = data_iterator.spec
-
+    env_spec = deepcopy(data_iterator.spec)
     dummy_env = DummyEnv(action_space=env_spec._action_space,
                          observation_space=env_spec._observation_space)
 
