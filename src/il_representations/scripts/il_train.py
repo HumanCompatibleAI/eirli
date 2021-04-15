@@ -21,7 +21,7 @@ from torch import nn
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -46,11 +46,16 @@ bc_ingredient = Ingredient('bc')
 def bc_defaults():
     # number of passes to make through dataset
     n_batches = 5000
+    n_trajs = None
     augs = 'rotate,translate,noise'
     log_interval = 500
     batch_size = 32
-    save_every_n_batches = None
     lr = 1e-4
+    # nominal_length is arbitrary, since nothing in BC uses len(dataset)
+    # (however, large numbers prevent us from having to recreate the
+    # data iterator frequently)
+    nominal_length = int(1e6)
+    save_every_n_batches = nominal_length
 
     _ = locals()
     del _
@@ -98,6 +103,7 @@ def gail_defaults():
     save_every_n_steps = 5e4
     # dump logs every <this many> steps (at most)
     log_interval_steps = 5e3
+    n_trajs = None
 
     _ = locals()
     del _
@@ -242,16 +248,15 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         bc['augs'], stack_color_space=color_space)
 
     # build dataset in the format required by imitation
+    subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
-        # nominal_length is arbitrary, since nothing in BC uses len(dataset)
-        # (however, large numbers prevent us from having to recreate the
-        # data iterator frequently)
-        nominal_length=int(1e6),
+        nominal_length=bc['nominal_length'],
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys("obs", "acts")])
+        preprocessors=[subdataset_extractor, streaming_extract_keys("obs", "acts")])
+
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
@@ -270,6 +275,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     if save_interval is not None:
         optional_model_saver = BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
+                                            bc['nominal_length'],
                                             save_interval)
     else:
         optional_model_saver = None
@@ -349,6 +355,7 @@ def do_training_gail(
     augmenter = StandardAugmentations.from_string_spec(
         gail['disc_augs'], stack_color_space=color_space)
 
+    subdataset_extractor = SubdatasetExtractor(n_trajs=gail['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=gail['disc_batch_size'],
@@ -359,8 +366,9 @@ def do_training_gail(
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys(
-            "obs", "acts", "next_obs", "dones"), add_infos],
+        preprocessors=[subdataset_extractor,
+                       streaming_extract_keys(
+                           "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
