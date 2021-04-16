@@ -83,7 +83,7 @@ def env_cfg_defaults():
 
 
 @env_cfg_ingredient.named_config
-def use_dict_wrappers():
+def wrappers_frames_only_camera_disc():
     minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
                           MinecraftPOVWrapper, Testing2500StepLimitWrapper] #
     _ = locals()
@@ -91,14 +91,14 @@ def use_dict_wrappers():
 
 
 @env_cfg_ingredient.named_config
-def use_dict_wrappers_obfuscated_action():
+def wrappers_frames_only_obfuscated():
     minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper,
                           MinecraftPOVWrapper, Testing2500StepLimitWrapper] #
     _ = locals()
     del _
 
 @env_cfg_ingredient.named_config
-def use_dict_wrappers_obs_flatten():
+def wrappers_obs_flatten_camera_disc():
     minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
                           rb_wrappers.ObservationFlatteningWrapper, Testing2500StepLimitWrapper]
     _ = locals()
