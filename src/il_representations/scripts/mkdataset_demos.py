@@ -32,6 +32,9 @@ def default_config():
     shuffle_traj_order = True
     # put an upper limit on number of trajectories to load
     n_traj_total = None
+
+    # TODO maybe implement for other envs than Minecraft?
+    frames_per_traj = None
     # TODO(sam): support sharding
     data_type = "demos"
     _ = locals()
@@ -39,14 +42,14 @@ def default_config():
 
 
 @mkdataset_demos_ex.main
-def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total, data_type):
+def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total, frames_per_traj, data_type):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
 
     # load existing demo dictionary directly, w/ same code used to handle data
     # in il_train.py
-    dataset_dict = auto_env.load_dict_dataset(n_traj=n_traj_total)
+    dataset_dict = auto_env.load_dict_dataset(n_traj=n_traj_total, frames_per_traj=frames_per_traj)
     n_samples = len(dataset_dict['obs'])
     # keys in dataset_dict: 'obs', 'next_obs', 'acts', 'infos', 'rews', 'dones'
     # numeric_types = (np.ndarray, numbers.Number, np.bool_)

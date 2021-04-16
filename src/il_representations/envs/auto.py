@@ -64,7 +64,7 @@ def benchmark_is_available(benchmark_name):
 
 
 @env_cfg_ingredient.capture
-def load_dict_dataset(benchmark_name, n_traj=None):
+def load_dict_dataset(benchmark_name, n_traj, frames_per_traj):
     """Load a dict-type dataset. Also see load_wds_datasets, which instead
     lods a set of datasets that have been stored in a webdataset-compatible
     format."""
@@ -75,7 +75,7 @@ def load_dict_dataset(benchmark_name, n_traj=None):
     elif benchmark_name == 'atari':
         dataset_dict = load_dataset_atari(n_traj=n_traj)
     elif benchmark_name == 'minecraft':
-        dataset_dict = load_dataset_minecraft(n_traj=n_traj)
+        dataset_dict = load_dataset_minecraft(n_traj=n_traj, frames_per_traj=frames_per_traj)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
