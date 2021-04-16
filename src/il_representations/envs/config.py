@@ -89,12 +89,22 @@ def use_dict_wrappers():
     _ = locals()
     del _
 
+
+@env_cfg_ingredient.named_config
+def use_dict_wrappers_obfuscated_action():
+    minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper, Testing2500StepLimitWrapper] #
+    _ = locals()
+    del _
+
 @env_cfg_ingredient.named_config
 def use_dict_wrappers_obs_flatten():
     minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
                           rb_wrappers.ObservationFlatteningWrapper, Testing2500StepLimitWrapper]
     _ = locals()
     del _
+
+
 
 
 # see venv_opts_defaults docstring for description of this ingredient

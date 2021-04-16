@@ -66,7 +66,6 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
     env_spec = deepcopy(data_iterator.spec)
     dummy_env = DummyEnv(action_space=env_spec._action_space,
                          observation_space=env_spec._observation_space)
-
     wrapped_dummy_env = wrap_env(dummy_env, minecraft_wrappers)
     timesteps = 0
     for current_obs, action, reward, next_obs, done in data_iterator.batch_iter(batch_size=1,
@@ -89,6 +88,7 @@ def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
     # Now, we need to go through and construct `next_obs` values, which aren't natively returned
     # by the environment
     merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
+    del appended_trajectories
     merged_trajectories = construct_next_obs(merged_trajectories)
     end_time = time.time()
     logging.info(f"Minecraft trajectory collection took {round(end_time - start_time, 2)} seconds to complete")
@@ -104,19 +104,26 @@ def construct_next_obs(trajectories_dict):
     dones_locations = np.append(dones_locations, -1)
     prior_dones_loc = 0
     all_next_obs = []
+    print(f"Done locations to process {dones_locations}")
     for done_loc in dones_locations:
         if done_loc == -1:
             trajectory_obs = trajectories_dict['obs'][prior_dones_loc:]
         else:
             trajectory_obs = trajectories_dict['obs'][prior_dones_loc:done_loc+1]
         next_obs = trajectory_obs[1:]
-        next_obs = np.append(next_obs, np.expand_dims(trajectory_obs[-1], axis=0), axis=0) #duplicate final obs for final next_obs
+        expanded_thing = np.expand_dims(trajectory_obs[-1], axis=0)
+        next_obs = np.append(next_obs, expanded_thing, axis=0) #duplicate final obs for final next_obs
         all_next_obs.append(next_obs)
+        prior_dones_loc = done_loc
+
+    del next_obs
+    del trajectory_obs
     if len(all_next_obs) == 1:
-        merged_next_obs = all_next_obs[0]
+        all_next_obs = all_next_obs[0]
     else:
-        merged_next_obs = np.concatenate(all_next_obs)
-    trajectories_dict['next_obs'] = merged_next_obs
+        print("Concatenating")
+        all_next_obs = np.concatenate(all_next_obs) #maybe this will make memory less horrible?
+    trajectories_dict['next_obs'] = all_next_obs
     return trajectories_dict
 
 
