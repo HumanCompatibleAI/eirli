@@ -15,6 +15,7 @@ test_multiple_ex = Experiment('test_multiple')
 def base_config():
     exp_path = '/scratch/cynthiachen/ilr-results/run-long-epochs-2021-04-06/98/il_train/1'
     ckpt_dir = os.path.join(exp_path, 'snapshots')
+    exp_ident = None
 
     # How many ckpts to test?
     num_test_ckpts = 20
@@ -23,7 +24,7 @@ def base_config():
 
 
 @test_multiple_ex.main
-def run(exp_path, ckpt_dir, num_test_ckpts, cuda_device, test_script_path):
+def run(exp_path, ckpt_dir, exp_ident, num_test_ckpts, cuda_device, test_script_path):
     progress_df = pd.read_csv(os.path.join(exp_path, 'progress.csv'))
     total_updates = list(progress_df['n_updates'])[-1]
 
@@ -35,6 +36,8 @@ def run(exp_path, ckpt_dir, num_test_ckpts, cuda_device, test_script_path):
 
     with open(os.path.join(exp_path, 'config.json')) as f:
         exp_config = json.load(f)
+
+    exp_ident = exp_config['exp_ident'] if exp_ident is None else exp_ident
 
     print(f"Total saved ckpts: {len(module_ckpt_names)} for {total_updates} recorded updates. \n"
           f"Updates per ckpt: {updates_per_ckpt}")
@@ -48,6 +51,7 @@ def run(exp_path, ckpt_dir, num_test_ckpts, cuda_device, test_script_path):
 
         os.system(f"CUDA_VISIBLE_DEVICES={cuda_device} xvfb-run -a python {test_script_path} with "
                   f"policy_path={policy_path} "
+                  f"exp_ident={exp_ident} "
                   f"env_cfg.benchmark_name={exp_config['env_cfg']['benchmark_name']} "
                   f"env_cfg.task_name={exp_config['env_cfg']['task_name']}")
 
