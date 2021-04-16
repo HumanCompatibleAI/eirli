@@ -51,49 +51,53 @@ def _get_data_root(data_root):
 # even though it can only be notated as a capture function for one
 # ingredient at a time
 @env_cfg_ingredient.capture
-def load_dataset_minecraft(minecraft_wrappers, n_traj=None, chunk_length=100):
+def load_dataset_minecraft(minecraft_wrappers, n_traj, frames_per_traj, chunk_length=100):
     import minerl  # lazy-load in case it is not installed
     import realistic_benchmarks.envs.envs # Registers new environments
     from realistic_benchmarks.utils import DummyEnv
     data_root = _get_data_root()
     env_name = get_env_name_minecraft()
     minecraft_data_root = os.path.join(data_root, 'minecraft')
-    data_iterator = minerl.data.make(environment=env_name,
+    data_pipeline = minerl.data.make(environment=env_name,
                                      data_dir=minecraft_data_root)
-    appended_trajectories = {'obs': [], 'acts': [], 'dones': []}
+    appended_trajectories = {'obs': [], 'acts': [], 'dones': [], 'next_obs': []}
     start_time = time.time()
 
-    env_spec = deepcopy(data_iterator.spec)
+    env_spec = deepcopy(data_pipeline.spec)
     dummy_env = DummyEnv(action_space=env_spec._action_space,
                          observation_space=env_spec._observation_space)
     wrapped_dummy_env = wrap_env(dummy_env, minecraft_wrappers)
     timesteps = 0
-    for current_obs, action, reward, next_obs, done in data_iterator.batch_iter(batch_size=1,
-                                                                                num_epochs=1,
-                                                                                epoch_size=n_traj, # TODO does this make sense as a value of epoch_size?
-                                                                                seq_len=chunk_length):
-        # Data returned from the data_iterator is in batches of size `batch_size` x `chunk_size`
-        # The zero-indexing is to remove the extra extraneous `batch_size` dimension,
-        # which has been hardcoded to 1
-        reshaped_obs = remove_iterator_dimension(current_obs)
-        reshaped_action = remove_iterator_dimension(action)
-        wrapped_obs = optional_observation_map(wrapped_dummy_env, reshaped_obs)
-        wrapped_action = optional_action_map(wrapped_dummy_env, reshaped_action)
-        appended_trajectories['obs'].append(wrapped_obs)
-        appended_trajectories['acts'].append(wrapped_action)
-        appended_trajectories['dones'].append(done[0])
-        timesteps += chunk_length
-        if timesteps % 1000 == 0:
-            print(f"{timesteps} timesteps loaded")
-    # Now, we need to go through and construct `next_obs` values, which aren't natively returned
-    # by the environment
-    merged_trajectories = {k: np.concatenate(v, axis=0) for k, v in appended_trajectories.items()}
-    del appended_trajectories
-    merged_trajectories = construct_next_obs(merged_trajectories)
+
+    trajectory_names = data_pipeline.get_trajectory_names()
+    trajectory_subset = np.random.choice(trajectory_names, size=n_traj)
+    for trajectory_name in trajectory_subset:
+        data_loader = data_pipeline.load_data(trajectory_name)
+        traj_frame_count = 0
+        for current_obs, action, reward, next_obs, done in data_loader:
+            wrapped_obs = optional_observation_map(wrapped_dummy_env, current_obs)
+            wrapped_next_obs = optional_observation_map(wrapped_dummy_env, next_obs)
+            wrapped_action = optional_action_map(wrapped_dummy_env, action)
+            appended_trajectories['obs'].append(wrapped_obs)
+            appended_trajectories['next_obs'].append(wrapped_next_obs)
+            appended_trajectories['acts'].append(wrapped_action)
+            appended_trajectories['dones'].append(done)
+            traj_frame_count += 1
+            timesteps += 1
+
+            if timesteps % 1000 == 0:
+                print(f"{timesteps} timesteps loaded")
+
+            # if frames_per_traj is None, collect the whole trajectory
+            if frames_per_traj is not None and traj_frame_count == frames_per_traj:
+                appended_trajectories['dones'][-1] = True
+                break
     end_time = time.time()
+    for k in appended_trajectories:
+        appended_trajectories[k] = np.array(appended_trajectories[k])
     logging.info(f"Minecraft trajectory collection took {round(end_time - start_time, 2)} seconds to complete")
-    merged_trajectories['dones'][-1] = True
-    return merged_trajectories
+    appended_trajectories['dones'][-1] = True
+    return appended_trajectories
 
 
 def construct_next_obs(trajectories_dict):
