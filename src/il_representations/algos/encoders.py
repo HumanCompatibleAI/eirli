@@ -14,6 +14,7 @@ from pyro.distributions import Delta
 
 from gym import spaces
 from il_representations.algos.utils import independent_multivariate_normal
+from il_representations.utils import ForkedPdb
 import functools
 
 """
@@ -407,7 +408,6 @@ def infer_action_shape_info(action_space, action_embedding_dim):
     and the action_embedding_dim
     """
     # Machinery for turning raw actions into vectors.
-
     if isinstance(action_space, spaces.Discrete):
         # If actions are discrete, this is done via an Embedding.
         action_processor = nn.Embedding(num_embeddings=action_space.n, embedding_dim=action_embedding_dim)
@@ -439,6 +439,7 @@ class ActionEncodingEncoder(BaseEncoder):
 
         super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
 
+        # TODO make this work better for more complex action types like those in Minecraft
         self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
                                                                                        action_embedding_dim)
         # Machinery for aggregating information from an arbitrary number of actions into a single vector,
@@ -476,7 +477,7 @@ class ActionEncodingEncoder(BaseEncoder):
         if self.action_encoder is not None:
             output, (hidden, cell) = self.action_encoder(processed_actions)
         else:
-            hidden = torch.mean(processed_actions, dim=1)
+            hidden = torch.mean(processed_actions.float(), dim=1)
 
         action_encoding_vector = torch.squeeze(hidden)
         assert action_encoding_vector.shape[0] == batch_dim, \

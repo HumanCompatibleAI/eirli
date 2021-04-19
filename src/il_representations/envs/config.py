@@ -80,7 +80,12 @@ def env_cfg_defaults():
     _ = locals()
     del _
 
-
+@env_cfg_ingredient.named_config
+def wrappers_frames_only_camera_disc_no_limit():
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper] #
+    _ = locals()
+    del _
 
 @env_cfg_ingredient.named_config
 def wrappers_frames_only_camera_disc():
