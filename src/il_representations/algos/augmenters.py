@@ -13,9 +13,12 @@ either augment just the context, or both the context and the target, depending o
 
 
 class Augmenter(ABC):
-    def __init__(self, augmenter_spec, color_space):
-        augment_op = StandardAugmentations.from_string_spec(
-            augmenter_spec, color_space)
+    def __init__(self, augmenter_spec, color_space, augment_func=None):
+        if augment_func:
+            self.augment_op = augment_func
+        else:
+            augment_op = StandardAugmentations.from_string_spec(
+                augmenter_spec, color_space)
         self.augment_op = augment_op
 
     @abstractmethod

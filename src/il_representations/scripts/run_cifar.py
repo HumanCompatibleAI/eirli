@@ -2,9 +2,9 @@ from gym.spaces import Discrete, Box
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from il_representations import algos
-from il_representations.algos.augmenters import ColorSpace
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.utils import LinearWarmupCosine
+from imitation.augment.color import ColorSpace
 from math import ceil
 
 import numpy as np
@@ -15,7 +15,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
-from torchvision.models.resnet import resnet18
+from torchvision.models.resnet import resnet50
 
 
 class MockGymEnv(object):
@@ -26,6 +26,7 @@ class MockGymEnv(object):
     def __init__(self, obs_space):
         self.observation_space = obs_space
         self.action_space = Discrete(1)
+        self.color_space = ColorSpace.RGB
 
     def seed(self, seed):
         pass
@@ -135,7 +136,19 @@ def representation_learning(algo, data_dir, device, log_dir, config):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         # SimCLR doesn't use blur for CIFAR-10
     ]
+
     env = MockGymEnv(Box(low=0.0, high=1.0, shape=(3, 32, 32), dtype=np.float32))
+    augmenter_kwargs = {
+        "augmenter_spec": "translate,flip_lr,color_jitter_ex,gray",
+        "color_space": env.color_space,
+
+        # (Cynthia) Here I'm using augmenter_func because I want our settings
+        # to be as close to SimCLR as possible
+        "augmenter_func": rep_learning_augmentations
+    }
+    optimizer_kwargs = {
+        "lr": 3e-4
+    }
 
     transform = transforms.ToTensor()
     trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
@@ -145,15 +158,15 @@ def representation_learning(algo, data_dir, device, log_dir, config):
     batch_size = config['pretrain_batch_size']
     num_steps = num_epochs * int(ceil(num_examples / batch_size))
 
-    # Note that the resnet18 model used here has an architecture meant for
-    # ImageNet, not CIFAR-10. The SimCLR implementation uses a version
-    # specialized for CIFAR, see https://github.com/google-research/simclr/blob/37ad4e01fb22e3e6c7c4753bd51a1e481c2d992e/resnet.py#L531
-    # It seems that SimCLR does not include the final fully connected layer for ResNets, so we set it to the identity.
-    resnet_without_fc = resnet18()
-    resnet_without_fc.fc = torch.nn.Identity()
+    # Modify resnet according to SimCLR paper Appendix B.9
+    simclr_resnet = resnet50()
+    simclr_resnet.fc = torch.nn.Identity()
+    simclr_resnet.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1))
+    simclr_resnet.maxpool = torch.nn.Identity()
 
     model = algo(
-        env,
+        observation_space=env.observation_space,
+        action_space=env.action_space,
         log_dir=log_dir,
         batch_size=batch_size,
         representation_dim=config['representation_dim'],
@@ -163,21 +176,17 @@ def representation_learning(algo, data_dir, device, log_dir, config):
         shuffle_batches=True,
         color_space=ColorSpace.RGB,
         save_interval=config['pretrain_save_interval'],
-        encoder_kwargs={'architecture_module_cls': lambda *args: resnet_without_fc},
-        augmenter_kwargs={'augmentations': rep_learning_augmentations},
-        optimizer=LARS,
-        optimizer_kwargs={
-            'lr': config['pretrain_lr'],
-            'weight_decay': config['pretrain_weight_decay'],
-            'momentum': config['pretrain_momentum'],
-            'max_epoch': num_steps,
-        },
+        encoder_kwargs={'obs_encoder_cls': lambda *args: simclr_resnet},
+        augmenter_kwargs=augmenter_kwargs,
+        optimizer=torch.optim.Adam,
+        optimizer_kwargs=optimizer_kwargs,
         scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
     )
 
-    model.learn(rep_learning_data, num_epochs)
+    # TODO: Check batches per epoch
+    model.learn(rep_learning_data, 1000, num_epochs)
     env.close()
     return model
 
@@ -194,7 +203,7 @@ def default_config():
     finetune_epochs = 100
     representation_dim = 512
     projection_dim = 128
-    pretrain_lr = 1.0
+    pretrain_lr = 3e-4
     pretrain_weight_decay = 1e-4
     pretrain_momentum = 0.9
     pretrain_batch_size = 512
