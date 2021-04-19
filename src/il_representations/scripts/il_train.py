@@ -142,6 +142,13 @@ def default_config():
     encoder_path = None
     # file name for final policy
     final_pol_name = 'policy_final.pt'
+    # Do we want to save the encoder after IL training?
+    # This is useful for experiments comparing off-task BC pretraining
+    # to off-task RepL pretraining
+    save_output_encoder = False
+    # The path at which the encoder after IL training will be saved
+    # This is only used if `save_output_encoder` = True
+    output_encoder_path = 'il_encoder.ckpt'
     # dataset configurations for webdataset code
     # (you probably don't want to change this)
     dataset_configs = [{'type': 'demos'}]
@@ -238,7 +245,8 @@ def add_infos(data_iter):
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
-                   device_name, final_pol_name, shuffle_buffer_size):
+                   device_name, final_pol_name, shuffle_buffer_size,
+                   save_output_encoder, output_encoder_path):
     policy = make_policy(venv=venv_chans_first,
                          observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
@@ -289,6 +297,11 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
     trainer.save_policy(final_path)
+
+    if save_output_encoder:
+        final_encoder_path = os.path.join(out_dir, output_encoder_path)
+        logging.info(f"Saving encoder component of final BC policy to {final_encoder_path}")
+        th.save(policy.features_extractor.representation_encoder, final_encoder_path)
     return final_path
 
 
