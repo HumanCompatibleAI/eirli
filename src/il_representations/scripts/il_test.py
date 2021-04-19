@@ -77,7 +77,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
     # evenly spread out the rest.
     policy_idxes = np.round(np.linspace(0, len(policy_paths) - 1, num_test_ckpts)).astype(int)
     final_stats_dict = {}
-    
+
     for count, idx in enumerate(policy_idxes):
         policy_path = policy_paths[idx]
 
