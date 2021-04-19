@@ -1,4 +1,5 @@
 from il_representations.scripts.utils import StagesToRun
+import logging
 from ray import tune
 # TODO(sam): GAIL configs
 
@@ -318,6 +319,17 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_repl_minecraft_survival():
+        """Training on specifically survival data, only to be used with Minecraft!"""
+        repl = {
+            'dataset_configs': [{'type': 'frames_only_demos',
+                                 'env_cfg': {'task_name': 'ObtainDiamondSurvivalVectorObf'}}],
+            'is_multitask': True
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_demos_random():
         """Training on both demos and random rollouts for the current
         environment."""
@@ -329,7 +341,7 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_data_repl_random():
-        """Training on both demos and random rollouts for the current
+        """Training on only random rollouts for the current
         environment."""
         repl = {
             'dataset_configs': [{'type': 'random'}],

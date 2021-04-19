@@ -48,3 +48,8 @@ git+git://github.com/HumanCompatibleAI/stable-baselines3@ad902dd5f9d4afeef347897
 magical-il~=0.0.1a4
 dm_control~=0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
+
+# # NOTE TO SELF: Developing locally with updated RB, need to change that here once that PR is merged
+# # Target RB branch: ilr_wrappers
+# # [Also need to make branch un-private somehow, possibly giving CircleCI a checkout key?...]
+# git+ssh://git@github.com/HumanCompatibleAI/realistic-benchmarks@master#egg=realistic-benchmarks

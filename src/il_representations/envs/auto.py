@@ -1,6 +1,7 @@
 """Code for automatically loading data, creating vecenvs, etc. based on
 Sacred configuration."""
 
+from functools import partial
 import glob
 import logging
 import os
@@ -18,10 +19,10 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
-from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
-                                                    get_env_name_minecraft,
+from il_representations.envs.minecraft_envs import (get_env_name_minecraft,
                                                     load_dataset_minecraft)
 from il_representations.scripts.utils import update as dict_update
+from il_representations.envs.utils import wrap_env
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
@@ -53,6 +54,7 @@ def benchmark_is_available(benchmark_name):
         # we check whether minecraft is installed by importing minerl
         try:
             import minerl  # noqa: F401
+            import realistic_benchmarks
             return True, None
         except ImportError as ex:
             return False, "MineRL not installed, cannot use Minecraft " \
@@ -62,7 +64,7 @@ def benchmark_is_available(benchmark_name):
 
 
 @env_cfg_ingredient.capture
-def load_dict_dataset(benchmark_name, n_traj=None):
+def load_dict_dataset(benchmark_name, n_traj, frames_per_traj):
     """Load a dict-type dataset. Also see load_wds_datasets, which instead
     lods a set of datasets that have been stored in a webdataset-compatible
     format."""
@@ -73,7 +75,7 @@ def load_dict_dataset(benchmark_name, n_traj=None):
     elif benchmark_name == 'atari':
         dataset_dict = load_dataset_atari(n_traj=n_traj)
     elif benchmark_name == 'minecraft':
-        dataset_dict = load_dataset_minecraft(n_traj=n_traj)
+        dataset_dict = load_dataset_minecraft(n_traj=n_traj, frames_per_traj=frames_per_traj)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -110,9 +112,10 @@ def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
     return n_envs, venv_parallel, parallel_workers
 
 
+
 @env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, dm_control_full_env_names,
-                 dm_control_frame_stack, minecraft_max_env_steps):
+                 dm_control_frame_stack, minecraft_max_env_steps, minecraft_wrappers):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     n_envs, venv_parallel, parallel_workers = _get_venv_opts()
@@ -161,7 +164,7 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             n_envs=1,  # TODO fix this eventually; currently hitting error
                                        # noted here: https://github.com/minerllabs/minerl/issues/177
                             parallel=venv_parallel,
-                            wrapper_class=MinecraftVectorWrapper,
+                            wrapper_class=partial(wrap_env, wrappers=minecraft_wrappers),
                             max_episode_steps=minecraft_max_env_steps)
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 

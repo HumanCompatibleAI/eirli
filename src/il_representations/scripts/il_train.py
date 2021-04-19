@@ -32,6 +32,12 @@ from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import freeze_params
+from il_representations.scripts.utils import print_policy_info
+
+try:
+    import realistic_benchmarks.policies as rb_policies
+except ImportError:
+    logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
 
 bc_ingredient = Ingredient('bc')
 
@@ -136,6 +142,13 @@ def default_config():
     encoder_path = None
     # file name for final policy
     final_pol_name = 'policy_final.pt'
+    # Do we want to save the encoder after IL training?
+    # This is useful for experiments comparing off-task BC pretraining
+    # to off-task RepL pretraining
+    save_output_encoder = False
+    # The path at which the encoder after IL training will be saved
+    # This is only used if `save_output_encoder` = True
+    output_encoder_path = 'il_encoder.ckpt'
     # dataset configurations for webdataset code
     # (you probably don't want to change this)
     dataset_configs = [{'type': 'demos'}]
@@ -155,16 +168,29 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
-
+    policy_class = sb3_pols.ActorCriticCnnPolicy
+    extra_policy_kwargs = dict(features_extractor_class=EncoderFeatureExtractor)
+    add_env_to_policy_kwargs = False
     _ = locals()
     del _
 
+@il_train_ex.named_config
+def minecraft_action_wrapped():
+    # TODO need to define specific just-POV features extractor
+    policy_class = rb_policies.SpaceFlatteningActorCriticPolicy
+    add_env_to_policy_kwargs = True
+    _ = locals()
+    del _
 
 @il_train_ex.capture
-def make_policy(observation_space,
+def make_policy(venv,
+                observation_space,
                 action_space,
                 encoder_or_path,
                 encoder_kwargs,
+                policy_class,
+                extra_policy_kwargs,
+                add_env_to_policy_kwargs,
                 lr_schedule=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
@@ -191,13 +217,15 @@ def make_policy(observation_space,
     else:
         encoder = BaseEncoder(observation_space, **encoder_kwargs)
     policy_kwargs = {
-        'features_extractor_class': EncoderFeatureExtractor,
         'features_extractor_kwargs': {
             "encoder": encoder,
         },
         **common_policy_kwargs,
+        **extra_policy_kwargs
     }
-    policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
+    if add_env_to_policy_kwargs:
+        policy_kwargs['env'] = venv
+    policy = policy_class(**policy_kwargs)
     return policy
 
 
@@ -217,8 +245,10 @@ def add_infos(data_iter):
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
-                   device_name, final_pol_name, shuffle_buffer_size):
-    policy = make_policy(observation_space=venv_chans_first.observation_space,
+                   device_name, final_pol_name, shuffle_buffer_size,
+                   save_output_encoder, output_encoder_path):
+    policy = make_policy(venv=venv_chans_first,
+                         observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
@@ -268,6 +298,11 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
     trainer.save_policy(final_path)
+
+    if save_output_encoder:
+        final_encoder_path = os.path.join(out_dir, output_encoder_path)
+        logging.info(f"Saving encoder component of final BC policy to {final_encoder_path}")
+        th.save(policy.features_extractor.representation_encoder, final_encoder_path)
     return final_path
 
 
@@ -289,7 +324,6 @@ def do_training_gail(
         action_space=venv_chans_first.action_space,
         encoder=encoder,
     )
-
     def policy_constructor(observation_space,
                            action_space,
                            lr_schedule,
@@ -297,7 +331,8 @@ def do_training_gail(
         """Construct a policy with the right LR schedule (since PPO will
         actually use it, unlike BC)."""
         assert not use_sde
-        return make_policy(observation_space=observation_space,
+        return make_policy(venv=venv_chans_first,
+                           observation_space=observation_space,
                            action_space=action_space,
                            encoder_or_path=encoder,
                            lr_schedule=lr_schedule)

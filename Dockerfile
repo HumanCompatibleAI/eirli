@@ -21,6 +21,7 @@ RUN apt-get update -q \
     wget \
     xpra \
     xserver-xorg-dev \
+    libopenmpi-dev \
     libxrandr2 \
     libxss1 \
     libxcursor1 \

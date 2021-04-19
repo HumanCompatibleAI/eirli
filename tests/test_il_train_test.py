@@ -36,7 +36,6 @@ def test_il_train_test(env_cfg, algo, il_train_ex, il_test_ex,
     # FIXME(sam): same comment as elsewhere: should have a better way of
     # getting at saved policies.
     log_dir = file_observer.dir
-
     # test
     policy_path = os.path.join(log_dir, final_pol_name)
     il_test_ex.run(

@@ -3,8 +3,15 @@ variables for creating environments (`env_cfg_ingredient`), for creating
 vecenvs (`venv_opts_ingredient`), and for loading data
 (`env_data_ingredient`)."""
 import os
-
+import logging
 from sacred import Ingredient
+from il_representations.envs.utils import MinecraftPOVWrapper, Testing2500StepLimitWrapper
+try:
+    import realistic_benchmarks.wrappers as rb_wrappers
+except ImportError as e:
+    print(f"Hit error: {e}")
+    logging.info("Realistic Benchmarks is not installed; as a result much Minecraft functionality will not work")
+
 
 ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
 
@@ -69,9 +76,40 @@ def env_cfg_defaults():
     # Minecraft-specific config variables
     # ###############################
     minecraft_max_env_steps = None
-
+    minecraft_wrappers = list()
     _ = locals()
     del _
+
+@env_cfg_ingredient.named_config
+def wrappers_frames_only_camera_disc_no_limit():
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper] #
+    _ = locals()
+    del _
+
+@env_cfg_ingredient.named_config
+def wrappers_frames_only_camera_disc():
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper, Testing2500StepLimitWrapper] #
+    _ = locals()
+    del _
+
+
+@env_cfg_ingredient.named_config
+def wrappers_frames_only_obfuscated():
+    minecraft_wrappers = [rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper, Testing2500StepLimitWrapper] #
+    _ = locals()
+    del _
+
+@env_cfg_ingredient.named_config
+def wrappers_obs_flatten_camera_disc():
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          rb_wrappers.ObservationFlatteningWrapper, Testing2500StepLimitWrapper]
+    _ = locals()
+    del _
+
+
 
 
 # see venv_opts_defaults docstring for description of this ingredient

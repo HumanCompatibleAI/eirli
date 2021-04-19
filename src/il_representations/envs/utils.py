@@ -1,4 +1,38 @@
 import gym
+from gym import ObservationWrapper
+from gym.wrappers import TimeLimit
+import numpy as np
+
+
+class MinecraftPOVWrapper(ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        non_transposed_shape = self.env.observation_space['pov'].shape
+        self.high = np.max(self.env.observation_space['pov'].high)
+        transposed_shape = (non_transposed_shape[2],
+                            non_transposed_shape[0],
+                            non_transposed_shape[1])
+        # Note: this assumes the Box is of the form where low/high values are vector but need to be scalar
+        transposed_obs_space = gym.spaces.Box(low=0,
+                                              high=1,
+                                              shape=transposed_shape)
+        self.observation_space = transposed_obs_space
+
+    def observation(self, obs):
+        # Minecraft returns shapes in NHWC by default, and with unnormalized pixel ranges
+        return np.swapaxes(obs['pov'], -1, -3)/self.high
+
+
+# TODO This is just a hack for dealing with the fact that currently FindCaves
+# never reaches an episode termination condition
+class Testing2500StepLimitWrapper(TimeLimit):
+    def __init__(self, env):
+        super().__init__(env, 2500)
+
+def wrap_env(env, wrappers):
+    for wrapper in wrappers:
+        env = wrapper(env)
+    return env
 
 
 def serialize_gym_space(space):
@@ -6,10 +40,16 @@ def serialize_gym_space(space):
     (i.e. for pickles that will be transferred between machines running
     different versions of Gym)."""
     if isinstance(space, gym.spaces.Box):
+        if not np.isscalar(space.low):
+            # This is to fix a weird issue where Box requires the shape to not be a vector if the
+            # low and high values also are
+            space_shape = None
+        else:
+            space_shape = space.shape
         return _KwargSerialisableObject(gym.spaces.Box, {
             'low': space.low,
             'high': space.high,
-            'shape': space.shape,
+            'shape': space_shape,
             'dtype': space.dtype,
         })
     elif isinstance(space, gym.spaces.Discrete):

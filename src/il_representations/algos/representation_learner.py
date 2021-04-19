@@ -290,7 +290,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
-
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)

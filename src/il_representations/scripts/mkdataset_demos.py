@@ -32,21 +32,24 @@ def default_config():
     shuffle_traj_order = True
     # put an upper limit on number of trajectories to load
     n_traj_total = None
-    # TODO(sam): support sharding
 
+    # TODO maybe implement for other envs than Minecraft?
+    frames_per_traj = None
+    # TODO(sam): support sharding
+    data_type = "demos"
     _ = locals()
     del _
 
 
 @mkdataset_demos_ex.main
-def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
+def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total, frames_per_traj, data_type):
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
 
     # load existing demo dictionary directly, w/ same code used to handle data
     # in il_train.py
-    dataset_dict = auto_env.load_dict_dataset(n_traj=n_traj_total)
+    dataset_dict = auto_env.load_dict_dataset(n_traj=n_traj_total, frames_per_traj=frames_per_traj)
     n_samples = len(dataset_dict['obs'])
     # keys in dataset_dict: 'obs', 'next_obs', 'acts', 'infos', 'rews', 'dones'
     # numeric_types = (np.ndarray, numbers.Number, np.bool_)
@@ -86,7 +89,7 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     out_file_path = os.path.join(
         auto_env.get_data_dir(benchmark_name=env_cfg['benchmark_name'],
                               task_key=env_cfg['task_name'],
-                              data_type='demos'), 'demos.tgz')
+                              data_type=data_type), 'demos.tgz')
 
     # get metadata for the dataset
     meta_dict = get_meta_dict()
@@ -94,7 +97,6 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     if shuffle_traj_order:
         # write trajectories in random order
         random.shuffle(trajectories)
-
     def frame_gen():
         for traj_num, traj in enumerate(trajectories):
             traj_len = len(traj['obs'])
