@@ -6,7 +6,7 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "cifar-10"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -69,6 +69,11 @@ def env_cfg_defaults():
     # Minecraft-specific config variables
     # ###############################
     minecraft_max_env_steps = None
+
+    # ###############################
+    # CIFAR-10-specific config variables
+    # (none currently present)
+    # ###############################
 
     _ = locals()
     del _

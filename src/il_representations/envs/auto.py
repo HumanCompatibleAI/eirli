@@ -21,6 +21,7 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
+from il_representations.envs.cifar_envs import load_dataset_cifar, MockGymEnv
 from il_representations.scripts.utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
@@ -74,6 +75,8 @@ def load_dict_dataset(benchmark_name, n_traj=None):
         dataset_dict = load_dataset_atari(n_traj=n_traj)
     elif benchmark_name == 'minecraft':
         dataset_dict = load_dataset_minecraft(n_traj=n_traj)
+    elif benchmark_name == 'cifar-10':
+        dataset_dict = load_dataset_cifar()
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -100,6 +103,8 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
         return task_name
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
+    elif benchmark_name == 'cifar-10':
+        return 'cifar-10-cls'
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -163,6 +168,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             parallel=venv_parallel,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
+    elif benchmark_name == 'cifar-10':
+        return MockGymEnv()
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -266,7 +273,8 @@ def load_color_space(benchmark_name):
         'magical': ColorSpace.RGB,
         'dm_control': ColorSpace.RGB,
         'atari': ColorSpace.GRAY,
-        'minecraft': ColorSpace.RGB
+        'minecraft': ColorSpace.RGB,
+        'cifar-10': ColorSpace.RGB
     }
     try:
         return color_spaces[benchmark_name]

@@ -1,12 +1,3 @@
-from gym.spaces import Discrete, Box
-from sacred import Experiment
-from sacred.observers import FileStorageObserver
-from il_representations import algos
-from il_representations.algos.optimizers import LARS
-from il_representations.algos.utils import LinearWarmupCosine
-from imitation.augment.color import ColorSpace
-from math import ceil
-
 import numpy as np
 import os
 import PIL
@@ -16,6 +7,26 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet50
+from math import ceil
+import webdataset as wds
+
+from gym.spaces import Discrete, Box
+from sacred import Experiment
+from sacred.observers import FileStorageObserver
+from il_representations import algos
+from il_representations.algos.optimizers import LARS
+from il_representations.algos.utils import LinearWarmupCosine
+from il_representations.envs.auto import load_wds_datasets
+from il_representations.envs.config import (env_cfg_ingredient,
+                                            env_data_ingredient,
+                                            venv_opts_ingredient)
+from imitation.augment.color import ColorSpace
+
+
+cifar_ex = Experiment('cifar', ingredients=[
+                                    env_cfg_ingredient, env_data_ingredient,
+                                    venv_opts_ingredient
+                                ])
 
 
 class MockGymEnv(object):
@@ -33,20 +44,6 @@ class MockGymEnv(object):
 
     def close(self):
         pass
-
-
-def transform_to_rl(dataset):
-    """Transforms the input supervised learning dataset into an "RL dataset", by
-    adding dummy 'actions' (always 0) and 'dones' (always False), and pretending
-    that everything is from the same 'trajectory'.
-    """
-    obs = [img for img, label in dataset]
-    data_dict = {
-        'obs': obs,
-        'acts': [0.0] * len(obs),
-        'dones': [False] * len(obs),
-    }
-    return data_dict
 
 
 class LinearHead(nn.Module):
@@ -117,14 +114,14 @@ def evaluate_classifier(classifier, data_dir, device):
     print('Accuracy: %d %%' % (100 * correct / total))
 
 
-def representation_learning(algo, data_dir, device, log_dir, config):
+def representation_learning(algo, device, log_dir, config):
     print('Train representation learner')
     if isinstance(algo, str):
         algo = getattr(algos, algo)
     assert issubclass(algo, algos.RepresentationLearner)
 
-    rep_learning_augmentations = [
-        transforms.Lambda(torch.tensor),
+    rep_learning_augmentations = transforms.Compose([
+        transforms.Lambda(lambda x: (x.cpu().numpy() * 255).astype(np.uint8)),
         transforms.ToPILImage(),
         transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
         transforms.RandomHorizontalFlip(),
@@ -135,38 +132,36 @@ def representation_learning(algo, data_dir, device, log_dir, config):
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         # SimCLR doesn't use blur for CIFAR-10
-    ]
+    ])
 
+    rep_learning_data, combined_meta = load_wds_datasets([{}])
     env = MockGymEnv(Box(low=0.0, high=1.0, shape=(3, 32, 32), dtype=np.float32))
     augmenter_kwargs = {
         "augmenter_spec": "translate,flip_lr,color_jitter_ex,gray",
-        "color_space": env.color_space,
+        "color_space": combined_meta['color_space'],
 
         # (Cynthia) Here I'm using augmenter_func because I want our settings
         # to be as close to SimCLR as possible
-        "augmenter_func": rep_learning_augmentations
+        "augment_func": rep_learning_augmentations
     }
     optimizer_kwargs = {
         "lr": 3e-4
     }
 
-    transform = transforms.ToTensor()
-    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-    rep_learning_data = transform_to_rl(trainset)
     num_examples = len(rep_learning_data)
     num_epochs = config['pretrain_epochs']
     batch_size = config['pretrain_batch_size']
-    num_steps = num_epochs * int(ceil(num_examples / batch_size))
+    batches_per_epoch = ceil(num_examples / batch_size)
 
     # Modify resnet according to SimCLR paper Appendix B.9
     simclr_resnet = resnet50()
-    simclr_resnet.fc = torch.nn.Identity()
+    simclr_resnet.fc = torch.nn.Linear(2048, config['representation_dim'])
     simclr_resnet.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1))
     simclr_resnet.maxpool = torch.nn.Identity()
 
     model = algo(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
+        observation_space=combined_meta['observation_space'],
+        action_space=combined_meta['action_space'],
         log_dir=log_dir,
         batch_size=batch_size,
         representation_dim=config['representation_dim'],
@@ -174,7 +169,7 @@ def representation_learning(algo, data_dir, device, log_dir, config):
         device=device,
         normalize=False,
         shuffle_batches=True,
-        color_space=ColorSpace.RGB,
+        color_space=combined_meta['color_space'],
         save_interval=config['pretrain_save_interval'],
         encoder_kwargs={'obs_encoder_cls': lambda *args: simclr_resnet},
         augmenter_kwargs=augmenter_kwargs,
@@ -185,13 +180,9 @@ def representation_learning(algo, data_dir, device, log_dir, config):
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
     )
 
-    # TODO: Check batches per epoch
-    model.learn(rep_learning_data, 1000, num_epochs)
+    model.learn(rep_learning_data, batches_per_epoch, num_epochs)
     env.close()
     return model
-
-
-cifar_ex = Experiment('cifar')
 
 
 @cifar_ex.config
@@ -221,7 +212,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     os.makedirs(data_dir, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = representation_learning(algo, data_dir, device, log_dir, _config)
+    model = representation_learning(algo, device, log_dir, _config)
 
     print('Train linear head')
     classifier = LinearHead(model.encoder, representation_dim, output_dim=10).to(device)
@@ -232,5 +223,5 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
 
 
 if __name__ == '__main__':
-    cifar_ex.observers.append(FileStorageObserver('cifar_runs'))
+    cifar_ex.observers.append(FileStorageObserver('runs/cifar_runs'))
     cifar_ex.run_commandline()
