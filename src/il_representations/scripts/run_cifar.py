@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import PIL
+import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -29,32 +30,16 @@ cifar_ex = Experiment('cifar', ingredients=[
                                 ])
 
 
-class MockGymEnv(object):
-    """A mock Gym env for a supervised learning dataset pretending to be an RL
-    task. Action space is set to Discrete(1), observation space corresponds to
-    the original supervised learning task.
-    """
-    def __init__(self, obs_space):
-        self.observation_space = obs_space
-        self.action_space = Discrete(1)
-        self.color_space = ColorSpace.RGB
-
-    def seed(self, seed):
-        pass
-
-    def close(self):
-        pass
-
-
 class LinearHead(nn.Module):
     def __init__(self, encoder, encoder_dim, output_dim):
         super().__init__()
         self.encoder = encoder
+        self.encoder.fc = torch.nn.Identity()
         self.output_dim = output_dim
-        self.layer = nn.Linear(encoder_dim, output_dim)
+        self.layer = nn.Linear(2048, output_dim)
 
     def forward(self, x):
-        encoding = self.encoder.encode_context(x, None).loc.detach()
+        encoding = self.encoder(x)
         return self.layer(encoding)
 
 
@@ -68,12 +53,24 @@ def train_classifier(classifier, data_dir, num_epochs, device):
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
     trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=512, shuffle=True)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(classifier.layer.parameters(), lr=0.2, momentum=0.9, weight_decay=0.0, nesterov=True)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+    testset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True, transform=test_transform)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False)
+
+    progress_dict = {'loss': [], 'train_acc': [], 'test_acc': []}
+
     for epoch in range(num_epochs):
+        loss_meter = AverageMeter()
+        train_acc_meter = AverageMeter()
+
         print(f"Epoch {epoch}/{num_epochs} with lr {optimizer.param_groups[0]['lr']}")
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(trainloader, 0):
@@ -85,33 +82,42 @@ def train_classifier(classifier, data_dir, num_epochs, device):
             optimizer.step()
 
             # print statistics
+            train_acc_meter.update(accuracy(outputs, labels))
+            loss_meter.update(loss.item())
             running_loss += loss.item()
+
             if i % 20 == 19:    # print every 20 mini-batches
-                print('[Epoch %d, Batch %3d] Average loss: %.3f' %
-                      (epoch + 1, i + 1, running_loss / 20))
+                # print('[Epoch %d, Batch %3d] Average loss: %.3f, Average acc' %
+                #       (epoch + 1, i + 1, running_loss / 20))
+                print(f"[Epoch {epoch}, Batch {i}] "
+                      f"Average loss: {loss_meter.avg} "
+                      f"Average acc: {train_acc_meter.avg} "
+                      f"Running loss: {running_loss / 20}")
                 running_loss = 0.0
 
         scheduler.step()
+        test_acc = evaluate_classifier(testloader, classifier, device)
+
+        progress_dict['loss'].append(loss_meter.avg)
+        progress_dict['train_acc'].append(train_acc_meter.avg)
+        progress_dict['test_acc'].append(test_acc)
+
+        with open('./progress.json') as f:
+            json.dump(f)
 
 
-def evaluate_classifier(classifier, data_dir, device):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    testset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True, transform=transform)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False)
-    correct = 0
+def evaluate_classifier(testloader, classifier, device):
     total = 0
+    test_acc_meter = AverageMeter()
     with torch.no_grad():
         for images, labels in testloader:
             images, labels = images.to(device), labels.to(device)
             outputs = classifier(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            test_acc_meter.update(accuracy(outputs, labels))
 
-    print('Accuracy: %d %%' % (100 * correct / total))
+    return test_acc_meter.avg
 
 
 def representation_learning(algo, device, log_dir, config):
@@ -135,7 +141,6 @@ def representation_learning(algo, device, log_dir, config):
     ])
 
     rep_learning_data, combined_meta = load_wds_datasets([{}])
-    env = MockGymEnv(Box(low=0.0, high=1.0, shape=(3, 32, 32), dtype=np.float32))
     augmenter_kwargs = {
         "augmenter_spec": "translate,flip_lr,color_jitter_ex,gray",
         "color_space": combined_meta['color_space'],
@@ -180,9 +185,43 @@ def representation_learning(algo, device, log_dir, config):
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
     )
 
-    model.learn(rep_learning_data, batches_per_epoch, num_epochs)
-    env.close()
-    return model
+    _, encoder_checkpoint_path = model.learn(rep_learning_data, batches_per_epoch, num_epochs)
+    pretrained_model = torch.load(encoder_checkpoint_path)
+    return pretrained_model
+
+
+def accuracy(output, target, topk=(1,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
+
+
+class AverageMeter(object):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
 
 
 @cifar_ex.config
@@ -215,7 +254,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     model = representation_learning(algo, device, log_dir, _config)
 
     print('Train linear head')
-    classifier = LinearHead(model.encoder, representation_dim, output_dim=10).to(device)
+    classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
     train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
     print('Evaluate accuracy on test set')
