@@ -9,19 +9,15 @@ import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet50
 from math import ceil
-import webdataset as wds
 
-from gym.spaces import Discrete, Box
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from il_representations import algos
-from il_representations.algos.optimizers import LARS
 from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.envs.auto import load_wds_datasets
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from imitation.augment.color import ColorSpace
 
 
 cifar_ex = Experiment('cifar', ingredients=[
@@ -34,13 +30,10 @@ class LinearHead(nn.Module):
     def __init__(self, encoder, encoder_dim, output_dim):
         super().__init__()
         self.encoder = encoder
-        self.encoder.fc = torch.nn.Identity()
-        self.output_dim = output_dim
-        self.layer = nn.Linear(2048, output_dim)
+        self.encoder.fc = nn.Linear(2048, output_dim)
 
     def forward(self, x):
-        encoding = self.encoder(x)
-        return self.layer(encoding)
+        return self.encoder(x)
 
 
 def train_classifier(classifier, data_dir, num_epochs, device):
@@ -55,7 +48,8 @@ def train_classifier(classifier, data_dir, num_epochs, device):
     trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
     criterion = nn.CrossEntropyLoss().to(device)
-    optimizer = optim.SGD(classifier.layer.parameters(), lr=0.2, momentum=0.9, weight_decay=0.0, nesterov=True)
+    optimizer = optim.Adam(classifier.encoder.parameters(), lr=3e-4)
+    # optimizer = optim.Adam(classifier.encoder.fc.parameters(), lr=3e-4, momentum=0.9, weight_decay=0.0, nesterov=True)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 
     test_transform = transforms.Compose([
@@ -66,6 +60,8 @@ def train_classifier(classifier, data_dir, num_epochs, device):
     testloader = torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False)
 
     progress_dict = {'loss': [], 'train_acc': [], 'test_acc': []}
+
+    start_time = time.time()
 
     for epoch in range(num_epochs):
         loss_meter = AverageMeter()
@@ -82,14 +78,15 @@ def train_classifier(classifier, data_dir, num_epochs, device):
             optimizer.step()
 
             # print statistics
-            train_acc_meter.update(accuracy(outputs, labels))
+            train_acc_meter.update(accuracy(outputs, labels)[0].item())
             loss_meter.update(loss.item())
             running_loss += loss.item()
 
             if i % 20 == 19:    # print every 20 mini-batches
-                # print('[Epoch %d, Batch %3d] Average loss: %.3f, Average acc' %
-                #       (epoch + 1, i + 1, running_loss / 20))
-                print(f"[Epoch {epoch}, Batch {i}] "
+                hours, rem = divmod(time.time() - start_time, 3600)
+                minutes, seconds = divmod(rem, 60)
+                print(f"[{int(hours)}:{int(minutes)}:{int(seconds)}] "
+                      f"Epoch {epoch}, Batch {i} "
                       f"Average loss: {loss_meter.avg} "
                       f"Average acc: {train_acc_meter.avg} "
                       f"Running loss: {running_loss / 20}")
@@ -102,8 +99,8 @@ def train_classifier(classifier, data_dir, num_epochs, device):
         progress_dict['train_acc'].append(train_acc_meter.avg)
         progress_dict['test_acc'].append(test_acc)
 
-        with open('./progress.json') as f:
-            json.dump(f)
+        with open('./progress.json', 'w') as f:
+            json.dump(progress_dict, f)
 
 
 def evaluate_classifier(testloader, classifier, device):
@@ -115,7 +112,7 @@ def evaluate_classifier(testloader, classifier, device):
             outputs = classifier(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
-            test_acc_meter.update(accuracy(outputs, labels))
+            test_acc_meter.update(accuracy(outputs, labels)[0].item())
 
     return test_acc_meter.avg
 
