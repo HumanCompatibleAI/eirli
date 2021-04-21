@@ -182,9 +182,11 @@ def representation_learning(algo, device, log_dir, config):
         scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 2, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
+        log_interval=1
     )
 
     _, encoder_checkpoint_path = model.learn(rep_learning_data, batches_per_epoch, num_epochs)
+    print("Representation Learning trained!")
     pretrained_model = torch.load(encoder_checkpoint_path)
     return pretrained_model
 
@@ -256,8 +258,8 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
     train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
-    print('Evaluate accuracy on test set')
-    evaluate_classifier(classifier, data_dir, device=device)
+    # print('Evaluate accuracy on test set')
+    # evaluate_classifier(classifier, data_dir, device=device)
 
 
 if __name__ == '__main__':
