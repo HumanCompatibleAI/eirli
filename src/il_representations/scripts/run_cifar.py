@@ -8,6 +8,10 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet50
+from torchvision.datasets import CIFAR10
+from PIL import Image
+
+import tqdm
 from math import ceil
 import time
 from sacred import Experiment
@@ -227,6 +231,66 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+# test for one epoch, use weighted knn to find the most similar images' label to assign the test image
+def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature, epoch):
+    net.eval()
+    total_top1, total_top5, total_num, feature_bank = 0.0, 0.0, 0, []
+    with torch.no_grad():
+        # generate feature bank
+        for data, _, target in tqdm(memory_data_loader, desc='Feature extracting'):
+            feature = net(data.cuda(non_blocking=True))
+            feature_bank.append(feature)
+        # [D, N]
+        feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
+        # [N]
+        feature_labels = torch.tensor(memory_data_loader.dataset.targets, device=feature_bank.device)
+        # loop test data to predict the label by weighted knn search
+        test_bar = tqdm(test_data_loader)
+        for data, _, target in test_bar:
+            data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
+            feature, out = net(data)
+
+            total_num += data.size(0)
+            # compute cos similarity between each feature vector and feature bank ---> [B, N]
+            sim_matrix = torch.mm(feature, feature_bank)
+            # [B, K]
+            sim_weight, sim_indices = sim_matrix.topk(k=k, dim=-1)
+            # [B, K]
+            sim_labels = torch.gather(feature_labels.expand(data.size(0), -1), dim=-1, index=sim_indices)
+            sim_weight = (sim_weight / temperature).exp()
+
+            # counts for each class
+            one_hot_label = torch.zeros(data.size(0) * k, num_classes, device=sim_labels.device)
+            # [B*K, C]
+            one_hot_label = one_hot_label.scatter(dim=-1, index=sim_labels.view(-1, 1), value=1.0)
+            # weighted score ---> [B, C]
+            pred_scores = torch.sum(one_hot_label.view(data.size(0), -1, num_classes) * sim_weight.unsqueeze(dim=-1), dim=1)
+
+            pred_labels = pred_scores.argsort(dim=-1, descending=True)
+            total_top1 += torch.sum((pred_labels[:, :1] == target.unsqueeze(dim=-1)).any(dim=-1).float()).item()
+            total_top5 += torch.sum((pred_labels[:, :5] == target.unsqueeze(dim=-1)).any(dim=-1).float()).item()
+            test_bar.set_description('Test Epoch: [{}] Acc@1:{:.2f}% Acc@5:{:.2f}%'
+                                     .format(epoch, total_top1 / total_num * 100, total_top5 / total_num * 100))
+
+    return total_top1 / total_num * 100, total_top5 / total_num * 100
+
+
+class CIFAR10Pair(CIFAR10):
+    """CIFAR10 Dataset.
+    """
+
+    def __getitem__(self, index):
+        img, target = self.data[index], self.targets[index]
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            pos_1 = self.transform(img)
+            pos_2 = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return pos_1, pos_2, target
 
 @cifar_ex.config
 def default_config():
@@ -249,7 +313,7 @@ def default_config():
 
 
 @cifar_ex.main
-def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim, _config):
+def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim, pretrain_batch_size, _config):
     # TODO fix this hacky nonsense
     log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
     os.mkdir(log_dir)
@@ -258,10 +322,19 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = representation_learning(algo, device, log_dir, _config)
 
-    print('Train linear head')
-    breakpoint()
-    classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
-    train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
+    test_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+
+    memory_data = CIFAR10Pair(root='data', train=True, transform=test_transform, download=True)
+    memory_loader = torch.utils.data.DataLoader(memory_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
+    test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
+
+    test(model.encoder, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
+    # print('Train linear head')
+    # classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
+    # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
     # print('Evaluate accuracy on test set')
     # evaluate_classifier(classifier, data_dir, device=device)
