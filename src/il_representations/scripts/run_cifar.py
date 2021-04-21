@@ -259,6 +259,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     model = representation_learning(algo, device, log_dir, _config)
 
     print('Train linear head')
+    breakpoint()
     classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
     train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
