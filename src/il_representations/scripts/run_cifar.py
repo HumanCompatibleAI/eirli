@@ -11,7 +11,7 @@ from torchvision.models.resnet import resnet50
 from torchvision.datasets import CIFAR10
 from PIL import Image
 
-import tqdm
+from tqdm import tqdm
 from math import ceil
 import time
 from sacred import Experiment
