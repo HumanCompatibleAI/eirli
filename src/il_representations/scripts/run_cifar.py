@@ -9,7 +9,7 @@ import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet50
 from math import ceil
-
+import time
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from il_representations import algos
