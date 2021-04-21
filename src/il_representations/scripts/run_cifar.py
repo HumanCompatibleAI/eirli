@@ -331,7 +331,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
 
-    test(model, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
+    test(model.network, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
     # print('Train linear head')
     # classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
     # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
