@@ -198,7 +198,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         # [2*B]
         pos_sim = torch.cat([pos_sim, pos_sim], dim=0)
         loss = (- torch.log(pos_sim / sim_matrix.sum(dim=-1))).mean()
-        if np.isnnan(loss.item):
+        if np.isnan(loss.item):
             breakpoint()
         return loss
         #
