@@ -155,10 +155,10 @@ def representation_learning(algo, device, log_dir, config):
 
     # This is currently erroneously 1
     #num_examples = len(rep_learning_data)
-    num_examples = 49920
+    # num_examples = 49920
     num_epochs = config['pretrain_epochs']
     batch_size = config['pretrain_batch_size']
-    batches_per_epoch = ceil(num_examples / batch_size)
+    batches_per_epoch = config['batches_per_epoch']
 
     # Modify resnet according to SimCLR paper Appendix B.9
     simclr_resnet = resnet50()
@@ -234,6 +234,7 @@ def default_config():
     algo = 'SimCLR'
     data_dir = 'cifar10/'
     pretrain_epochs = 1000
+    pretrain_batches_per_epoch = 390
     finetune_epochs = 100
     representation_dim = 512
     projection_dim = 128
@@ -258,6 +259,7 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     model = representation_learning(algo, device, log_dir, _config)
 
     print('Train linear head')
+    breakpoint()
     classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
     train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
