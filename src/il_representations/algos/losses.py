@@ -185,7 +185,8 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         z_i = decoded_contexts
         z_j = targets
         batch_size = z_i.shape[0]
-
+        z_i = F.normalize(z_i, dim=1)
+        z_j = F.normalize(z_j, dim=1)
         out = torch.cat([z_i, z_j], dim=0)
         # [2*B, 2*B]
         sim_matrix = torch.exp(torch.mm(out, out.t().contiguous()) / self.temp)
@@ -198,7 +199,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         # [2*B]
         pos_sim = torch.cat([pos_sim, pos_sim], dim=0)
         loss = (- torch.log(pos_sim / sim_matrix.sum(dim=-1))).mean()
-        if np.isnan(loss.item):
+        if torch.isnan(loss):
             breakpoint()
         return loss
         #
