@@ -103,7 +103,9 @@ def train_classifier(classifier, data_dir, num_epochs, device):
             json.dump(progress_dict, f)
 
 
-def evaluate_classifier(testloader, classifier, device):
+def evaluate_classifier(classifier, data_dir, device):
+    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True)
+    testloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
     total = 0
     test_acc_meter = AverageMeter()
     with torch.no_grad():
