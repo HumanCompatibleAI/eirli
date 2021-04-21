@@ -248,7 +248,7 @@ def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature,
         test_bar = tqdm(test_data_loader)
         for data, _, target in test_bar:
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-            feature, out = net(data)
+            feature = net(data)
 
             total_num += data.size(0)
             # compute cos similarity between each feature vector and feature bank ---> [B, N]
