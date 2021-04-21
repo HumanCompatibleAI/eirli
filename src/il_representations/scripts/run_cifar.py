@@ -4,6 +4,7 @@ import PIL
 import json
 import torch
 import torch.nn as nn
+import torch.functional as F
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
@@ -239,7 +240,7 @@ def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature,
     with torch.no_grad():
         # generate feature bank
         for data, _, target in tqdm(memory_data_loader, desc='Feature extracting'):
-            feature = net(data.cuda(non_blocking=True))
+            feature = F.normalize(net(data.cuda(non_blocking=True)), dim=-1)
             feature_bank.append(feature)
         # [D, N]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
@@ -249,7 +250,7 @@ def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature,
         test_bar = tqdm(test_data_loader)
         for data, _, target in test_bar:
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-            feature = net(data)
+            feature = F.normalize(net(data), dim=-1)
 
             total_num += data.size(0)
             # compute cos similarity between each feature vector and feature bank ---> [B, N]
@@ -275,7 +276,7 @@ def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature,
 
     return total_top1 / total_num * 100, total_top5 / total_num * 100
 
-
+## data handling class copied from SimCLR implementation
 class CIFAR10Pair(CIFAR10):
     """CIFAR10 Dataset.
     """
