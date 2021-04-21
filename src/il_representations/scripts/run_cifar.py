@@ -50,7 +50,7 @@ def train_classifier(classifier, data_dir, num_epochs, device):
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(classifier.encoder.parameters(), lr=3e-4)
     # optimizer = optim.Adam(classifier.encoder.fc.parameters(), lr=3e-4, momentum=0.9, weight_decay=0.0, nesterov=True)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
+    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 
     test_transform = transforms.Compose([
         transforms.ToTensor(),
@@ -92,7 +92,7 @@ def train_classifier(classifier, data_dir, num_epochs, device):
                       f"Running loss: {running_loss / 20}")
                 running_loss = 0.0
 
-        scheduler.step()
+        #scheduler.step()
         test_acc = evaluate_classifier(testloader, classifier, device)
 
         progress_dict['loss'].append(loss_meter.avg)
@@ -149,7 +149,8 @@ def representation_learning(algo, device, log_dir, config):
         "augment_func": rep_learning_augmentations
     }
     optimizer_kwargs = {
-        "lr": 3e-4
+        "lr": 1e-3,
+        "weight_decay": 1e-6
     }
 
     # This is currently erroneously 1
@@ -181,7 +182,7 @@ def representation_learning(algo, device, log_dir, config):
         augmenter_kwargs=augmenter_kwargs,
         optimizer=torch.optim.Adam,
         optimizer_kwargs=optimizer_kwargs,
-        scheduler=LinearWarmupCosine,
+        #scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 2, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
         log_interval=10,
