@@ -184,7 +184,8 @@ def representation_learning(algo, device, log_dir, config):
         scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 2, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
-        log_interval=1
+        log_interval=10,
+        calc_log_interval=10
     )
     _, encoder_checkpoint_path = model.learn(rep_learning_data, batches_per_epoch, num_epochs)
     print("Representation Learning trained!")
