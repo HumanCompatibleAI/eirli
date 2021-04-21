@@ -308,19 +308,25 @@ def default_config():
     pretrain_batch_size = 512
     pretrain_save_interval = 100
     pretrain_temperature = 0.5
+    pretrained_model = None
     _ = locals()
     del _
 
 
 @cifar_ex.main
-def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim, pretrain_batch_size, _config):
+def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim,
+        pretrained_model, pretrain_batch_size, _config):
     # TODO fix this hacky nonsense
-    log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
-    os.mkdir(log_dir)
-    os.makedirs(data_dir, exist_ok=True)
+    if pretrained_model is None:
+        log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
+        os.mkdir(log_dir)
+        os.makedirs(data_dir, exist_ok=True)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = representation_learning(algo, device, log_dir, _config)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = representation_learning(algo, device, log_dir, _config)
+
+    else:
+        model = torch.load(pretrained_model)
 
     test_transform = transforms.Compose([
     transforms.ToTensor(),
