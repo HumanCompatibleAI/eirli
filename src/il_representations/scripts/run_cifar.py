@@ -188,7 +188,8 @@ def representation_learning(algo, device, log_dir, config):
         optimizer_kwargs=optimizer_kwargs,
         #scheduler=LinearWarmupCosine,
         scheduler_kwargs={'warmup_epoch': 2, 'total_epochs': num_epochs},
-        loss_calculator_kwargs={'temp': config['pretrain_temperature']},
+        loss_calculator_kwargs={'temp': config['pretrain_temperature'],
+                                'use_repo_loss': config['use_repo_loss']},
         log_interval=10,
         calc_log_interval=10
     )
@@ -309,6 +310,7 @@ def default_config():
     pretrain_save_interval = 100
     pretrain_temperature = 0.5
     pretrained_model = None
+    use_repo_loss = False
     _ = locals()
     del _
 
@@ -337,6 +339,8 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
 
+
+    # KNN testing from SimCLR repo for comparison
     test(model.network, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
     # print('Train linear head')
     # classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
