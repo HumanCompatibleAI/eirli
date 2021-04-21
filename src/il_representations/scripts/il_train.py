@@ -26,7 +26,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.il.bc_support import BCModelSaver
+from il_representations.il.bc_support import BCModelSaver, IntermediateRolloutEvaluator, MultiCallback
 from il_representations.il.disc_rew_nets import ImageDiscrimNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
@@ -55,14 +55,21 @@ def bc_defaults():
     # (however, large numbers prevent us from having to recreate the
     # data iterator frequently)
     nominal_length = int(1e6)
-    save_every_n_batches = nominal_length
-
+    save_every_n_batches = nominal_length  # equivalent to "do this every epoch"
+    evaluate_every_n_batches = None  # equivalent to "do this every epoch"
+    n_evaluation_rollouts = 10
     _ = locals()
     del _
-
+#
+# @bc_ingredient.named_config
+# def evaluate_every_10000_batches():
+#     batch_size = 32
+#     nominal_length = int(batch_size*1e4)
+#     evaluate_every_n_batches = nominal_length
+#     _ = locals()
+#     del _
 
 gail_ingredient = Ingredient('gail')
-
 
 @gail_ingredient.config
 def gail_defaults():
@@ -280,19 +287,34 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     )
 
     save_interval = bc['save_every_n_batches']
+    evaluate_interval = bc['evaluate_every_n_batches']
+    n_evaluation_rollouts = bc['n_evaluation_rollouts']
+    callbacks = []
     if save_interval is not None:
         optional_model_saver = BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
                                             bc['nominal_length'],
                                             save_interval)
+        callbacks.append(optional_model_saver)
+    if evaluate_interval is not None:
+        optional_model_evaluator = IntermediateRolloutEvaluator(policy,
+                                                                venv_chans_first,
+                                                                os.path.join(out_dir, 'evaluations'),
+                                                                bc['nominal_length'],
+                                                                evaluate_interval,
+                                                                n_evaluation_rollouts)
+        callbacks.append(optional_model_evaluator)
+
+    if callbacks == []:
+        callback_op = None
     else:
-        optional_model_saver = None
+        callback_op = MultiCallback(callbacks)
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=None,
                   n_batches=bc['n_batches'],
                   log_interval=bc['log_interval'],
-                  on_epoch_end=optional_model_saver)
+                  on_epoch_end=callback_op)
 
     final_path = os.path.join(out_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")

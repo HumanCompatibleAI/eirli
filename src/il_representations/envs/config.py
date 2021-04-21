@@ -94,6 +94,13 @@ def wrappers_frames_only_camera_disc():
     _ = locals()
     del _
 
+@env_cfg_ingredient.named_config
+def treechop_wrappers_with_frameskip():
+    minecraft_wrappers = [rb_wrappers.CameraDiscretizationWrapper, rb_wrappers.ActionFlatteningWrapper,
+                          MinecraftPOVWrapper, rb_wrappers.FrameSkip] #
+    _ = locals()
+    del _
+
 
 @env_cfg_ingredient.named_config
 def wrappers_frames_only_obfuscated():
