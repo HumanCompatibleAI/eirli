@@ -152,7 +152,9 @@ def representation_learning(algo, device, log_dir, config):
         "lr": 3e-4
     }
 
-    num_examples = len(rep_learning_data)
+    # This is currently erroneously 1
+    #num_examples = len(rep_learning_data)
+    num_examples = 49920
     num_epochs = config['pretrain_epochs']
     batch_size = config['pretrain_batch_size']
     batches_per_epoch = ceil(num_examples / batch_size)
@@ -184,7 +186,6 @@ def representation_learning(algo, device, log_dir, config):
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
         log_interval=1
     )
-
     _, encoder_checkpoint_path = model.learn(rep_learning_data, batches_per_epoch, num_epochs)
     print("Representation Learning trained!")
     pretrained_model = torch.load(encoder_checkpoint_path)
