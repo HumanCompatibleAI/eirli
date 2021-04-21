@@ -178,7 +178,7 @@ def representation_learning(algo, device, log_dir, config):
         optimizer=torch.optim.Adam,
         optimizer_kwargs=optimizer_kwargs,
         scheduler=LinearWarmupCosine,
-        scheduler_kwargs={'warmup_epoch': 10, 'total_epochs': num_epochs},
+        scheduler_kwargs={'warmup_epoch': 2, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': config['pretrain_temperature']},
     )
 
