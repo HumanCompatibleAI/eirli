@@ -158,7 +158,7 @@ def representation_learning(algo, device, log_dir, config):
     # num_examples = 49920
     num_epochs = config['pretrain_epochs']
     batch_size = config['pretrain_batch_size']
-    batches_per_epoch = config['batches_per_epoch']
+    batches_per_epoch = config['pretrain_batches_per_epoch']
 
     # Modify resnet according to SimCLR paper Appendix B.9
     simclr_resnet = resnet50()
