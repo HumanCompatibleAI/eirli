@@ -205,6 +205,7 @@ def representation_learning(algo, device, log_dir, config):
         color_space=combined_meta['color_space'],
         save_interval=config['pretrain_save_interval'],
         encoder_kwargs={'obs_encoder_cls': lambda *args: SimCLRModel()},
+        decoder_kwargs={'projection_architecture': [{'output_dim': 512}]}
         augmenter_kwargs=augmenter_kwargs,
         optimizer=torch.optim.Adam,
         optimizer_kwargs=optimizer_kwargs,
