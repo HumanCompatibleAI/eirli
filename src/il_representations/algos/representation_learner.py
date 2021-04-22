@@ -294,6 +294,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                breakpoint()
                 if step == 0:
                     save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_from_disk_0.png'))
                     save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_from_disk_0.png'))
