@@ -13,6 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.encoders import warn_on_non_image_tensor
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 from il_representations.utils import save_rgb_tensor
@@ -293,7 +294,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
-
+                if step == 0:
+                    save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_from_disk_0.png'))
+                    save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_from_disk_0.png'))
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
@@ -303,6 +306,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # contexts = self._preprocess(contexts)
                 # if self.preprocess_target:
                 #     targets = self._preprocess(targets)
+                if step == 0:
+                    save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_pre_aug_0.png'))
+                    save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_pre_aug_0.png'))
                 contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
                     save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_0.png'))
@@ -310,7 +316,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
-
+                warn_on_non_image_tensor(contexts)
+                warn_on_non_image_tensor(targets)
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
                 encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
