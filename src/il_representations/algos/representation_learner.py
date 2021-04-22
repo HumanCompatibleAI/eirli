@@ -294,10 +294,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
-                breakpoint()
                 if step == 0:
-                    save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_from_disk_0.png'))
-                    save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_from_disk_0.png'))
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
+                        save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_from_disk_{i}.png'))
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
@@ -308,12 +308,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # if self.preprocess_target:
                 #     targets = self._preprocess(targets)
                 if step == 0:
-                    save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_pre_aug_0.png'))
-                    save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_pre_aug_0.png'))
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
+                        save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
                 contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
-                    save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_0.png'))
-                    save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_0.png'))
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
+                        save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_{i}.png'))
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
