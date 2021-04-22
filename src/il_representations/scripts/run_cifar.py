@@ -154,10 +154,10 @@ def representation_learning(algo, device, log_dir, config):
     assert issubclass(algo, algos.RepresentationLearner)
 
     rep_learning_augmentations = transforms.Compose([
-        transforms.Lambda(lambda x: (x.cpu().numpy() * 255).astype(np.uint8)),
-        transforms.ToPILImage(),
-        transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
-        transforms.RandomHorizontalFlip(),
+        # transforms.Lambda(lambda x: (x.cpu().numpy() * 255).astype(np.uint8)),
+        # transforms.ToPILImage(),
+        transforms.RandomResizedCrop(32), #, interpolation=PIL.Image.BICUBIC),
+        transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomApply([
             transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
         ], p=0.8),
