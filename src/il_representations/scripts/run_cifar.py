@@ -159,8 +159,6 @@ def representation_learning(algo, device, log_dir, config):
     }
 
     # This is currently erroneously 1
-    #num_examples = len(rep_learning_data)
-    # num_examples = 49920
     num_epochs = config['pretrain_epochs']
     batch_size = config['pretrain_batch_size']
     batches_per_epoch = config['pretrain_batches_per_epoch']
