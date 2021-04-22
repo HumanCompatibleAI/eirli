@@ -15,6 +15,7 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
+from il_representations.utils import save_rgb_tensor
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -303,6 +304,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 if self.preprocess_target:
                     targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
+                if step == 0:
+                    save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_0.png'))
+                    save_rgb_tensor(targets[0], os.path.join(self.log_dir, 'saved_images', 'targets_0.png'))
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
