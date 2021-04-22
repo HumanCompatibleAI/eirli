@@ -300,9 +300,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
-                contexts = self._preprocess(contexts)
-                if self.preprocess_target:
-                    targets = self._preprocess(targets)
+                # contexts = self._preprocess(contexts)
+                # if self.preprocess_target:
+                #     targets = self._preprocess(targets)
                 contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
                     save_rgb_tensor(contexts[0], os.path.join(self.log_dir, 'saved_images', 'contexts_0.png'))
