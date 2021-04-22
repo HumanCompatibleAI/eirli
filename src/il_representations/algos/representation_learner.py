@@ -302,7 +302,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts = self._preprocess(contexts)
                 if self.preprocess_target:
                     targets = self._preprocess(targets)
-                breakpoint()
                 contexts, targets = self.augmenter(contexts, targets)
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context

@@ -123,6 +123,29 @@ def evaluate_classifier(classifier, data_dir, device):
 
     return test_acc_meter.avg
 
+class SimCLRModel(nn.Module):
+    def __init__(self, feature_dim=128):
+        super(SimCLRModel, self).__init__()
+
+        self.f = []
+        for name, module in resnet50().named_children():
+            if name == 'conv1':
+                module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
+                self.f.append(module)
+        # encoder
+        # Temporarily add an extra layer to be closer to our model implementation
+        self.f = nn.Sequential(*self.f)
+        # projection head
+        self.g = nn.Sequential(nn.Linear(2048, 512, bias=False), nn.BatchNorm1d(512),
+                               nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
+
+    def forward(self, x):
+        x = self.f(x)
+        feature = torch.flatten(x, start_dim=1)
+        out = self.g(feature)
+        return F.normalize(feature, dim=-1), F.normalize(out, dim=-1)
+
 
 def representation_learning(algo, device, log_dir, config):
     print('Train representation learner')
@@ -164,10 +187,10 @@ def representation_learning(algo, device, log_dir, config):
     batches_per_epoch = config['pretrain_batches_per_epoch']
 
     # Modify resnet according to SimCLR paper Appendix B.9
-    simclr_resnet = resnet50()
-    simclr_resnet.fc = torch.nn.Linear(2048, config['representation_dim'])
-    simclr_resnet.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1))
-    simclr_resnet.maxpool = torch.nn.Identity()
+    # simclr_resnet = resnet50()
+    # simclr_resnet.fc = torch.nn.Linear(2048, config['representation_dim'])
+    # simclr_resnet.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1))
+    # simclr_resnet.maxpool = torch.nn.Identity()
 
     model = algo(
         observation_space=combined_meta['observation_space'],
@@ -181,7 +204,7 @@ def representation_learning(algo, device, log_dir, config):
         shuffle_batches=True,
         color_space=combined_meta['color_space'],
         save_interval=config['pretrain_save_interval'],
-        encoder_kwargs={'obs_encoder_cls': lambda *args: simclr_resnet},
+        encoder_kwargs={'obs_encoder_cls': lambda *args: SimCLRModel()},
         augmenter_kwargs=augmenter_kwargs,
         optimizer=torch.optim.Adam,
         optimizer_kwargs=optimizer_kwargs,
@@ -238,7 +261,7 @@ def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature,
     with torch.no_grad():
         # generate feature bank
         for data, _, target in tqdm(memory_data_loader, desc='Feature extracting'):
-            feature = F.normalize(net(data.cuda(non_blocking=True)), dim=-1)
+            feature, out = net(data.cuda(non_blocking=True))
             feature_bank.append(feature)
         # [D, N]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
@@ -248,7 +271,7 @@ def test(net, memory_data_loader, test_data_loader, k, num_classes, temperature,
         test_bar = tqdm(test_data_loader)
         for data, _, target in test_bar:
             data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
-            feature = F.normalize(net(data), dim=-1)
+            feature, out = net(data)
 
             total_num += data.size(0)
             # compute cos similarity between each feature vector and feature bank ---> [B, N]
