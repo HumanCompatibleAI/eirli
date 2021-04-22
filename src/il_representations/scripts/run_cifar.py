@@ -136,15 +136,15 @@ class SimCLRModel(nn.Module):
         # encoder
         # Temporarily add an extra layer to be closer to our model implementation
         self.f = nn.Sequential(*self.f)
-        # projection head
-        self.g = nn.Sequential(nn.Linear(2048, 512, bias=False), nn.BatchNorm1d(512),
-                               nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
+        # # projection head
+        # self.g = nn.Sequential(nn.Linear(2048, 512, bias=False), nn.BatchNorm1d(512),
+        #                        nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
 
     def forward(self, x):
         x = self.f(x)
         feature = torch.flatten(x, start_dim=1)
-        out = self.g(feature)
-        return F.normalize(feature, dim=-1), F.normalize(out, dim=-1)
+        #out = self.g(feature)
+        return F.normalize(feature, dim=-1) #, F.normalize(out, dim=-1)
 
 
 def representation_learning(algo, device, log_dir, config):
@@ -323,7 +323,7 @@ def default_config():
     pretrain_epochs = 1000
     pretrain_batches_per_epoch = 390
     finetune_epochs = 100
-    representation_dim = 512
+    representation_dim = 2048 ## TODO change back
     projection_dim = 128
     pretrain_lr = 3e-4
     pretrain_weight_decay = 1e-4
