@@ -331,6 +331,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
+                torch.manual_seed(10)
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
                 decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, encoded_extra_context)
 
