@@ -311,6 +311,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     for i in range(10):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
                         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
+                breakpoint()
                 contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
                     for i in range(10):
