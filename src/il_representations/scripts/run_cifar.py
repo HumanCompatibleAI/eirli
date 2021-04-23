@@ -216,8 +216,8 @@ def representation_learning(algo, device, log_dir, config):
         scheduler_kwargs={'warmup_epoch': 2, 'total_epochs': num_epochs},
         loss_calculator_kwargs={'temp': config['pretrain_temperature'],
                                 'use_repo_loss': config['use_repo_loss']},
-        log_interval=10,
-        calc_log_interval=10
+        log_interval=1,
+        calc_log_interval=1
     )
     _, encoder_checkpoint_path = model.learn(rep_learning_data, batches_per_epoch, num_epochs)
     print("Representation Learning trained!")
