@@ -209,9 +209,14 @@ class SymmetricContrastiveLoss(RepresentationLoss):
                 breakpoint()
             return loss
         else:
+            z_i = z_i.uniform_(-.3, .3)
+            z_j = z_j.uniform_(-.3, .3)
+            if not self.normalize:
+                breakpoint()
             if self.normalize:  # Use cosine similarity
                 z_i = F.normalize(z_i, dim=1)
                 z_j = F.normalize(z_j, dim=1)
+
 
             mask = (torch.eye(batch_size) * self.large_num).to(self.device)
 
