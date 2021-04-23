@@ -311,7 +311,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     for i in range(10):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
                         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
-                breakpoint()
                 contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
                     for i in range(10):
@@ -332,7 +331,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
-                torch.manual_seed(10)
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
                 decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, encoded_extra_context)
 
