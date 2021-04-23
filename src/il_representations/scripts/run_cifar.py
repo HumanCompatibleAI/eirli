@@ -123,6 +123,7 @@ def evaluate_classifier(classifier, data_dir, device):
 
     return test_acc_meter.avg
 
+
 class SimCLRModel(nn.Module):
     def __init__(self, feature_dim=128):
         super(SimCLRModel, self).__init__()
