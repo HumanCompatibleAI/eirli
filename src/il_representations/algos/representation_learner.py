@@ -327,7 +327,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
                 # Typically the identity function
                 encoded_extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
-                breakpoint()
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
