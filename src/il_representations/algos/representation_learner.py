@@ -323,7 +323,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 warn_on_non_image_tensor(targets)
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
-                torch.manual_seed(10)
                 encoded_contexts = self.encoder.encode_context(contexts.uniform_(-2.5, 2.5), traj_ts_info)
                 encoded_targets = self.encoder.encode_target(targets.uniform_(-2.5, 2.5), traj_ts_info)
                 # Typically the identity function
