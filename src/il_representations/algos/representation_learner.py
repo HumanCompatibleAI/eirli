@@ -279,11 +279,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.encoder.train(True)
         self.decoder.train(True)
+        for pname, pval in sorted(self.encoder.named_parameters()):
+            print(f'{pname}: {pval.float().mean().item():.4g} pm {pval.float().std().item():.4g}, shape {pval.shape}')
         batches_trained = 0
         logging.debug(
             f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
             f"batches (batch size {self.batch_size})")
-
+        # train_data = utils.CIFAR10Pair(root='data', train=True, transform=utils.train_transform, download=True)
+        # train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True,
+        #                           drop_last=True)
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
@@ -294,6 +298,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+
                 if step == 0:
                     for i in range(10):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
