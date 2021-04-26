@@ -313,16 +313,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
             f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
             f"batches (batch size {self.batch_size})")
         # TODO add transform back in, and probably comment out our augmenter line?
-        train_transform = transforms.Compose([
-            transforms.RandomResizedCrop(32),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.ToTensor(),
-            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
-        train_data = CIFAR10Pair(root='data', train=True, transform=train_transform, download=True)
-        train_loader = iter(DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
-                                  drop_last=True))
+        # train_transform = transforms.Compose([
+        #     transforms.RandomResizedCrop(32),
+        #     transforms.RandomHorizontalFlip(p=0.5),
+        #     transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+        #     transforms.RandomGrayscale(p=0.2),
+        #     transforms.ToTensor(),
+        #     transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+        # train_data = CIFAR10Pair(root='data', train=True, transform=train_transform, download=True)
+        # train_loader = iter(DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
+        #                           drop_last=True))
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
@@ -332,8 +332,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             timer_last_batches_trained = batches_trained
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
-                old_contexts, old_targets, traj_ts_info, extra_context = self.unpack_batch(batch)
-                contexts, targets, _ = train_loader.next()
+                contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                # contexts, targets, _ = train_loader.next()
 
                 if step == 0:
                     for i in range(10):
