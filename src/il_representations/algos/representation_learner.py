@@ -381,7 +381,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Use an algorithm-specific loss function. Typically this only requires decoded_contexts and
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
-                loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
+                loss = self.loss_calculator(encoded_contexts, encoded_targets, encoded_contexts)
+                #loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
                 if batches_trained % self.calc_log_interval == 0:
                     loss_item = loss.item()
                     assert not np.isnan(loss_item), "Loss is NaN"
