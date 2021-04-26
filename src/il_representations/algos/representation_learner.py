@@ -353,7 +353,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
                         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
                 # TODO put back in when done with "swap their data in" test
-                #contexts, targets = self.augmenter(contexts, targets)
+                contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
                     for i in range(10):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
