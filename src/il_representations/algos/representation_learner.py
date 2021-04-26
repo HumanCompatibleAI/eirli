@@ -17,6 +17,33 @@ from il_representations.algos.encoders import warn_on_non_image_tensor
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 from il_representations.utils import save_rgb_tensor
+from torch.utils.data import DataLoader
+
+from PIL import Image
+from torchvision.datasets import CIFAR10
+import os
+import numpy as np
+from torchvision import transforms
+
+class CIFAR10Pair(CIFAR10):
+    """CIFAR10 Dataset.
+    """
+
+    def __getitem__(self, index):
+        img, target = self.data[index], self.targets[index]
+        img = Image.fromarray(img)
+        id_val = np.random.randint(0, 50000)
+        #save_image(img, f'results/{id_val}_img_pre_trans.png')
+        if self.transform is not None:
+            pos_1 = self.transform(img)
+            pos_2 = self.transform(img)
+            # save_rgb_tensor(pos_1, f'results/{id_val}_pos1.png')
+            # save_rgb_tensor(pos_2, f'results/{id_val}_pos2.png')
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return pos_1, pos_2, target
+
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -260,14 +287,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
             `loss_record` is a list of average loss values encountered at each
             epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
-        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
-        dataloader = datasets_to_loader(
-            datasets, batch_size=self.batch_size,
-            nominal_length=batches_per_epoch * self.batch_size,
-            max_workers=self.dataset_max_workers,
-            shuffle_buffer_size=self.shuffle_buffer_size,
-            shuffle=self.shuffle_batches,
-            preprocessors=(subdataset_extractor, self.target_pair_constructor, ))
+        # subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+        # dataloader = datasets_to_loader(
+        #     datasets, batch_size=self.batch_size,
+        #     nominal_length=batches_per_epoch * self.batch_size,
+        #     max_workers=self.dataset_max_workers,
+        #     shuffle_buffer_size=self.shuffle_buffer_size,
+        #     shuffle=self.shuffle_batches,
+        #     preprocessors=(subdataset_extractor, self.target_pair_constructor, ))
 
         loss_record = []
 
@@ -279,15 +306,23 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.encoder.train(True)
         self.decoder.train(True)
-        for pname, pval in sorted(self.encoder.named_parameters()):
-            print(f'{pname}: {pval.float().mean().item():.4g} pm {pval.float().std().item():.4g}, shape {pval.shape}')
+        # for pname, pval in sorted(self.encoder.named_parameters()):
+        #     print(f'{pname}: {pval.float().mean().item():.4g} pm {pval.float().std().item():.4g}, shape {pval.shape}')
         batches_trained = 0
         logging.debug(
             f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
             f"batches (batch size {self.batch_size})")
-        # train_data = utils.CIFAR10Pair(root='data', train=True, transform=utils.train_transform, download=True)
-        # train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True,
-        #                           drop_last=True)
+        # TODO add transform back in, and probably comment out our augmenter line?
+        train_transform = transforms.Compose([
+            transforms.RandomResizedCrop(32),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+        train_data = CIFAR10Pair(root='data', train=True, transform=train_transform, download=True)
+        dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
+                                  drop_last=True)
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
@@ -316,7 +351,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                     for i in range(10):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
                         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
-                contexts, targets = self.augmenter(contexts, targets)
+                # TODO put back in when done with "swap their data in" test
+                #contexts, targets = self.augmenter(contexts, targets)
                 if step == 0:
                     for i in range(10):
                         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
