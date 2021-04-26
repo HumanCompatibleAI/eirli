@@ -321,8 +321,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             transforms.ToTensor(),
             transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
         train_data = CIFAR10Pair(root='data', train=True, transform=train_transform, download=True)
-        train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
-                                  drop_last=True)
+        train_loader = iter(DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
+                                  drop_last=True))
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
@@ -333,6 +333,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                contexts, targets, _ = train_loader.next()
                 breakpoint()
 
                 if step == 0:
