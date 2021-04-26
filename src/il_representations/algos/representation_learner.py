@@ -287,14 +287,14 @@ class RepresentationLearner(BaseEnvironmentLearner):
             `loss_record` is a list of average loss values encountered at each
             epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
-        # subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
-        # dataloader = datasets_to_loader(
-        #     datasets, batch_size=self.batch_size,
-        #     nominal_length=batches_per_epoch * self.batch_size,
-        #     max_workers=self.dataset_max_workers,
-        #     shuffle_buffer_size=self.shuffle_buffer_size,
-        #     shuffle=self.shuffle_batches,
-        #     preprocessors=(subdataset_extractor, self.target_pair_constructor, ))
+        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+        dataloader = datasets_to_loader(
+            datasets, batch_size=self.batch_size,
+            nominal_length=batches_per_epoch * self.batch_size,
+            max_workers=self.dataset_max_workers,
+            shuffle_buffer_size=self.shuffle_buffer_size,
+            shuffle=self.shuffle_batches,
+            preprocessors=(subdataset_extractor, self.target_pair_constructor, ))
 
         loss_record = []
 
@@ -321,7 +321,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             transforms.ToTensor(),
             transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
         train_data = CIFAR10Pair(root='data', train=True, transform=train_transform, download=True)
-        dataloader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
+        train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
                                   drop_last=True)
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
@@ -333,6 +333,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                breakpoint()
 
                 if step == 0:
                     for i in range(10):
