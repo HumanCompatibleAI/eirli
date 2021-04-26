@@ -332,9 +332,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             timer_last_batches_trained = batches_trained
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
-                contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                old_contexts, old_targets, traj_ts_info, extra_context = self.unpack_batch(batch)
                 contexts, targets, _ = train_loader.next()
-                breakpoint()
 
                 if step == 0:
                     for i in range(10):
