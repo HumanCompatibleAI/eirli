@@ -116,6 +116,7 @@ class LossDecoder(nn.Module):
         if self.sample:
             return z_dist.rsample()
         else:
+            return z_dist
             return z_dist.mean
 
     def ones_like_projection_dim(self, x):
@@ -127,6 +128,7 @@ class LossDecoder(nn.Module):
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
+        return mean
         if stdev_layer is None:
             # We better not have had a learned standard deviation in
             # the encoder, since there's no clear way on how to pass
