@@ -346,6 +346,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
+                # TODO this may not make sense for CIFAR10, maybe double normalizing
                 # contexts = self._preprocess(contexts)
                 # if self.preprocess_target:
                 #     targets = self._preprocess(targets)
