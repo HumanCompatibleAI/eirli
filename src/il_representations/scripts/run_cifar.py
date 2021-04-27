@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet50
@@ -14,6 +15,8 @@ from PIL import Image
 
 from tqdm import tqdm
 from math import ceil
+import pandas as pd
+
 import time
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -75,8 +78,8 @@ def train_classifier(classifier, data_dir, num_epochs, device):
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(classifier.fc.parameters(), lr=1e-3,
                            weight_decay=1e-6)
-    # # optimizer = optim.Adam(classifier.encoder.fc.parameters(), lr=3e-4, momentum=0.9, weight_decay=0.0, nesterov=True)
-    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
+    # optimizer = optim.Adam(classifier.encoder.fc.parameters(), lr=3e-4, momentum=0.9, weight_decay=0.0, nesterov=True)
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 
     # test_transform = transforms.Compose([
     #     transforms.ToTensor(),
@@ -146,6 +149,82 @@ def evaluate_classifier(testloader, classifier, device):
     print(f"Test acc: {test_acc_meter.avg}")
 
     return test_acc_meter.avg
+
+
+def train_from_simclr_repo(model, batch_size, epochs):
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(32),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+
+    train_data = CIFAR10(root='data', train=True, transform=train_transform, download=True)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
+    test_data = CIFAR10(root='data', train=False, transform=test_transform, download=True)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
+
+    # flops, params = profile(model, inputs=(torch.randn(1, 3, 32, 32).cuda(),))
+    # flops, params = clever_format([flops, params])
+    # print('# Model Params: {} FLOPs: {}'.format(params, flops))
+    optimizer = optim.Adam(model.fc.parameters(), lr=1e-3, weight_decay=1e-6)
+    loss_criterion = nn.CrossEntropyLoss()
+    results = {'train_loss': [], 'train_acc@1': [], 'train_acc@5': [],
+               'test_loss': [], 'test_acc@1': [], 'test_acc@5': []}
+
+    best_acc = 0.0
+    for epoch in range(1, epochs + 1):
+        train_loss, train_acc_1, train_acc_5 = train_val(model, train_loader, optimizer, loss_criterion,
+                                                         epoch, epochs)
+        results['train_loss'].append(train_loss)
+        results['train_acc@1'].append(train_acc_1)
+        results['train_acc@5'].append(train_acc_5)
+        test_loss, test_acc_1, test_acc_5 = train_val(model, test_loader, None, loss_criterion,
+                                                      epoch, epochs)
+        results['test_loss'].append(test_loss)
+        results['test_acc@1'].append(test_acc_1)
+        results['test_acc@5'].append(test_acc_5)
+        # save statistics
+        data_frame = pd.DataFrame(data=results, index=range(1, epoch + 1))
+        data_frame.to_csv('results/linear_statistics.csv', index_label='epoch')
+        if test_acc_1 > best_acc:
+            best_acc = test_acc_1
+            torch.save(model.state_dict(), 'results/linear_model.pth')
+
+
+# train or test for one epoch
+def train_val(net, data_loader, train_optimizer, loss_criterion, epoch, epochs):
+    is_train = train_optimizer is not None
+    net.train() if is_train else net.eval()
+
+    total_loss, total_correct_1, total_correct_5, total_num, data_bar = 0.0, 0.0, 0.0, 0, tqdm(data_loader)
+    with (torch.enable_grad() if is_train else torch.no_grad()):
+        for data, target in data_bar:
+            data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
+            out = net(data)
+            loss = loss_criterion(out, target)
+
+            if is_train:
+                train_optimizer.zero_grad()
+                loss.backward()
+                train_optimizer.step()
+
+            total_num += data.size(0)
+            total_loss += loss.item() * data.size(0)
+            prediction = torch.argsort(out, dim=-1, descending=True)
+            total_correct_1 += torch.sum((prediction[:, 0:1] == target.unsqueeze(dim=-1)).any(dim=-1).float()).item()
+            total_correct_5 += torch.sum((prediction[:, 0:5] == target.unsqueeze(dim=-1)).any(dim=-1).float()).item()
+
+            data_bar.set_description('{} Epoch: [{}/{}] Loss: {:.4f} ACC@1: {:.2f}% ACC@5: {:.2f}%'
+                                     .format('Train' if is_train else 'Test', epoch, epochs, total_loss / total_num,
+                                             total_correct_1 / total_num * 100, total_correct_5 / total_num * 100))
+
+    return total_loss / total_num, total_correct_1 / total_num * 100, total_correct_5 / total_num * 100
 
 
 class SimCLRModel(nn.Module):
@@ -352,6 +431,7 @@ def default_config():
     pretrain_epochs = 1000
     pretrain_batches_per_epoch = 390
     finetune_epochs = 100
+    finetune_batch_size = 512
     representation_dim = 2048 # TODO change back
     projection_dim = 128
     pretrain_lr = 3e-4
@@ -368,7 +448,7 @@ def default_config():
 
 @cifar_ex.main
 def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim,
-        pretrained_model, pretrain_batch_size, _config):
+        pretrained_model, pretrain_batch_size, finetune_batch_size, _config):
     # TODO fix this hacky nonsense
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -395,7 +475,8 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     # test(model.network, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
     print('Train linear head')
     classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
-    train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
+    train_from_simclr_repo(classifier, finetune_batch_size, finetune_epochs)
+    # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
     print('Evaluate accuracy on test set')
     evaluate_classifier(classifier, data_dir, device=device)
