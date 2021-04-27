@@ -191,10 +191,10 @@ def train_from_simclr_repo(model, batch_size, epochs):
         results['test_acc@5'].append(test_acc_5)
         # save statistics
         data_frame = pd.DataFrame(data=results, index=range(1, epoch + 1))
-        data_frame.to_csv('results/linear_statistics.csv', index_label='epoch')
+        data_frame.to_csv('./linear_statistics.csv', index_label='epoch')
         if test_acc_1 > best_acc:
             best_acc = test_acc_1
-            torch.save(model.state_dict(), 'results/linear_model.pth')
+            torch.save(model.state_dict(), './linear_model.pth')
 
 
 # train or test for one epoch
@@ -442,13 +442,14 @@ def default_config():
     pretrain_temperature = 0.1
     pretrained_model = None
     use_repo_loss = False
+    eval_knn = True
     _ = locals()
     del _
 
 
 @cifar_ex.main
 def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim,
-        pretrained_model, pretrain_batch_size, finetune_batch_size, _config):
+        pretrained_model, pretrain_batch_size, finetune_batch_size, eval_knn, _config):
     # TODO fix this hacky nonsense
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -462,24 +463,29 @@ def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_d
     else:
         model = torch.load(pretrained_model)
 
-    # test_transform = transforms.Compose([
-    # transforms.ToTensor(),
-    # transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+    if eval_knn:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
 
-    # memory_data = CIFAR10Pair(root='data', train=True, transform=test_transform, download=True)
-    # memory_loader = torch.utils.data.DataLoader(memory_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
-    # test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
-    # test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
+        memory_data = CIFAR10Pair(root='data', train=True, transform=test_transform, download=True)
+        memory_loader = torch.utils.data.DataLoader(memory_data, batch_size=pretrain_batch_size, shuffle=False,
+                                                    num_workers=16, pin_memory=True)
+        test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
+        test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False,
+                                                  num_workers=16, pin_memory=True)
 
-    # KNN testing from SimCLR repo for comparison
-    # test(model.network, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
-    print('Train linear head')
-    classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
-    train_from_simclr_repo(classifier, finetune_batch_size, finetune_epochs)
-    # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
+        # KNN testing from SimCLR repo for comparison
+        test(model.network, memory_loader, test_loader, k=200, num_classes=10,
+             temperature=_config['pretrain_temperature'], epoch=-1)
+    else:
+        print('Train linear head')
+        classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
+        train_from_simclr_repo(classifier, finetune_batch_size, finetune_epochs)
+        # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
-    print('Evaluate accuracy on test set')
-    evaluate_classifier(classifier, data_dir, device=device)
+        print('Evaluate accuracy on test set')
+        evaluate_classifier(classifier, data_dir, device=device)
 
 
 if __name__ == '__main__':
