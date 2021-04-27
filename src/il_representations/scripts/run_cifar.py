@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import DataLoader
 import torchvision
 import torchvision.transforms as transforms
 from torchvision.models.resnet import resnet50
@@ -14,6 +15,8 @@ from PIL import Image
 
 from tqdm import tqdm
 from math import ceil
+import pandas as pd
+
 import time
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -35,32 +38,53 @@ class LinearHead(nn.Module):
     def __init__(self, encoder, encoder_dim, output_dim):
         super().__init__()
         self.encoder = encoder
-        self.encoder.fc = nn.Linear(2048, output_dim)
+        self.fc = nn.Linear(2048, output_dim, bias=True)
+        # self.encoder.fc = nn.Linear(2048, output_dim)
+        breakpoint()
 
     def forward(self, x):
-        return self.encoder(x)
+        x = self.encoder(x)
+        feature = torch.flatten(x, start_dim=1)
+        out = self.fc(feature)
+        return out
 
 
 def train_classifier(classifier, data_dir, num_epochs, device):
-    transform = transforms.Compose([
-        transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
-        transforms.RandomHorizontalFlip(),
-        # No color jitter or grayscale for finetuning
-        # SimCLR doesn't use blur for CIFAR-10
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True, download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
-    criterion = nn.CrossEntropyLoss().to(device)
-    optimizer = optim.Adam(classifier.encoder.parameters(), lr=3e-4)
-    # optimizer = optim.Adam(classifier.encoder.fc.parameters(), lr=3e-4, momentum=0.9, weight_decay=0.0, nesterov=True)
-    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
+    # transform = transforms.Compose([
+    #     transforms.RandomResizedCrop(32, interpolation=PIL.Image.BICUBIC),
+    #     transforms.RandomHorizontalFlip(),
+    #     # No color jitter or grayscale for finetuning
+    #     # SimCLR doesn't use blur for CIFAR-10
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    # ])
+    train_transform = transforms.Compose([
+            transforms.RandomResizedCrop(32),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4,
+                                                           0.1)], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994,
+                                                            0.2010])])
 
     test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994,
+                                                            0.2010])])
+    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=True,
+                                            download=True, transform=train_transform)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+    criterion = nn.CrossEntropyLoss().to(device)
+    optimizer = optim.Adam(classifier.fc.parameters(), lr=1e-3,
+                           weight_decay=1e-6)
+    # optimizer = optim.Adam(classifier.encoder.fc.parameters(), lr=3e-4, momentum=0.9, weight_decay=0.0, nesterov=True)
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
+
+    # test_transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    # ])
     testset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True, transform=test_transform)
     testloader = torch.utils.data.DataLoader(testset, batch_size=128, shuffle=False)
 
@@ -71,6 +95,7 @@ def train_classifier(classifier, data_dir, num_epochs, device):
     for epoch in range(num_epochs):
         loss_meter = AverageMeter()
         train_acc_meter = AverageMeter()
+        classifier.train()
 
         print(f"Epoch {epoch}/{num_epochs} with lr {optimizer.param_groups[0]['lr']}")
         running_loss = 0.0
@@ -108,9 +133,10 @@ def train_classifier(classifier, data_dir, num_epochs, device):
             json.dump(progress_dict, f)
 
 
-def evaluate_classifier(classifier, data_dir, device):
-    trainset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True)
-    testloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+def evaluate_classifier(testloader, classifier, device):
+    # trainset = torchvision.datasets.CIFAR10(root=data_dir, train=False, download=True)
+    # testloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+    classifier.eval()
     total = 0
     test_acc_meter = AverageMeter()
     with torch.no_grad():
@@ -120,8 +146,85 @@ def evaluate_classifier(classifier, data_dir, device):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             test_acc_meter.update(accuracy(outputs, labels)[0].item())
+    print(f"Test acc: {test_acc_meter.avg}")
 
     return test_acc_meter.avg
+
+
+def train_from_simclr_repo(model, batch_size, epochs):
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(32),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+        transforms.RandomGrayscale(p=0.2),
+        transforms.ToTensor(),
+        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+
+    train_data = CIFAR10(root='data', train=True, transform=train_transform, download=True)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=16, pin_memory=True)
+    test_data = CIFAR10(root='data', train=False, transform=test_transform, download=True)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=16, pin_memory=True)
+
+    # flops, params = profile(model, inputs=(torch.randn(1, 3, 32, 32).cuda(),))
+    # flops, params = clever_format([flops, params])
+    # print('# Model Params: {} FLOPs: {}'.format(params, flops))
+    optimizer = optim.Adam(model.fc.parameters(), lr=1e-3, weight_decay=1e-6)
+    loss_criterion = nn.CrossEntropyLoss()
+    results = {'train_loss': [], 'train_acc@1': [], 'train_acc@5': [],
+               'test_loss': [], 'test_acc@1': [], 'test_acc@5': []}
+
+    best_acc = 0.0
+    for epoch in range(1, epochs + 1):
+        train_loss, train_acc_1, train_acc_5 = train_val(model, train_loader, optimizer, loss_criterion,
+                                                         epoch, epochs)
+        results['train_loss'].append(train_loss)
+        results['train_acc@1'].append(train_acc_1)
+        results['train_acc@5'].append(train_acc_5)
+        test_loss, test_acc_1, test_acc_5 = train_val(model, test_loader, None, loss_criterion,
+                                                      epoch, epochs)
+        results['test_loss'].append(test_loss)
+        results['test_acc@1'].append(test_acc_1)
+        results['test_acc@5'].append(test_acc_5)
+        # save statistics
+        data_frame = pd.DataFrame(data=results, index=range(1, epoch + 1))
+        data_frame.to_csv('./linear_statistics.csv', index_label='epoch')
+        if test_acc_1 > best_acc:
+            best_acc = test_acc_1
+            torch.save(model.state_dict(), './linear_model.pth')
+
+
+# train or test for one epoch
+def train_val(net, data_loader, train_optimizer, loss_criterion, epoch, epochs):
+    is_train = train_optimizer is not None
+    net.train() if is_train else net.eval()
+
+    total_loss, total_correct_1, total_correct_5, total_num, data_bar = 0.0, 0.0, 0.0, 0, tqdm(data_loader)
+    with (torch.enable_grad() if is_train else torch.no_grad()):
+        for data, target in data_bar:
+            data, target = data.cuda(non_blocking=True), target.cuda(non_blocking=True)
+            out = net(data)
+            loss = loss_criterion(out, target)
+
+            if is_train:
+                train_optimizer.zero_grad()
+                loss.backward()
+                train_optimizer.step()
+
+            total_num += data.size(0)
+            total_loss += loss.item() * data.size(0)
+            prediction = torch.argsort(out, dim=-1, descending=True)
+            total_correct_1 += torch.sum((prediction[:, 0:1] == target.unsqueeze(dim=-1)).any(dim=-1).float()).item()
+            total_correct_5 += torch.sum((prediction[:, 0:5] == target.unsqueeze(dim=-1)).any(dim=-1).float()).item()
+
+            data_bar.set_description('{} Epoch: [{}/{}] Loss: {:.4f} ACC@1: {:.2f}% ACC@5: {:.2f}%'
+                                     .format('Train' if is_train else 'Test', epoch, epochs, total_loss / total_num,
+                                             total_correct_1 / total_num * 100, total_correct_5 / total_num * 100))
+
+    return total_loss / total_num, total_correct_1 / total_num * 100, total_correct_5 / total_num * 100
 
 
 class SimCLRModel(nn.Module):
@@ -319,6 +422,7 @@ class CIFAR10Pair(CIFAR10):
 
         return pos_1, pos_2, target
 
+
 @cifar_ex.config
 def default_config():
     seed = 1
@@ -327,53 +431,61 @@ def default_config():
     pretrain_epochs = 1000
     pretrain_batches_per_epoch = 390
     finetune_epochs = 100
-    representation_dim = 2048 ## TODO change back
+    finetune_batch_size = 512
+    representation_dim = 2048 # TODO change back
     projection_dim = 128
     pretrain_lr = 3e-4
     pretrain_weight_decay = 1e-4
     pretrain_momentum = 0.9
     pretrain_batch_size = 512
     pretrain_save_interval = 100
-    pretrain_temperature = 0.5
+    pretrain_temperature = 0.1
     pretrained_model = None
     use_repo_loss = False
+    eval_knn = True
     _ = locals()
     del _
 
 
 @cifar_ex.main
 def run(seed, algo, data_dir, pretrain_epochs, finetune_epochs, representation_dim,
-        pretrained_model, pretrain_batch_size, _config):
+        pretrained_model, pretrain_batch_size, finetune_batch_size, eval_knn, _config):
     # TODO fix this hacky nonsense
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if pretrained_model is None:
         log_dir = os.path.join(cifar_ex.observers[0].dir, 'training_logs')
         os.mkdir(log_dir)
         os.makedirs(data_dir, exist_ok=True)
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = representation_learning(algo, device, log_dir, _config)
 
     else:
         model = torch.load(pretrained_model)
 
-    test_transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+    if eval_knn:
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
 
-    memory_data = CIFAR10Pair(root='data', train=True, transform=test_transform, download=True)
-    memory_loader = torch.utils.data.DataLoader(memory_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
-    test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False, num_workers=16, pin_memory=True)
+        memory_data = CIFAR10Pair(root='data', train=True, transform=test_transform, download=True)
+        memory_loader = torch.utils.data.DataLoader(memory_data, batch_size=pretrain_batch_size, shuffle=False,
+                                                    num_workers=16, pin_memory=True)
+        test_data = CIFAR10Pair(root='data', train=False, transform=test_transform, download=True)
+        test_loader = torch.utils.data.DataLoader(test_data, batch_size=pretrain_batch_size, shuffle=False,
+                                                  num_workers=16, pin_memory=True)
 
+        # KNN testing from SimCLR repo for comparison
+        test(model.network, memory_loader, test_loader, k=200, num_classes=10,
+             temperature=_config['pretrain_temperature'], epoch=-1)
+    else:
+        print('Train linear head')
+        classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
+        train_from_simclr_repo(classifier, finetune_batch_size, finetune_epochs)
+        # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
 
-    # KNN testing from SimCLR repo for comparison
-    test(model.network, memory_loader, test_loader, k=200, num_classes=10, temperature=_config['pretrain_temperature'], epoch=-1)
-    # print('Train linear head')
-    # classifier = LinearHead(model.network, representation_dim, output_dim=10).to(device)
-    # train_classifier(classifier, data_dir, num_epochs=finetune_epochs, device=device)
-
-    # print('Evaluate accuracy on test set')
-    # evaluate_classifier(classifier, data_dir, device=device)
+        print('Evaluate accuracy on test set')
+        evaluate_classifier(classifier, data_dir, device=device)
 
 
 if __name__ == '__main__':
