@@ -399,7 +399,6 @@ class BaseEncoder(Encoder):
 
     def forward_deterministic(self, x, traj_info):
         features = self.network(x)
-        return features
         return independent_multivariate_normal(mean=features,
                                                stddev=self.scale_constant)
 

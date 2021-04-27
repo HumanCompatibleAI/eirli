@@ -319,6 +319,7 @@ class CIFAR10Pair(CIFAR10):
 
         return pos_1, pos_2, target
 
+
 @cifar_ex.config
 def default_config():
     seed = 1
@@ -327,14 +328,14 @@ def default_config():
     pretrain_epochs = 1000
     pretrain_batches_per_epoch = 390
     finetune_epochs = 100
-    representation_dim = 2048 ## TODO change back
+    representation_dim = 2048 # TODO change back
     projection_dim = 128
     pretrain_lr = 3e-4
     pretrain_weight_decay = 1e-4
     pretrain_momentum = 0.9
     pretrain_batch_size = 512
     pretrain_save_interval = 100
-    pretrain_temperature = 0.5
+    pretrain_temperature = 0.1
     pretrained_model = None
     use_repo_loss = False
     _ = locals()

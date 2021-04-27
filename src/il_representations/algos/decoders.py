@@ -64,8 +64,8 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
     input_dim = representation_dim
     for layer_def in architecture:
         layers.append(nn.Linear(input_dim, layer_def['output_dim']))
-        layers.append(nn.ReLU())
         layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
+        layers.append(nn.ReLU(inplace=True))
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
     return nn.Sequential(*layers)
@@ -116,7 +116,6 @@ class LossDecoder(nn.Module):
         if self.sample:
             return z_dist.rsample()
         else:
-            return z_dist
             return z_dist.mean
 
     def ones_like_projection_dim(self, x):
@@ -128,7 +127,6 @@ class LossDecoder(nn.Module):
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
-        return mean
         if stdev_layer is None:
             # We better not have had a learned standard deviation in
             # the encoder, since there's no clear way on how to pass
