@@ -149,7 +149,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.encoder = encoder(self.observation_space, representation_dim, **encoder_kwargs).to(self.device)
         self.decoder = decoder(representation_dim, projection_dim, **decoder_kwargs).to(self.device)
-        breakpoint()
 
         if batch_extender is QueueBatchExtender:
             # TODO maybe clean this up?
