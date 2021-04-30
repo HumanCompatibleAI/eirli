@@ -212,8 +212,8 @@ def make_chain_configs(experiment_obj):
         spec = dict(il_train={
             'bc': {
                 'n_batches': 10000000,
-                'n_trajs': tune.grid_search([1, 10, 30]),
-                'save_every_n_batches': 1e6
+                # 'n_trajs': tune.grid_search([1, 10, 30]),
+                'save_every_n_batches': 5e4
             }
         })
 
