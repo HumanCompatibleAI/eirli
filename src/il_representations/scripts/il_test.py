@@ -38,6 +38,7 @@ def default_config():
     # you identify runs in viskit.
     exp_ident = None
     torch_num_threads = 1
+    # This is typically the "snapshots" dir under il_train results
     policy_dir = None
     n_rollouts = 100
     device_name = 'auto'
@@ -71,7 +72,8 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         raise ValueError(
             "must pass a string-valued policy_dir to this command")
 
-    policy_paths = [f for f in os.listdir(policy_dir) if os.path.isfile(os.path.join(policy_dir, f))]
+    policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
+                    if os.path.isfile(os.path.join(policy_dir, f))]
 
     # Get the indexes of ckpts to test. It includes the first and the last policy, and
     # evenly spread out the rest.
