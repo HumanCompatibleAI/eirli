@@ -84,7 +84,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
     for count, idx in enumerate(policy_idxes):
         policy_path = policy_paths[idx]
 
-        logging.info(f"Start testing policy {policy_path}")
+        logging.info(f"Start testing policy [{count}/{len(policy_idxes)}] {policy_path}")
 
         policy = th.load(policy_path)
 
