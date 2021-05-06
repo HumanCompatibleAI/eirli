@@ -39,9 +39,17 @@ class NoAugmentation(Augmenter):
 
 class AugmentContextAndTarget(Augmenter):
     def __call__(self, contexts, targets):
+        pil_process_func = transforms.Compose([
+            transforms.ToPILImage()
+        ])
         if self.augment_func:
             context_ret, target_ret = [], []
             for context, target in zip(contexts, targets):
+                if isinstance(context, torch.Tensor) and \
+                   isinstance(self.augment_op.transforms[0],
+                              transforms.RandomResizedCrop):
+                    context, target = pil_process_func(context.cpu()), \
+                                      pil_process_func(target.cpu())
                 context_ret.append(self.augment_op(context))
                 target_ret.append(self.augment_op(target))
             return torch.stack(context_ret, dim=0).to(device), \

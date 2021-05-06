@@ -138,7 +138,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             projection_dim = representation_dim
 
         train_transform = transforms.Compose([
-            transforms.RandomResizedCrop(32),
+            transforms.RandomResizedCrop(90),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
             transforms.RandomGrayscale(p=0.2),
@@ -341,8 +341,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
                 # if step == 0:
                 #     for i in range(10):
-                #         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
-                #         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_from_disk_{i}.png'))
+                #         breakpoint()
+                #         save_rgb_tensor(contexts[i][:3], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
+                #         save_rgb_tensor(targets[i][:3], os.path.join(self.log_dir, 'saved_images', f'targets_from_disk_{i}.png'))
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
@@ -350,19 +351,19 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
                 # TODO this may not make sense for CIFAR10, maybe double normalizing
-                # contexts = self._preprocess(contexts)
-                # if self.preprocess_target:
-                #     targets = self._preprocess(targets)
-                # if step == 0:
-                #     for i in range(10):
-                #         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
-                #         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
+                contexts = self._preprocess(contexts)
+                if self.preprocess_target:
+                    targets = self._preprocess(targets)
+                if step == 0:
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i][:3], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
+                        save_rgb_tensor(targets[i][:3], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
                 # TODO put back in when done with "swap their data in" test
                 contexts, targets = self.augmenter(contexts, targets)
-                # if step == 0:
-                #     for i in range(10):
-                #         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
-                #         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_{i}.png'))
+                if step == 0:
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i][:3], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
+                        save_rgb_tensor(targets[i][:3], os.path.join(self.log_dir, 'saved_images', f'targets_{i}.png'))
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
