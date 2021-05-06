@@ -336,10 +336,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
                 # contexts, targets, _ = train_loader.next()
 
-                if step == 0:
-                    for i in range(10):
-                        save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
-                        save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_from_disk_{i}.png'))
+                # if step == 0:
+                #     for i in range(10):
+                #         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
+                #         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_from_disk_{i}.png'))
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
@@ -350,16 +350,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # contexts = self._preprocess(contexts)
                 # if self.preprocess_target:
                 #     targets = self._preprocess(targets)
-                if step == 0:
-                    for i in range(10):
-                        save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
-                        save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
+                # if step == 0:
+                #     for i in range(10):
+                #         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
+                #         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
                 # TODO put back in when done with "swap their data in" test
                 contexts, targets = self.augmenter(contexts, targets)
-                if step == 0:
-                    for i in range(10):
-                        save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
-                        save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_{i}.png'))
+                # if step == 0:
+                #     for i in range(10):
+                #         save_rgb_tensor(contexts[i], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
+                #         save_rgb_tensor(targets[i], os.path.join(self.log_dir, 'saved_images', f'targets_{i}.png'))
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
