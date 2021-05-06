@@ -53,6 +53,23 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_base_3seed_1cpu_pt2gpu():
+        """Basic config that does three samples per config, using 1 CPU cores and
+        0.2 of a GPU."""
+        use_skopt = False
+        tune_run_kwargs = dict(num_samples=3,
+                               # retry on (node) failure
+                               max_failures=2,
+                               fail_fast=False,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.2,
+                               ))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_base_3seed_1cpu_pt2gpu_2envs():
         """Another config that uses only one CPU per run, and .2 of a GPU. Good for
         running GPU-intensive algorithms (repL, BC) on GCP."""
@@ -212,8 +229,8 @@ def make_chain_configs(experiment_obj):
         spec = dict(il_train={
             'bc': {
                 'n_batches': 10000000,
-                'n_trajs': tune.grid_search([1, 10, 30]),
-                'save_every_n_batches': 1e6
+                # 'n_trajs': tune.grid_search([1, 10, 30]),
+                'save_every_n_batches': 5e4
             }
         })
 
