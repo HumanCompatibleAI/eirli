@@ -10,6 +10,8 @@ from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 import torch
 from torch import nn
+from torchvision.models.resnet import resnet50
+import torch.nn.functional as F
 from pyro.distributions import Delta
 
 from gym import spaces
@@ -267,11 +269,36 @@ class MAGICALCNN(nn.Module):
         warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
+
+class SimCLRModel(nn.Module):
+    def __init__(self, feature_dim=128):
+        super(SimCLRModel, self).__init__()
+
+        self.f = []
+        for name, module in resnet50().named_children():
+            if name == 'conv1':
+                module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
+                self.f.append(module)
+        # encoder
+        # Temporarily add an extra layer to be closer to our model implementation
+        self.f = nn.Sequential(*self.f)
+        # # projection head
+        # self.g = nn.Sequential(nn.Linear(2048, 512, bias=False), nn.BatchNorm1d(512),
+        #                        nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
+
+    def forward(self, x):
+        x = self.f(x)
+        feature = torch.flatten(x, start_dim=1)
+        return F.normalize(feature, dim=-1)
+
+
 # string names for convolutional networks; this makes it easier to choose
 # between them from the command line
 NETWORK_SHORT_NAMES = {
     'BasicCNN': BasicCNN,
     'MAGICALCNN': MAGICALCNN,
+    'SimCLRModel': SimCLRModel
 }
 
 

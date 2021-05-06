@@ -23,6 +23,7 @@ from sacred.observers import FileStorageObserver
 from il_representations import algos
 from il_representations.algos.utils import LinearWarmupCosine
 from il_representations.envs.auto import load_wds_datasets
+from il_representations.algos.encoders import SimCLRModel
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
@@ -225,30 +226,6 @@ def train_val(net, data_loader, train_optimizer, loss_criterion, epoch, epochs):
                                              total_correct_1 / total_num * 100, total_correct_5 / total_num * 100))
 
     return total_loss / total_num, total_correct_1 / total_num * 100, total_correct_5 / total_num * 100
-
-
-class SimCLRModel(nn.Module):
-    def __init__(self, feature_dim=128):
-        super(SimCLRModel, self).__init__()
-
-        self.f = []
-        for name, module in resnet50().named_children():
-            if name == 'conv1':
-                module = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-            if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
-                self.f.append(module)
-        # encoder
-        # Temporarily add an extra layer to be closer to our model implementation
-        self.f = nn.Sequential(*self.f)
-        # # projection head
-        # self.g = nn.Sequential(nn.Linear(2048, 512, bias=False), nn.BatchNorm1d(512),
-        #                        nn.ReLU(inplace=True), nn.Linear(512, feature_dim, bias=True))
-
-    def forward(self, x):
-        x = self.f(x)
-        feature = torch.flatten(x, start_dim=1)
-        #out = self.g(feature)
-        return F.normalize(feature, dim=-1) #, F.normalize(out, dim=-1)
 
 
 def representation_learning(algo, device, log_dir, config):

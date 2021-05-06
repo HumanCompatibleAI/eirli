@@ -1,7 +1,7 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
-    infer_action_shape_info
+    infer_action_shape_info, SimCLRModel
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
     ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
@@ -54,6 +54,7 @@ class SimCLR(RepresentationLearner):
     # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
+                                     encoder_kwargs={'obs_encoder_cls': lambda *args: SimCLRModel()},
                                      decoder=SymmetricProjectionHead,
                                      loss_calculator=SymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
