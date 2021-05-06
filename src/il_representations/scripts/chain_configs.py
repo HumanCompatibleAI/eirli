@@ -333,9 +333,10 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
-            'optimizer_kwargs': {'lr': 3e-4},
+            'algo_params': {
+                'optimizer_kwargs': {'lr': 3e-4},
+            }
         }
-
         _ = locals()
         del _
 
