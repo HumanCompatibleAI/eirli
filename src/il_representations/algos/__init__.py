@@ -56,7 +56,6 @@ class SimCLR(RepresentationLearner):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      encoder_kwargs={'obs_encoder_cls': lambda *args: SimCLRModel()},
                                      decoder=SymmetricProjectionHead,
-                                     decoder_kwargs={'representation_dim': 2048},
                                      loss_calculator=SymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
                                      target_pair_constructor=IdentityPairConstructor,
