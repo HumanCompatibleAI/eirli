@@ -74,6 +74,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
     policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
                     if os.path.isfile(os.path.join(policy_dir, f))]
+    policy_paths.sort()
     logging.info(f"Policies to test: {policy_paths}")
 
     # Get the indexes of ckpts to test. It includes the first and the last policy, and
@@ -84,8 +85,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
     for count, idx in enumerate(policy_idxes):
         policy_path = policy_paths[idx]
 
-        logging.info(f"Start testing policy {policy_path}")
-
+        logging.info(f"Start testing policy [{count + 1}/{len(policy_idxes)}] {policy_path}")
         policy = th.load(policy_path)
 
         device = get_device(device_name)
