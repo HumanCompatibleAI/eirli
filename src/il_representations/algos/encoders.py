@@ -409,6 +409,13 @@ class BaseEncoder(Encoder):
             self.network = obs_encoder_cls(obs_space, representation_dim, **obs_encoder_cls_kwargs)
             self.scale_constant = scale_constant
 
+        if torch.cuda.device_count() > 1:
+            print("Using", torch.cuda.device_count(), "GPUs!")
+            self.network = nn.DataParallel(self.network)
+
+        self.network.to(self.device)
+
+
     def forward(self, x, traj_info):
         if self.learn_scale:
             return self.forward_with_stddev(x, traj_info)
