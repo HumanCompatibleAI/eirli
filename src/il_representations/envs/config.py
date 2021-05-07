@@ -171,5 +171,12 @@ def env_data_defaults():
         'data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
     }
 
+    # ###########################
+    # ProcGen config variables
+    # ###########################
+    procgen_demo_paths = {
+        'procgen/demo_coinrun.pickle'
+    }
+
     _ = locals()
     del _
