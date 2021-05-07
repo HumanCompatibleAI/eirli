@@ -6,7 +6,7 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "procgen"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -175,7 +175,7 @@ def env_data_defaults():
     # ProcGen config variables
     # ###########################
     procgen_demo_paths = {
-        'procgen/demo_coinrun.pickle'
+        'coinrun': 'procgen/demo_coinrun.pickle'
     }
 
     _ = locals()
