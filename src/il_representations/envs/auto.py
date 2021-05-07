@@ -21,7 +21,9 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
-from il_representations.envs.procgen_envs import load_dataset_procgen
+from il_representations.envs.procgen_envs import (load_dataset_procgen,
+                                                  ProcgenWrapper,
+                                                  get_procgen_env_name)
 from il_representations.scripts.utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
@@ -104,7 +106,7 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
     elif benchmark_name == 'procgen':
-        return task_name
+        return get_procgen_env_name()
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 

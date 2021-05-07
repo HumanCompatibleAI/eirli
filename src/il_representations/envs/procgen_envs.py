@@ -3,13 +3,14 @@ import os
 import random
 import numpy as np
 
-from baselines.common.vec_env import (
-    VecExtractDictObs,
-    VecMonitor,
-    VecFrameStack,
-    VecNormalize
-)
+# from baselines.common.vec_env import (
+#     VecExtractDictObs,
+#     VecMonitor,
+#     VecFrameStack,
+#     VecNormalize
+# )
 from procgen import ProcgenEnv
+from procgen.gym_registration import make_env, register_environments
 
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
@@ -72,4 +73,6 @@ def ProcgenWrapper(task_name, num_envs=1, num_levels=0, start_level=0,
     venv = VecNormalize(venv=venv, ob=False)
 
 
-
+@env_cfg_ingredient.capture
+def get_procgen_env_name(task_name):
+    return f'procgen-{task_name}-v0'
