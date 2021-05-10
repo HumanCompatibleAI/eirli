@@ -193,7 +193,6 @@ class MAGICALCNN(nn.Module):
                  observation_space,
                  representation_dim,
                  use_bn=True,
-                 use_ln=False,
                  dropout=None,
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet-128',

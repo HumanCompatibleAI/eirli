@@ -358,4 +358,3 @@ class GaussianPriorLoss(RepresentationLoss):
 
         loss = torch.mean(kld)
         return loss
-

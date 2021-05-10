@@ -11,7 +11,7 @@ def get_space_and_ref_configs(contrastive=True):
     if contrastive:
         space = collections.OrderedDict([
                 ('repl:algo_params:batch_size', (64, 384)),
-                ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+                ('repl:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
                 ('repl:algo_params:representation_dim', (8, 256)),
                 ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN',
                                                                      'MAGICALCNN']),
@@ -20,7 +20,7 @@ def get_space_and_ref_configs(contrastive=True):
                                                 ])
         base_refs = [
                 {'repl:algo_params:batch_size': 256,
-                 'repl:algo_params:optimizer_kwargs:lr': 0.0003,
+                 'repl:optimizer_kwargs:lr': 0.0003,
                  'repl:algo_params:representation_dim': 128,
                  'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'MAGICALCNN',
                  'il_train:freeze_encoder':  True,
@@ -30,7 +30,7 @@ def get_space_and_ref_configs(contrastive=True):
         # Do not include batch size in search space
         space = collections.OrderedDict([
                 ('repl:algo_params:representation_dim', (8, 256)),
-                ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+                ('repl:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
                 ('repl:algo_params:encoder_kwargs:obs_encoder_cls', ['BasicCNN',
                                                                      'MAGICALCNN']),
                 ('il_train:freeze_encoder', [True, False]),
@@ -38,7 +38,7 @@ def get_space_and_ref_configs(contrastive=True):
                 ])
         base_refs = [
                 {'repl:algo_params:representation_dim': 128,
-                 'repl:algo_params:optimizer_kwargs:lr': 0.0003,
+                 'repl:optimizer_kwargs:lr': 0.0003,
                  'repl:algo_params:encoder_kwargs:obs_encoder_cls': 'MAGICALCNN',
                  'il_train:freeze_encoder':  True,
                  'il_test:n_rollouts': 20

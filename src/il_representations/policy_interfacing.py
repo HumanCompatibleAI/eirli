@@ -36,16 +36,3 @@ class EncoderFeatureExtractor(BaseFeaturesExtractor):
         # Might be better to run as a check against IL loss or something.
         assert torch.all(torch.isfinite(mean)), mean
         return mean
-
-
-class EncoderSimplePolicyHead(EncoderFeatureExtractor):
-    # Not actually a FeatureExtractor for SB use, but a very simple Policy for use in Cynthia's BC code
-    def __init__(self, observation_space, features_dim, action_size, encoder=None, encoder_path=None, finetune=True):
-        super().__init__(observation_space, features_dim, encoder, encoder_path, finetune)
-        self.action_layer = torch.nn.Linear(encoder.representation_dim, action_size)
-        self.softmax = torch.nn.Softmax(dim=-1)
-
-    def forward(self, observations):
-        representation = super().forward(observations)
-        action_probas = self.softmax(self.action_layer(representation))
-        return action_probas

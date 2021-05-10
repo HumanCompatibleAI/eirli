@@ -123,9 +123,8 @@ def stooke_contrastive_hyperparams_dmc():
     # Currently doesn't contain CosineAnnealing, despite being in Stooke,
     # because it's too hard to debug last minute
     # TODO add in augmentations once determined via hyperparameter search
-    algo_params = {'representation_dim': 128,
-                   'batch_size': 256,
-                   'optimizer_kwargs': {'lr': 0.001}}
+    algo_params = {'representation_dim': 128, 'batch_size': 256}
+    optimizer_kwargs = {'lr': 0.001}
     _ = locals()
     del _
 
@@ -141,7 +140,7 @@ def hp_tuned_augmentation_set():
 @represent_ex.named_config
 # TODO CURRENTLY NONSENSE, REPLACE AFTER HP TUNING
 def hp_tuned_vae_lr():
-    algo_params = {'optimizer_kwargs': {'lr': 'REPLACE-ME'}}
+    optimizer_kwargs = {'lr': 'REPLACE-ME'}
     _ = locals()
     del _
 

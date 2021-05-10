@@ -138,7 +138,7 @@ class BYOL(RepresentationLearner):
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
 
-    def learn(self, dataset, training_epochs):
+    def learn(self, *args, **kwargs):
         raise NotImplementedError("BYOL decoder currently has an unfixed issue with gradients being None ")
 
 

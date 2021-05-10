@@ -1,6 +1,6 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
-from collections.abc import Sequence, Mapping, Iterable
+from collections.abc import Iterable, Mapping, Sequence
 import functools
 import hashlib
 import json
@@ -10,11 +10,13 @@ import pdb
 import pickle
 import re
 import sys
+import time
+from typing import Dict, List
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
-from scipy.stats import gmean
+import numpy as np
 from skvideo.io import FFmpegWriter
 import torch as th
 from torchsummary import summary
@@ -211,7 +213,8 @@ class TensorFrameWriter:
             "cannot __enter__ this again once it is closed"
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
+        # this fn receives args exc_type, exc_val, exc_tb (but all are unused)
         self.close()
 
     def close(self):
@@ -282,15 +285,8 @@ class RepLSaveExampleBatchesCallback:
         os.makedirs(self.dest_dir, exist_ok=True)
 
         # now loop over items and save using appropriate format
-        to_save = [
-            'contexts', 'targets', 'extra_context', 'encoded_contexts',
-            'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
-            'decoded_targets', 'traj_ts_info', 'raw_contexts', 'raw_targets',
-        ]
-
-        for save_name in to_save:
-            save_value = repl_locals[save_name]
-
+        for save_name, save_value in (repl_locals['detached_debug_tensors']
+                                      .items()):
             if isinstance(save_value, th.distributions.Distribution):
                 # take sample instead of mean so that we can see noise
                 save_value = save_value.sample()
@@ -314,9 +310,11 @@ class RepLSaveExampleBatchesCallback:
                 # Save decoded contexts as videos
                 if self.save_video:
                     video_out_path = save_path_no_suffix + '.mp4'
-                    video_writer = TensorFrameWriter(video_out_path, color_space=self.color_space)
+                    video_writer = TensorFrameWriter(
+                        video_out_path, color_space=self.color_space)
                     for image in save_image:
-                        image = image_tensor_to_rgb_grid(image, self.color_space)
+                        image = image_tensor_to_rgb_grid(image,
+                                                         self.color_space)
                         video_writer.add_tensor(image)
                     video_writer.close()
 
@@ -438,3 +436,95 @@ class SacredProofTuple(Sequence):
 
     def __repr__(self):
         return 'NotATuple' + repr(self._elems)
+
+
+def weight_grad_norms(params, *, norm_type=2):
+    """Calculate the gradient norm and the weight norm of the policy network.
+
+    Adapted from `BC._calculate_policy_norms` in imitation.
+
+    Args:
+        params: list of Torch parameters to compute norm of
+        norm_type: order of the norm (1, 2, etc.).
+
+    Returns:
+        gradient_norm: norm of the gradient of the policy network (stored in
+            each parameter's .grad attribute)
+        weight_norm: norm of the weights of the policy network
+    """
+    norm_type = float(norm_type)
+
+    gradient_parameters = [p for p in params if p.grad is not None]
+    stacked_gradient_norms = th.stack(
+        [th.norm(p.grad.detach(), norm_type) for p in gradient_parameters])
+    stacked_weight_norms = th.stack(
+        [th.norm(p.detach(), norm_type) for p in params])
+
+    gradient_norm = th.norm(stacked_gradient_norms, norm_type).cpu().numpy()
+    weight_norm = th.norm(stacked_weight_norms, norm_type).cpu().numpy()
+
+    return gradient_norm, weight_norm
+
+
+class Timers:
+    """Wrapper for a collection of timers.
+
+    Usage: call `.start("some_name_for_op")` before doing the operation you
+    want to time, then `.stop("some_name_for_op")` immediately afterward. Doing
+    `.dump_stats()` will compute statistics for recorded times under all names
+    (e.g. "some_name_for_op" and any other names you use)."""
+    def __init__(self):
+        self.last_start: Dict[str, float] = {}
+        self.records: Dict[str, List[float]] = {}
+
+    def start(self, name: str) -> None:
+        """Start a timer."""
+        if name in self.last_start:
+            raise ValueError(
+                f"Tried to do .start({name!r}), but {name!r} is still "
+                "running; should .stop() it first.")
+
+        self.last_start[name] = time.monotonic()
+
+    def stop(self, name: str, *, check_running=True) -> None:
+        """Stop a timer."""
+        if name not in self.last_start:
+            if check_running:
+                raise ValueError(
+                    f"Tried to .stop({name!r}), but {name!r} is not running")
+            else:
+                return
+
+        elapsed = time.monotonic() - self.last_start[name]
+
+        # clear running timer
+        del self.last_start[name]
+
+        self.records.setdefault(name, []).append(elapsed)
+
+    def dump_stats(self, *, check_running=True) -> Dict[str, Dict[str, float]]:
+        """Clear all timer records and return a nested dictionary of stats.
+        Keys at top level of dict are timer names, keys at second level are
+        stat names (min/mean/max/std), and values at second level are just
+        floats."""
+        if len(self.last_start) > 0 and check_running:
+            raise ValueError(
+                "Tried to .dump_stats() with timers still running: "
+                f"{list(self.last_start.keys())}")
+
+        rv = collections.OrderedDict()
+        for name, values in sorted(self.records.items()):
+            rv[name] = collections.OrderedDict()
+            for stat, stat_fn in [('min', np.min), ('max', np.max),
+                                  ('mean', np.mean), ('std', np.std)]:
+                rv[name][stat] = stat_fn(values)
+
+        # clear saved times, but not running timers
+        self.records = {}
+
+        return rv
+
+    def reset(self):
+        """Clear all running timers and all saved times."""
+        self.records = {}
+        self.last_start = {}

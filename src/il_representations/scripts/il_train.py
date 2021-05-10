@@ -32,6 +32,7 @@ from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
+from il_representations.il.utils import add_infos, streaming_extract_keys
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import (augmenter_from_spec, freeze_params,
                                       print_policy_info)
@@ -273,20 +274,6 @@ def make_policy(*,
         print_policy_info(policy, observation_space)
 
     return policy
-
-
-def streaming_extract_keys(*keys_to_keep):
-    """Filter a generator of dicts to keep only the specified keys."""
-    def gen(data_iter):
-        for data_dict in data_iter:
-            yield {k: data_dict[k] for k in keys_to_keep}
-    return gen
-
-
-def add_infos(data_iter):
-    """Add a dummy 'infos' value to each dict in a data stream."""
-    for data_dict in data_iter:
-        yield {'infos': {}, **data_dict}
 
 
 @il_train_ex.capture

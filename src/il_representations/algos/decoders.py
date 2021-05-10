@@ -118,12 +118,6 @@ class LossDecoder(nn.Module):
         else:
             return z_dist.mean
 
-    def ones_like_projection_dim(self, x):
-        return torch.ones(size=(x.shape[0], self.projection_dim,), device=x.device)
-
-    def passthrough(self, x):
-        return x
-
     def _apply_projection_layer(self, z_dist, mean_layer, stdev_layer):
         z_vector = self.get_vector(z_dist)
         mean = mean_layer(z_vector)
