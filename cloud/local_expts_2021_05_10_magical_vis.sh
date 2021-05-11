@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# Run one seed of each repL algorithm on each MAGICAL environment.
+# Run one seed of each repL algorithm and one control on each MAGICAL
+# environment.
 
 set -e
 
 # WARNING: only one sample here!
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=3"
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=1"
            "ray_init_kwargs.address=localhost:42000"
            "tune_run_kwargs.resources_per_trial.gpu=0.5")
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion" "ClusterColour"
@@ -21,10 +22,18 @@ submit_expt() {
            with "${base_cfgs[@]}" "$@" &
 }
 
+launch_control_for_env() {
+    echo -e "\n *** CONTROL RUN WITH $* *** \n "
+    submit_expt stages_to_run=IL_ONLY cfg_use_magical \
+        control_no_ortho_init cfg_il_bc_20k_nofreeze \
+        il_train.bc.n_batches=40000 "$@"
+}
+
 launch_repl_for_env() {
-    echo -e "\n *** REPL+IL RUN WITH $* *** \n "
-    submit_expt stages_to_run=REPL_AND_IL cfg_use_magical \
-        cfg_il_bc_20k_nofreeze repl.batches_per_epoch=2000 repl.n_epochs=10 il_train.bc.n_batches=40000 "$@"
+    echo -e "\n *** REPL-ONLY RUN WITH $* *** \n "
+    submit_expt stages_to_run=REPL_ONLY cfg_use_magical \
+        cfg_il_bc_20k_nofreeze repl.batches_per_epoch=2000 repl.n_epochs=10 \
+        il_train.bc.n_batches=40000 "$@"
 }
 
 lower() {
@@ -46,8 +55,12 @@ for repl_config in "${repl_configs[@]}"; do
         # (note that we don't use anything from other tasks)
         launch_repl_for_env exp_ident="${repl_config}_demos_and_test_rollouts" \
                             "${repl_config[@]}" "env_cfg.task_name=${env_name}-Demo-v0" \
-                            "cfg_data_repl_${lower_env}_test_demos_and_all_random" \
+                            "cfg_data_repl_${lower_env}_test_demos_and_all_random_rollouts" \
                             repl.is_multitask=True
     done
+
+    # control
+    launch_control_for_env exp_ident="control" \
+        "env_cfg.task_name=${env_name}-Demo-v0"
 done
 wait

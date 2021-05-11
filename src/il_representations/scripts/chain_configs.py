@@ -479,7 +479,8 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-    # This is a terrible idea, but I don't care
+    # Adding configs programatically like this seems like a terrible idea, but
+    # I don't care
     def _():
         for task_name in [
                 'MoveToCorner-Demo-v0', 'MoveToRegion-Demo-v0',
@@ -493,7 +494,7 @@ def make_chain_configs(experiment_obj):
             # this namedconfig is to train on demos from both demo variant and
             # test variant
             experiment_obj.add_named_config(
-                f'cfg_data_repl_${prefix_lower}_demos_magical_test', {
+                f'cfg_data_repl_{prefix_lower}_demos_magical_test', {
                     'repl': {
                         'dataset_configs':
                         [{
@@ -503,7 +504,7 @@ def make_chain_configs(experiment_obj):
                                 'task_name': tn,
                             },
                         } for tn in
-                         [f'${prefix}-Demo-v0', f'${prefix}-TestAll-v0']]
+                         [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']]
                     }
                 })
 
@@ -511,7 +512,7 @@ def make_chain_configs(experiment_obj):
             # each taken from both demo and test variant (i.e. we train on
             # everything related to this task)
             experiment_obj.add_named_config(
-                f'cfg_data_repl_${prefix_lower}_rand_demos_magical_test', {
+                f'cfg_data_repl_{prefix_lower}_rand_demos_magical_test', {
                     'repl': {
                         'dataset_configs':
                         [{
@@ -521,7 +522,7 @@ def make_chain_configs(experiment_obj):
                                 'task_name': tn,
                             }
                         } for tn in
-                         [f'${prefix}-Demo-v0', f'${prefix}-TestAll-v0']
+                         [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']
                          for data_type in ['demos', 'random']]
                     }
                 })
@@ -529,8 +530,8 @@ def make_chain_configs(experiment_obj):
             # here we train on demos from the demo variant, along with random
             # rollouts from both the demo variant and from test variants
             experiment_obj.add_named_config(
-                f'cfg_data_repl_${prefix_lower}_test_demos_and_all_random'
-                '_rollouts', {
+                (f'cfg_data_repl_{prefix_lower}_test_demos_and_all_random'
+                 '_rollouts'), {
                     'repl': {
                         'dataset_configs': [{
                             'type': 'demos',
@@ -545,7 +546,7 @@ def make_chain_configs(experiment_obj):
                                 'task_name': tn,
                             }
                         } for tn in
-                              [f'${prefix}-Demo-v0', f'${prefix}-TestAll-v0']]
+                              [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']]
                     }
                 })
 
