@@ -479,149 +479,83 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-    @experiment_obj.named_config
-    def cfg_data_repl_movetocorner_demos_magical_test():
-        """Train on demo and test variant demos for MoveToCorner"""
-        repl = {
-            'dataset_configs': [{
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                },
-            } for task_name in ['MoveToCorner-Demo-v0', 'MoveToCorner-TestAll-v0']]
-        }
+    # This is a terrible idea, but I don't care
+    def _():
+        for task_name in [
+                'MoveToCorner-Demo-v0', 'MoveToRegion-Demo-v0',
+                'MatchRegions-Demo-v0', 'MakeLine-Demo-v0',
+                'FixColour-Demo-v0', 'FindDupe-Demo-v0',
+                'ClusterColour-Demo-v0', 'ClusterShape-Demo-v0'
+        ]:
+            prefix = task_name.split('-')[0]
+            prefix_lower = prefix.lower()
 
-        _ = locals()
-        del _
+            # this namedconfig is to train on demos from both demo variant and
+            # test variant
+            experiment_obj.add_named_config(
+                f'cfg_data_repl_${prefix_lower}_demos_magical_test', {
+                    'repl': {
+                        'dataset_configs':
+                        [{
+                            'type': 'demos',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            },
+                        } for tn in
+                         [f'${prefix}-Demo-v0', f'${prefix}-TestAll-v0']]
+                    }
+                })
 
-    @experiment_obj.named_config
-    def cfg_data_repl_movetocorner_rand_demos_magical_test():
-        """Train on random rollouts and demos from demo and test variant demos
-        for MoveToCorner"""
-        repl = {'dataset_configs': [{
-                'type': data_type,
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                }}
-            for task_name in ['MoveToCorner-Demo-v0', 'MoveToCorner-TestAll-v0']
-            for data_type in ['demos', 'random']
-        ]}
+            # this named config is to train on both demos and random rollouts,
+            # each taken from both demo and test variant (i.e. we train on
+            # everything related to this task)
+            experiment_obj.add_named_config(
+                f'cfg_data_repl_${prefix_lower}_rand_demos_magical_test', {
+                    'repl': {
+                        'dataset_configs':
+                        [{
+                            'type': data_type,
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            }
+                        } for tn in
+                         [f'${prefix}-Demo-v0', f'${prefix}-TestAll-v0']
+                         for data_type in ['demos', 'random']]
+                    }
+                })
 
-        _ = locals()
-        del _
+            # here we train on demos from the demo variant, along with random
+            # rollouts from both the demo variant and from test variants
+            experiment_obj.add_named_config(
+                f'cfg_data_repl_${prefix_lower}_test_demos_and_all_random'
+                '_rollouts', {
+                    'repl': {
+                        'dataset_configs': [{
+                            'type': 'demos',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': task_name,
+                            }
+                        }] + [{
+                            'type': 'random',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            }
+                        } for tn in
+                              [f'${prefix}-Demo-v0', f'${prefix}-TestAll-v0']]
+                    }
+                })
 
-    @experiment_obj.named_config
-    def cfg_data_repl_movetoregion_demos_magical_test():
-        """Train on demo and test variant demos for MoveToRegion"""
-        repl = {
-            'dataset_configs': [{
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                },
-            } for task_name in ['MoveToRegion-Demo-v0', 'MoveToRegion-TestAll-v0']]
-        }
+            _ = locals()
+            del _
 
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_data_repl_movetoregion_rand_demos_magical_test():
-        """Train on random rollouts and demos from demo and test variant demos
-        for MoveToRegion"""
-        repl = {'dataset_configs': [{
-                'type': data_type,
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                }}
-            for task_name in ['MoveToRegion-Demo-v0', 'MoveToRegion-TestAll-v0']
-            for data_type in ['demos', 'random']
-        ]}
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_data_repl_matchregions_demos_magical_test():
-        """Train on demo and test variant demos for MatchRegions"""
-        repl = {
-            'dataset_configs': [{
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                },
-            } for task_name in ['MatchRegions-Demo-v0', 'MatchRegions-TestAll-v0']]
-        }
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_data_repl_matchregions_rand_demos_magical_test():
-        """Train on random rollouts and demos from demo and test variant demos
-        for MatchRegions"""
-        repl = {'dataset_configs': [{
-                'type': data_type,
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                }}
-            for task_name in ['MatchRegions-Demo-v0', 'MatchRegions-TestAll-v0']
-            for data_type in ['demos', 'random']
-        ]}
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_data_il_movetocorner_demos_magical_test():
-        """Train on demo and test variant demos for MoveToCorner"""
-        il_train = {
-            'dataset_configs': [{
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                },
-            } for task_name in ['MoveToCorner-Demo-v0', 'MoveToCorner-TestAll-v0']]
-        }
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_data_il_movetoregion_demos_magical_test():
-        """Train on demo and test variant demos for MoveToRegion"""
-        il_train = {
-            'dataset_configs': [{
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                },
-            } for task_name in ['MoveToRegion-Demo-v0', 'MoveToRegion-TestAll-v0']]
-        }
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_data_il_matchregions_demos_magical_test():
-        """Train on demo and test variant demos for MatchRegions"""
-        il_train = {
-            'dataset_configs': [{
-                'type': 'demos',
-                'env_cfg': {
-                    'benchmark_name': 'magical',
-                    'task_name': task_name,
-                },
-            } for task_name in ['MatchRegions-Demo-v0', 'MatchRegions-TestAll-v0']]
-        }
-        _ = locals()
-        del _
+    # call fn above & then delete it (avoids polluting namespace of this outer
+    # fn)
+    _()
+    del _
 
     @experiment_obj.named_config
     def cfg_data_repl_rand_demos_magical_mt_test():
