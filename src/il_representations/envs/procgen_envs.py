@@ -30,15 +30,9 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
     full_rollouts_path = os.path.join(data_root, procgen_demo_paths[task_name])
     trajectories = np.load(full_rollouts_path, allow_pickle=True)
 
-    # do frame stacking on observations in each loaded trajectory sequence,
-    # then concatenate the frame-stacked trajectories together to make one big
-    # dataset
-    cat_obs = np.concatenate(trajectories['obs'][:-1], axis=0)
-    cat_nobs = np.concatenate(trajectories['obs'][1:], axis=0)
-    # the remaining entries don't need any special stacking, so we just
-    # concatenate them
+    cat_obs = np.concatenate(trajectories['obs'], axis=0)[:-1]
+    cat_nobs = np.concatenate(trajectories['obs'], axis=0)[1:]
     cat_acts = np.concatenate(trajectories['acts'], axis=0)
-    cat_infos = np.concatenate(trajectories['infos'], axis=0)
     cat_rews = np.concatenate(trajectories['rews'], axis=0)
     cat_dones = np.concatenate(trajectories['dones'], axis=0)
 
@@ -46,7 +40,6 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
         'obs': cat_obs,
         'next_obs': cat_nobs,
         'acts': cat_acts,
-        'infos': cat_infos,
         'rews': cat_rews,
         'dones': cat_dones,
     }
