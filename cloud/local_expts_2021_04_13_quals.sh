@@ -4,11 +4,11 @@ set -euo pipefail
 
 base_cfgs=("cfg_base_5seed_1cpu_pt25gpu"
            "tune_run_kwargs.num_samples=3"
-           "tune_run_kwargs.resources_per_trial.gpu=0.25"
+           "tune_run_kwargs.resources_per_trial.gpu=0.3"
            "ray_init_kwargs.address=localhost:42000"
            "cfg_use_magical")
 repl_configs=("icml_inv_dyn" "icml_identity_cpc" "icml_vae" "icml_dynamics")
-env_names=(
+declare -A env_names=(
     ["matchregions"]="MatchRegions-Demo-v0"
     ["movetocorner"]="MoveToCorner-Demo-v0"
 )
@@ -40,15 +40,15 @@ for env_nick in "${!env_names[@]}"; do
             }
 
             # demos + random rollouts
-            submit_repl "cfg_data_repl_rand_demos" "env_cfg.task_name=$full_env_name" \
+            submit_repl "cfg_data_repl_demos_random" "env_cfg.task_name=$full_env_name" \
                 exp_ident="quals_${il_alg}_${repl_config}_rand_demos"
             # multitask demos + random rollouts
-            submit_repl "cfg_data_repl_rand_demos_mt" "env_cfg.task_name=$full_env_name" \
-                exp_ident="quals_${il_alg}_${repl_config}_rand_demos_mt"
+            submit_repl "cfg_data_repl_rand_demos_magical_mt" "env_cfg.task_name=$full_env_name" \
+                exp_ident="quals_${il_alg}_${repl_config}_rand_demos_magical_mt"
             # test variant demos + random rollouts
             submit_repl "env_cfg.task_name=${full_env_name}" "repl.is_multitask=True" \
                 "cfg_data_repl_${env_nick}_rand_demos_magical_test" \
-                "cfg_data_repl_rand_demos_mt" "env_cfg.task_name=$full_env_name" \
+                "cfg_data_repl_rand_demos_magical_mt" "env_cfg.task_name=$full_env_name" \
                 exp_ident="quals_${il_alg}_${repl_config}_rand_demos_test"
         done
 
@@ -57,5 +57,7 @@ for env_nick in "${!env_names[@]}"; do
             "${il_flags[$il_alg]}" "env_cfg.task_name=$full_env_name" \
             exp_ident="quals_${il_alg}_control"
     done
+    # one env at a time (avoids "too many open files" error)
+    wait
 done
 wait
