@@ -3,12 +3,6 @@ import os
 import random
 import numpy as np
 
-# from baselines.common.vec_env import (
-#     VecExtractDictObs,
-#     VecMonitor,
-#     VecFrameStack,
-#     VecNormalize
-# )
 from procgen import ProcgenEnv
 from procgen.gym_registration import make_env, register_environments
 
@@ -42,26 +36,11 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
         'dones': cat_dones,
     }
 
-    # TODO: Figure out whether we need chans first for procgen
     if chans_first:
         for key in ('obs', ):
             dataset_dict[key] = np.transpose(dataset_dict[key], (0, 3, 1, 2))
 
     return dataset_dict
-
-
-@env_cfg_ingredient.capture
-def ProcgenWrapper(task_name, num_envs=1, num_levels=0, start_level=0,
-                   distribution_mode='easy'):
-    # TODO: Check start level
-    venv = ProcgenEnv(num_envs=num_envs, env_name=env_name, num_levels=num_levels, start_level=start_level, distribution_mode=distribution_mode)
-    venv = VecExtractDictObs(venv, "rgb")
-
-    venv = VecMonitor(
-        venv=venv, filename=None, keep_buf=100,
-    )
-
-    venv = VecNormalize(venv=venv, ob=False)
 
 
 @env_cfg_ingredient.capture
