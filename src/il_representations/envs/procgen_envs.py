@@ -3,7 +3,6 @@ import os
 import random
 import numpy as np
 
-from procgen import ProcgenEnv
 from procgen.gym_registration import make_env, register_environments
 
 from il_representations.envs.config import (env_cfg_ingredient,

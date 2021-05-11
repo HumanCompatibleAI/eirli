@@ -22,7 +22,6 @@ from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
 from il_representations.envs.procgen_envs import (load_dataset_procgen,
-                                                  ProcgenWrapper,
                                                   get_procgen_env_name)
 from il_representations.scripts.utils import update as dict_update
 
@@ -174,11 +173,11 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         raw_procgen_env = make_vec_env(gym_env_name,
                                        n_envs=n_envs,
                                        parallel=venv_parallel,
-                                       parallel_workers=parallel_workers,
-                                       wrapper_class=ProcgenWrapper)
+                                       parallel_workers=parallel_workers)
         final_env = VecFrameStack(VecTransposeImage(raw_procgen_env), 4)
         assert final_env.observation_space.shape == (12, 64, 64), \
             final_env.observation_space.shape
+        return final_env
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
