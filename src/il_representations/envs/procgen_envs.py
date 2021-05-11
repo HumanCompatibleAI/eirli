@@ -30,15 +30,13 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
     full_rollouts_path = os.path.join(data_root, procgen_demo_paths[task_name])
     trajectories = np.load(full_rollouts_path, allow_pickle=True)
 
-    cat_obs = np.concatenate(trajectories['obs'], axis=0)[:-1]
-    cat_nobs = np.concatenate(trajectories['obs'], axis=0)[1:]
+    cat_obs = np.concatenate(trajectories['obs'], axis=0)
     cat_acts = np.concatenate(trajectories['acts'], axis=0)
     cat_rews = np.concatenate(trajectories['rews'], axis=0)
     cat_dones = np.concatenate(trajectories['dones'], axis=0)
 
     dataset_dict = {
         'obs': cat_obs,
-        'next_obs': cat_nobs,
         'acts': cat_acts,
         'rews': cat_rews,
         'dones': cat_dones,
@@ -46,7 +44,7 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
 
     # TODO: Figure out whether we need chans first for procgen
     if chans_first:
-        for key in ('obs', 'next_obs'):
+        for key in ('obs', ):
             dataset_dict[key] = np.transpose(dataset_dict[key], (0, 3, 1, 2))
 
     return dataset_dict
