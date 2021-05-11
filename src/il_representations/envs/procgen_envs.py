@@ -1,4 +1,3 @@
-"""Utilities for working with Atari environments and demonstrations."""
 import os
 import random
 import numpy as np
@@ -16,7 +15,8 @@ def _get_procgen_data_opts(data_root, procgen_demo_paths):
 
 
 @env_cfg_ingredient.capture
-def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
+def load_dataset_procgen(task_name, procgen_frame_stack, n_traj=None,
+                         chans_first=True):
     data_root, procgen_demo_paths = _get_procgen_data_opts()
 
     # load trajectories from disk
@@ -38,6 +38,8 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
     if chans_first:
         for key in ('obs', ):
             dataset_dict[key] = np.transpose(dataset_dict[key], (0, 3, 1, 2))
+    dataset_dict['obs'] = _stack_obs_oldest_first(dataset_dict['obs'],
+                                                  procgen_frame_stack)
 
     return dataset_dict
 
@@ -45,3 +47,17 @@ def load_dataset_procgen(task_name, n_traj=None, chans_first=True):
 @env_cfg_ingredient.capture
 def get_procgen_env_name(task_name):
     return f'procgen-{task_name}-v0'
+
+
+@env_cfg_ingredient.capture
+def _stack_obs_oldest_first(obs_arr, procgen_frame_stack):
+    frame_accumulator = np.repeat([obs_arr[0]], procgen_frame_stack, axis=0)
+    c, h, w = obs_arr.shape[1:]
+    out_sequence = []
+    for in_frame in obs_arr:
+        frame_accumulator = np.concatenate(
+            [frame_accumulator[1:], [in_frame]], axis=0)
+        out_sequence.append(frame_accumulator.reshape(
+            procgen_frame_stack * c, h, w))
+    out_sequence = np.stack(out_sequence, axis=0)
+    return out_sequence

@@ -70,6 +70,11 @@ def env_cfg_defaults():
     # ###############################
     minecraft_max_env_steps = None
 
+    # ###############################
+    # Procgen-specific config variables
+    # ###############################
+    procgen_frame_stack = 4
+
     _ = locals()
     del _
 
