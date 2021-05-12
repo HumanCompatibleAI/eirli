@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """BC implementation that makes it easy to use auxiliary losses."""
 import itertools as it
-import torch
-from stable_baselines3.common import logger, policies, preprocessing, utils
+
 import gym
+from stable_baselines3.common import preprocessing
+import torch
+
+from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.il.utils import streaming_extract_keys
 
 # Some considerations, after a bit of thinking:
 #
@@ -150,38 +154,40 @@ class BC:
         self,
         *,
         policy,
-        expert_data_loader,
         l2_weight,
         ent_weight,
-        augmentation_fn,
     ):
         self.policy = policy
         self.l2_weight = l2_weight
         self.ent_weight = ent_weight
-        self.data_iter = it.chain.from_iterable(it.repeat(expert_data_loader))
-        self.augmentation_fn = augmentation_fn
-        self.device = self.policy.device
-        self.observation_spae = self.policy.observation_space
+        self.observation_space = self.policy.observation_space
 
-    def all_trainable_parameters(self):
+    def all_trainable_params(self):
         """Trainable parameters for BC (only includes policy parameters)."""
         return self.policy.parameters()
 
-    def next_batch(self):
-        """Yield a batch of observations and actions for forward/backward
-        pass."""
-        batch = next(self.data_iter)
-        return _prep_batch_bc(
-            batch=batch, observation_space=self.observation_space,
-            augmentation_fn=self.augmentatino_fn, device=self.policy.device)
+    def make_data_iter(self, il_dataset, augmentation_fn, batch_size,
+                       n_batches, shuffle_buffer_size):
+        expert_data_loader = datasets_to_loader(
+            il_dataset,
+            batch_size=batch_size,
+            nominal_length=batch_size * n_batches,
+            shuffle=True,
+            shuffle_buffer_size=shuffle_buffer_size,
+            preprocessors=[streaming_extract_keys("obs", "acts")])
+        data_iter = it.chain.from_iterable(it.repeat(expert_data_loader))
+        for batch in data_iter:
+            yield _prep_batch_bc(
+                batch=batch, observation_space=self.observation_space,
+                augmentation_fn=augmentation_fn,
+                device=self.policy.device)
 
     def batch_forward(self, obs_acts):
         """Do a forward pass of the network, given a set of observations and
         actions."""
         obs, acts = obs_acts
-        log_prob = self.policy.evaluate_actions(obs, acts)
-        log_prob = log_prob.mean()
 
+        # first return value is state value (which we don't use)
         _, log_prob, entropy = self.policy.evaluate_actions(obs, acts)
         prob_true_act = torch.exp(log_prob).mean()
         log_prob = log_prob.mean()
@@ -197,13 +203,13 @@ class BC:
         l2_term = self.l2_weight * l2_loss_raw
         loss = neglogp + ent_term + l2_term
 
-        # FIXME(sam): I don't think the .item() calls here are JIT-able, and it
-        # tends to be very slow. Would be nice to split it out and/or minimize
-        # the number of calls that are necessary. Possibly just delaying the
-        # .item() calls as long as possible would help---instead of doing
-        # .item(), I could just .detach(). Once all follow-up operations have
-        # been done (e.g. backwards pass), I could call .item() again.
-        # (IDK if that will work, but worth benchmarking it)
+        # FIXME(sam): I don't think the .item() calls here are JIT-able, and
+        # they tend to be very slow. Would be nice to split it out and/or
+        # minimize the number of calls that are necessary. Possibly just
+        # delaying the .item() calls as long as possible would help---instead
+        # of doing .item(), I could just .detach(). Once all follow-up
+        # operations have been done (e.g. backwards pass), I could call .item()
+        # again. (IDK if that will work, but worth benchmarking it)
         stats_dict = dict(
             neglogp=neglogp.item(),
             loss=loss.item(),

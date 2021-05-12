@@ -1,30 +1,32 @@
+"""
+Encoders conceptually serve as the bit of the representation learning
+architecture that learns the representation itself (except in RNN cases, where
+encoders only learn the per-frame representation).
+
+The only real complex thing to note here is the MomentumEncoder architecture,
+which creates two CNNEncoders, and updates weights of one as a slowly moving
+average of the other. Note that this bit of momentum is separated from the
+creation and filling of a queue of representations, which is handled by the
+BatchExtender module
+"""
+
 import copy
+import functools
+import inspect
 import os
 import traceback
 import warnings
-import inspect
-
-from torch.distributions import MultivariateNormal
-import numpy as np
-from stable_baselines3.common.preprocessing import preprocess_obs
-from torchvision.models.resnet import BasicBlock as BasicResidualBlock
-import torchvision.models as tvm
-import torch
-from torch import nn
-from pyro.distributions import Delta
 
 from gym import spaces
+import numpy as np
+from pyro.distributions import Delta
+from stable_baselines3.common.preprocessing import preprocess_obs
+import torch
+from torch import nn
+import torchvision.models as tvm
+from torchvision.models.resnet import BasicBlock as BasicResidualBlock
+
 from il_representations.algos.utils import independent_multivariate_normal
-import functools
-
-"""
-Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
-(except in RNN cases, where encoders only learn the per-frame representation). 
-
-The only real complex thing to note here is the MomentumEncoder architecture, which creates two CNNEncoders, 
-and updates weights of one as a slowly moving average of the other. Note that this bit of momentum is separated 
-from the creation and filling of a queue of representations, which is handled by the BatchExtender module 
-"""
 
 
 def compute_output_shape(observation_space, layers):
@@ -33,7 +35,8 @@ def compute_output_shape(observation_space, layers):
     # [None] adds a batch dimension to the random observation
     torch_obs = torch.tensor(observation_space.sample()[None])
     with torch.no_grad():
-        sample = preprocess_obs(torch_obs, observation_space, normalize_images=True)
+        sample = preprocess_obs(torch_obs, observation_space,
+                                normalize_images=True)
         for layer in layers:
             # forward prop to compute the right size
             sample = layer(sample)
@@ -52,7 +55,8 @@ def compute_rep_shape_encoder(observation_space, encoder):
                                 normalize_images=True)
     device_encoder = encoder.to(sample_obs.device)
     with torch.no_grad():
-        sample_dist = device_encoder(sample_obs, traj_info=None)
+        # sample_dist = device_encoder(sample_obs, traj_info=None)
+        sample_dist = device_encoder(sample_obs)
         sample_out = sample_dist.sample()
 
     # batch dim check
@@ -103,7 +107,6 @@ def warn_on_non_image_tensor(x):
         do_warning(
             f"Input image tensor values have low stddev {std} (range "
             f"[{v_min}, {v_max}])")
-
 
 
 NETWORK_ARCHITECTURE_DEFINITIONS = {
@@ -584,6 +587,7 @@ class VAEEncoder(BaseEncoder):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels
         # So we just create a Dirac Delta distribution around the pixel values
         return Delta(x)
+
 
 class TargetStoringActionEncoder(ActionEncodingEncoder):
     """
