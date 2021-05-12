@@ -1,6 +1,7 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
 from collections.abc import Iterable, Mapping, Sequence
+import contextlib
 import functools
 import hashlib
 import json
@@ -261,10 +262,58 @@ def load_sacred_pickle(fp, **kwargs):
     return SacredUnpickler(fp, **kwargs).load()
 
 
+def save_repl_batches(*, dest_dir, detached_debug_tensors, batches_trained,
+                      color_space, save_video=False):
+    os.makedirs(dest_dir, exist_ok=True)
+
+    # now loop over items and save using appropriate format
+    for save_name, save_value in (detached_debug_tensors.items()):
+        if isinstance(save_value, th.distributions.Distribution):
+            # take sample instead of mean so that we can see noise
+            save_value = save_value.sample()
+        if th.is_tensor(save_value):
+            save_value = save_value.detach().cpu()
+
+        # heuristic to check if this is an image
+        probably_an_image = th.is_tensor(save_value) \
+            and save_value.ndim == 4 \
+            and save_value.shape[-2] == save_value.shape[-1]
+        clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
+        save_prefix = f'{clean_save_name}_{batches_trained:06d}'
+        save_path_no_suffix = os.path.join(dest_dir, save_prefix)
+
+        if probably_an_image:
+            # probably an image
+            save_path = save_path_no_suffix + '.png'
+            # save as image
+            save_image = save_value.float().clamp(0, 1)
+
+            # Save decoded contexts as videos
+            if save_video:
+                video_out_path = save_path_no_suffix + '.mp4'
+                video_writer = TensorFrameWriter(
+                    video_out_path, color_space=color_space)
+                for image in save_image:
+                    image = image_tensor_to_rgb_grid(image, color_space)
+                    video_writer.add_tensor(image)
+                video_writer.close()
+
+            as_rgb = image_tensor_to_rgb_grid(save_image, color_space)
+            save_rgb_tensor(as_rgb, save_path)
+        else:
+            # probably not an image
+            save_path = save_path_no_suffix + '.pt'
+            # will save with Torch's generic serialisation code
+            th.save(save_value, save_path)
+
+
 class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
-    def __init__(self, save_interval_batches, dest_dir, color_space,
+    def __init__(self,
+                 save_interval_batches,
+                 dest_dir,
+                 color_space,
                  save_video=False):
         self.save_interval_batches = save_interval_batches
         self.dest_dir = dest_dir
@@ -282,49 +331,12 @@ class RepLSaveExampleBatchesCallback:
             return
         self.last_save = batches_trained
 
-        os.makedirs(self.dest_dir, exist_ok=True)
-
-        # now loop over items and save using appropriate format
-        for save_name, save_value in (repl_locals['detached_debug_tensors']
-                                      .items()):
-            if isinstance(save_value, th.distributions.Distribution):
-                # take sample instead of mean so that we can see noise
-                save_value = save_value.sample()
-            if th.is_tensor(save_value):
-                save_value = save_value.detach().cpu()
-
-            # heuristic to check if this is an image
-            probably_an_image = th.is_tensor(save_value) \
-                and save_value.ndim == 4 \
-                and save_value.shape[-2] == save_value.shape[-1]
-            clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
-            save_prefix = f'{clean_save_name}_{batches_trained:06d}'
-            save_path_no_suffix = os.path.join(self.dest_dir, save_prefix)
-
-            if probably_an_image:
-                # probably an image
-                save_path = save_path_no_suffix + '.png'
-                # save as image
-                save_image = save_value.float().clamp(0, 1)
-
-                # Save decoded contexts as videos
-                if self.save_video:
-                    video_out_path = save_path_no_suffix + '.mp4'
-                    video_writer = TensorFrameWriter(
-                        video_out_path, color_space=self.color_space)
-                    for image in save_image:
-                        image = image_tensor_to_rgb_grid(image,
-                                                         self.color_space)
-                        video_writer.add_tensor(image)
-                    video_writer.close()
-
-                as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
-                save_rgb_tensor(as_rgb, save_path)
-            else:
-                # probably not an image
-                save_path = save_path_no_suffix + '.pt'
-                # will save with Torch's generic serialisation code
-                th.save(save_value, save_path)
+        save_repl_batches(
+            dest_dir=self.dest_dir,
+            detached_debug_tensors=repl_locals['detached_debug_tensors'],
+            batches_trained=batches_trained,
+            color_space=self.color_space,
+            save_video=self.save_video)
 
 
 class SigmoidRescale(th.nn.Module):
@@ -477,6 +489,15 @@ class Timers:
         self.last_start: Dict[str, float] = {}
         self.records: Dict[str, List[float]] = {}
 
+    @contextlib.contextmanager
+    def time(self, timer_name):
+        """Time 'with' block body."""
+        try:
+            self.start(timer_name)
+            yield self
+        finally:
+            self.stop(timer_name)
+
     def start(self, name: str) -> None:
         """Start a timer."""
         if name in self.last_start:
@@ -502,7 +523,8 @@ class Timers:
 
         self.records.setdefault(name, []).append(elapsed)
 
-    def dump_stats(self, *, check_running=True) -> Dict[str, Dict[str, float]]:
+    def dump_stats(self, *, check_running=True, reset=True) \
+            -> Dict[str, Dict[str, float]]:
         """Clear all timer records and return a nested dictionary of stats.
         Keys at top level of dict are timer names, keys at second level are
         stat names (min/mean/max/std), and values at second level are just
@@ -519,8 +541,9 @@ class Timers:
                                   ('mean', np.mean), ('std', np.std)]:
                 rv[name][stat] = stat_fn(values)
 
-        # clear saved times, but not running timers
-        self.records = {}
+        if reset:
+            # clear saved times, but not running timers
+            self.records = {}
 
         return rv
 

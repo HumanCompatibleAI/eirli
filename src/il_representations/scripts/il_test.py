@@ -56,25 +56,22 @@ def default_config():
     del _
 
 
-@il_test_ex.main
-def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
-        write_video, video_file_name, torch_num_threads, deterministic_policy):
-    set_global_seeds(seed)
-    # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
-    logging.basicConfig(level=logging.INFO)
-    log_dir = il_test_ex.observers[0].dir
-    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
-    if torch_num_threads is not None:
-        th.set_num_threads(torch_num_threads)
+@env_cfg_ingredient.capture
+def _get_global_env_cfg(_config):
+    return _config
 
-    if policy_path is None:
-        raise ValueError(
-            "must pass a string-valued policy_path to this command")
-    policy = th.load(policy_path)
 
-    device = get_device(device_name)
-    policy = policy.to(device)
+def do_final_eval(*,
+                  policy,
+                  write_video=False,
+                  video_file_name=None,
+                  n_rollouts,
+                  seed,
+                  run_id,
+                  deterministic_policy,
+                  policy_path=None):
     policy.eval()
+    env_cfg = _get_global_env_cfg()
 
     if write_video:
         video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
@@ -86,8 +83,9 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         from il_representations.envs import magical_envs  # noqa: I003
         task_name = env_cfg['task_name']
         env_preproc = env_cfg['magical_preproc']
-        demo_env_name = update_magical_env_name(
-            task_name, preproc=env_preproc, variant='Demo')
+        demo_env_name = update_magical_env_name(task_name,
+                                                preproc=env_preproc,
+                                                variant='Demo')
         eval_protocol = magical_envs.SB3EvaluationProtocol(
             demo_env_name=demo_env_name,
             policy=policy,
@@ -123,7 +121,10 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         # sample some trajectories
         rng = np.random.RandomState(seed)
         trajectories = il_rollout.generate_trajectories(
-            policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng,
+            policy,
+            vec_env,
+            il_rollout.min_episodes(n_rollouts),
+            rng=rng,
             deterministic_policy=deterministic_policy)
         # make sure all the actions are finite
         for traj in trajectories:
@@ -172,6 +173,36 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         video_fp.close()
 
     return final_stats_dict
+
+
+@il_test_ex.main
+def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
+        write_video, video_file_name, torch_num_threads, deterministic_policy):
+    set_global_seeds(seed)
+    # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
+    logging.basicConfig(level=logging.INFO)
+    log_dir = il_test_ex.observers[0].dir
+    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
+    if torch_num_threads is not None:
+        th.set_num_threads(torch_num_threads)
+
+    if policy_path is None:
+        raise ValueError(
+            "must pass a string-valued policy_path to this command")
+    policy = th.load(policy_path)
+
+    device = get_device(device_name)
+    policy = policy.to(device).eval()
+
+    return do_final_eval(
+        policy=policy,
+        write_video=write_video,
+        video_file_name=video_file_name,
+        n_rollouts=n_rollouts,
+        seed=seed,
+        run_id=run_id,
+        deterministic_policy=deterministic_policy,
+        policy_path=policy_path)
 
 
 if __name__ == '__main__':

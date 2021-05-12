@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Jointly do repL and IL training."""
+import collections
 from contextlib import ExitStack, closing
 import faulthandler
 import logging
@@ -9,7 +10,9 @@ import pathlib
 import readline  # noqa: F401
 import signal
 
+import imitation.data.rollout as il_rollout
 import imitation.util.logger as im_log
+import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
@@ -30,7 +33,8 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             venv_opts_ingredient)
 from il_representations.il.bc import BC
 from il_representations.policy_interfacing import ObsEncoderFeatureExtractor
-from il_representations.utils import augmenter_from_spec, weight_grad_norms
+from il_representations.utils import (augmenter_from_spec, save_repl_batches,
+                                      Timers, weight_grad_norms)
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 repl_ingredient = Ingredient('repl')
@@ -95,8 +99,11 @@ def default_config():
 
     # how long to train for
     n_batches = 25000
-    # how often to log
-    log_interval = 100
+    # how often to dump logs
+    log_dump_interval = 250
+    # how often to save items to log (without dumping); should be as high as
+    # feasible given performance
+    log_calc_interval = 10
     # how often to save (+ forced save at end)
     model_save_interval = 5000
     # how often to evaluate (TODO)
@@ -129,16 +136,37 @@ def default_config():
     del _
 
 
+def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
+    trajectories = il_rollout.generate_trajectories(
+        policy,
+        vec_env,
+        il_rollout.min_episodes(n_rollouts),
+        rng=np.random,
+        deterministic_policy=False)
+    # make sure all the actions are finite
+    for traj in trajectories:
+        assert np.all(np.isfinite(traj.acts)), traj.acts
+
+    # the "stats" dict has keys {return,len}_{min,max,mean,std}
+    stats = il_rollout.rollout_stats(trajectories)
+    stats = collections.OrderedDict([(key, stats[key])
+                                    for key in sorted(stats)])
+
+    # TODO(sam): try to get 'score' key out of MAGICAL
+    return stats
+
+
 @train_ex.capture
 def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                   bc_dataset, n_batches, optimizer_cls, optimizer_kwargs,
-                  repl_weight, log_interval, model_save_interval, repl, bc,
-                  shuffle_buffer_size, log_dir):
+                  repl_weight, log_dump_interval, model_save_interval, repl, bc,
+                  shuffle_buffer_size, log_dir, venv, log_calc_interval):
     """Training loop for repL + BC."""
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
                                                  batches_per_epoch=n_batches,
                                                  n_epochs=1)
+    latest_eval_stats = None
     bc_data_iter = bc_learner.make_data_iter(
         il_dataset=bc_dataset,
         augmentation_fn=bc_augmentation_fn,
@@ -153,45 +181,64 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         + list(bc_learner.all_trainable_params())
     optimizer = optimizer_cls(params, **optimizer_kwargs)
 
+    timers = Timers()
+
     repl_learner.set_train(True)
 
     for batch_num in range(n_batches):
-        bc_batch = next(bc_data_iter)
-        bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
-        repl_batch = next(repl_data_iter)
-        repl_loss, detached_debug_tensors = repl_learner.batch_forward(
-            repl_batch)
-        composite_loss = bc_loss + repl_weight * repl_loss
-        optimizer.zero_grad()
-        composite_loss.backward()
-        optimizer.step()
+        with timers.time('forward_backward'):
+            bc_batch = next(bc_data_iter)
+            bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
+            repl_batch = next(repl_data_iter)
+            repl_loss, detached_debug_tensors = repl_learner.batch_forward(
+                repl_batch)
+            composite_loss = bc_loss + repl_weight * repl_loss
+            optimizer.zero_grad()
+            composite_loss.backward()
+            optimizer.step()
+
+        # TODO(sam): when you write the GAIL loop, decide which parts of this
+        # can be factored out (probably most of it?)
 
         # model saving
+        log_dir_path = pathlib.Path(log_dir)
         is_last_batch = batch_num == n_batches - 1
         if batch_num % model_save_interval == 0 or is_last_batch:
-            save_dir = pathlib.Path(log_dir) / "checkpoints"
-            logging.info(f"Saving model to '{save_dir}'")
-            os.makedirs(save_dir, exist_ok=True)
-            save_suffix = "_{batch_num:07d}_batches.ckpt"
-            th.save(bc_learner, save_dir / ("bc" + save_suffix))
-            th.save(repl_learner, save_dir / ("repl" + save_suffix))
-            th.save(optimizer, save_dir / ("opt" + save_suffix))
+            with timers.time('model_save'):
+                save_dir = log_dir_path / "checkpoints"
+                logging.info(f"Saving model to '{save_dir}' (batch#={batch_num})")
+                os.makedirs(save_dir, exist_ok=True)
+                save_suffix = "_{batch_num:07d}_batches.ckpt"
+                th.save(bc_learner, save_dir / ("bc" + save_suffix))
+                th.save(repl_learner, save_dir / ("repl" + save_suffix))
+                th.save(optimizer, save_dir / ("opt" + save_suffix))
 
         # repl batch saving
         if batch_num % repl['batch_save_interval'] == 0 or is_last_batch:
-            raise NotImplementedError("add repL batch saving")
+            with timers.time('repl_batch_save'):
+                repl_batch_save_dir = log_dir_path / 'repl_batch_saves'
+                logging.info(f"Saving repL batches to {repl_batch_save_dir} "
+                             f"(batch#={batch_num})")
+                save_repl_batches(
+                    dest_dir=repl_batch_save_dir,
+                    detached_debug_tensors=detached_debug_tensors,
+                    batches_trained=batch_num,
+                    color_space=auto.load_color_space(),
+                    save_video=False)
 
-        if batch_num % bc['short_eval_n_interval']:
-            short_eval_n_traj = bc['short_eval_n_traj']
-            raise NotImplementedError("add intermediate policy eval code")
+        # occasional eval
+        if batch_num % bc['short_eval_interval'] == 0:
+            with timers.time('short_eval'):
+                short_eval_n_traj = bc['short_eval_n_traj']
+                logging.info(f"Evaluating {short_eval_n_traj} trajectories")
+                latest_eval_stats = do_short_eval(
+                    policy=bc_learner.policy, vec_env=venv,
+                    n_rollouts=short_eval_n_traj)
 
         # logging
-        if batch_num % log_interval == 0:
+        if batch_num % log_calc_interval == 0:
             # TODO(sam): also log times taken for various parts of the training
             # loop.
-            # TODO(sam): …aaaaand maybe find other things we can log to make
-            # sure repL is working properly. e.g. maybe log the accuracy of
-            # contrastive models at predicting pseudo-labels.
             grad_norm, weight_norm = weight_grad_norms(params)
             im_log.sb_logger.record_mean('all_loss', composite_loss.item())
             im_log.sb_logger.record_mean('bc_loss', bc_loss.item())
@@ -200,6 +247,20 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             im_log.sb_logger.record_mean('weight_norm', weight_norm.item())
             for k, v in bc_stats.items():
                 im_log.sb_logger.record_mean(k, float(v))
+            # code above that computes eval stats should at least run on the
+            # first step
+            assert latest_eval_stats is not None, \
+                "logging code rand before eval code for some reason"
+            for k, v in latest_eval_stats.items():
+                suffix = '_mean'
+                if k.endswith(suffix):
+                    im_log.sb_logger.record_mean(k[:-len(suffix)], v)
+            for k, v in timers.dump_stats(reset=False).items():
+                im_log.sb_logger.record('t_mean_' + k, v['mean'])
+                im_log.sb_logger.record('t_max_' + k, v['max'])
+
+        if batch_num % log_dump_interval == 0:
+            im_log.dump(step=batch_num)
 
 
 def init_policy(*,
@@ -335,7 +396,8 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
                       bc_augmentation_fn=bc_augmentation_fn,
                       bc_dataset=bc_dataset,
                       model_save_interval=model_save_interval,
-                      log_dir=log_dir)
+                      log_dir=log_dir,
+                      venv=venv)
 
     # final eval
     # TODO(sam): do final evaluation and write eval.json at the end of training
