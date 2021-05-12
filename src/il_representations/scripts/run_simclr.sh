@@ -1,8 +1,8 @@
 repl_epochs=1
 bc_trajs=10
-bc_batches=4000000
+bc_batches=1
 
-CUDA_VISIBLE_DEVICES=2 python src/il_representations/scripts/pretrain_n_adapt.py with \
+CUDA_VISIBLE_DEVICES=0 python src/il_representations/scripts/pretrain_n_adapt.py with \
   cfg_repl_simclr \
   cfg_il_bc_nofreeze \
   tune_run_kwargs.num_samples=1 \
