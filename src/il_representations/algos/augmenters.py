@@ -11,12 +11,18 @@ These are pretty basic: when constructed, they take in a list of augmentations, 
 either augment just the context, or both the context and the target, depending on the algorithm.
 """
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class Augmenter(ABC):
-    def __init__(self, augmenter_spec, color_space):
-        augment_op = StandardAugmentations.from_string_spec(
-            augmenter_spec, color_space)
-        self.augment_op = augment_op
+    def __init__(self, augmenter_spec, color_space, augment_func=None):
+        self.augment_func = augment_func
+        if augment_func:
+            self.augment_op = augment_func
+        else:
+            augment_op = StandardAugmentations.from_string_spec(
+                augmenter_spec, color_space)
+            self.augment_op = augment_op
 
     @abstractmethod
     def __call__(self, contexts, targets):
@@ -33,6 +39,21 @@ class NoAugmentation(Augmenter):
 
 class AugmentContextAndTarget(Augmenter):
     def __call__(self, contexts, targets):
+        pil_process_func = transforms.Compose([
+            transforms.ToPILImage()
+        ])
+        if self.augment_func:
+            context_ret, target_ret = [], []
+            for context, target in zip(contexts, targets):
+                if isinstance(context, torch.Tensor) and \
+                   isinstance(self.augment_op.transforms[0],
+                              transforms.RandomResizedCrop):
+                    context, target = pil_process_func(context.cpu()), \
+                                      pil_process_func(target.cpu())
+                context_ret.append(self.augment_op(context))
+                target_ret.append(self.augment_op(target))
+            return torch.stack(context_ret, dim=0).to(device), \
+                   torch.stack(target_ret, dim=0).to(device)
         return self.augment_op(contexts), self.augment_op(targets)
 
 

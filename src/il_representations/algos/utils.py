@@ -99,26 +99,26 @@ class Logger:
 
 
 class LinearWarmupCosine(_LRScheduler):
-    def __init__(self, optimizer, T_max, warmup_epoch=30, eta_min=0, last_epoch=-1):
+    def __init__(self, optimizer, T_max, total_epochs, warmup_epoch=30, eta_min=0, last_epoch=-1):
         self.T_max = T_max
         self.eta_min = eta_min
         self.warmup_epoch = warmup_epoch
+        self.cosine_epochs = total_epochs - warmup_epoch
         super(LinearWarmupCosine, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
-        if self.warmup_epoch > 0:
-            if self.last_epoch <= self.warmup_epoch:
-                return [base_lr / self.warmup_epoch * self.last_epoch for base_lr in self.base_lrs]
-        if ((self.last_epoch - self.warmup_epoch) - 1 - (self.T_max - self.warmup_epoch)) % (2 * (self.T_max - self.warmup_epoch)) == 0:
-            return [group['lr'] + (base_lr - self.eta_min) *
-                    (1 - math.cos(math.pi / (self.T_max - self.warmup_epoch))) / 2
-                    for base_lr, group in
-                    zip(self.base_lrs, self.optimizer.param_groups)]
-        else:
-            return [(1 + math.cos(math.pi * (self.last_epoch - self.warmup_epoch) / (self.T_max - self.warmup_epoch))) /
-                    (1 + math.cos(math.pi * ((self.last_epoch - self.warmup_epoch) - 1) / (self.T_max - self.warmup_epoch))) *
-                    (group['lr'] - self.eta_min) + self.eta_min
-                    for group in self.optimizer.param_groups]
+        # Linear scaling if we are in the warmup stage
+        use_linear_scaling = self.warmup_epoch > 0 and self.last_epoch < self.warmup_epoch
+        result = []
+        for base_lr in self.base_lrs:
+            delta = base_lr - self.eta_min
+            if use_linear_scaling:
+                fraction = (self.last_epoch + 1) / self.warmup_epoch
+            else:
+                rescaled_epoch = self.last_epoch - self.warmup_epoch
+                fraction = 0.5 * (1 + math.cos(math.pi * rescaled_epoch / self.cosine_epochs))
+            result.append(self.eta_min + fraction * delta)
+        return result
 
 
 def set_global_seeds(seed):

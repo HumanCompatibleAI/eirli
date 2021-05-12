@@ -13,8 +13,37 @@ from torch.utils.tensorboard import SummaryWriter
 
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
+from il_representations.algos.encoders import warn_on_non_image_tensor
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
+from il_representations.utils import save_rgb_tensor
+from torch.utils.data import DataLoader
+
+from PIL import Image
+from torchvision.datasets import CIFAR10
+import os
+import numpy as np
+from torchvision import transforms
+
+class CIFAR10Pair(CIFAR10):
+    """CIFAR10 Dataset.
+    """
+
+    def __getitem__(self, index):
+        img, target = self.data[index], self.targets[index]
+        img = Image.fromarray(img)
+        id_val = np.random.randint(0, 50000)
+        #save_image(img, f'results/{id_val}_img_pre_trans.png')
+        if self.transform is not None:
+            pos_1 = self.transform(img)
+            pos_2 = self.transform(img)
+            # save_rgb_tensor(pos_1, f'results/{id_val}_pos1.png')
+            # save_rgb_tensor(pos_2, f'results/{id_val}_pos2.png')
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return pos_1, pos_2, target
+
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -57,6 +86,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  representation_dim=512,
                  projection_dim=None,
                  device=None,
+                 normalize=True,
                  shuffle_batches=True,
                  shuffle_buffer_size=1024,
                  batch_size=256,
@@ -91,6 +121,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         os.makedirs(self.decoder_checkpoints_path, exist_ok=True)
 
         self.device = get_device("auto" if device is None else device)
+        self.normalize = normalize
         self.shuffle_batches = shuffle_batches
         self.shuffle_buffer_size = shuffle_buffer_size
         self.batch_size = batch_size
@@ -106,6 +137,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # This doesn't have any meaningful effect unless you specify a projection head.
             projection_dim = representation_dim
 
+        train_transform = transforms.Compose([
+            transforms.RandomResizedCrop(90),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomApply([transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)], p=0.8),
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToTensor()])
+            # transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
+
+        # augmenter_kwargs["augment_func"] = train_transform
         self.augmenter = augmenter(**augmenter_kwargs)
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
@@ -154,7 +194,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         norm_type = float(norm_type)
 
         encoder_params, decoder_params = self._get_trainable_parameters()
-        trainable_params = encoder_params + decoder_params
+        # TODO undo
+        trainable_params = encoder_params # + decoder_params
         stacked_gradient_norms = torch.stack([torch.norm(p.grad.detach(), norm_type).to(self.device) for p in trainable_params])
         stacked_weight_norms = torch.stack([torch.norm(p.detach(), norm_type).to(self.device) for p in trainable_params])
 
@@ -275,11 +316,17 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
         self.encoder.train(True)
         self.decoder.train(True)
+        # for pname, pval in sorted(self.encoder.named_parameters()):
+        #     print(f'{pname}: {pval.float().mean().item():.4g} pm {pval.float().std().item():.4g}, shape {pval.shape}')
         batches_trained = 0
         logging.debug(
             f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
             f"batches (batch size {self.batch_size})")
+        # TODO add transform back in, and probably comment out our augmenter line?
 
+        # train_data = CIFAR10Pair(root='data', train=True, transform=train_transform, download=True)
+        # train_loader = iter(DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=16, pin_memory=True,
+        #                           drop_last=True))
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
             # Set encoder and decoder to be in training mode
@@ -290,28 +337,44 @@ class RepresentationLearner(BaseEnvironmentLearner):
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
                 contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                # contexts, targets, _ = train_loader.next()
 
+                # if step == 0:
+                #     for i in range(10):
+                #         breakpoint()
+                #         save_rgb_tensor(contexts[i][:3], os.path.join(self.log_dir, 'saved_images', f'contexts_from_disk_{i}.png'))
+                #         save_rgb_tensor(targets[i][:3], os.path.join(self.log_dir, 'saved_images', f'targets_from_disk_{i}.png'))
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
                 contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
+                # TODO this may not make sense for CIFAR10, maybe double normalizing
                 contexts = self._preprocess(contexts)
                 if self.preprocess_target:
                     targets = self._preprocess(targets)
+                if step == 0:
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i][:3], os.path.join(self.log_dir, 'saved_images', f'contexts_pre_aug_{i}.png'))
+                        save_rgb_tensor(targets[i][:3], os.path.join(self.log_dir, 'saved_images', f'targets_pre_aug_{i}.png'))
+                # TODO put back in when done with "swap their data in" test
                 contexts, targets = self.augmenter(contexts, targets)
+                if step == 0:
+                    for i in range(10):
+                        save_rgb_tensor(contexts[i][:3], os.path.join(self.log_dir, 'saved_images', f'contexts_{i}.png'))
+                        save_rgb_tensor(targets[i][:3], os.path.join(self.log_dir, 'saved_images', f'targets_{i}.png'))
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
-
+                warn_on_non_image_tensor(contexts)
+                warn_on_non_image_tensor(targets)
                 # These will typically just use the forward() function for the encoder, but can optionally
                 # use a specific encode_context and encode_target if one is implemented
                 encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
                 encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
                 # Typically the identity function
                 encoded_extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
-
                 # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
                 # As with encode, these will typically just use forward()
                 decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
@@ -324,6 +387,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # Use an algorithm-specific loss function. Typically this only requires decoded_contexts and
                 # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
 
+                # loss = self.loss_calculator(encoded_contexts, encoded_targets, encoded_contexts)
                 loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
                 if batches_trained % self.calc_log_interval == 0:
                     loss_item = loss.item()

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import torch
+import numpy as np
 import torch.nn.functional as F
 import stable_baselines3.common.logger as sb_logger
 from pyro.distributions import Delta
@@ -161,11 +162,12 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     all similarities with J, and also all similarities with I, and calculates cross-entropy on both
     """
 
-    def __init__(self, device, sample=False, temp=0.1, normalize=True):
+    def __init__(self, device, sample=False, temp=0.1, normalize=True, use_repo_loss=False):
         super(SymmetricContrastiveLoss, self).__init__(device, sample)
 
         self.criterion = torch.nn.CrossEntropyLoss()
         self.temp = temp
+        self.use_repo_loss = use_repo_loss
 
         # Most methods use either cosine similarity or matrix multiplication similarity. Since cosine similarity equals
         # taking MatMul on normalized vectors, setting normalize=True is equivalent to using torch.CosineSimilarity().
@@ -180,50 +182,74 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         # decoded_context -> representation of context + optional projection head
         # target -> representation of target + optional projection head
         # encoded_context -> not used by this loss
+
         decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
         z_i = decoded_contexts
         z_j = targets
         batch_size = z_i.shape[0]
 
-        if self.normalize:  # Use cosine similarity
+
+        if self.use_repo_loss:
+            # Normalize to avoid infinities
             z_i = F.normalize(z_i, dim=1)
             z_j = F.normalize(z_j, dim=1)
+            out = torch.cat([z_i, z_j], dim=0)
+            # [2*B, 2*B]
+            sim_matrix = torch.exp(torch.mm(out, out.t().contiguous()) / self.temp)
+            mask = (torch.ones_like(sim_matrix) - torch.eye(2 * batch_size, device=sim_matrix.device)).bool()
+            # [2*B, 2*B-1]
+            sim_matrix = sim_matrix.masked_select(mask).view(2 * batch_size, -1)
 
-        mask = (torch.eye(batch_size) * self.large_num).to(self.device)
+            # compute loss
+            pos_sim = torch.exp(torch.sum(z_i * z_j, dim=-1) / self.temp)
+            # [2*B]
+            pos_sim = torch.cat([pos_sim, pos_sim], dim=0)
+            loss = (- torch.log(pos_sim / sim_matrix.sum(dim=-1))).mean()
+            if torch.isnan(loss):
+                breakpoint()
+            return loss
+        else:
+            if not self.normalize:
+                breakpoint()
+            if self.normalize:  # Use cosine similarity
+                z_i = F.normalize(z_i, dim=1)
+                z_j = F.normalize(z_j, dim=1)
 
-        # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
-        logits_aa = torch.matmul(z_i, z_i.T)  # NxN
 
-        # Values on the diagonal line are each image's similarity with itself
-        logits_aa = logits_aa - mask
-        # Similarity of the augmented images with all other augmented images.
-        logits_bb = torch.matmul(z_j, z_j.T)  # NxN
-        logits_bb = logits_bb - mask
-        # Similarity of original images and augmented images
-        logits_ab = torch.matmul(z_i, z_j.T)  # NxN
-        logits_ba = torch.matmul(z_j, z_i.T)  # NxN
+            mask = (torch.eye(batch_size) * self.large_num).to(self.device)
 
-        avg_self_similarity = logits_ab.diag().mean().item()
-        logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
-        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+            # Similarity of the original images with all other original images in current batch. Return a matrix of NxN.
+            logits_aa = torch.matmul(z_i, z_i.T)  # NxN
 
-        sb_logger.record('avg_self_similarity', avg_self_similarity)
-        sb_logger.record('avg_other_similarity', avg_other_similarity)
-        sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
+            # Values on the diagonal line are each image's similarity with itself
+            logits_aa = logits_aa - mask
+            # Similarity of the augmented images with all other augmented images.
+            logits_bb = torch.matmul(z_j, z_j.T)  # NxN
+            logits_bb = logits_bb - mask
+            # Similarity of original images and augmented images
+            logits_ab = torch.matmul(z_i, z_j.T)  # NxN
+            logits_ba = torch.matmul(z_j, z_i.T)  # NxN
 
-        # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
-        # to both original and augmented images (hence "symmetric").
-        logits_i = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
-        logits_j = torch.cat((logits_ba, logits_bb), 1)  # Nx2N
-        logits = torch.cat((logits_i, logits_j), axis=0)  # 2Nx2N
-        logits /= self.temp
+            avg_self_similarity = logits_ab.diag().mean().item()
+            logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
+            avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+            sb_logger.record('avg_self_similarity', avg_self_similarity)
+            sb_logger.record('avg_other_similarity', avg_other_similarity)
+            sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
 
-        # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
-        # represent(image_i) and represent(augmented_image_i).
-        label = torch.arange(batch_size, dtype=torch.long).to(self.device)
-        labels = torch.cat((label, label), axis=0)
+            # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
+            # to both original and augmented images (hence "symmetric").
+            logits_i = torch.cat((logits_ab, logits_aa), 1)  # Nx2N
+            logits_j = torch.cat((logits_ba, logits_bb), 1)  # Nx2N
+            logits = torch.cat((logits_i, logits_j), axis=0)  # 2Nx2N
+            logits /= self.temp
 
-        return self.criterion(logits, labels)
+            # The values we want to maximize lie on the i-th index of each row i. i.e. the dot product of
+            # represent(image_i) and represent(augmented_image_i).
+            label = torch.arange(batch_size, dtype=torch.long).to(self.device)
+            labels = torch.cat((label, label), axis=0)
+
+            return self.criterion(logits, labels)
 
 
 class NegativeLogLikelihood(RepresentationLoss):

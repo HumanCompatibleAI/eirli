@@ -10,6 +10,8 @@ from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 import torch
 from torch import nn
+from torchvision.models.resnet import resnet50, resnet34
+import torch.nn.functional as F
 from pyro.distributions import Delta
 
 from gym import spaces
@@ -197,7 +199,9 @@ class MAGICALCNN(nn.Module):
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet-128',
                  ActivationCls=torch.nn.ReLU):
+
         super().__init__()
+
 
         # If block_type == resnet, use ResNet's basic block.
         # If block_type == magical, use MAGICAL block from its paper.
@@ -265,11 +269,35 @@ class MAGICALCNN(nn.Module):
         warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
+
+class SimCLRModel(nn.Module):
+    def __init__(self, observation_space, representation_dim=128):
+        super(SimCLRModel, self).__init__()
+
+        self.f = []
+        in_channel = observation_space.shape[0]
+        for name, module in resnet34().named_children():
+            if name == 'conv1':
+                module = nn.Conv2d(in_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
+            if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
+                self.f.append(module)
+        # encoder
+        # Temporarily add an extra layer to be closer to our model implementation
+        self.f = nn.Sequential(*self.f)
+
+
+    def forward(self, x):
+        x = self.f(x)
+        feature = torch.flatten(x, start_dim=1)
+        return F.normalize(feature, dim=-1)
+
+
 # string names for convolutional networks; this makes it easier to choose
 # between them from the command line
 NETWORK_SHORT_NAMES = {
     'BasicCNN': BasicCNN,
     'MAGICALCNN': MAGICALCNN,
+    'SimCLRModel': SimCLRModel
 }
 
 
@@ -348,22 +376,22 @@ class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
                  learn_scale=False, latent_dim=None, scale_constant=1, obs_encoder_cls_kwargs=None):
         """
-                :param obs_space: The observation space that this Encoder will be used on
-                :param representation_dim: The number of dimensions of the representation
-                       that will be learned
-                :param obs_encoder_cls: An internal architecture implementing `forward`
-                       to return a single vector representing the mean representation z
-                       of a fixed-variance representation distribution (in the deterministic
-                       case), or a latent dimension, in the stochastic case. This is
-                       expected NOT to end in a ReLU (i.e. final layer should be linear).
-                :param learn_scale: A flag for whether we want to learn a parametrized
-                       standard deviation. If this is set to False, a constant value of
-                       <scale_constant> will be returned as the standard deviation
-                :param latent_dim: Dimension of the latents that feed into mean and std networks
-                       If not set, this defaults to representation_dim * 2.
-                :param scale_constant: The constant value that will be returned if learn_scale is
-                       set to False.
-                :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
+        :param obs_space: The observation space that this Encoder will be used on
+        :param representation_dim: The number of dimensions of the representation
+               that will be learned
+        :param obs_encoder_cls: An internal architecture implementing `forward`
+               to return a single vector representing the mean representation z
+               of a fixed-variance representation distribution (in the deterministic
+               case), or a latent dimension, in the stochastic case. This is
+               expected NOT to end in a ReLU (i.e. final layer should be linear).
+        :param learn_scale: A flag for whether we want to learn a parametrized
+               standard deviation. If this is set to False, a constant value of
+               <scale_constant> will be returned as the standard deviation
+        :param latent_dim: Dimension of the latents that feed into mean and std networks
+               If not set, this defaults to representation_dim * 2.
+        :param scale_constant: The constant value that will be returned if learn_scale is
+               set to False.
+        :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
          """
         super().__init__()
         if obs_encoder_cls_kwargs is None:
@@ -379,6 +407,13 @@ class BaseEncoder(Encoder):
         else:
             self.network = obs_encoder_cls(obs_space, representation_dim, **obs_encoder_cls_kwargs)
             self.scale_constant = scale_constant
+
+        if torch.cuda.device_count() > 1:
+            print("Using", torch.cuda.device_count(), "GPUs!")
+            self.network = nn.DataParallel(self.network)
+
+        self.network.to(self.device)
+
 
     def forward(self, x, traj_info):
         if self.learn_scale:

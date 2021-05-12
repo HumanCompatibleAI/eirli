@@ -64,8 +64,8 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
     input_dim = representation_dim
     for layer_def in architecture:
         layers.append(nn.Linear(input_dim, layer_def['output_dim']))
-        layers.append(nn.ReLU())
         layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
+        layers.append(nn.ReLU(inplace=True))
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
     return nn.Sequential(*layers)
@@ -131,7 +131,7 @@ class LossDecoder(nn.Module):
             # We better not have had a learned standard deviation in
             # the encoder, since there's no clear way on how to pass
             # it forward
-            assert np.all((z_dist.stddev == 1).numpy())
+            assert np.all((z_dist.stddev == 1).cpu().numpy())
             stddev = self.ones_like_projection_dim(mean)
         else:
             stddev = stdev_layer(z_vector)
