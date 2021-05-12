@@ -54,7 +54,7 @@ class SimCLR(RepresentationLearner):
     # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
-                                     encoder_kwargs={'obs_encoder_cls': lambda *args: SimCLRModel()},
+                                     encoder_kwargs={'obs_encoder_cls': 'SimCLRModel'},
                                      decoder=SymmetricProjectionHead,
                                      loss_calculator=SymmetricContrastiveLoss,
                                      augmenter=AugmentContextAndTarget,
