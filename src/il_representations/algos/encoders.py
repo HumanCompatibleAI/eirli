@@ -10,7 +10,7 @@ from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 import torch
 from torch import nn
-from torchvision.models.resnet import resnet50
+from torchvision.models.resnet import resnet50, resnet34
 import torch.nn.functional as F
 from pyro.distributions import Delta
 
@@ -276,7 +276,7 @@ class SimCLRModel(nn.Module):
 
         self.f = []
         in_channel = observation_space.shape[0]
-        for name, module in resnet50().named_children():
+        for name, module in resnet34().named_children():
             if name == 'conv1':
                 module = nn.Conv2d(in_channel, 64, kernel_size=3, stride=1, padding=1, bias=False)
             if not isinstance(module, nn.Linear) and not isinstance(module, nn.MaxPool2d):
@@ -289,6 +289,7 @@ class SimCLRModel(nn.Module):
     def forward(self, x):
         x = self.f(x)
         feature = torch.flatten(x, start_dim=1)
+        breakpoint()
         return F.normalize(feature, dim=-1)
 
 
