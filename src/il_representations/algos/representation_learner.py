@@ -145,7 +145,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             transforms.ToTensor()])
             # transforms.Normalize([0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010])])
 
-        augmenter_kwargs["augment_func"] = train_transform
+        # augmenter_kwargs["augment_func"] = train_transform
         self.augmenter = augmenter(**augmenter_kwargs)
         self.target_pair_constructor = target_pair_constructor(**to_dict(target_pair_constructor_kwargs))
 
