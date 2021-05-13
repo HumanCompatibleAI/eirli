@@ -32,9 +32,10 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
 from il_representations.il.bc import BC
+from il_representations.pol_eval import do_final_eval
 from il_representations.policy_interfacing import ObsEncoderFeatureExtractor
-from il_representations.utils import (augmenter_from_spec, save_repl_batches,
-                                      Timers, weight_grad_norms)
+from il_representations.utils import (Timers, augmenter_from_spec,
+                                      save_repl_batches, weight_grad_norms)
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 repl_ingredient = Ingredient('repl')
@@ -106,7 +107,9 @@ def default_config():
     log_calc_interval = 10
     # how often to save (+ forced save at end)
     model_save_interval = 5000
-    # how often to evaluate (TODO)
+
+    # number of trajectories to use in final eval
+    final_eval_n_traj = 100
 
     # size of shuffle buffers for data loaders
     shuffle_buffer_size = 1024
@@ -150,7 +153,7 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
     # the "stats" dict has keys {return,len}_{min,max,mean,std}
     stats = il_rollout.rollout_stats(trajectories)
     stats = collections.OrderedDict([(key, stats[key])
-                                    for key in sorted(stats)])
+                                     for key in sorted(stats)])
 
     # TODO(sam): try to get 'score' key out of MAGICAL
     return stats
@@ -159,8 +162,8 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
 @train_ex.capture
 def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                   bc_dataset, n_batches, optimizer_cls, optimizer_kwargs,
-                  repl_weight, log_dump_interval, model_save_interval, repl, bc,
-                  shuffle_buffer_size, log_dir, venv, log_calc_interval):
+                  repl_weight, log_dump_interval, model_save_interval, repl,
+                  bc, shuffle_buffer_size, log_dir, venv, log_calc_interval):
     """Training loop for repL + BC."""
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
@@ -185,8 +188,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
 
     repl_learner.set_train(True)
 
+    # some save paths
+    log_dir_path = pathlib.Path(log_dir)
+    save_dir = log_dir_path / "checkpoints"
+
+    assert n_batches > 0
+
     for batch_num in range(n_batches):
-        with timers.time('forward_backward'):
+        with timers.time('forward_back'):
             bc_batch = next(bc_data_iter)
             bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
             repl_batch = next(repl_data_iter)
@@ -201,17 +210,19 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         # can be factored out (probably most of it?)
 
         # model saving
-        log_dir_path = pathlib.Path(log_dir)
         is_last_batch = batch_num == n_batches - 1
         if batch_num % model_save_interval == 0 or is_last_batch:
             with timers.time('model_save'):
-                save_dir = log_dir_path / "checkpoints"
-                logging.info(f"Saving model to '{save_dir}' (batch#={batch_num})")
+                logging.info(
+                    f"Saving model to '{save_dir}' (batch#={batch_num})")
                 os.makedirs(save_dir, exist_ok=True)
-                save_suffix = "_{batch_num:07d}_batches.ckpt"
-                th.save(bc_learner, save_dir / ("bc" + save_suffix))
-                th.save(repl_learner, save_dir / ("repl" + save_suffix))
-                th.save(optimizer, save_dir / ("opt" + save_suffix))
+                save_suffix = f"_{batch_num:07d}_batches.ckpt"
+                bc_path = save_dir / ("bc" + save_suffix)
+                repl_path = save_dir / ("repl" + save_suffix)
+                opt_path = save_dir / ("opt" + save_suffix)
+                th.save(bc_learner, bc_path)
+                th.save(repl_learner, repl_path)
+                th.save(optimizer, opt_path)
 
         # repl batch saving
         if batch_num % repl['batch_save_interval'] == 0 or is_last_batch:
@@ -230,10 +241,11 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         if batch_num % bc['short_eval_interval'] == 0:
             with timers.time('short_eval'):
                 short_eval_n_traj = bc['short_eval_n_traj']
-                logging.info(f"Evaluating {short_eval_n_traj} trajectories")
-                latest_eval_stats = do_short_eval(
-                    policy=bc_learner.policy, vec_env=venv,
-                    n_rollouts=short_eval_n_traj)
+                logging.info(f"Evaluating {short_eval_n_traj} trajectories "
+                             f"(batch#={batch_num})")
+                latest_eval_stats = do_short_eval(policy=bc_learner.policy,
+                                                  vec_env=venv,
+                                                  n_rollouts=short_eval_n_traj)
 
         # logging
         if batch_num % log_calc_interval == 0:
@@ -246,7 +258,7 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             im_log.sb_logger.record_mean('grad_norm', grad_norm.item())
             im_log.sb_logger.record_mean('weight_norm', weight_norm.item())
             for k, v in bc_stats.items():
-                im_log.sb_logger.record_mean(k, float(v))
+                im_log.sb_logger.record_mean('eval_' + k, float(v))
             # code above that computes eval stats should at least run on the
             # first step
             assert latest_eval_stats is not None, \
@@ -261,6 +273,12 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
 
         if batch_num % log_dump_interval == 0:
             im_log.dump(step=batch_num)
+
+    # return final saved policy path
+    pol_path = save_dir / "policy_final.ckpt"
+    os.makedirs(save_dir, exist_ok=True)
+    th.save(bc_learner.policy, pol_path)
+    return pol_path
 
 
 def init_policy(*,
@@ -279,7 +297,7 @@ def init_policy(*,
         'features_extractor_kwargs': {
             'obs_encoder': obs_encoder,
         },
-        'net_arch': postproc_arch,
+        'net_arch': list(postproc_arch),
         'observation_space': observation_space,
         'action_space': action_space,
         # stupid LR so we get errors if we accidentally use the optimiser
@@ -342,16 +360,15 @@ def bc_setup(venv, obs_encoder, n_batches, shuffle_buffer_size,
                          postproc_arch=postproc_arch)
     color_space = il_combined_meta['color_space']
     bc_aug_fn = augmenter_from_spec(augs, color_space)
-    bc_learner = BC(policy=policy,
-                    l2_weight=l2_weight,
-                    ent_weight=ent_weight)
+    bc_learner = BC(policy=policy, l2_weight=l2_weight, ent_weight=ent_weight)
     return bc_learner, bc_aug_fn, il_demo_webdatasets
 
 
 @train_ex.main
 def train(seed, torch_num_threads, device, repl, bc, n_batches,
           shuffle_buffer_size, obs_encoder_cls, obs_encoder_kwargs,
-          model_save_interval, representation_dim, _config):
+          model_save_interval, representation_dim, exp_ident,
+          final_eval_n_traj, _config):
     # TODO(sam): consider factoring out this setup code. It is shared between
     # all our training and testing scripts at the moment (run_rep_learner,
     # il_train, il_test, etc.).
@@ -390,17 +407,28 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
             shuffle_buffer_size=shuffle_buffer_size, obs_encoder=obs_encoder)
 
         # learning loop
-        learn_repl_bc(repl_learner=repl_learner,
-                      repl_datasets=repl_datasets,
-                      bc_learner=bc_learner,
-                      bc_augmentation_fn=bc_augmentation_fn,
-                      bc_dataset=bc_dataset,
-                      model_save_interval=model_save_interval,
-                      log_dir=log_dir,
-                      venv=venv)
+        final_pol_path = learn_repl_bc(repl_learner=repl_learner,
+                                       repl_datasets=repl_datasets,
+                                       bc_learner=bc_learner,
+                                       bc_augmentation_fn=bc_augmentation_fn,
+                                       bc_dataset=bc_dataset,
+                                       model_save_interval=model_save_interval,
+                                       log_dir=log_dir,
+                                       venv=venv)
 
     # final eval
-    # TODO(sam): do final evaluation and write eval.json at the end of training
+    final_pol_path = os.path.abspath(final_pol_path)
+    do_final_eval(policy_path=final_pol_path,
+                  out_dir=log_dir,
+                  n_rollouts=final_eval_n_traj,
+                  # xoring with something arbitrary so we're not using same
+                  # seed as rest of code (might cause weird correlations)
+                  seed=seed ^ 0x4c0a,
+                  device=device,
+                  deterministic_policy=False,
+                  write_video=False,
+                  video_file_name=None,
+                  run_id=exp_ident)
 
 
 if __name__ == '__main__':

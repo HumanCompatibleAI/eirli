@@ -55,8 +55,7 @@ def compute_rep_shape_encoder(observation_space, encoder):
                                 normalize_images=True)
     device_encoder = encoder.to(sample_obs.device)
     with torch.no_grad():
-        # sample_dist = device_encoder(sample_obs, traj_info=None)
-        sample_dist = device_encoder(sample_obs)
+        sample_dist = device_encoder(sample_obs, traj_info=None)
         sample_out = sample_dist.sample()
 
     # batch dim check
