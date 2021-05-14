@@ -222,8 +222,10 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
                          action_space=venv_chans_first.action_space,
                          encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
-    augmenter = StandardAugmentations.from_string_spec(
-        bc['augs'], stack_color_space=color_space)
+    augmenter = None
+    if augmenter:
+        augmenter = StandardAugmentations.from_string_spec(
+            bc['augs'], stack_color_space=color_space)
 
     # build dataset in the format required by imitation
     subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])

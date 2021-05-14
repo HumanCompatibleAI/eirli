@@ -9,6 +9,7 @@ CUDA_VISIBLE_DEVICES=3 xvfb-run -a python src/il_representations/scripts/pretrai
  exp_ident=magical-small \
  il_train.bc.n_batches=400000 \
  il_train.bc.batch_size=512 \
+ il_train.bc.augs=None \
  il_train.encoder_kwargs.obs_encoder_cls=MAGICALCNN \
  il_train.encoder_kwargs.obs_encoder_cls_kwargs.arch_str=MAGICALCNN-small \
  env_cfg.benchmark_name=dm_control \
