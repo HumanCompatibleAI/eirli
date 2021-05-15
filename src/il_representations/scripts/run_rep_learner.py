@@ -13,11 +13,13 @@ import torch
 from il_representations import algos
 from il_representations.algos.representation_learner import \
     RepresentationLearner
-from il_representations.algos.utils import LinearWarmupCosine, set_global_seeds
+from il_representations.algos.utils import set_global_seeds
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
 from il_representations.utils import RepLSaveExampleBatchesCallback
+from il_representations.configs.run_rep_learner_configs import \
+    make_run_rep_learner_configs
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 represent_ex = Experiment(
@@ -91,41 +93,6 @@ def default_config():
     del _
 
 
-@represent_ex.named_config
-def cosine_warmup_scheduler():
-    algo_params = {
-        "scheduler": LinearWarmupCosine,
-        "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}
-    }
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def ceb_breakout():
-    env_id = 'BreakoutNoFrameskip-v4'
-    train_from_expert = True
-    algo = algos.FixedVarianceCEB
-    batches_per_epoch = 5
-    n_epochs = 1
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def expert_demos():
-    dataset_configs = [{'type': 'demos'}]
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def random_demos():
-    dataset_configs = [{'type': 'random'}]
-    _ = locals()
-    del _
-
-
 def initialize_non_features_extractor(sb3_model):
     # This is a hack to get around the fact that you can't initialize only some
     # of the components of a SB3 policy upon creation, and we in fact want to
@@ -142,6 +109,8 @@ def config_specifies_task_name(dataset_config_dict):
         return False
     return 'task_name' in dataset_config_dict['env_cfg']
 
+
+make_run_rep_learner_configs(represent_ex)
 
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,

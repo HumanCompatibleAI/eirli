@@ -372,6 +372,8 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     # TODO(sam): consider factoring out this setup code. It is shared between
     # all our training and testing scripts at the moment (run_rep_learner,
     # il_train, il_test, etc.).
+
+    # vvvv START SETUP CODE TO FACTOR OUT vvvv
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
@@ -382,6 +384,7 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
     device = get_device(device)
+    # ^^^^ END SETUP CODE TO FACTOR OUT ^^^^
 
     with ExitStack() as exit_stack:
         # set up env
@@ -417,6 +420,8 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
                                        venv=venv)
 
     # final eval
+    # (note that this is pulling in a bunch of params from env_cfg_ingredient
+    # and venv_opts_ingredient)
     final_pol_path = os.path.abspath(final_pol_path)
     do_final_eval(policy_path=final_pol_path,
                   out_dir=log_dir,
