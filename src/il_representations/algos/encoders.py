@@ -215,33 +215,41 @@ class MAGICALCNN(nn.Module):
         if 'resnet' in arch_str:
             block = BasicResidualBlock
         for layer_definition in self.architecture_definition:
+            layer_stride = layer_definition['stride']
+            layer_out_dim = layer_definition['out_dim']
             if layer_definition.get('residual', False):
                 block_kwargs = {
-                    'stride': layer_definition['stride'],
+                    'stride': layer_stride,
                     'downsample': nn.Sequential(nn.Conv2d(in_dim,
-                                                          layer_definition['out_dim'],
+                                                          layer_out_dim,
                                                           kernel_size=1,
-                                                          stride=layer_definition['stride']),
-                                                nn.BatchNorm2d(layer_definition['out_dim']))
+                                                          stride=layer_stride),
+                                                nn.BatchNorm2d(layer_out_dim))
                 }
                 conv_layers += [block(in_dim,
-                                      layer_definition['out_dim'] * w,
+                                      layer_out_dim * w,
                                       **block_kwargs)]
             else:
+                # these asserts are to satisfy PyType, since not all
+                # NETWORK_ARCHITECTURE_DEFINITIONS have these two keys
+                assert 'padding' in layer_definition
+                assert 'kernel_size' in layer_definition
+                layer_padding = layer_definition['padding']
+                layer_kernel_size = layer_definition['kernel_size']
                 block_kwargs = {
-                    'stride': layer_definition['stride'],
-                    'kernel_size': layer_definition['kernel_size'],
-                    'padding': layer_definition['padding'],
+                    'stride': layer_stride,
+                    'kernel_size': layer_kernel_size,
+                    'padding': layer_padding,
                     'use_bn': use_bn,
                     'use_sn': use_sn,
                     'dropout': dropout,
                     'activation_cls': ActivationCls
                 }
                 conv_layers += block(in_dim,
-                                     layer_definition['out_dim'] * w,
+                                     layer_out_dim * w,
                                      **block_kwargs)
 
-            in_dim = layer_definition['out_dim']*w
+            in_dim = layer_out_dim*w
         if 'resnet' in arch_str:
             conv_layers.append(nn.Conv2d(in_dim, 32, 1))
         conv_layers.append(nn.Flatten())

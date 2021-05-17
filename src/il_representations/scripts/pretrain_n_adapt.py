@@ -30,7 +30,7 @@ from il_representations.configs.icml_experiment_configs import make_dataset_expe
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
-from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
+from il_representations.script_utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
 from il_representations.utils import hash_configs, up, WrappedConfig
 
 
@@ -66,7 +66,9 @@ def get_stages_to_run(stages_to_run):
     try:
         stage = StagesToRun(upper_str)
     except ValueError as ex:
+        # pytype: disable=missing-parameter
         options = [f"'{s.name}'" for s in StagesToRun]
+        # pytype: enable=missing-parameter
         raise ValueError(
             f"Could not convert '{stages_to_run}' to StagesToRun ({ex}). "
             f"Available options are {', '.join(options)}")

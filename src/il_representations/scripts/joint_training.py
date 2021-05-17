@@ -20,6 +20,7 @@ import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
 import torch
 import torch as th
+from torch.optim.adam import Adam
 
 from il_representations import algos
 from il_representations.algos.encoders import MAGICALCNN, get_obs_encoder_cls
@@ -115,7 +116,7 @@ def default_config():
     shuffle_buffer_size = 1024
 
     # we use a shared optimiser for repL and IL
-    optimizer_cls = th.optim.Adam
+    optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
 
     # we always construct the obs_encoder explicitly

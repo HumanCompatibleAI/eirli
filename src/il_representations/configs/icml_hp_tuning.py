@@ -3,7 +3,7 @@ from collections import OrderedDict
 from skopt.space import Categorical
 
 from il_representations.algos import decoders, losses, pair_constructors
-from il_representations.scripts.utils import StagesToRun
+from il_representations.script_utils import StagesToRun
 
 
 def make_icml_tuning_configs(experiment_obj):

@@ -70,6 +70,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         n_rollouts=n_rollouts,
         seed=seed,
         run_id=run_id,
+        device=device_name,
         deterministic_policy=deterministic_policy)
 
 

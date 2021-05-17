@@ -152,7 +152,7 @@ def common_prefix_len(strs: List[str]) -> int:
     return longest_init
 
 
-def strip_common_prefix(strs: List[str]) -> List[str]:
+def strip_common_prefix(strs: List[str]) -> Tuple[str, List[str]]:
     pl = common_prefix_len(strs)
     prefix = strs[0][:pl]
     with_prefix_removed = [st[pl:] for st in strs]

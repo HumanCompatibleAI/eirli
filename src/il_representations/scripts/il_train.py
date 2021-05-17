@@ -20,6 +20,7 @@ from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
 import torch as th
 from torch import nn
+from torch.optim.adam import Adam
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
@@ -48,7 +49,7 @@ def bc_defaults():
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
-    optimizer_cls = th.optim.Adam
+    optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
     lr_scheduler_kwargs = None

@@ -21,7 +21,7 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
-from il_representations.scripts.utils import update as dict_update
+from il_representations.script_utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
@@ -52,7 +52,7 @@ def benchmark_is_available(benchmark_name):
     elif benchmark_name == 'minecraft':
         # we check whether minecraft is installed by importing minerl
         try:
-            import minerl  # noqa: F401
+            __import__('minerl')  # noqa: F401
             return True, None
         except ImportError as ex:
             return False, "MineRL not installed, cannot use Minecraft " \

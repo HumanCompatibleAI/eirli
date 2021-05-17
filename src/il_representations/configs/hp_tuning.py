@@ -3,7 +3,7 @@ import collections
 from torch.optim import lr_scheduler, SGD
 
 from il_representations.algos import augmenters, batch_extenders, encoders, losses, pair_constructors
-from il_representations.scripts.utils import StagesToRun
+from il_representations.script_utils import StagesToRun
 from il_representations.utils import SacredProofTuple
 
 

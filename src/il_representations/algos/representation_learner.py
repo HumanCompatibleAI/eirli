@@ -5,9 +5,11 @@ import os
 
 import imitation.util.logger as im_log
 import numpy as np
+import stable_baselines3.common.distributions as sb3_dists
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 import torch
+from torch.optim.adam import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from il_representations.algos.base_learner import BaseEnvironmentLearner
@@ -253,7 +255,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # skip things that we don't have access to
                 continue
 
-            if isinstance(value, torch.distributions.Distribution):
+            if isinstance(value, (torch.distributions.Distribution,
+                                  sb3_dists.Distribution)):
                 # for param_name in value.arg_constraints.keys():
                 #     param_val = getattr(value, param_name).detach()
                 #     detached_debug_tensors[key + '_' + param_name] \
@@ -292,7 +295,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
     def learn(self, datasets, batches_per_epoch, n_epochs, *, callbacks=(),
               end_callbacks=(), log_dir, log_interval=100,
               calc_log_interval=10, save_interval=1000, scheduler_cls=None,
-              scheduler_kwargs=None, optimizer_cls=torch.optim.Adam,
+              scheduler_kwargs=None, optimizer_cls=Adam,
               optimizer_kwargs=None):
         """Run repL training loop.
 

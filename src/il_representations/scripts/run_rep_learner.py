@@ -9,17 +9,18 @@ import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch
+from torch.optim.adam import Adam
 
 from il_representations import algos
 from il_representations.algos.representation_learner import \
     RepresentationLearner
 from il_representations.algos.utils import set_global_seeds
+from il_representations.configs.run_rep_learner_configs import \
+    make_run_rep_learner_configs
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
 from il_representations.utils import RepLSaveExampleBatchesCallback
-from il_representations.configs.run_rep_learner_configs import \
-    make_run_rep_learner_configs
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 represent_ex = Experiment(
@@ -58,7 +59,7 @@ def default_config():
         },
     }
     device = "auto"
-    optimizer_cls = torch.optim.Adam
+    optimizer_cls = Adam
     optimizer_kwargs = {'lr': 1e-4}
     scheduler_cls = None
     scheduler_kwargs = {}
