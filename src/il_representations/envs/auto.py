@@ -118,7 +118,8 @@ def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
 
 @env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, dm_control_full_env_names,
-                 dm_control_frame_stack, minecraft_max_env_steps):
+                 dm_control_frame_stack, minecraft_max_env_steps,
+                 procgen_frame_stack):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     n_envs, venv_parallel, parallel_workers = _get_venv_opts()
@@ -174,7 +175,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                                        n_envs=n_envs,
                                        parallel=venv_parallel,
                                        parallel_workers=parallel_workers)
-        final_env = VecFrameStack(VecTransposeImage(raw_procgen_env), 4)
+        final_env = VecFrameStack(VecTransposeImage(raw_procgen_env),
+                                  procgen_frame_stack)
         assert final_env.observation_space.shape == (12, 64, 64), \
             final_env.observation_space.shape
         return final_env
