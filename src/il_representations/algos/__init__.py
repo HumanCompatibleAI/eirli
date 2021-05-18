@@ -16,6 +16,7 @@ from il_representations.algos.batch_extenders import QueueBatchExtender, Identit
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
 import logging
+import os
 
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
@@ -280,6 +281,8 @@ class Jigsaw(RepresentationLearner):
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        data_root = kwargs.get('data_root')
+        permutation_file = 'data/jigsaw_permutations_1000.npy'
 
         algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
                                      decoder=JigsawProjectionHead,
@@ -287,6 +290,8 @@ class Jigsaw(RepresentationLearner):
                                      augmenter=NoAugmentation,
                                      loss_calculator=CrossEntropyLoss,
                                      target_pair_constructor=JigsawPairConstructor,
+                                     target_pair_constructor_kwargs=dict(permutation_path=os.path.join(data_root,
+                                                                                                      permutation_file)),
                                      preprocess_target=False,
                                      projection_dim=1000,
                                      encoder_kwargs=dict(obs_encoder_cls_kwargs={'contain_fc_layer': False}),

@@ -24,7 +24,7 @@ represent_ex = Experiment(
 
 
 @represent_ex.config
-def default_config():
+def default_config(env_data):
     # exp_ident is an arbitrary string. Set it to a meaningful value to help
     # you identify runs in viskit.
     exp_ident = None
@@ -51,6 +51,7 @@ def default_config():
             # augmentations.
             "augmenter_spec": "translate,rotate,gaussian_blur",
         },
+        'data_root': env_data['data_root']
     }
     device = "auto"
 
