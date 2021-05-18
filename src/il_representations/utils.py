@@ -551,3 +551,19 @@ class Timers:
         """Clear all running timers and all saved times."""
         self.records = {}
         self.last_start = {}
+
+
+class EmptyIteratorException(Exception):
+    """Raised when a function is incorrectly passed an empty iterator."""
+
+
+def repeat_chain_non_empty(iterable):
+    """Equivalent to itertools.chain.from_iterable(itertools.repeat(iterator)),
+    but checks that iterator is non-empty."""
+    while True:
+        yielded_item = False
+        for item in iterable:
+            yield item
+            yielded_item = True
+        if not yielded_item:
+            raise EmptyIteratorException(f"iterable {iterable} was empty")

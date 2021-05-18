@@ -288,15 +288,20 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
     # build dataset in the format required by imitation
+    nom_num_epochs = bc['nominal_num_epochs']
+    nom_num_batches = max(1, int(np.ceil(bc['n_batches'] / nom_num_epochs)))
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
-        nominal_length=int(np.ceil(
-            bc['batch_size'] * bc['n_batches']
-            / bc['nominal_num_epochs'])),
+        # we make nominal_length large enough that we don't have to re-init the
+        # dataset, and also make it a multiple of the batch size so that we
+        # don't have to care about the size of the last batch (so
+        # drop_last=True doesn't matter in theory)
+        nominal_length=bc['batch_size'] * nom_num_batches,
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys("obs", "acts")])
+        preprocessors=[streaming_extract_keys("obs", "acts")],
+        drop_last=True)
 
     trainer = BC(
         observation_space=venv_chans_first.observation_space,

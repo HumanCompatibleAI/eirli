@@ -8,6 +8,7 @@ import torch
 
 from il_representations.data.read_dataset import datasets_to_loader
 from il_representations.il.utils import streaming_extract_keys
+from il_representations.utils import repeat_chain_non_empty
 
 
 def _prep_batch_bc(batch, observation_space, augmentation_fn, device):
@@ -63,7 +64,7 @@ class BC:
             shuffle=True,
             shuffle_buffer_size=shuffle_buffer_size,
             preprocessors=[streaming_extract_keys("obs", "acts")])
-        data_iter = it.chain.from_iterable(it.repeat(expert_data_loader))
+        data_iter = repeat_chain_non_empty(expert_data_loader)
         for batch in data_iter:
             yield _prep_batch_bc(
                 batch=batch, observation_space=self.observation_space,

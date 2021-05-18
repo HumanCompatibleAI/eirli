@@ -16,7 +16,7 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import datasets_to_loader
-from il_representations.utils import Timers, weight_grad_norms
+from il_representations.utils import Timers, weight_grad_norms, repeat_chain_non_empty
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -289,7 +289,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             shuffle_buffer_size=self.shuffle_buffer_size,
             shuffle=self.shuffle_batches,
             preprocessors=(self.target_pair_constructor, ))
-        data_iter = it.chain.from_iterable(it.repeat(dataloader))
+        data_iter = repeat_chain_non_empty(dataloader)
         return data_iter
 
     def learn(self, datasets, batches_per_epoch, n_epochs, *, callbacks=(),

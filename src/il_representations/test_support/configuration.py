@@ -48,7 +48,9 @@ ENV_CFG_TEST_CONFIGS = [
 
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
-        'n_batches': 1,
+        'n_batches': 2,
+        'nominal_num_epochs': 3,
+        'batch_size': 5,
         'augs': 'translate,rotate,noise',
     },
     'gail': {
