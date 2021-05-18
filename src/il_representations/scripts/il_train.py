@@ -191,7 +191,9 @@ def make_policy(observation_space,
 
         # Sometimes we are not using FC layers in encoders, e.g., Jigsaw.
         # Hence in il training we need to recover this part of the encoder.
-        if not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
+        encoder_net = encoder.network if 'network' in dir(encoder) else \
+            encoder.query_encoder.network
+        if not isinstance(encoder_net.shared_network[-1], th.nn.Linear):
             full_encoder = BaseEncoder(observation_space, **encoder_kwargs)
 
             partial_encoder_dict = encoder.state_dict()
