@@ -11,8 +11,6 @@ import ray
 from sacred.arg_parser import get_config_updates
 from sacred.utils import ensure_wellformed_argv
 
-from il_representations.scripts.joint_training import add_fso, train_ex
-
 
 class ArgumentParseFailed(Exception):
     """Raised when Sacred fails to parse arguments."""
@@ -49,6 +47,7 @@ def hacky_run_commandline(exp, argv):
 
 def run_joint_training_remote(extra_args):
     """This function executes the experiment as a Ray task."""
+    from il_representations.scripts.joint_training import add_fso, train_ex
     add_fso()
     argv = ['placeholder arg because only argv[1:] is used', 'train']
     if extra_args:
@@ -89,11 +88,11 @@ parser.add_argument('--ray-address',
                     help='address of Ray server')
 parser.add_argument('--ray-ncpus',
                     default=None,
-                    type=int,
+                    type=float,
                     help='number of CPUs for task')
 parser.add_argument('--ray-ngpus',
                     default=None,
-                    type=int,
+                    type=float,
                     help='number of GPUs for task')
 
 if __name__ == '__main__':
