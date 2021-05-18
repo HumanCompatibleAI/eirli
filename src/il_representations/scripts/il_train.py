@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
+import contextlib
 import logging
 import os
 # readline import is black magic to stop PDB from segfaulting; do not remove it
@@ -48,8 +49,8 @@ def bc_defaults():
     # nominal_length is arbitrary, since nothing in BC uses len(dataset)
     # (however, large numbers prevent us from having to recreate the
     # data iterator frequently)
-    nominal_length = int(1e6)
-    save_every_n_batches = nominal_length
+    nominal_length = int(1e5)
+    save_every_n_batches = 10000
 
     _ = locals()
     del _
@@ -264,10 +265,11 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
     )
 
     save_interval = bc['save_every_n_batches']
+    epoch_length = int(bc['nominal_length'] / bc['batch_size'])
     if save_interval is not None:
         optional_model_saver = BCModelSaver(policy,
                                             os.path.join(out_dir, 'snapshots'),
-                                            bc['nominal_length'],
+                                            epoch_length,
                                             save_interval)
     else:
         optional_model_saver = None
@@ -406,42 +408,38 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
 
-    venv = auto_env.load_vec_env()
-    demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
-        configs=dataset_configs)
- 
-    if encoder_path:
-        logging.info(f"Loading pretrained encoder from '{encoder_path}'")
-        encoder = th.load(encoder_path)
-        if freeze_encoder:
-            freeze_params(encoder)
-            assert len(list(encoder.parameters())) == 0
-    else:
-        logging.info("No encoder provided, will init from scratch")
-        encoder = None
+    with contextlib.closing(auto_env.load_vec_env()) as venv:
+        demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
+            configs=dataset_configs)
 
-    logging.info(f"Setting up '{algo}' IL algorithm")
+        if encoder_path:
+            logging.info(f"Loading pretrained encoder from '{encoder_path}'")
+            encoder = th.load(encoder_path)
+            if freeze_encoder:
+                freeze_params(encoder)
+                assert len(list(encoder.parameters())) == 0
+        else:
+            logging.info("No encoder provided, will init from scratch")
+            encoder = None
 
-    if algo == 'bc':
-        final_path = do_training_bc(
-            demo_webdatasets=demo_webdatasets,
-            venv_chans_first=venv,
-            out_dir=log_dir,
-            encoder=encoder)
+        logging.info(f"Setting up '{algo}' IL algorithm")
 
-    elif algo == 'gail':
-        final_path = do_training_gail(
-            demo_webdatasets=demo_webdatasets,
-            venv_chans_first=venv,
-            out_dir=log_dir,
-            encoder=encoder)
+        if algo == 'bc':
+            final_path = do_training_bc(
+                demo_webdatasets=demo_webdatasets,
+                venv_chans_first=venv,
+                out_dir=log_dir,
+                encoder=encoder)
 
-    else:
-        raise NotImplementedError(f"Can't handle algorithm '{algo}'")
+        elif algo == 'gail':
+            final_path = do_training_gail(
+                demo_webdatasets=demo_webdatasets,
+                venv_chans_first=venv,
+                out_dir=log_dir,
+                encoder=encoder)
 
-    # FIXME(sam): make sure this always closes correctly, even when there's an
-    # exception after creating it (could use try/catch or a context manager)
-    venv.close()
+        else:
+            raise NotImplementedError(f"Can't handle algorithm '{algo}'")
 
     return {'model_path': os.path.abspath(final_path)}
 
