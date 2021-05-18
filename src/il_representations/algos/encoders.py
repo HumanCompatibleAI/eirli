@@ -127,6 +127,10 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 128, 'stride': 2, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
         ],
+
+    # The below network processes image with larger receptive field by having
+    # a smaller stride of the first layer. This might be helpful for very small
+    # image inputs, e.g., Jigsaw.
     'MAGICALCNN-resnet-128-x2': [
             {'out_dim': 64, 'stride': 2, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
