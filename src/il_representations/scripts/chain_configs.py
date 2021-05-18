@@ -429,9 +429,7 @@ def make_chain_configs(experiment_obj):
             'algo': 'Jigsaw',
             'algo_params': {'batch_size': 64,
                             'optimizer_kwargs': {'lr': 1e-5},
-                            'target_pair_constructor_kwargs':
-                                {'permutation_path': os.path.join(os.getcwd(),
-                                                                  'data/jigsaw_permutations_1000.npy')}}
+                           }
         }
 
     @experiment_obj.named_config

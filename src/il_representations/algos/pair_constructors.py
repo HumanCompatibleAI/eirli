@@ -173,12 +173,10 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
 
 
 class JigsawPairConstructor(TargetPairConstructor):
-    def __init__(self, permutation_path='data/jigsaw_permutations_1000.npy', n_tiles=9):
-        # TODO: Find the actual path
+    def __init__(self, permutation_path, n_tiles=9):
         self.permutation_path = permutation_path
         self.permutation = np.load(self.permutation_path)
         self.n_tiles = n_tiles
-        pass
 
     def __call__(self, data_iter):
         timestep = 0
