@@ -1,5 +1,4 @@
 import inspect
-import itertools as it
 import logging
 import os
 
@@ -16,7 +15,8 @@ from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
 from il_representations.data.read_dataset import datasets_to_loader
-from il_representations.utils import Timers, weight_grad_norms, repeat_chain_non_empty
+from il_representations.utils import (Timers, repeat_chain_non_empty,
+                                      weight_grad_norms)
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -427,7 +427,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             loss_record.append(loss_meter.avg)
 
             # save checkpoint on last epoch, or at regular interval
-            # TODO(sam): replace this saving code with callbacks
             is_last_epoch = epoch_num == n_epochs
             should_save_checkpoint = (is_last_epoch or
                                       epoch_num % save_interval == 0)

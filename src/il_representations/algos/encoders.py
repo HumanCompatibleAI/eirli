@@ -587,8 +587,8 @@ class VAEEncoder(BaseEncoder):
     around ground truth pixels, since we don't want to vector-encode
     them.
     """
-    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None):
-        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=True, latent_dim=latent_dim)
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, **kwargs):
+        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=True, latent_dim=latent_dim, **kwargs)
 
     def encode_target(self, x, traj_info):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels

@@ -224,7 +224,9 @@ class DynamicsPrediction(RepresentationLearner):
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
-        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        dec_encoder_cls_key = decoder_kwargs.get(
+            'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
         action_representation_dim = get_action_representation_dim(kwargs['action_space'], encoder_kwargs)
 
@@ -237,7 +239,7 @@ class DynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
                                      encoder_kwargs=dict(action_space=kwargs['action_space'], learn_scale=False),
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
+                                                         encoder_arch_key=dec_encoder_cls_key,
                                                          action_representation_dim=action_representation_dim),
                                      preprocess_extra_context=False)
 
@@ -254,7 +256,9 @@ class VariationalAutoencoder(RepresentationLearner):
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
-        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        dec_encoder_cls_key = decoder_kwargs.get(
+            'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
         algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
                                      decoder=PixelDecoder,
@@ -263,7 +267,7 @@ class VariationalAutoencoder(RepresentationLearner):
                                      loss_calculator=VAELoss,
                                      target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
+                                                         encoder_arch_key=dec_encoder_cls_key,
                                                          sample=True))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
@@ -278,7 +282,9 @@ class Autoencoder(RepresentationLearner):
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
-        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        dec_encoder_cls_key = decoder_kwargs.get(
+            'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
         algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
                                      decoder=PixelDecoder,
@@ -287,7 +293,7 @@ class Autoencoder(RepresentationLearner):
                                      loss_calculator=AELoss,
                                      target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
+                                                         encoder_arch_key=dec_encoder_cls_key,
                                                          sample=True))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)

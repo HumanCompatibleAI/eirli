@@ -27,6 +27,7 @@ from il_representations.algos.encoders import MAGICALCNN, get_obs_encoder_cls
 from il_representations.algos.representation_learner import \
     RepresentationLearner
 from il_representations.algos.utils import set_global_seeds
+from il_representations.configs.joint_training_configs import make_jt_configs
 from il_representations.envs import auto
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
@@ -49,21 +50,25 @@ train_ex = Experiment('train',
                           env_data_ingredient,
                           venv_opts_ingredient,
                       ])
+make_jt_configs(train_ex)
 
 
 @repl_ingredient.config
 def repl_defaults():
     dataset_configs = [{'type': 'demos'}]
-    algo = "ActionConditionedTemporalCPC"
+    algo = 'VariationalAutoencoder'
     algo_params = {
-        'representation_dim': 128,
+        'batch_size': 64,
         'augmenter_kwargs': {
             # augmenter_spec is a comma-separated list of enabled
             # augmentations. Consult docstring for
             # imitation.augment.StandardAugmentations to see available
             # augmentations.
-            "augmenter_spec": "translate,rotate,gaussian_blur,color_jitter_ex",
+            'augmenter_spec': 'translate,rotate,gaussian_blur,color_jitter_ex',
         },
+        'decoder_kwargs': {
+            'encoder_arch_key': 'MAGICALCNN',
+        }
     }
     # save input batches to the network in repL loop
     batch_save_interval = 1000
@@ -76,7 +81,7 @@ def repl_defaults():
 def bc_defaults():
     dataset_configs = [{'type': 'demos'}]
     augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
-    batch_size = 32
+    batch_size = 64
     # regularisation
     ent_weight = 1e-3
     l2_weight = 1e-5
@@ -103,8 +108,8 @@ def default_config():
     n_batches = 25000
     # how often to dump logs
     log_dump_interval = 250
-    # how often to save items to log (without dumping); should be as high as
-    # feasible given performance
+    # how often to save items to log (without dumping); should be as low as you
+    # can make it without killing performance
     log_calc_interval = 10
     # how often to save (+ forced save at end)
     model_save_interval = 5000
@@ -129,11 +134,10 @@ def default_config():
     # weight for repL term
     repl_weight = 1.0
 
-    # TODO(sam): LR scheduler, if we think it will be useful
-
     # stop Torch taking up all cores needlessly
     torch_num_threads = 1
 
+    # will default to GPU if available, otherwise CPU
     device = "auto"
 
     _ = locals()
@@ -179,11 +183,19 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         shuffle_buffer_size=shuffle_buffer_size)
 
     # optimizer and LR scheduler
-    # TODO(sam): check for duplicate params (does it matter if something is
-    # included twice?)
-    params = list(repl_learner.all_trainable_params()) \
+    params_list = list(repl_learner.all_trainable_params()) \
         + list(bc_learner.all_trainable_params())
-    optimizer = optimizer_cls(params, **optimizer_kwargs)
+    params_set = set()
+    params_list_dedup = []
+    for param in params_list:
+        if param not in params_set:
+            params_list_dedup.append(param)
+            params_set.add(param)
+    assert len(params_list_dedup) < len(params_list), \
+        "After param deduplication, the number of parameters did not drop. " \
+        "Is the encoder actually shared?"
+    del params_list, params_set
+    optimizer = optimizer_cls(params_list_dedup, **optimizer_kwargs)
 
     timers = Timers()
 
@@ -197,6 +209,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
 
     for batch_num in range(n_batches):
         with timers.time('forward_back'):
+            # this block is the actual forward/backward logic (everything else
+            # is logging/checkpointing)
             bc_batch = next(bc_data_iter)
             bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
             repl_batch = next(repl_data_iter)
@@ -206,9 +220,6 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             optimizer.zero_grad()
             composite_loss.backward()
             optimizer.step()
-
-        # TODO(sam): when you write the GAIL loop, decide which parts of this
-        # can be factored out (probably most of it?)
 
         # model saving
         is_last_batch = batch_num == n_batches - 1
@@ -250,9 +261,7 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
 
         # logging
         if batch_num % log_calc_interval == 0:
-            # TODO(sam): also log times taken for various parts of the training
-            # loop.
-            grad_norm, weight_norm = weight_grad_norms(params)
+            grad_norm, weight_norm = weight_grad_norms(params_list_dedup)
             im_log.sb_logger.record_mean('all_loss', composite_loss.item())
             im_log.sb_logger.record_mean('bc_loss', bc_loss.item())
             im_log.sb_logger.record_mean('repl_loss', repl_loss.item())
@@ -314,7 +323,7 @@ def init_policy(*,
 
 @repl_ingredient.capture
 def repl_setup(dataset_configs, obs_encoder, shuffle_buffer_size, algo,
-               algo_params):
+               algo_params, representation_dim):
     # set up env/dataset/learner for repL
     repl_webdatasets, repl_combined_meta = auto.load_wds_datasets(
         configs=dataset_configs)
@@ -325,10 +334,19 @@ def repl_setup(dataset_configs, obs_encoder, shuffle_buffer_size, algo,
     algo_params = dict(algo_params)
     encoder_kwargs = algo_params.setdefault('encoder_kwargs', {})
     if encoder_kwargs.get('obs_encoder_cls') is not None \
-       or encoder_kwargs.get('obs_encoder_kwargs'):
+       or encoder_kwargs.get('obs_encoder_cls_kwargs') is not None \
+       or encoder_kwargs.get('latent_dim') is not None:
         raise ValueError(
             "Should not set repl.algo_params.obs_encoder* variables. Use the "
             "top-level config variables instead. ")
+    encoder_kwargs.update({
+        'obs_encoder_cls': lambda obs_space, latent_dim: obs_encoder,
+        'latent_dim': representation_dim,
+        'obs_encoder_cls_kwargs': None,
+    })
+
+    assert 'representation_dim' not in algo_params
+    algo_params['representation_dim'] = representation_dim
 
     # setting up repL algo
     if isinstance(algo, str):
@@ -370,11 +388,6 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
           shuffle_buffer_size, obs_encoder_cls, obs_encoder_kwargs,
           model_save_interval, representation_dim, exp_ident,
           final_eval_n_traj, _config):
-    # TODO(sam): consider factoring out this setup code. It is shared between
-    # all our training and testing scripts at the moment (run_rep_learner,
-    # il_train, il_test, etc.).
-
-    # vvvv START SETUP CODE TO FACTOR OUT vvvv
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
@@ -385,7 +398,6 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
     device = get_device(device)
-    # ^^^^ END SETUP CODE TO FACTOR OUT ^^^^
 
     with ExitStack() as exit_stack:
         # set up env
@@ -398,6 +410,7 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
         obs_encoder = obs_encoder_cls(observation_space=venv.observation_space,
                                       representation_dim=representation_dim,
                                       **obs_encoder_kwargs)
+        orig_oe_params = list(obs_encoder.named_parameters())
 
         # set up IL
         bc_learner, bc_augmentation_fn, bc_dataset = bc_setup(
@@ -405,10 +418,19 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
             n_batches=n_batches,
             shuffle_buffer_size=shuffle_buffer_size,
             obs_encoder=obs_encoder)
+        bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
+                            named_parameters())
 
         # setup for repL
         repl_learner, repl_datasets = repl_setup(
-            shuffle_buffer_size=shuffle_buffer_size, obs_encoder=obs_encoder)
+            shuffle_buffer_size=shuffle_buffer_size,
+            obs_encoder=obs_encoder,
+            representation_dim=representation_dim)
+        repl_oe_params = list(repl_learner.encoder.network.named_parameters())
+
+        # are params actually shared?
+        assert orig_oe_params == bc_oe_params
+        assert orig_oe_params == repl_oe_params
 
         # learning loop
         final_pol_path = learn_repl_bc(repl_learner=repl_learner,
@@ -424,19 +446,24 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     # (note that this is pulling in a bunch of params from env_cfg_ingredient
     # and venv_opts_ingredient)
     final_pol_path = os.path.abspath(final_pol_path)
-    do_final_eval(policy_path=final_pol_path,
-                  out_dir=log_dir,
-                  n_rollouts=final_eval_n_traj,
-                  # xoring with something arbitrary so we're not using same
-                  # seed as rest of code (might cause weird correlations)
-                  seed=seed ^ 0x4c0a,
-                  device=device,
-                  deterministic_policy=False,
-                  write_video=False,
-                  video_file_name=None,
-                  run_id=exp_ident)
+    do_final_eval(
+        policy_path=final_pol_path,
+        out_dir=log_dir,
+        n_rollouts=final_eval_n_traj,
+        # xoring with something arbitrary so we're not using same
+        # seed as rest of code (might cause weird correlations)
+        seed=seed ^ 0x4c0a,
+        device=device,
+        deterministic_policy=False,
+        write_video=False,
+        video_file_name=None,
+        run_id=exp_ident)
+
+
+def add_fso():
+    train_ex.observers.append(FileStorageObserver('runs/joint_train_runs'))
 
 
 if __name__ == '__main__':
-    train_ex.observers.append(FileStorageObserver('runs/joint_train_runs'))
+    add_fso()
     train_ex.run_commandline()
