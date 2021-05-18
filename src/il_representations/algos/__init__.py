@@ -281,7 +281,9 @@ class Jigsaw(RepresentationLearner):
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
-        data_root = kwargs.get('data_root')
+        _this_file_dir = os.path.dirname(os.path.abspath(__file__))
+        data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
+
         permutation_file = 'data/jigsaw_permutations_1000.npy'
 
         algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
