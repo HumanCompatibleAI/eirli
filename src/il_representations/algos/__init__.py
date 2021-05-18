@@ -286,7 +286,7 @@ class Jigsaw(RepresentationLearner):
         data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
         permutation_filename = 'jigsaw_permutations_1000.npy'
         permutation_file = \
-            glob.glob(f'{data_root}/*/{permutation_filename}')[0]
+            glob.glob(f'{data_root}/**/{permutation_filename}', recursive=True)[0]
 
         algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
                                      decoder=JigsawProjectionHead,
