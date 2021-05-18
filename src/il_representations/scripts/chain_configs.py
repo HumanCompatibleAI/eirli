@@ -224,6 +224,23 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_bench_micro_sweep_procgen():
+        """Tiny sweep over two procgen configs."""
+        spec = dict(env_cfg=tune.grid_search(
+            [
+                {
+                    'benchmark_name': 'procgen',
+                    'task_name': procgen_env_name
+                } for procgen_env_name in [
+                'coinrun', 'miner', 'fruitbot'
+            ]
+            ]))
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
     def cfg_run_few_trajs_long_dm_control():
         """For experiments running very few BC trajs"""
         spec = dict(il_train={

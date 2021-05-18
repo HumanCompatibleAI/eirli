@@ -93,6 +93,8 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         policy.eval()
 
         if write_video:
+            policy_filename = policy_path.split('/')[-1].split('.')[0]
+            video_file_name = f"rollout_{policy_filename}.mp4"
             video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
             video_writer = TensorFrameWriter(video_fp.name,
                                              color_space=auto.load_color_space())
