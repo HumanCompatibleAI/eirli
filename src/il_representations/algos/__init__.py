@@ -17,6 +17,7 @@ from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
 import logging
 import os
+import glob
 
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
@@ -283,8 +284,9 @@ class Jigsaw(RepresentationLearner):
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
         _this_file_dir = os.path.dirname(os.path.abspath(__file__))
         data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
-
-        permutation_file = 'data/jigsaw_permutations_1000.npy'
+        permutation_filename = 'jigsaw_permutations_1000.npy'
+        permutation_file = \
+            glob.glob(f'{data_root}/*/{permutation_filename}')[0]
 
         algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
                                      decoder=JigsawProjectionHead,
