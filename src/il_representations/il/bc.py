@@ -28,7 +28,8 @@ def _prep_batch_bc(batch, observation_space, augmentation_fn, device):
     # FIXME(sam): SB policies *always* apply preprocessing, so we
     # need to undo the preprocessing we did before applying
     # augmentations. The code below is the inverse of SB's
-    # preprocessing.preprocess_obs, but only for Box spaces.
+    # preprocessing.preprocess_obs, but only for Box spaces. Should make sure
+    # this doesn't break silently elsewhere.
     if isinstance(observation_space, gym.spaces.Box):
         if preprocessing.is_image_space(observation_space):
             obs_tensor = obs_tensor * 255.0
@@ -94,7 +95,7 @@ class BC:
         l2_term = self.l2_weight * l2_loss_raw
         loss = neglogp + ent_term + l2_term
 
-        # FIXME(sam): I don't think the .item() calls here are JIT-able, and
+        # TODO(sam): I don't think the .item() calls here are JIT-able, and
         # they tend to be very slow. Would be nice to split it out and/or
         # minimize the number of calls that are necessary. Possibly just
         # delaying the .item() calls as long as possible would help---instead

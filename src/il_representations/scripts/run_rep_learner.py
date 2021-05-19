@@ -46,8 +46,6 @@ def default_config():
     algo = "ActionConditionedTemporalCPC"
     torch_num_threads = 1
     algo_params = {
-        # FIXME(sam): move the optimiser kwargs somewhere else (as well as
-        # scheduler kwargs, etc.)
         'representation_dim': 128,
         'augmenter_kwargs': {
             # augmenter_spec is a comma-separated list of enabled

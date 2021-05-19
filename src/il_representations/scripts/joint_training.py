@@ -318,11 +318,6 @@ def init_policy(*,
                 postproc_arch,
                 obs_encoder,
                 log_std_init=0.0):
-    # FIXME(sam): maybe this is wrong. We're not necessarily using the same
-    # encoder that we use for repL, which seems bad---the repL encoder might
-    # have some extra stuff on top of it to make it output distribution
-    # parameters. It would be ideal if we were using samples from the
-    # distribution or the distribution mean or something instead.
     policy_kwargs = {
         'features_extractor_class': ObsEncoderFeatureExtractor,
         'features_extractor_kwargs': {

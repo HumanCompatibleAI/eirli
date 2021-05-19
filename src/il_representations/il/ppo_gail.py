@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""PPO + GAIL implementation that makes it easy to use auxiliary losses. Forked
-from Ilya Kostrikov's implementation on Github:
+"""WIP PPO + GAIL implementation that makes it easy to use auxiliary losses.
+Forked from Ilya Kostrikov's implementation on Github:
 
 https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/master/a2c_ppo_acktr/algo/ppo.py
+
+As of 2021-05-19 this is not yet finished (will probably work on it once I have
+BC results).
 """
 import torch
 import torch.nn as nn

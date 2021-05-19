@@ -165,8 +165,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return extra_context
         return self._preprocess(extra_context)
 
-    # TODO(sam) maybe make static?
-    def _unpack_batch(self, batch):
+    @staticmethod
+    def _unpack_batch(batch):
         """
         :param batch: A batch that may contain a numpy array of extra context,
             but may also simply have an empty list as a placeholder value for
@@ -257,16 +257,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
             if isinstance(value, (torch.distributions.Distribution,
                                   sb3_dists.Distribution)):
-                # for param_name in value.arg_constraints.keys():
-                #     param_val = getattr(value, param_name).detach()
-                #     detached_debug_tensors[key + '_' + param_name] \
-                #         = param_val
-
-                # FIXME(sam): make this lazy so that .sample() is only called
-                # when we actually want to save a sample (I don't know how to
-                # make it lazy without keeping the graph alive though).
-                # TODO(sam): actually also profile this to check whether it's
-                # even expensive.
+                # TODO(sam): profile this. If it's slow, then make it lazy so
+                # that .sample() is only called when we actually want to save a
+                # sample (I don't know how to make it lazy without keeping the
+                # graph alive though ugh).
                 det_sample = value.sample().detach()
                 detached_debug_tensors[key + '_sample'] = det_sample
             elif torch.is_tensor(value):
@@ -366,7 +360,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             samples_seen = 0
             timers = Timers()
             timers.start('batch')
-            # for step, batch in enumerate(dataloader):
             for step in range(batches_per_epoch):
                 batch = next(data_iter)
                 # detached_debug_tensors isn't used directly in this function,
