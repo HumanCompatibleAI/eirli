@@ -169,7 +169,18 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
     stats = collections.OrderedDict([(key, stats[key])
                                      for key in sorted(stats)])
 
-    # XXX(sam): need 'score' key from MAGICAL!
+    # also compute min/max/mean/std of eval_score, if present
+    extra_stats = collections.OrderedDict()
+    for traj in trajectories:
+        last_info = traj.infos[-1]
+        if 'eval_score' in last_info:
+            stat_list = extra_stats.setdefault('eval_score', [])
+            stat_list.append(last_info['eval_score'])
+    for key, stat_list in extra_stats.items():
+        for stat in ('min', 'mean', 'max', 'std'):
+            stat_fn: np.generic = getattr(np, stat)
+            stats[key + '_' + stat] = stat_fn(stat_list)
+
     return stats
 
 
