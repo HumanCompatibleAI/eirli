@@ -17,6 +17,9 @@ class Augmenter(ABC):
     def __call__(self, contexts, targets):
         pass
 
+    def augment_extra_context(self, extra_contexts):
+        return extra_contexts
+
 
 class NoAugmentation(Augmenter):
     def __call__(self, contexts, targets):
@@ -31,3 +34,8 @@ class AugmentContextAndTarget(Augmenter):
 class AugmentContextOnly(Augmenter):
     def __call__(self, contexts, targets):
         return self.augment_op(contexts), targets
+
+
+class AugmentContextAndExtraContext(AugmentContextOnly):
+    def augment_extra_context(self, extra_contexts):
+        return self.augment_op(extra_contexts)

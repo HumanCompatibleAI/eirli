@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
 import faulthandler
+import contextlib
 import logging
 import os
 # readline import is black magic to stop PDB from segfaulting; do not remove it
@@ -23,7 +24,7 @@ from torch import nn
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -58,6 +59,7 @@ def bc_defaults():
     # regularisation
     ent_weight = 1e-3
     l2_weight = 1e-5
+    n_trajs = None
 
     _ = locals()
     del _
@@ -107,6 +109,7 @@ def gail_defaults():
     # (5000 is about right for MAGICAL; something like 25000 is probably better
     # for DMC)
     log_interval_steps = 5e3
+    n_trajs = None
 
     _ = locals()
     del _
@@ -286,6 +289,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
     # build dataset in the format required by imitation
+    subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
@@ -294,7 +298,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
             / bc['nominal_num_epochs'])),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys("obs", "acts")])
+        preprocessors=[subdataset_extractor, streaming_extract_keys("obs", "acts")])
 
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
@@ -394,6 +398,7 @@ def do_training_gail(
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
 
+    subdataset_extractor = SubdatasetExtractor(n_trajs=gail['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=gail['disc_batch_size'],
@@ -405,8 +410,9 @@ def do_training_gail(
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[streaming_extract_keys(
-            "obs", "acts", "next_obs", "dones"), add_infos],
+        preprocessors=[subdataset_extractor,
+                       streaming_extract_keys(
+                           "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
@@ -453,39 +459,38 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
 
-    venv = auto_env.load_vec_env()
-    demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
-        configs=dataset_configs)
-    if encoder_path:
-        logging.info(f"Loading pretrained encoder from '{encoder_path}'")
-        encoder = th.load(encoder_path)
-        if freeze_encoder:
-            freeze_params(encoder)
-            assert len(list(encoder.parameters())) == 0
-    else:
-        logging.info("No encoder provided, will init from scratch")
-        encoder = None
+    with contextlib.closing(auto_env.load_vec_env()) as venv:
+        demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
+            configs=dataset_configs)
 
-    logging.info(f"Setting up '{algo}' IL algorithm")
+        if encoder_path:
+            logging.info(f"Loading pretrained encoder from '{encoder_path}'")
+            encoder = th.load(encoder_path)
+            if freeze_encoder:
+                freeze_params(encoder)
+                assert len(list(encoder.parameters())) == 0
+        else:
+            logging.info("No encoder provided, will init from scratch")
+            encoder = None
 
-    if algo == 'bc':
-        final_path = do_training_bc(
-            demo_webdatasets=demo_webdatasets,
-            venv_chans_first=venv,
-            out_dir=log_dir)
+        logging.info(f"Setting up '{algo}' IL algorithm")
 
-    elif algo == 'gail':
-        final_path = do_training_gail(
-            demo_webdatasets=demo_webdatasets,
-            venv_chans_first=venv,
-            out_dir=log_dir)
+        if algo == 'bc':
+            final_path = do_training_bc(
+                demo_webdatasets=demo_webdatasets,
+                venv_chans_first=venv,
+                out_dir=log_dir,
+                encoder=encoder)
 
-    else:
-        raise NotImplementedError(f"Can't handle algorithm '{algo}'")
+        elif algo == 'gail':
+            final_path = do_training_gail(
+                demo_webdatasets=demo_webdatasets,
+                venv_chans_first=venv,
+                out_dir=log_dir,
+                encoder=encoder)
 
-    # FIXME(sam): make sure this always closes correctly, even when there's an
-    # exception after creating it (could use try/catch or a context manager)
-    venv.close()
+        else:
+            raise NotImplementedError(f"Can't handle algorithm '{algo}'")
 
     return {'model_path': os.path.abspath(final_path)}
 
