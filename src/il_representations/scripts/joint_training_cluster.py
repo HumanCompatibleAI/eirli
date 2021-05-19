@@ -53,7 +53,7 @@ def run_joint_training_remote(extra_args):
     if extra_args:
         argv.append('with')
         argv.extend(extra_args)
-    return hacky_run_commandline(train_ex, argv)
+    hacky_run_commandline(train_ex, argv)
 
 
 def main(args, sacred_args):
@@ -74,7 +74,12 @@ def main(args, sacred_args):
 
     ray.init(address=args.ray_address)
 
-    remote_decorator = ray.remote(**ray_opts)
+    if ray_opts:
+        remote_decorator = ray.remote(**ray_opts)
+    else:
+        # ray.remote doesn't support passing in no kwargs; must pass in
+        # function directly instead (weird but whatever)
+        remote_decorator = ray.remote
     remote_handle = remote_decorator(run_joint_training_remote)
     remote_run = remote_handle.remote(sacred_args)
     return ray.get(remote_run)
