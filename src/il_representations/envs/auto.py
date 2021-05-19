@@ -193,7 +193,7 @@ def get_data_dir(benchmark_name, task_key, data_type, data_root):
     """Get the data directory for a given benchmark ("magical", "dm_control",
     etc.), task (e.g. "MoveToCorner", "finger-spin") and data type (e.g.
     "demos", "random")."""
-    return os.path.join(data_root, 'data', 'processed',
+    return os.path.join(data_root, 'procgen/data', 'processed',
                         data_type, benchmark_name, task_key)
 
 
