@@ -142,7 +142,7 @@ CHAIN_CONFIG_SKOPT = {
         'repl:algo_params:augmenter_kwargs:augmenter_spec': [
             "translate", "rotate",
         ],
-        'il_train:bc:lr': (1e-7, 1.0, 'log-uniform'),
+        'il_train:bc:optimizer_kwargs:lr': (1e-7, 1.0, 'log-uniform'),
     }
 }
 
