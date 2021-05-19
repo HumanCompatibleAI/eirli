@@ -74,6 +74,12 @@ def repl_defaults():
     del _
 
 
+@repl_ingredient.capture
+def _repl_dummy(dataset_configs, algo_params):
+    # DO NOT REMOVE THIS, REMOVING IT WILL BREAK SACRED
+    pass
+
+
 @bc_ingredient.config
 def bc_defaults():
     dataset_configs = [{'type': 'demos'}]
@@ -94,6 +100,12 @@ def bc_defaults():
 
     _ = locals()
     del _
+
+
+@bc_ingredient.capture
+def _bc_dummy(dataset_configs, augs):
+    # DO NOT REMOVE THIS, REMOVING IT WILL BREAK SACRED
+    pass
 
 
 @train_ex.config
