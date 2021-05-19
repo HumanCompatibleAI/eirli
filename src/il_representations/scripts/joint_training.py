@@ -379,13 +379,14 @@ def repl_setup(dataset_configs, obs_encoder, shuffle_buffer_size, algo,
 @bc_ingredient.capture
 def bc_setup(venv, obs_encoder, n_batches, shuffle_buffer_size,
              dataset_configs, batch_size, l2_weight, ent_weight, augs,
-             postproc_arch):
+             postproc_arch, device):
     il_demo_webdatasets, il_combined_meta = auto_env.load_wds_datasets(
         configs=dataset_configs)
     policy = init_policy(observation_space=venv.observation_space,
                          action_space=venv.action_space,
                          obs_encoder=obs_encoder,
                          postproc_arch=postproc_arch)
+    policy = policy.to(device)
     color_space = il_combined_meta['color_space']
     bc_aug_fn = augmenter_from_spec(augs, color_space)
     bc_learner = BC(policy=policy, l2_weight=l2_weight, ent_weight=ent_weight)
@@ -426,7 +427,8 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
             venv=venv,
             n_batches=n_batches,
             shuffle_buffer_size=shuffle_buffer_size,
-            obs_encoder=obs_encoder)
+            obs_encoder=obs_encoder,
+            device=device)
         bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
                             named_parameters())
 

@@ -25,8 +25,10 @@ def make_jt_configs(train_ex):
         # VAE
         repl = {
             'algo': VariationalAutoencoder,
-            'decoder_kwargs': {
-                'encoder_arch_key': 'MAGICALCNN',
+            'algo_params': {
+                'decoder_kwargs': {
+                    'encoder_arch_key': 'MAGICALCNN',
+                },
             },
         }
         repl_weight = 1.0
@@ -39,8 +41,10 @@ def make_jt_configs(train_ex):
         # forward dynamics
         repl = {
             'algo': DynamicsPrediction,
-            'decoder_kwargs': {
-                'encoder_arch_key': 'MAGICALCNN',
+            'algo_params': {
+                'decoder_kwargs': {
+                    'encoder_arch_key': 'MAGICALCNN',
+                },
             },
         }
         repl_weight = 1.0
