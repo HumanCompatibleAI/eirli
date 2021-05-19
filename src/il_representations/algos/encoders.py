@@ -528,9 +528,10 @@ class ActionEncodingEncoder(BaseEncoder):
     """
     def __init__(self, obs_space, representation_dim, action_space, learn_scale=False,
                  obs_encoder_cls=None, action_encoding_dim=48, action_encoder_layers=1,
-                 action_embedding_dim=5, use_lstm=False):
+                 action_embedding_dim=5, use_lstm=False, **kwargs):
 
-        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
+        super().__init__(obs_space, representation_dim, obs_encoder_cls,
+                         learn_scale=learn_scale, **kwargs)
 
         self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
                                                                                        action_embedding_dim)

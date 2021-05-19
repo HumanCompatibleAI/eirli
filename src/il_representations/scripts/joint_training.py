@@ -169,7 +169,7 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
     stats = collections.OrderedDict([(key, stats[key])
                                      for key in sorted(stats)])
 
-    # TODO(sam): try to get 'score' key out of MAGICAL
+    # XXX(sam): need 'score' key from MAGICAL!
     return stats
 
 
@@ -276,8 +276,9 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             im_log.sb_logger.record_mean('repl_loss', repl_loss.item())
             im_log.sb_logger.record_mean('grad_norm', grad_norm.item())
             im_log.sb_logger.record_mean('weight_norm', weight_norm.item())
+            im_log.sb_logger.record_mean('batch_num', batch_num)
             for k, v in bc_stats.items():
-                im_log.sb_logger.record_mean('eval_' + k, float(v))
+                im_log.sb_logger.record_mean('bc_' + k, float(v))
             # code above that computes eval stats should at least run on the
             # first step
             assert latest_eval_stats is not None, \
@@ -285,7 +286,7 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             for k, v in latest_eval_stats.items():
                 suffix = '_mean'
                 if k.endswith(suffix):
-                    im_log.sb_logger.record_mean(k[:-len(suffix)], v)
+                    im_log.sb_logger.record_mean('eval_' + k[:-len(suffix)], v)
             for k, v in timers.dump_stats(reset=False).items():
                 im_log.sb_logger.record('t_mean_' + k, v['mean'])
                 im_log.sb_logger.record('t_max_' + k, v['max'])
