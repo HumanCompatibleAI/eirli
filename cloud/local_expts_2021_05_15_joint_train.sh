@@ -8,7 +8,7 @@ ray_address="localhost:42000"
 ray_ncpus=1
 ray_ngpus=0.25
 base_cfgs=("n_batches=30000" "env_use_magical")
-repl_configs=("repl_novae" "repl_vae" "repl_fd" "repl_id")
+repl_configs=("repl_noid" "repl_vae" "repl_fd" "repl_id")
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion")
 nseeds=3
 

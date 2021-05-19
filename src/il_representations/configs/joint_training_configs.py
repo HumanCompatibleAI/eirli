@@ -5,15 +5,15 @@ from il_representations.algos import (DynamicsPrediction,
 
 def make_jt_configs(train_ex):
     @train_ex.named_config
-    def repl_novae():
-        # Adds a useless VAE objective that won't influence training
-        # (hence 'novae' rather than 'vae'). Used as a control, since I can't
+    def repl_noid():
+        # Adds a useless ID objective that won't influence training
+        # (hence 'noid' rather than 'id'). Used as a control, since I can't
         # disable repL entirely yet.
         repl = {
-            'algo': VariationalAutoencoder,
+            'algo': InverseDynamicsPrediction,
             'algo_params': {
                 'batch_size': 2
-            }
+            },
         }
         repl_weight = 0.0
 
@@ -25,6 +25,9 @@ def make_jt_configs(train_ex):
         # VAE
         repl = {
             'algo': VariationalAutoencoder,
+            'decoder_kwargs': {
+                'encoder_arch_key': 'MAGICALCNN',
+            },
         }
         repl_weight = 1.0
 
@@ -36,6 +39,9 @@ def make_jt_configs(train_ex):
         # forward dynamics
         repl = {
             'algo': DynamicsPrediction,
+            'decoder_kwargs': {
+                'encoder_arch_key': 'MAGICALCNN',
+            },
         }
         repl_weight = 1.0
 

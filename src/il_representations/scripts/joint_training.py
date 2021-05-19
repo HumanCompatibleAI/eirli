@@ -56,7 +56,7 @@ make_jt_configs(train_ex)
 @repl_ingredient.config
 def repl_defaults():
     dataset_configs = [{'type': 'demos'}]
-    algo = 'VariationalAutoencoder'
+    algo = 'InverseDynamicsPrediction'
     algo_params = {
         'batch_size': 64,
         'augmenter_kwargs': {
@@ -66,9 +66,6 @@ def repl_defaults():
             # augmentations.
             'augmenter_spec': 'translate,rotate,gaussian_blur,color_jitter_ex',
         },
-        'decoder_kwargs': {
-            'encoder_arch_key': 'MAGICALCNN',
-        }
     }
     # save input batches to the network in repL loop
     batch_save_interval = 1000

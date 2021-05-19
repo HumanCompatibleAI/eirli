@@ -75,6 +75,8 @@ class BC:
         """Do a forward pass of the network, given a set of observations and
         actions."""
         obs, acts = obs_acts
+        obs = obs.to(self.policy.device)
+        acts = acts.to(self.policy.device)
 
         # first return value is state value (which we don't use)
         _, log_prob, entropy = self.policy.evaluate_actions(obs, acts)
