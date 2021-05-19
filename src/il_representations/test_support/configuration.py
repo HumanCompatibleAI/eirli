@@ -145,3 +145,24 @@ CHAIN_CONFIG_SKOPT = {
         'il_train:bc:lr': (1e-7, 1.0, 'log-uniform'),
     }
 }
+
+FAST_JOINT_TRAIN_CONFIG = {
+    'bc': {
+        'batch_size': 5,
+        'augs': 'translate,rotate,noise',
+        'short_eval_n_traj': 2,
+    },
+    'repl': {
+        'algo_params': {
+            'batch_size': 3,
+            'augmenter_kwargs': {
+                'augmenter_spec': 'translate,rotate,noise',
+            }
+        },
+    },
+    'representation_dim': 3,
+    'shuffle_buffer_size': 3,
+    'n_batches': 2,
+    'final_eval_n_traj': 2,
+    **ENV_DATA_VENV_OPTS_TEST_CONFIG,
+}
