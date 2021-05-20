@@ -26,22 +26,24 @@ ENV_DATA_VENV_OPTS_TEST_CONFIG = {
 
 ENV_CFG_TEST_CONFIGS = [
     {
-        'benchmark_name': 'atari',
-        'task_name': 'PongNoFrameskip-v4',
-    },
-    {
         'benchmark_name': 'magical',
-        'task_name': 'MoveToRegion',
+        'task_name': 'MoveToRegion-Demo-v0',
     },
     {
         'benchmark_name': 'dm_control',
         'task_name': 'reacher-easy',
     },
-    {
-        'benchmark_name': 'minecraft',
-        'task_name': 'NavigateVectorObf',
-        'minecraft_max_env_steps': 100
-    },
+    # TODO(sam): re-enable this once we're using Atari tasks (2021-04-07)
+    # {
+    #     'benchmark_name': 'atari',
+    #     'task_name': 'PongNoFrameskip-v4',
+    # },
+    # TODO(sam): re-enable this once we're using Minecraft tasks (2021-04-07)
+    # {
+    #     'benchmark_name': 'minecraft',
+    #     'task_name': 'NavigateVectorObf',
+    #     'minecraft_max_env_steps': 100
+    # },
 ]
 
 FAST_IL_TRAIN_CONFIG = {

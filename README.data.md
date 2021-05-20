@@ -21,8 +21,8 @@ ingredients:
   most important config keys are `benchmark_name` (which identifies whether the
   current benchmark is MAGICAL, or dm_control, or something else), and
   `task_name` (which identifies the current task within the selected benchmark;
-  e.g. finger-spin or MoveToCorner). There are also some benchmark-specific
-  config keys for, e.g., preprocessing.
+  e.g. finger-spin or MoveToCorner-Demo-v0). There are also some
+  benchmark-specific config keys for, e.g., preprocessing.
 - [`venv_opts_ingredient`](https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L71-L92):
   Additional options required to construct a vecenv (e.g. the number of
   environments to run in parallel).
