@@ -14,7 +14,7 @@ gen_random() {
         with venv_opts.venv_parallel=True venv_opts.n_envs=8 n_timesteps_min=50000 $@
 }
 
-for mag_pfx in ClusterColour ClusterShape FixColour FindDupe MatchRegions MakeLine MoveToCorner MoveToRegion; do
+for mag_pfx in ClusterColour-Demo-v0 ClusterShape-Demo-v0 FixColour-Demo-v0 FindDupe-Demo-v0 MatchRegions-Demo-v0 MakeLine-Demo-v0 MoveToCorner-Demo-v0 MoveToRegion-Demo-v0; do
     echo "Working on MAGICAL/${mag_pfx}"
     mag_env_opts=(env_cfg.benchmark_name=magical env_cfg.task_name="${mag_pfx}")
     echo "Demonstrations:"
