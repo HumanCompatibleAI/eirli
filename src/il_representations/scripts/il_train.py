@@ -523,15 +523,13 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
             final_path = do_training_bc(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir,
-                encoder=encoder)
+                out_dir=log_dir)
 
         elif algo == 'gail':
             final_path = do_training_gail(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir,
-                encoder=encoder)
+                out_dir=log_dir)
 
         else:
             raise NotImplementedError(f"Can't handle algorithm '{algo}'")
