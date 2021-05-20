@@ -11,8 +11,8 @@ base_cfgs=("cfg_base_3seed_4cpu_pt3gpu" "tune_run_kwargs.resources_per_trial.cpu
 
 # we have no multitask runs because DMC does not support multitask
 for bench in \
-    "env_cfg.benchmark_name=magical env_cfg.task_name=MoveToCorner" \
-    "env_cfg.benchmark_name=magical env_cfg.task_name=MatchRegions" \
+    "env_cfg.benchmark_name=magical env_cfg.task_name=MoveToCorner-Demo-v0" \
+    "env_cfg.benchmark_name=magical env_cfg.task_name=MatchRegions-Demo-v0" \
     "env_cfg.benchmark_name=dm_control env_cfg.task_name=cheetah-run" \
     "env_cfg.benchmark_name=dm_control env_cfg.task_name=finger-spin" \
     ; do

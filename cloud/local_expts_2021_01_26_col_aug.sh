@@ -14,8 +14,8 @@ for il in cfg_il_bc_20k_nofreeze; do
 
     # we have no multitask runs because DMC does not support multitask
     for bench in \
-        "env_cfg.benchmark_name=magical env_cfg.task_name=MoveToCorner" \
-        "env_cfg.benchmark_name=magical env_cfg.task_name=MatchRegions" \
+        "env_cfg.benchmark_name=magical env_cfg.task_name=MoveToCorner-Demo-v0" \
+        "env_cfg.benchmark_name=magical env_cfg.task_name=MatchRegions-Demo-v0" \
         ; do
         # the _col_aug_il run has color augmentations applied to repL, but not IL;
         # the _il_col_aug run has color augmentations applied to IL, but not repL.
