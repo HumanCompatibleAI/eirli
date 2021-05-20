@@ -105,6 +105,20 @@ def make_dataset_experiment_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def icml_tcpc_8step():
+        repl = {
+            'algo': ICMLTemporalCPC,
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 4,
+                }
+            }
+        }
+        # this goes to the pair constructor
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def icml_identity_cpc():
         repl = {'algo': ICMLIdentityCPC}
         _ = locals()
