@@ -7,10 +7,10 @@ set -e
 ray_address="localhost:42000"
 ray_ncpus=1
 ray_ngpus=0.25
-base_cfgs=("n_batches=30000" "env_use_magical")
+base_cfgs=("n_batches=30000" "env_use_magical" "bc.short_eval_interval=2000")
 repl_configs=("repl_noid" "repl_vae" "repl_fd" "repl_id")
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion")
-nseeds=3
+nseeds=5
 
 submit_expt() {
     # submit joint training experiment to local Ray server
