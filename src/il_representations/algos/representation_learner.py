@@ -14,7 +14,8 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
-from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.data.read_dataset import (SubdatasetExtractor,
+                                                  datasets_to_loader)
 from il_representations.utils import (Timers, repeat_chain_non_empty,
                                       weight_grad_norms)
 
@@ -173,7 +174,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             the `extra_context` key. If the latter, return None for
             extra_context, rather than an empty list (Torch data loaders can
             only work with lists and arrays, not None types)
-       :return:
+        :return:
         """
         if len(batch['extra_context']) == 0:
             return batch['context'], batch['target'], batch['traj_ts_ids'], None
@@ -182,7 +183,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def all_trainable_params(self):
         """
-        :return: the trainable encoder parameters and the trainable decoder parameters
+        :return: the trainable encoder parameters and the trainable decoder
+            parameters.
         """
         trainable_encoder_params = [
             p for p in self.encoder.parameters() if p.requires_grad
@@ -198,38 +200,45 @@ class RepresentationLearner(BaseEnvironmentLearner):
         a dictionary of detached tensors that are useful for debugging and
         sanity checks."""
         # Construct batch (currently just using Torch's default batch-creator)
-        raw_contexts, raw_targets, traj_ts_info, extra_context = self._unpack_batch(batch)
+        raw_contexts, raw_targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
         # Use an algorithm-specific augmentation strategy to augment either
         # just context, or both context and targets
         raw_contexts, raw_targets = self._prep_tensors(raw_contexts), self._prep_tensors(raw_targets)
         extra_context = self._prep_tensors(extra_context)
         traj_ts_info = self._prep_tensors(traj_ts_info)
-        # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
+        # Note: preprocessing might be better to do on CPU if, in future, we
+        # can parallelize doing so
         raw_contexts = self._preprocess(raw_contexts)
         if self.preprocess_target:
             raw_targets = self._preprocess(raw_targets)
         contexts, targets = self.augmenter(raw_contexts, raw_targets)
         extra_context = self._preprocess_extra_context(extra_context)
+        # This is typically a noop, but sometimes we also augment the extra
+        # context
+        extra_context = self.augmenter.augment_extra_context(extra_context)
 
-        # These will typically just use the forward() function for the encoder, but can optionally
-        # use a specific encode_context and encode_target if one is implemented
+        # These will typically just use the forward() function for the encoder,
+        # but can optionally use a specific encode_context and encode_target if
+        # one is implemented
         encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
         encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
         # Typically the identity function
         encoded_extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
 
-        # Use an algorithm-specific decoder to "decode" the representations into a loss-compatible tensor
-        # As with encode, these will typically just use forward()
+        # Use an algorithm-specific decoder to "decode" the representations
+        # into a loss-compatible tensor As with encode, these will typically
+        # just use forward()
         decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
         decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, encoded_extra_context)
 
-        # Optionally add to the batch before loss. By default, this is an identity operation, but
-        # can also implement momentum queue logic
+        # Optionally add to the batch before loss. By default, this is an
+        # identity operation, but can also implement momentum queue logic
         decoded_contexts, decoded_targets = self.batch_extender(decoded_contexts, decoded_targets)
 
-        # Use an algorithm-specific loss function. Typically this only requires decoded_contexts and
-        # decoded_targets, but VAE requires encoded_contexts, so we pass it in here
+        # Use an algorithm-specific loss function. Typically this only requires
+        # decoded_contexts and decoded_targets, but VAE requires
+        # encoded_contexts, so we pass it in here
         loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
 
         # things that get returned to calling function for (optional)
@@ -275,14 +284,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.encoder.train(val)
         self.decoder.train(val)
 
-    def make_data_iter(self, datasets, batches_per_epoch, n_epochs):
+    def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
+        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=n_epochs * batches_per_epoch * self.batch_size,
             max_workers=self.dataset_max_workers,
             shuffle_buffer_size=self.shuffle_buffer_size,
             shuffle=self.shuffle_batches,
-            preprocessors=(self.target_pair_constructor, ))
+            preprocessors=(subdataset_extractor, self.target_pair_constructor))
         data_iter = repeat_chain_non_empty(dataloader)
         return data_iter
 
@@ -290,7 +300,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
               end_callbacks=(), log_dir, log_interval=100,
               calc_log_interval=10, save_interval=1000, scheduler_cls=None,
               scheduler_kwargs=None, optimizer_cls=Adam,
-              optimizer_kwargs=None):
+              optimizer_kwargs=None, n_trajs=None):
         """Run repL training loop.
 
         Args:
@@ -304,6 +314,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             n_epochs (int): the total number of 'epochs' of optimisation to
                 perform. Total number of updates will be `batches_per_epoch *
                 n_epochs`.
+            n_trajs (int): the total number of trajectories we want to use
+                for training. The default 'None' will use the whole dataset.
             callbacks ([dict -> None]): list of functions to call at the
                 end of each batch, after computing the loss and updating the
                 network but before dumping logs. Will be provided with all
@@ -330,7 +342,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # dataset setup
         data_iter = self.make_data_iter(
             datasets=datasets, batches_per_epoch=batches_per_epoch,
-            n_epochs=n_epochs)
+            n_epochs=n_epochs, n_trajs=n_trajs)
 
         # optimizer and LR scheduler
         optimizer = optimizer_cls(self.all_trainable_params(),

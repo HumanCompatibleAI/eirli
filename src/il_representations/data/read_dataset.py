@@ -3,6 +3,7 @@
 import os
 import pickle
 import warnings
+import logging
 
 import numpy as np
 from torch.utils.data import DataLoader, IterableDataset
@@ -101,6 +102,28 @@ class InterleavedDataset(IterableDataset):
 
     def __len__(self):
         return self.nominal_length
+
+
+class SubdatasetExtractor:
+    def __init__(self, n_trajs=None):
+        self.n_trajs = n_trajs
+
+        traj_info = n_trajs if n_trajs else 'full'
+        logging.info(f"Training with {traj_info} trajectories.")
+
+    def __call__(self, data_iter):
+        trajectory_ind = 0
+
+        for step_dict in data_iter:
+            yield step_dict
+
+            if step_dict['dones']:
+                trajectory_ind += 1
+
+            if trajectory_ind == self.n_trajs:
+                break
+
+        assert self.n_trajs is None or trajectory_ind == self.n_trajs, (self.n_trajs, trajectory_ind)
 
 
 def strip_extensions(dataset):
