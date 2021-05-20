@@ -200,7 +200,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         a dictionary of detached tensors that are useful for debugging and
         sanity checks."""
         # Construct batch (currently just using Torch's default batch-creator)
-        raw_contexts, raw_targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+        raw_contexts, raw_targets, traj_ts_info, extra_context = self._unpack_batch(batch)
 
         # Use an algorithm-specific augmentation strategy to augment either
         # just context, or both context and targets
