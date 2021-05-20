@@ -193,7 +193,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
                                                  batches_per_epoch=n_batches,
-                                                 n_epochs=1)
+                                                 n_epochs=1,
+                                                 n_trajs=None)
     latest_eval_stats = None
     bc_data_iter = bc_learner.make_data_iter(
         il_dataset=bc_dataset,
