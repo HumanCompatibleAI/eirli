@@ -64,7 +64,7 @@ def repl_defaults():
             # augmentations. Consult docstring for
             # imitation.augment.StandardAugmentations to see available
             # augmentations.
-            'augmenter_spec': 'translate,rotate,gaussian_blur,color_jitter_ex',
+            'augmenter_spec': 'translate,rotate,gaussian_blur,color_jitter',
         },
     }
     # save input batches to the network in repL loop
@@ -83,7 +83,7 @@ def _repl_dummy(dataset_configs, algo_params):
 @bc_ingredient.config
 def bc_defaults():
     dataset_configs = [{'type': 'demos'}]
-    augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
+    augs = 'translate,rotate,gaussian_blur,color_jitter'
     batch_size = 64
     # regularisation
     ent_weight = 1e-3
