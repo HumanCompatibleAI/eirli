@@ -87,7 +87,9 @@ def make_jt_configs(train_ex):
     def inner_scope():
         for task_name in [
                 'MoveToCorner-Demo-v0', 'MoveToRegion-Demo-v0',
-                'MatchRegions-Demo-v0'
+                'MatchRegions-Demo-v0', 'ClusterColour-Demo-v0',
+                'ClusterShape-Demo-v0', 'MakeLine-Demo-v0',
+                'FixColour-Demo-v0', 'FindDupe-Demo-v0',
         ]:
             prefix = task_name.split('-')[0]
             prefix_lower = prefix.lower()
