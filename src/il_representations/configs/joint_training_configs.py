@@ -1,6 +1,7 @@
 from il_representations.algos import (DynamicsPrediction,
                                       InverseDynamicsPrediction,
-                                      VariationalAutoencoder)
+                                      VariationalAutoencoder,
+                                      TemporalCPC)
 
 
 def make_jt_configs(train_ex):
@@ -64,6 +65,22 @@ def make_jt_configs(train_ex):
         del _
 
     @train_ex.named_config
+    def repl_tcpc8():
+        # temporal cpc (8 steps)
+        repl = {
+            'algo': TemporalCPC,
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 8,
+                },
+            },
+        }
+        repl_weight = 1.0
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
     def env_use_magical():
         env_cfg = {
             'benchmark_name': 'magical',
@@ -99,6 +116,22 @@ def make_jt_configs(train_ex):
             train_ex.add_named_config(
                 f'repl_data_{prefix_lower}_demos_test', {
                     'repl': {
+                        'dataset_configs':
+                        [{
+                            'type': 'demos',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            },
+                        } for tn in
+                         [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']]
+                    }
+                })
+
+            # similar, but for BC rather than repL
+            train_ex.add_named_config(
+                f'bc_data_{prefix_lower}_demos_test', {
+                    'bc': {
                         'dataset_configs':
                         [{
                             'type': 'demos',
