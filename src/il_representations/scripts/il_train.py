@@ -353,17 +353,17 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
 
 
 @il_train_ex.capture
-def _gail_should_freeze(thing, *, freeze_encoder, gail):
+def _gail_should_freeze(pol_or_disc, *, freeze_encoder, gail):
     """Determine whether we should freeze policy/discriminator. There's a
     root-level freeze_encoder setting in il_train, but we can override it with
     gail.freeze_{pol,disc}_encoder (if those are not None)."""
-    assert thing in ('pol', 'disc')
-    specific_freeze_name = f'freeze_{thing}_encoder'
+    assert pol_or_disc in ('pol', 'disc')
+    specific_freeze_name = f'freeze_{pol_or_disc}_encoder'
     specific_freeze = gail[specific_freeze_name]
     if specific_freeze is not None and specific_freeze != freeze_encoder:
         logging.warning(f"Overriding global freeze_encoder={freeze_encoder} "
                         f"with {specific_freeze_name}={specific_freeze} for "
-                        f"{thing}")
+                        f"{pol_or_disc}")
         return specific_freeze
     return freeze_encoder
 
