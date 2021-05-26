@@ -264,6 +264,10 @@ def load_sacred_pickle(fp, **kwargs):
 
 def save_repl_batches(*, dest_dir, detached_debug_tensors, batches_trained,
                       color_space, save_video=False):
+    """Save batches of data produced by the innards of a
+    `RepresentationLearner`. Tries to save in the easiest-to-open format (e.g.
+    image files for things that look like images, pickles for 1D tensors,
+    etc.)."""
     os.makedirs(dest_dir, exist_ok=True)
 
     # now loop over items and save using appropriate format

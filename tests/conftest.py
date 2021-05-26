@@ -1,4 +1,4 @@
-"""Fixtures for pytest."""
+"""Fixtures for pytest (see https://docs.pytest.org/en/6.2.x/fixture.html)."""
 import pytest
 from sacred.observers import FileStorageObserver
 

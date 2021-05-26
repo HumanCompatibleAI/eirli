@@ -77,6 +77,7 @@ def repl_defaults():
 @repl_ingredient.capture
 def _repl_dummy(dataset_configs, algo_params):
     # DO NOT REMOVE THIS, REMOVING IT WILL BREAK SACRED
+    # (see docstring for il_train._bc_dummy for explanation)
     pass
 
 
@@ -105,6 +106,7 @@ def bc_defaults():
 @bc_ingredient.capture
 def _bc_dummy(dataset_configs, augs):
     # DO NOT REMOVE THIS, REMOVING IT WILL BREAK SACRED
+    # (see docstring for il_train._bc_dummy for explanation)
     pass
 
 
@@ -184,6 +186,25 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
     return stats
 
 
+def deduplicate_params(*params_iters, check_dedup=True):
+    """Combines a series of iterators over model parameters into a single list
+    of deduplicated parameters."""
+    params_set = set()
+    params_list_dedup = []
+    n_params_dup = 0
+    for params_iter in params_iters:
+        for param in params_iter:
+            n_params_dup += 1
+            if param not in params_set:
+                params_list_dedup.append(param)
+                params_set.add(param)
+    if check_dedup:
+        assert len(params_list_dedup) < n_params_dup, \
+            "After param deduplication, the number of parameters did not " \
+            "drop. Is the encoder actually shared?"
+    return params_list_dedup
+
+
 @train_ex.capture
 def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                   bc_dataset, n_batches, optimizer_cls, optimizer_kwargs,
@@ -204,18 +225,9 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         shuffle_buffer_size=shuffle_buffer_size)
 
     # optimizer and LR scheduler
-    params_list = list(repl_learner.all_trainable_params()) \
-        + list(bc_learner.all_trainable_params())
-    params_set = set()
-    params_list_dedup = []
-    for param in params_list:
-        if param not in params_set:
-            params_list_dedup.append(param)
-            params_set.add(param)
-    assert len(params_list_dedup) < len(params_list), \
-        "After param deduplication, the number of parameters did not drop. " \
-        "Is the encoder actually shared?"
-    del params_list, params_set
+    params_list_dedup = deduplicate_params(
+        repl_learner.all_trainable_params(),
+        bc_learner.all_trainable_params())
     optimizer = optimizer_cls(params_list_dedup, **optimizer_kwargs)
 
     timers = Timers()
@@ -235,7 +247,7 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             bc_batch = next(bc_data_iter)
             bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
             repl_batch = next(repl_data_iter)
-            repl_loss, detached_debug_tensors = repl_learner.batch_forward(
+            repl_loss, repl_debug_tensors = repl_learner.batch_forward(
                 repl_batch)
             composite_loss = bc_loss + repl_weight * repl_loss
             optimizer.zero_grad()
@@ -244,7 +256,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
 
         # model saving
         is_last_batch = batch_num == n_batches - 1
-        if batch_num % model_save_interval == 0 or is_last_batch:
+        should_save_model = batch_num % model_save_interval == 0
+        if should_save_model or is_last_batch:
             with timers.time('model_save'):
                 logging.info(
                     f"Saving model to '{save_dir}' (batch#={batch_num})")
@@ -258,20 +271,22 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                 th.save(optimizer, opt_path)
 
         # repl batch saving
-        if batch_num % repl['batch_save_interval'] == 0 or is_last_batch:
+        should_save_repl_batch = batch_num % repl['batch_save_interval'] == 0
+        if should_save_repl_batch or is_last_batch:
             with timers.time('repl_batch_save'):
                 repl_batch_save_dir = log_dir_path / 'repl_batch_saves'
                 logging.info(f"Saving repL batches to {repl_batch_save_dir} "
                              f"(batch#={batch_num})")
                 save_repl_batches(
                     dest_dir=repl_batch_save_dir,
-                    detached_debug_tensors=detached_debug_tensors,
+                    detached_debug_tensors=repl_debug_tensors,
                     batches_trained=batch_num,
                     color_space=auto.load_color_space(),
                     save_video=False)
 
         # occasional eval
-        if batch_num % bc['short_eval_interval'] == 0:
+        should_do_short_eval = batch_num % bc['short_eval_interval'] == 0
+        if should_do_short_eval:
             with timers.time('short_eval'):
                 short_eval_n_traj = bc['short_eval_n_traj']
                 logging.info(f"Evaluating {short_eval_n_traj} trajectories "
@@ -281,7 +296,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                                                   n_rollouts=short_eval_n_traj)
 
         # logging
-        if batch_num % log_calc_interval == 0:
+        should_log_values = batch_num % log_calc_interval == 0
+        if should_log_values:
             grad_norm, weight_norm = weight_grad_norms(params_list_dedup)
             im_log.sb_logger.record_mean('all_loss', composite_loss.item())
             im_log.sb_logger.record_mean('bc_loss', bc_loss.item())
@@ -303,7 +319,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                 im_log.sb_logger.record('t_mean_' + k, v['mean'])
                 im_log.sb_logger.record('t_max_' + k, v['max'])
 
-        if batch_num % log_dump_interval == 0:
+        should_dump_logs = batch_num % log_dump_interval == 0
+        if should_dump_logs:
             im_log.dump(step=batch_num)
 
     # return final saved policy path
