@@ -51,7 +51,7 @@ def default_config():
     video_file_name = "rollouts.mp4"
 
     # How many ckpts to test?
-    num_test_ckpts = 1
+    num_test_ckpts = 20
 
     _ = locals()
     del _
