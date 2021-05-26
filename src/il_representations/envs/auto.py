@@ -6,8 +6,10 @@ import logging
 import os
 
 from imitation.util.util import make_vec_env
+from procgen import ProcgenEnv
 from stable_baselines3.common.atari_wrappers import AtariWrapper
-from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
+from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage, \
+SubprocVecEnv
 
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.data.read_dataset import load_ilr_datasets
@@ -22,7 +24,9 @@ from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
 from il_representations.envs.procgen_envs import (load_dataset_procgen,
-                                                  get_procgen_env_name)
+                                                  get_procgen_env_name,
+                                                  VecExtractDictObs,
+                                                  VecMonitor)
 from il_representations.scripts.utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
@@ -105,7 +109,7 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
     elif benchmark_name == 'procgen':
-        return get_procgen_env_name()
+        return task_name
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -171,10 +175,14 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
     elif benchmark_name == 'procgen':
-        raw_procgen_env = make_vec_env(gym_env_name,
-                                       n_envs=n_envs,
-                                       parallel=venv_parallel,
-                                       parallel_workers=parallel_workers)
+        raw_procgen_env = ProcgenEnv(num_envs=1,
+                                     env_name=gym_env_name,
+                                     num_levels=100,
+                                     start_level=200,
+                                     distribution_mode='easy')
+        raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
+        raw_procgen_env = VecMonitor(venv=raw_procgen_env, filename=None,
+                                            keep_buf=100)
         final_env = VecFrameStack(VecTransposeImage(raw_procgen_env),
                                   procgen_frame_stack)
         assert final_env.observation_space.shape == (12, 64, 64), \
