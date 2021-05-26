@@ -420,8 +420,7 @@ def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir,
                                  'il_train')
-    il_policy_dir = os.path.join(il_train_rv['result']['model_path'].parent.absolute(),
-                                 'snapshot')
+    il_policy_dir = os.path.dirname(il_train_rv['result']['model_path'])
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
