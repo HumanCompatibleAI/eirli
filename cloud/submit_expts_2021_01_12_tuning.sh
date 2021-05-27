@@ -6,7 +6,7 @@ base_cfgs=("cfg_base_skopt_4cpu_pt3gpu_no_retry" "icml_tuning")
 cluster_cfg_path="./gcp_cluster_sam.yaml"
 tuning_configs=("tune_ceb" "tune_momentum" "main_contrastive_tuning" "tune_vae" "tune_projection_heads")
 dmc_envs=("finger-spin" "cheetah-run")
-magical_envs=("MatchRegions" "MoveToRegion")
+magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0")
 
 submit_expt() {
     # submit experiment to cluster using given args

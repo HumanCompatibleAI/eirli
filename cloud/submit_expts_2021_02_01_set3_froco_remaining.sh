@@ -9,7 +9,7 @@ declare -a non_control_configs=("icml_inv_dyn" "icml_dynamics" "icml_ac_tcpc"
                                 "icml_identity_cpc" "icml_vae")
 declare -a control_configs=("control_ortho_init" "control_no_ortho_init")
 declare -a dmc_envs=("finger-spin" "cheetah-run")
-declare -a magical_envs=("MatchRegions" "MoveToRegion")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0")
 declare -a dmc_dataset_configs=("cfg_data_repl_demos_random" "cfg_data_repl_random")
 declare -a mg_dataset_configs=("cfg_data_repl_demos_random" "cfg_data_repl_random"
                                "cfg_data_repl_demos_magical_mt"
