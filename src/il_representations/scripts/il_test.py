@@ -210,7 +210,6 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
                 if write_video:
                     assert len(trajectories) > 0
-                    # write the trajectories in sequence
 
                     policy_filename = policy_path.split('/')[-1].split('.')[0]
                     video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
@@ -218,6 +217,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                     video_writer = TensorFrameWriter(video_fp.name,
                                                      color_space=auto.load_color_space())
 
+                    # write the trajectories in sequence
                     for traj in trajectories:
                         for step_tensor in traj.obs:
                             video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
