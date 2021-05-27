@@ -7,7 +7,7 @@ from ray import tune
 
 from il_representations import algos
 from il_representations.envs import auto
-from il_representations.scripts.utils import StagesToRun, ReuseRepl
+from il_representations.script_utils import ReuseRepl, StagesToRun
 from il_representations.test_support.configuration import (
     CHAIN_CONFIG, CHAIN_CONFIG_SKOPT, ENV_CFG_TEST_CONFIGS)
 from il_representations.test_support.utils import files_are_identical
@@ -32,8 +32,10 @@ def test_all_benchmarks(chain_ex, file_observer, env_cfg):
 
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     # don't search over representation learner
+    # pytype: disable=unsupported-operands
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
+    # pytype: enable=unsupported-operands
     # try just this benchmark
     chain_config['spec']['env_cfg'] = tune.grid_search([env_cfg])
     try:
@@ -48,8 +50,10 @@ def test_individual_stages(chain_ex, file_observer, stages):
     # test just doing IL, just doing REPL, etc.
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     # again, don't search over representation learner
+    # pytype: disable=unsupported-operands
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
+    # pytype: enable=unsupported-operands
     chain_config['stages_to_run'] = stages
     try:
         chain_ex.run(config_updates=chain_config)
@@ -110,8 +114,10 @@ def test_repl_reuse(chain_ex):
 
     chain_config = copy.deepcopy(CHAIN_CONFIG)
     chain_config['reuse_repl'] = ReuseRepl.IF_AVAILABLE
+    # pytype: disable=unsupported-operands
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
+    # pytype: enable=unsupported-operands
     random_id = round(time())
 
     chain_config['repl']['exp_ident'] = random_id
@@ -125,7 +131,9 @@ def test_repl_reuse(chain_ex):
     assert second_was_reused and not first_was_reused
 
     modified_config = copy.deepcopy(chain_config)
+    # pytype: disable=unsupported-operands
     modified_config['spec']['repl']['seed'] = tune.grid_search([42])
+    # pytype: enable=unsupported-operands
     third_encoder_path, third_was_reused = _do_chain_run(chain_ex, modified_config)
 
     assert not files_are_identical(third_encoder_path, first_encoder_path)
@@ -151,6 +159,6 @@ def test_hash_config():
                                            "identical config dict do not match"
     assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \
                                               "hash_config result in identical hashes"
-    assert config_hash_1 == '1b88af9e0bdc4a254d5c186fc2931e10', "Hash differs from that on canonical testing machine; " \
+    assert config_hash_1 == 'f6537d94138b8ede0f442cc596648d42', "Hash differs from that on canonical testing machine; " \
                                                                 "either base config has been updated, or consistency" \
                                                                 "has broken"

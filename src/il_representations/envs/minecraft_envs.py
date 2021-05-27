@@ -1,3 +1,4 @@
+# pytype: skip-file
 import logging
 import os
 import time

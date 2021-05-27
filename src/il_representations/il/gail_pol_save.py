@@ -20,7 +20,7 @@ class GAILSavePolicyCallback:
         self.last_save_num_steps = None
         self.save_template = save_template
 
-    def __call__(self, rounds):
+    def __call__(self, *args):
         """This gets called after each 'round' (consisting of some
         generator updates followed by some discriminator updates)."""
         num_timesteps = self.ppo_algo.num_timesteps
