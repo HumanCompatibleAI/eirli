@@ -27,6 +27,5 @@ for test_config in "${testing_configs[@]}"; do
                     il_train.freeze_encoder=True \
                     tune_run_kwargs.num_samples=8 \
                     "env_cfg.task_name=MatchRegions"
-                    # "env_cfg.task_name=MoveToRegion"
     done
 done
