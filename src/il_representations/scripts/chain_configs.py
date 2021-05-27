@@ -216,7 +216,7 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                'finger-spin', 'cheetah-run', 'reacher-easy'
+                'finger-spin', 'cheetah-run',
             ]
             ]))
 
