@@ -355,7 +355,6 @@ def augmenter_from_spec(spec, color_space):
     """Construct an image augmentation module from an augmenter spec, expressed
     as either a string of comma-separated augmenter names, or a dict of kwargs
     for StandardAugmentations."""
-    # from il_representations.utils import augmenter_from_spec
     if isinstance(spec, str):
         return StandardAugmentations.from_string_spec(spec, color_space)
     elif isinstance(spec, dict):

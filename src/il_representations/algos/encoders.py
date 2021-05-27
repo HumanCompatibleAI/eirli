@@ -303,6 +303,7 @@ class Resnet18(tvm.resnet.ResNet):
 
         # copied from Torch resnet.py, modified to work with arbitrary number
         # of input channels
+        # (self._norm_layer is used by another method too)
         self._norm_layer = nn.BatchNorm2d
 
         self.inplanes = 64
