@@ -8,7 +8,7 @@ cluster_cfg_path="./gcp_cluster_sam.yaml"
 
 declare -a control_configs=("control_no_ortho_init")
 declare -a dmc_envs=("finger-spin" "cheetah-run")
-declare -a magical_envs=("MatchRegions" "MoveToRegion")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0")
 
 submit_expt() {
     # submit experiment to cluster using given args

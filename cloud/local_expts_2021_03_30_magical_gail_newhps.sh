@@ -1,16 +1,18 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "cfg_il_gail_magical_250k_nofreeze"
-           "tune_run_kwargs.num_samples=3"
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu"
+           "gail_mr_config_2021_03_29"
+           "tune_run_kwargs.num_samples=5"
+           "tune_run_kwargs.resources_per_trial.gpu=0.25"
            "ray_init_kwargs.address=localhost:42000")
 # declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "icml_identity_cpc" "icml_vae")
 # (dropping dynamics on the basis that it's probably testing something
 # ~identical to the VAE)
-declare -a repl_configs=("icml_inv_dyn" "icml_identity_cpc" "icml_vae")
+declare -a repl_configs=("icml_inv_dyn" "icml_identity_cpc" "icml_vae" "icml_dynamics")
 declare -a control_configs=("control_no_ortho_init")
-declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToCorner-Demo-v0")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToCorner-Demo-v0" "MoveToRegion-Demo-v0")
 # declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0" "MoveToCorner-Demo-v0")
 # declare -a mg_dataset_configs=("cfg_data_repl_random" "cfg_data_repl_rand_demos_magical_mt")
 declare -a mg_dataset_configs=("cfg_data_repl_rand_demos_magical_mt")

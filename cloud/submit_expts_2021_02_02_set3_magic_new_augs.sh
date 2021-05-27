@@ -12,7 +12,7 @@ declare -a control_configs=("control_ortho_init" "control_no_ortho_init")
 # Sam: skipping control_lsi_… configs because I don't expect them to make a difference.
 # (this hyperparameter is also only used in DMC)
 #                             "control_lsi_one" "control_lsi_zero")
-declare -a magical_envs=("MatchRegions" "MoveToRegion" "MoveToCorner")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0" "MoveToCorner-Demo-v0")
 declare -a mg_dataset_configs=("cfg_data_repl_demos_random" "cfg_data_repl_random"
                                "cfg_data_repl_demos_magical_mt" "cfg_data_repl_rand_demos_magical_mt")
 

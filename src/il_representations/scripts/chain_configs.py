@@ -1,6 +1,5 @@
 from il_representations.scripts.utils import StagesToRun
 from ray import tune
-# TODO(sam): GAIL configs
 
 
 def make_chain_configs(experiment_obj):
@@ -10,10 +9,10 @@ def make_chain_configs(experiment_obj):
         # see il_representations/envs/config for examples of what should go here
         env_cfg = {
             'benchmark_name': 'magical',
-            # MatchRegions is of intermediate difficulty
+            # MatchRegions-Demo-v0 is of intermediate difficulty
             # (TODO(sam): allow MAGICAL to load data from _all_ tasks at once, so
             # we can try multi-task repL)
-            'task_name': 'MatchRegions',
+            'task_name': 'MatchRegions-Demo-v0',
             # we really need magical_remove_null_actions=True for BC; for RepL it
             # shouldn't matter so much (for action-based RepL methods)
             'magical_remove_null_actions': False,
@@ -197,15 +196,15 @@ def make_chain_configs(experiment_obj):
                     'task_name': magical_env_name,
                     'magical_remove_null_actions': True,
                 } for magical_env_name in [
-                'MoveToCorner',
-                'MoveToRegion',
-                'FixColour',
-                'MatchRegions',
-                # 'FindDupe',
-                # 'MakeLine',
-                # 'ClusterColour',
-                # 'ClusterShape',
-            ]
+                    'MoveToCorner-Demo-v0',
+                    'MoveToRegion-Demo-v0',
+                    'FixColour-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    # 'FindDupe-Demo-v0',
+                    # 'MakeLine-Demo-v0',
+                    # 'ClusterColour-Demo-v0',
+                    # 'ClusterShape-Demo-v0',
+                ]
             ]))
 
         _ = locals()
@@ -247,8 +246,10 @@ def make_chain_configs(experiment_obj):
                     'task_name': magical_env_name,
                     'magical_remove_null_actions': True,
                 } for magical_env_name in [
-                'MoveToRegion', 'MatchRegions', 'MoveToCorner'
-            ]
+                    'MoveToRegion-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    'MoveToCorner-Demo-v0',
+                ]
             ]))
 
         _ = locals()
@@ -276,7 +277,7 @@ def make_chain_configs(experiment_obj):
         """Just one simple MAGICAL config."""
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MatchRegions',
+            'task_name': 'MatchRegions-Demo-v0',
             'magical_remove_null_actions': True,
         }
 
@@ -285,10 +286,10 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_bench_magical_mr():
-        """Bench on MAGICAL MatchRegions."""
+        """Bench on MAGICAL MatchRegions-Demo-v0."""
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MatchRegions',
+            'task_name': 'MatchRegions-Demo-v0',
             'magical_remove_null_actions': True,
         }
 
@@ -297,10 +298,10 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_bench_magical_mtc():
-        """Bench on MAGICAL MoveToCorner."""
+        """Bench on MAGICAL MoveToCorner-Demo-v0."""
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MoveToCorner',
+            'task_name': 'MoveToCorner-Demo-v0',
             'magical_remove_null_actions': True,
         }
 
@@ -383,6 +384,16 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_repl_demos():
+        """Training on both demos and random rollouts for the current
+        environment."""
+        repl = {
+            'dataset_configs': [{'type': 'demos'}],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_demos_random():
         """Training on both demos and random rollouts for the current
         environment."""
@@ -425,14 +436,14 @@ def make_chain_configs(experiment_obj):
                         'task_name': magical_task_name,
                     }
                 } for magical_task_name in [
-                    'MoveToCorner',
-                    'MoveToRegion',
-                    'MatchRegions',
-                    'MakeLine',
-                    'FixColour',
-                    'FindDupe',
-                    'ClusterColour',
-                    'ClusterShape',
+                    'MoveToCorner-Demo-v0',
+                    'MoveToRegion-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    'MakeLine-Demo-v0',
+                    'FixColour-Demo-v0',
+                    'FindDupe-Demo-v0',
+                    'ClusterColour-Demo-v0',
+                    'ClusterShape-Demo-v0',
                 ]
             ],
             'is_multitask': True,
@@ -452,14 +463,123 @@ def make_chain_configs(experiment_obj):
                         'task_name': magical_task_name,
                     }
                 } for magical_task_name in [
-                    'MoveToCorner',
-                    'MoveToRegion',
-                    'MatchRegions',
-                    'MakeLine',
-                    'FixColour',
-                    'FindDupe',
-                    'ClusterColour',
-                    'ClusterShape',
+                    'MoveToCorner-Demo-v0',
+                    'MoveToRegion-Demo-v0',
+                    'MatchRegions-Demo-v0',
+                    'MakeLine-Demo-v0',
+                    'FixColour-Demo-v0',
+                    'FindDupe-Demo-v0',
+                    'ClusterColour-Demo-v0',
+                    'ClusterShape-Demo-v0',
+                ]
+                for dataset_type in ["demos", "random"]
+            ],
+            'is_multitask': True,
+        }
+        _ = locals()
+        del _
+
+    # Adding configs programatically like this seems like a terrible idea, but
+    # I don't care
+    def _():
+        for task_name in [
+                'MoveToCorner-Demo-v0', 'MoveToRegion-Demo-v0',
+                'MatchRegions-Demo-v0', 'MakeLine-Demo-v0',
+                'FixColour-Demo-v0', 'FindDupe-Demo-v0',
+                'ClusterColour-Demo-v0', 'ClusterShape-Demo-v0'
+        ]:
+            prefix = task_name.split('-')[0]
+            prefix_lower = prefix.lower()
+
+            # this namedconfig is to train on demos from both demo variant and
+            # test variant
+            experiment_obj.add_named_config(
+                f'cfg_data_repl_{prefix_lower}_demos_magical_test', {
+                    'repl': {
+                        'dataset_configs':
+                        [{
+                            'type': 'demos',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            },
+                        } for tn in
+                         [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']]
+                    }
+                })
+
+            # this named config is to train on both demos and random rollouts,
+            # each taken from both demo and test variant (i.e. we train on
+            # everything related to this task)
+            experiment_obj.add_named_config(
+                f'cfg_data_repl_{prefix_lower}_rand_demos_magical_test', {
+                    'repl': {
+                        'dataset_configs':
+                        [{
+                            'type': data_type,
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            }
+                        } for tn in
+                         [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']
+                         for data_type in ['demos', 'random']]
+                    }
+                })
+
+            # here we train on demos from the demo variant, along with random
+            # rollouts from both the demo variant and from test variants
+            experiment_obj.add_named_config(
+                (f'cfg_data_repl_{prefix_lower}_test_demos_and_all_random'
+                 '_rollouts'), {
+                    'repl': {
+                        'dataset_configs': [{
+                            'type': 'demos',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': task_name,
+                            }
+                        }] + [{
+                            'type': 'random',
+                            'env_cfg': {
+                                'benchmark_name': 'magical',
+                                'task_name': tn,
+                            }
+                        } for tn in
+                              [f'{prefix}-Demo-v0', f'{prefix}-TestAll-v0']]
+                    }
+                })
+
+            _ = locals()
+            del _
+
+    # call fn above & then delete it (avoids polluting namespace of this outer
+    # fn)
+    _()
+    del _
+
+    @experiment_obj.named_config
+    def cfg_data_repl_rand_demos_magical_mt_test():
+        """Multi-task training on all MAGICAL tasks."""
+        repl = {
+            'dataset_configs': [
+                {
+                    'type': dataset_type,
+                    'env_cfg': {
+                        'benchmark_name': 'magical',
+                        'task_name': magical_task_name,
+                    }
+                }
+                for variant in ['Demo', 'TestAll']
+                for magical_task_name in [
+                    f'MoveToCorner-{variant}-v0',
+                    f'MoveToRegion-{variant}-v0',
+                    f'MatchRegions-{variant}-v0',
+                    f'MakeLine-{variant}-v0',
+                    f'FixColour-{variant}-v0',
+                    f'FindDupe-{variant}-v0',
+                    f'ClusterColour-{variant}-v0',
+                    f'ClusterShape-{variant}-v0',
                 ]
                 for dataset_type in ["demos", "random"]
             ],
@@ -610,22 +730,37 @@ def make_chain_configs(experiment_obj):
             'algo': 'gail',
             'gail': {
                 # These HP values based on defaults in il_train.py as of
-                # 2020-02-01 (which I believe I had already tuned for MAGICAL)
+                # 2021-02-01 (which I believe I had already tuned for MAGICAL)
+                # Update 2021-03-17: looks like those didn't work; now trying
+                # hyperparams that I used for tuning (which were surprisingly
+                # good).
+                # Update 2021-03-19: updating these AGAIN to match best run
+                # during MatchRegions tuning. Still NFI why this is so hard to
+                # train :(
+                # (current hypothesis: the HPs don't really matter, but the
+                # fact that I'm only using 5 trajectories is killing
+                # performance)
                 'total_timesteps': 250000,
-                'ppo_n_steps': 8,
-                'ppo_n_epochs': 12,
-                'ppo_batch_size': 64,
-                'ppo_init_learning_rate': 6e-5,
-                'ppo_gamma': 0.8,
-                'ppo_gae_lambda': 0.8,
-                'ppo_ent': 1e-5,
-                'ppo_adv_clip': 0.01,
-                'disc_n_updates_per_round': 12,
+                'ppo_n_steps': 5,
+                'ppo_n_epochs': 10,
+                'ppo_batch_size': 48,
+                'ppo_init_learning_rate': 8.87e-5,
+                'ppo_final_learning_rate': 0.0,
+                'ppo_gamma': 0.99,
+                'ppo_gae_lambda': 0.70,
+                'ppo_ent': 1.5e-7,
+                'ppo_adv_clip': 0.037,
+                'disc_n_updates_per_round': 3,
                 'disc_batch_size': 48,
-                'disc_lr': 2.5e-5,
+                'disc_lr': 0.001,
                 'disc_augs': {
-                    'rotate': True,
+                    'color_jitter_mid': False,
+                    'erase': True,
+                    # this looks a bit sus (but still leaving it in)
+                    'flip_lr': True,
+                    'gaussian_blur': True,
                     'noise': True,
+                    'rotate': False,
                     'translate': True,
                 }
             },
@@ -682,6 +817,65 @@ def make_chain_configs(experiment_obj):
             'n_envs': 32,
             'venv_parallel': True,
             'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def gail_mr_config_2021_03_29():
+        """500k-step GAIL config tuned (and tested) for MatchRegions. Should get
+        between ~0.42 and ~0.49 mean score (averaged across all variants)."""
+        il_train = {
+            "algo": "gail",
+            "dataset_configs": [{"type": "demos"}],
+            "freeze_encoder": False,
+            "gail": {
+                "disc_augs": {
+                    "color_jitter_mid": True,
+                    "erase": True,
+                    "flip_lr": True,
+                    "gaussian_blur": True,
+                    "noise": True,
+                    "rotate": True,
+                    "translate_ex": False
+                },
+                "disc_batch_size": 48,
+                "disc_lr": 0.0005718485231390044,
+                "disc_n_updates_per_round": 2,
+                "log_interval_steps": 10000,
+                "ppo_adv_clip": 0.006035475207613115,
+                "ppo_batch_size": 48,
+                "ppo_clip_reward": float('inf'),
+                "ppo_ent": 4.5401344442176644e-08,
+                "ppo_final_learning_rate": 0.0,
+                "ppo_gae_lambda": 0.7648620566937083,
+                "ppo_gamma": 0.9853500136087187,
+                "ppo_init_learning_rate": 0.00025070798829149955,
+                "ppo_max_grad_norm": 1.0,
+                "ppo_n_epochs": 7,
+                "ppo_n_steps": 7,
+                "ppo_norm_reward": True,
+                "ppo_reward_std": 0.01,
+                "save_every_n_steps": 10000000000,
+                "total_timesteps": 500000
+            },
+            "log_std_init": 0.0,
+            "ortho_init": False,
+            "postproc_arch": [],
+            "print_policy_summary": True,
+            "shuffle_buffer_size": 1024,
+            "torch_num_threads": 1
+        }
+        env_cfg = {
+            "benchmark_name": "magical",
+            "task_name": "MatchRegions-Demo-v0"
+        }
+        venv_opts = {
+            # FIXME(sam): figure out whether having only 8 procs (instead of
+            # 32) crashes perf---might be a bug in my env stuff
+            "n_envs": 32,
+            "venv_parallel": True
         }
 
         _ = locals()

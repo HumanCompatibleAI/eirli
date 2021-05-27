@@ -24,6 +24,6 @@ for test_config in "${testing_configs[@]}"; do
                     "$test_config" "$mg_dataset_config" cfg_il_bc_20k_nofreeze  \
                     il_train.freeze_encoder=True \
                     exp_ident="froco_${test_config}_${mg_dataset_config}" \
-                    "env_cfg.task_name=MoveToRegion"
+                    "env_cfg.task_name=MoveToRegion-Demo-v0"
     done
 done

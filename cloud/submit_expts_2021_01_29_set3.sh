@@ -15,7 +15,7 @@ declare -a testing_configs=("icml_inv_dyn" "icml_dynamics" "icml_ac_tcpc"
 
 declare -a dmc_envs=("finger-spin" "cheetah-run")
 
-declare -a magical_envs=("MatchRegions" "MoveToRegion")
+declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0")
 
 declare -a dmc_dataset_configs=("cfg_data_repl_demos_random" "cfg_data_repl_random")
 
