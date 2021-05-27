@@ -1,6 +1,7 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
-from collections.abc import Sequence, Mapping, Iterable
+from collections.abc import Iterable, Mapping, Sequence
+import contextlib
 import functools
 import hashlib
 import json
@@ -10,11 +11,13 @@ import pdb
 import pickle
 import re
 import sys
+import time
+from typing import Dict, List
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
-from scipy.stats import gmean
+import numpy as np
 from skvideo.io import FFmpegWriter
 import torch as th
 from torchsummary import summary
@@ -211,7 +214,8 @@ class TensorFrameWriter:
             "cannot __enter__ this again once it is closed"
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
+        # this fn receives args exc_type, exc_val, exc_tb (but all are unused)
         self.close()
 
     def close(self):
@@ -258,10 +262,62 @@ def load_sacred_pickle(fp, **kwargs):
     return SacredUnpickler(fp, **kwargs).load()
 
 
+def save_repl_batches(*, dest_dir, detached_debug_tensors, batches_trained,
+                      color_space, save_video=False):
+    """Save batches of data produced by the innards of a
+    `RepresentationLearner`. Tries to save in the easiest-to-open format (e.g.
+    image files for things that look like images, pickles for 1D tensors,
+    etc.)."""
+    os.makedirs(dest_dir, exist_ok=True)
+
+    # now loop over items and save using appropriate format
+    for save_name, save_value in (detached_debug_tensors.items()):
+        if isinstance(save_value, th.distributions.Distribution):
+            # take sample instead of mean so that we can see noise
+            save_value = save_value.sample()
+        if th.is_tensor(save_value):
+            save_value = save_value.detach().cpu()
+
+        # heuristic to check if this is an image
+        probably_an_image = th.is_tensor(save_value) \
+            and save_value.ndim == 4 \
+            and save_value.shape[-2] == save_value.shape[-1]
+        clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
+        save_prefix = f'{clean_save_name}_{batches_trained:06d}'
+        save_path_no_suffix = os.path.join(dest_dir, save_prefix)
+
+        if probably_an_image:
+            # probably an image
+            save_path = save_path_no_suffix + '.png'
+            # save as image
+            save_image = save_value.float().clamp(0, 1)
+
+            # Save decoded contexts as videos
+            if save_video:
+                video_out_path = save_path_no_suffix + '.mp4'
+                video_writer = TensorFrameWriter(
+                    video_out_path, color_space=color_space)
+                for image in save_image:
+                    image = image_tensor_to_rgb_grid(image, color_space)
+                    video_writer.add_tensor(image)
+                video_writer.close()
+
+            as_rgb = image_tensor_to_rgb_grid(save_image, color_space)
+            save_rgb_tensor(as_rgb, save_path)
+        else:
+            # probably not an image
+            save_path = save_path_no_suffix + '.pt'
+            # will save with Torch's generic serialisation code
+            th.save(save_value, save_path)
+
+
 class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
-    def __init__(self, save_interval_batches, dest_dir, color_space,
+    def __init__(self,
+                 save_interval_batches,
+                 dest_dir,
+                 color_space,
                  save_video=False):
         self.save_interval_batches = save_interval_batches
         self.dest_dir = dest_dir
@@ -279,54 +335,12 @@ class RepLSaveExampleBatchesCallback:
             return
         self.last_save = batches_trained
 
-        os.makedirs(self.dest_dir, exist_ok=True)
-
-        # now loop over items and save using appropriate format
-        to_save = [
-            'contexts', 'targets', 'extra_context', 'encoded_contexts',
-            'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
-            'decoded_targets', 'traj_ts_info', 'raw_contexts', 'raw_targets',
-        ]
-
-        for save_name in to_save:
-            save_value = repl_locals[save_name]
-
-            if isinstance(save_value, th.distributions.Distribution):
-                # take sample instead of mean so that we can see noise
-                save_value = save_value.sample()
-            if th.is_tensor(save_value):
-                save_value = save_value.detach().cpu()
-
-            # heuristic to check if this is an image
-            probably_an_image = th.is_tensor(save_value) \
-                and save_value.ndim == 4 \
-                and save_value.shape[-2] == save_value.shape[-1]
-            clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
-            save_prefix = f'{clean_save_name}_{batches_trained:06d}'
-            save_path_no_suffix = os.path.join(self.dest_dir, save_prefix)
-
-            if probably_an_image:
-                # probably an image
-                save_path = save_path_no_suffix + '.png'
-                # save as image
-                save_image = save_value.float().clamp(0, 1)
-
-                # Save decoded contexts as videos
-                if self.save_video:
-                    video_out_path = save_path_no_suffix + '.mp4'
-                    video_writer = TensorFrameWriter(video_out_path, color_space=self.color_space)
-                    for image in save_image:
-                        image = image_tensor_to_rgb_grid(image, self.color_space)
-                        video_writer.add_tensor(image)
-                    video_writer.close()
-
-                as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
-                save_rgb_tensor(as_rgb, save_path)
-            else:
-                # probably not an image
-                save_path = save_path_no_suffix + '.pt'
-                # will save with Torch's generic serialisation code
-                th.save(save_value, save_path)
+        save_repl_batches(
+            dest_dir=self.dest_dir,
+            detached_debug_tensors=repl_locals['detached_debug_tensors'],
+            batches_trained=batches_trained,
+            color_space=self.color_space,
+            save_video=self.save_video)
 
 
 class SigmoidRescale(th.nn.Module):
@@ -437,3 +451,122 @@ class SacredProofTuple(Sequence):
 
     def __repr__(self):
         return 'NotATuple' + repr(self._elems)
+
+
+def weight_grad_norms(params, *, norm_type=2):
+    """Calculate the gradient norm and the weight norm of the policy network.
+
+    Adapted from `BC._calculate_policy_norms` in imitation.
+
+    Args:
+        params: list of Torch parameters to compute norm of
+        norm_type: order of the norm (1, 2, etc.).
+
+    Returns:
+        gradient_norm: norm of the gradient of the policy network (stored in
+            each parameter's .grad attribute)
+        weight_norm: norm of the weights of the policy network
+    """
+    norm_type = float(norm_type)
+
+    gradient_parameters = [p for p in params if p.grad is not None]
+    stacked_gradient_norms = th.stack(
+        [th.norm(p.grad.detach(), norm_type) for p in gradient_parameters])
+    stacked_weight_norms = th.stack(
+        [th.norm(p.detach(), norm_type) for p in params])
+
+    gradient_norm = th.norm(stacked_gradient_norms, norm_type).cpu().numpy()
+    weight_norm = th.norm(stacked_weight_norms, norm_type).cpu().numpy()
+
+    return gradient_norm, weight_norm
+
+
+class Timers:
+    """Wrapper for a collection of timers.
+
+    Usage: call `.start("some_name_for_op")` before doing the operation you
+    want to time, then `.stop("some_name_for_op")` immediately afterward. Doing
+    `.dump_stats()` will compute statistics for recorded times under all names
+    (e.g. "some_name_for_op" and any other names you use)."""
+    def __init__(self):
+        self.last_start: Dict[str, float] = {}
+        self.records: Dict[str, List[float]] = {}
+
+    @contextlib.contextmanager
+    def time(self, timer_name):
+        """Time 'with' block body."""
+        try:
+            self.start(timer_name)
+            yield self
+        finally:
+            self.stop(timer_name)
+
+    def start(self, name: str) -> None:
+        """Start a timer."""
+        if name in self.last_start:
+            raise ValueError(
+                f"Tried to do .start({name!r}), but {name!r} is still "
+                "running; should .stop() it first.")
+
+        self.last_start[name] = time.monotonic()
+
+    def stop(self, name: str, *, check_running=True) -> None:
+        """Stop a timer."""
+        if name not in self.last_start:
+            if check_running:
+                raise ValueError(
+                    f"Tried to .stop({name!r}), but {name!r} is not running")
+            else:
+                return
+
+        elapsed = time.monotonic() - self.last_start[name]
+
+        # clear running timer
+        del self.last_start[name]
+
+        self.records.setdefault(name, []).append(elapsed)
+
+    def dump_stats(self, *, check_running=True, reset=True) \
+            -> Dict[str, Dict[str, float]]:
+        """Clear all timer records and return a nested dictionary of stats.
+        Keys at top level of dict are timer names, keys at second level are
+        stat names (min/mean/max/std), and values at second level are just
+        floats."""
+        if len(self.last_start) > 0 and check_running:
+            raise ValueError(
+                "Tried to .dump_stats() with timers still running: "
+                f"{list(self.last_start.keys())}")
+
+        rv = collections.OrderedDict()
+        for name, values in sorted(self.records.items()):
+            rv[name] = collections.OrderedDict()
+            for stat, stat_fn in [('min', np.min), ('max', np.max),
+                                  ('mean', np.mean), ('std', np.std)]:
+                rv[name][stat] = stat_fn(values)
+
+        if reset:
+            # clear saved times, but not running timers
+            self.records = {}
+
+        return rv
+
+    def reset(self):
+        """Clear all running timers and all saved times."""
+        self.records = {}
+        self.last_start = {}
+
+
+class EmptyIteratorException(Exception):
+    """Raised when a function is incorrectly passed an empty iterator."""
+
+
+def repeat_chain_non_empty(iterable):
+    """Equivalent to itertools.chain.from_iterable(itertools.repeat(iterator)),
+    but checks that iterator is non-empty."""
+    while True:
+        yielded_item = False
+        for item in iterable:
+            yield item
+            yielded_item = True
+        if not yielded_item:
+            raise EmptyIteratorException(f"iterable {iterable} was empty")

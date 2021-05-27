@@ -21,6 +21,7 @@ from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
 import torch as th
 from torch import nn
+from torch.optim.adam import Adam
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
@@ -33,6 +34,7 @@ from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
+from il_representations.il.utils import add_infos, streaming_extract_keys
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 from il_representations.utils import (augmenter_from_spec, freeze_params,
                                       print_policy_info)
@@ -48,7 +50,7 @@ def bc_defaults():
     log_interval = 500
     batch_size = 32
     save_every_n_batches = None
-    optimizer_cls = th.optim.Adam
+    optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
     lr_scheduler_kwargs = None
@@ -280,20 +282,6 @@ def make_policy(*,
     return policy
 
 
-def streaming_extract_keys(*keys_to_keep):
-    """Filter a generator of dicts to keep only the specified keys."""
-    def gen(data_iter):
-        for data_dict in data_iter:
-            yield {k: data_dict[k] for k in keys_to_keep}
-    return gen
-
-
-def add_infos(data_iter):
-    """Add a dummy 'infos' value to each dict in a data stream."""
-    for data_dict in data_iter:
-        yield {'infos': {}, **data_dict}
-
-
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                    device_name, final_pol_name, shuffle_buffer_size,
@@ -305,16 +293,24 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
     # build dataset in the format required by imitation
+    nom_num_epochs = bc['nominal_num_epochs']
+    nom_num_batches = max(1, int(np.ceil(bc['n_batches'] / nom_num_epochs)))
     subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
-        nominal_length=int(np.ceil(
-            bc['batch_size'] * bc['n_batches']
-            / bc['nominal_num_epochs'])),
+        # we make nominal_length large enough that we don't have to re-init the
+        # dataset, and also make it a multiple of the batch size so that we
+        # don't have to care about the size of the last batch (so
+        # drop_last=True doesn't matter in theory)
+        nominal_length=bc['batch_size'] * nom_num_batches,
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[subdataset_extractor, streaming_extract_keys("obs", "acts")])
+        preprocessors=[
+            subdataset_extractor,
+            streaming_extract_keys("obs", "acts")
+        ],
+        drop_last=True)
 
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
@@ -527,15 +523,13 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
             final_path = do_training_bc(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir,
-                encoder=encoder)
+                out_dir=log_dir)
 
         elif algo == 'gail':
             final_path = do_training_gail(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir,
-                encoder=encoder)
+                out_dir=log_dir)
 
         else:
             raise NotImplementedError(f"Can't handle algorithm '{algo}'")

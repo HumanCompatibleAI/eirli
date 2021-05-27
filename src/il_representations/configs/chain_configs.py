@@ -1,4 +1,4 @@
-from il_representations.scripts.utils import StagesToRun
+from il_representations.script_utils import StagesToRun
 from ray import tune
 
 

@@ -23,15 +23,14 @@ import skopt
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.scripts import experimental_conditions  # noqa: F401
-from il_representations.scripts.chain_configs import make_chain_configs
-from il_representations.scripts.hp_tuning import make_hp_tuning_configs
-from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
-from il_representations.scripts.icml_experiment_configs import make_dataset_experiment_configs
+from il_representations.configs.chain_configs import make_chain_configs
+from il_representations.configs.hp_tuning import make_hp_tuning_configs
+from il_representations.configs.icml_hp_tuning import make_icml_tuning_configs
+from il_representations.configs.icml_experiment_configs import make_dataset_experiment_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
-from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
+from il_representations.script_utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
 from il_representations.utils import hash_configs, up, WrappedConfig
 
 
@@ -67,7 +66,9 @@ def get_stages_to_run(stages_to_run):
     try:
         stage = StagesToRun(upper_str)
     except ValueError as ex:
+        # pytype: disable=missing-parameter
         options = [f"'{s.name}'" for s in StagesToRun]
+        # pytype: enable=missing-parameter
         raise ValueError(
             f"Could not convert '{stages_to_run}' to StagesToRun ({ex}). "
             f"Available options are {', '.join(options)}")

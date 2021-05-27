@@ -3,16 +3,20 @@ import logging
 import os
 import signal
 
+import imitation.util.logger as imitation_logger
 import numpy as np
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch
+from torch.optim.adam import Adam
 
 from il_representations import algos
 from il_representations.algos.representation_learner import \
     RepresentationLearner
-from il_representations.algos.utils import LinearWarmupCosine, set_global_seeds
+from il_representations.algos.utils import set_global_seeds
+from il_representations.configs.run_rep_learner_configs import \
+    make_run_rep_learner_configs
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
@@ -43,8 +47,6 @@ def default_config():
     torch_num_threads = 1
     algo_params = {
         'representation_dim': 128,
-        'optimizer': torch.optim.Adam,
-        'optimizer_kwargs': {'lr': 1e-4},
         'augmenter_kwargs': {
             # augmenter_spec is a comma-separated list of enabled
             # augmentations. Consult docstring for
@@ -55,6 +57,10 @@ def default_config():
         },
     }
     device = "auto"
+    optimizer_cls = Adam
+    optimizer_kwargs = {'lr': 1e-4}
+    scheduler_cls = None
+    scheduler_kwargs = {}
 
     # For repL, an 'epoch' is just a fixed number of batches, configured with
     # batches_per_epoch.
@@ -74,6 +80,10 @@ def default_config():
     # how often should we save repL batch data?
     # (set to None to disable completely)
     repl_batch_save_interval = 1000
+    # how often to dump logs (in #batches)
+    log_interval = 100
+    # how often to save checkpoints (in #batches)
+    save_interval = 1000
 
     # set this to True if you want repL encoder hashing to ignore env_cfg
     is_multitask = False
@@ -81,41 +91,6 @@ def default_config():
     # If True, return the representation model as `run.results['model']`.
     debug_return_model = False
 
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def cosine_warmup_scheduler():
-    algo_params = {
-        "scheduler": LinearWarmupCosine,
-        "scheduler_kwargs": {'warmup_epoch': 2, 'T_max': 10}
-    }
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def ceb_breakout():
-    env_id = 'BreakoutNoFrameskip-v4'
-    train_from_expert = True
-    algo = algos.FixedVarianceCEB
-    batches_per_epoch = 5
-    n_epochs = 1
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def expert_demos():
-    dataset_configs = [{'type': 'demos'}]
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-def random_demos():
-    dataset_configs = [{'type': 'random'}]
     _ = locals()
     del _
 
@@ -137,10 +112,13 @@ def config_specifies_task_name(dataset_config_dict):
     return 'task_name' in dataset_config_dict['env_cfg']
 
 
+make_run_rep_learner_configs(represent_ex)
+
 @represent_ex.main
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask,
-        debug_return_model, n_trajs, _config):
+        debug_return_model, optimizer_cls, optimizer_kwargs, scheduler_cls,
+        scheduler_kwargs, log_interval, save_interval, n_trajs, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
 
@@ -150,6 +128,7 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch.set_num_threads(torch_num_threads)
 
     logging.basicConfig(level=logging.INFO)
+    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
 
     # setup environment & dataset
     webdatasets, combined_meta = auto.load_wds_datasets(
@@ -163,7 +142,7 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         save_video = algo in ['Autoencoder', 'VariationalAutoencoder']
         print(f'In run_rep_learner, save_video={save_video}')
         return RepLSaveExampleBatchesCallback(
-            save_interval_batches=repl_batch_save_interval,
+            save_interval_batches=interval,
             dest_dir=os.path.join(log_dir, 'batch_saves'),
             color_space=color_space,
             save_video=save_video)
@@ -203,8 +182,6 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
     model = algo(
         observation_space=observation_space,
         action_space=action_space,
-        color_space=color_space,
-        log_dir=log_dir,
         **algo_params)
 
     # setup model
@@ -214,7 +191,15 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         n_epochs=n_epochs,
         n_trajs=n_trajs,
         callbacks=repl_callbacks,
-        end_callbacks=repl_end_callbacks)
+        log_dir=log_dir,
+        end_callbacks=repl_end_callbacks,
+        optimizer_cls=optimizer_cls,
+        optimizer_kwargs=optimizer_kwargs,
+        scheduler_cls=scheduler_cls,
+        scheduler_kwargs=scheduler_kwargs,
+        log_interval=log_interval,
+        save_interval=save_interval,
+    )
 
     result = {
         'encoder_path': most_recent_encoder_path,

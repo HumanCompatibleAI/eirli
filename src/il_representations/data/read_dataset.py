@@ -214,6 +214,10 @@ def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
     interleaved_dataset = InterleavedDataset(
         datasets, nominal_length=nominal_length)
 
+    assert not (drop_last and nominal_length < batch_size), \
+        f"dropping last batch when nominal_length ({nominal_length}) is " \
+        f"smaller than batch size ({batch_size}) will yield an empty dataset"
+
     dataloader = DataLoader(interleaved_dataset,
                             num_workers=max_workers,
                             batch_size=int(batch_size),

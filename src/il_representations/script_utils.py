@@ -1,6 +1,7 @@
 import collections
 import copy
 import enum
+from typing import TypeVar
 import urllib
 
 
@@ -34,7 +35,10 @@ def update(d, *updates):
     return d
 
 
-def sacred_copy(o):
+T = TypeVar('T')
+
+
+def sacred_copy(o: T) -> T:
     """Perform a deep copy on nested dictionaries and lists.
 
     If `d` is an instance of dict or list, copies `d` to a dict or list

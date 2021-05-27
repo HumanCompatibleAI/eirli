@@ -1,30 +1,32 @@
+"""
+Encoders conceptually serve as the bit of the representation learning
+architecture that learns the representation itself (except in RNN cases, where
+encoders only learn the per-frame representation).
+
+The only real complex thing to note here is the MomentumEncoder architecture,
+which creates two CNNEncoders, and updates weights of one as a slowly moving
+average of the other. Note that this bit of momentum is separated from the
+creation and filling of a queue of representations, which is handled by the
+BatchExtender module
+"""
+
 import copy
+import functools
+import inspect
 import os
 import traceback
 import warnings
-import inspect
-
-from torch.distributions import MultivariateNormal
-import numpy as np
-from stable_baselines3.common.preprocessing import preprocess_obs
-from torchvision.models.resnet import BasicBlock as BasicResidualBlock
-import torchvision.models as tvm
-import torch
-from torch import nn
-from pyro.distributions import Delta
 
 from gym import spaces
+import numpy as np
+from pyro.distributions import Delta
+from stable_baselines3.common.preprocessing import preprocess_obs
+import torch
+from torch import nn
+import torchvision.models as tvm
+from torchvision.models.resnet import BasicBlock as BasicResidualBlock
+
 from il_representations.algos.utils import independent_multivariate_normal
-import functools
-
-"""
-Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
-(except in RNN cases, where encoders only learn the per-frame representation). 
-
-The only real complex thing to note here is the MomentumEncoder architecture, which creates two CNNEncoders, 
-and updates weights of one as a slowly moving average of the other. Note that this bit of momentum is separated 
-from the creation and filling of a queue of representations, which is handled by the BatchExtender module 
-"""
 
 
 def compute_output_shape(observation_space, layers):
@@ -33,7 +35,8 @@ def compute_output_shape(observation_space, layers):
     # [None] adds a batch dimension to the random observation
     torch_obs = torch.tensor(observation_space.sample()[None])
     with torch.no_grad():
-        sample = preprocess_obs(torch_obs, observation_space, normalize_images=True)
+        sample = preprocess_obs(torch_obs, observation_space,
+                                normalize_images=True)
         for layer in layers:
             # forward prop to compute the right size
             sample = layer(sample)
@@ -103,7 +106,6 @@ def warn_on_non_image_tensor(x):
         do_warning(
             f"Input image tensor values have low stddev {std} (range "
             f"[{v_min}, {v_max}])")
-
 
 
 NETWORK_ARCHITECTURE_DEFINITIONS = {
@@ -193,7 +195,6 @@ class MAGICALCNN(nn.Module):
                  observation_space,
                  representation_dim,
                  use_bn=True,
-                 use_ln=False,
                  dropout=None,
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet-128',
@@ -214,33 +215,41 @@ class MAGICALCNN(nn.Module):
         if 'resnet' in arch_str:
             block = BasicResidualBlock
         for layer_definition in self.architecture_definition:
+            layer_stride = layer_definition['stride']
+            layer_out_dim = layer_definition['out_dim']
             if layer_definition.get('residual', False):
                 block_kwargs = {
-                    'stride': layer_definition['stride'],
+                    'stride': layer_stride,
                     'downsample': nn.Sequential(nn.Conv2d(in_dim,
-                                                          layer_definition['out_dim'],
+                                                          layer_out_dim,
                                                           kernel_size=1,
-                                                          stride=layer_definition['stride']),
-                                                nn.BatchNorm2d(layer_definition['out_dim']))
+                                                          stride=layer_stride),
+                                                nn.BatchNorm2d(layer_out_dim))
                 }
                 conv_layers += [block(in_dim,
-                                      layer_definition['out_dim'] * w,
+                                      layer_out_dim * w,
                                       **block_kwargs)]
             else:
+                # these asserts are to satisfy PyType, since not all
+                # NETWORK_ARCHITECTURE_DEFINITIONS have these two keys
+                assert 'padding' in layer_definition
+                assert 'kernel_size' in layer_definition
+                layer_padding = layer_definition['padding']
+                layer_kernel_size = layer_definition['kernel_size']
                 block_kwargs = {
-                    'stride': layer_definition['stride'],
-                    'kernel_size': layer_definition['kernel_size'],
-                    'padding': layer_definition['padding'],
+                    'stride': layer_stride,
+                    'kernel_size': layer_kernel_size,
+                    'padding': layer_padding,
                     'use_bn': use_bn,
                     'use_sn': use_sn,
                     'dropout': dropout,
                     'activation_cls': ActivationCls
                 }
                 conv_layers += block(in_dim,
-                                     layer_definition['out_dim'] * w,
+                                     layer_out_dim * w,
                                      **block_kwargs)
 
-            in_dim = layer_definition['out_dim']*w
+            in_dim = layer_out_dim*w
         if 'resnet' in arch_str:
             conv_layers.append(nn.Conv2d(in_dim, 32, 1))
         conv_layers.append(nn.Flatten())
@@ -520,9 +529,10 @@ class ActionEncodingEncoder(BaseEncoder):
     """
     def __init__(self, obs_space, representation_dim, action_space, learn_scale=False,
                  obs_encoder_cls=None, action_encoding_dim=48, action_encoder_layers=1,
-                 action_embedding_dim=5, use_lstm=False):
+                 action_embedding_dim=5, use_lstm=False, **kwargs):
 
-        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=learn_scale)
+        super().__init__(obs_space, representation_dim, obs_encoder_cls,
+                         learn_scale=learn_scale, **kwargs)
 
         self.processed_action_dim, self.action_shape, self.action_processor = infer_action_shape_info(action_space,
                                                                                        action_embedding_dim)
@@ -601,8 +611,8 @@ class VAEEncoder(BaseEncoder):
     around ground truth pixels, since we don't want to vector-encode
     them.
     """
-    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None):
-        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=True, latent_dim=latent_dim)
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, **kwargs):
+        super().__init__(obs_space, representation_dim, obs_encoder_cls, learn_scale=True, latent_dim=latent_dim, **kwargs)
 
     def encode_target(self, x, traj_info):
         # For the Dynamics encoder we want to keep the ground truth pixels as unencoded pixels

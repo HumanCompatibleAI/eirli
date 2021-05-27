@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
+
+import imitation.util.logger as logger
+from pyro.distributions import Delta
+import stable_baselines3.common.logger as sb_logger
 import torch
 import torch.nn.functional as F
-import stable_baselines3.common.logger as sb_logger
-from pyro.distributions import Delta
-import imitation.util.logger as logger
+# losses can be accessed through torch.nn, but I'm doing this to appease PyType
+import torch.nn.modules.loss as torch_losses
 
 
 class RepresentationLoss(ABC):
@@ -26,7 +29,7 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
     """
     def __init__(self, device, sample=False, temp=0.1, normalize=True):
         super(AsymmetricContrastiveLoss, self).__init__(device, sample)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch_losses.CrossEntropyLoss()
         self.temp = temp
 
         # Most methods use either cosine similarity or matrix multiplication similarity. Since cosine similarity equals
@@ -164,7 +167,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
     def __init__(self, device, sample=False, temp=0.1, normalize=True):
         super(SymmetricContrastiveLoss, self).__init__(device, sample)
 
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch_losses.CrossEntropyLoss()
         self.temp = temp
 
         # Most methods use either cosine similarity or matrix multiplication similarity. Since cosine similarity equals
@@ -241,7 +244,7 @@ class NegativeLogLikelihood(RepresentationLoss):
         # target dist is a Dirac Delta distribution containing the ground truth values
         # decoded_context_dist is a predicted distribution we want to put high probability on the ground truth values
 
-        # Negative log likelihood loss. Using this rather than torch.nn.NLLLoss() so I can work directly
+        # Negative log likelihood loss. Using this rather than torch_losses.NLLLoss() so I can work directly
         # with Torch distribution objects
         ground_truth = torch.squeeze(target_dist.mean)
         log_probas = decoded_context_dist.log_prob(ground_truth)
@@ -255,7 +258,7 @@ class MSELoss(RepresentationLoss):
     """
     def __init__(self, device, sample=False):
         super().__init__(device, sample)
-        self.criterion = torch.nn.MSELoss()
+        self.criterion = torch_losses.MSELoss()
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
@@ -358,4 +361,3 @@ class GaussianPriorLoss(RepresentationLoss):
 
         loss = torch.mean(kld)
         return loss
-

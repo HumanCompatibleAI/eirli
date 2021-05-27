@@ -6,7 +6,7 @@ import logging
 import os
 import random
 import shutil
-from typing import List
+from typing import List, Tuple
 
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
@@ -27,7 +27,7 @@ def load_data(
         pickle_paths: List[str],
         preprocessor_name: str,
         remove_null_actions: bool = False,
-):
+) -> Tuple[dict, str]:
     """Load MAGICAL data from pickle files."""
 
     # First we load pickles off disk and infer the env name from their content.
@@ -36,6 +36,7 @@ def load_data(
     # class, except that the observation is a dictionary instead of an ndarray.
     env_name = None
     demo_trajectories = []
+    assert len(demo_trajectories) > 0
     for demo_dict in saved_trajectories.load_demos(pickle_paths):
         new_env_name = demo_dict['env_name']
         if env_name is None:
@@ -47,7 +48,7 @@ def load_data(
                     f"environments: {env_name}, {new_env_name} ")
 
         demo_trajectories.append(demo_dict['trajectory'])
-
+    assert env_name is not None
     del new_env_name  # unused
 
     # Now we apply the supplied preprocessor, if any, to the loaded
@@ -146,6 +147,8 @@ def load_dataset_magical(
     dataset_dict, loaded_env_name = load_data(
         demo_paths, preprocessor_name=magical_preproc,
         remove_null_actions=magical_remove_null_actions)
+    # this might happen if there were no demos paths
+    assert loaded_env_name is not None
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
     return dataset_dict

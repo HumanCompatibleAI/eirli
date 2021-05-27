@@ -1,8 +1,10 @@
-from il_representations.algos import augmenters, pair_constructors, encoders, losses, batch_extenders, decoders
 from collections import OrderedDict
-from copy import deepcopy
-from il_representations.scripts.utils import StagesToRun
+
 from skopt.space import Categorical
+
+from il_representations.algos import decoders, losses, pair_constructors
+from il_representations.script_utils import StagesToRun
+
 
 def make_icml_tuning_configs(experiment_obj):
 
@@ -41,7 +43,7 @@ def make_icml_tuning_configs(experiment_obj):
         tune_run_kwargs = dict(num_samples=50)
         skopt_space = OrderedDict([
                         ('repl:algo_params:batch_size', (256, 512)),
-                        ('repl:algo_params:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+                        ('repl:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
                         ('repl:algo_params:representation_dim', (64, 256)),
                         ('repl:algo', Categorical(['TemporalCPC',
                                                    'ActionConditionedTemporalCPC'],
@@ -56,7 +58,7 @@ def make_icml_tuning_configs(experiment_obj):
                         ])
         skopt_ref_configs = [
                 {'repl:algo_params:batch_size': 256,
-                 'repl:algo_params:optimizer_kwargs:lr': 0.0003,
+                 'repl:optimizer_kwargs:lr': 0.0003,
                  'repl:algo_params:representation_dim': 128,
                  'repl:algo': 'ActionConditionedTemporalCPC',
                  'repl:algo_params:loss_calculator': losses.BatchAsymmetricContrastiveLoss,
