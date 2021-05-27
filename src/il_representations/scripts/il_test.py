@@ -51,7 +51,7 @@ def default_config():
     video_file_name = "rollouts.mp4"
 
     # How many ckpts to test?
-    num_test_ckpts = 1
+    num_test_ckpts = 20
 
     _ = locals()
     del _
@@ -77,15 +77,20 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
     policy_paths.sort()
     logging.info(f"Policies to test: {policy_paths}")
 
-    # Get the indexes of ckpts to test. It includes the first and the last policy, and
-    # evenly spread out the rest.
-    policy_idxes = np.round(np.linspace(0, len(policy_paths) - 1, num_test_ckpts)).astype(int)
+    # Get the indexes of ckpts to test.
+    if len(policy_paths) < num_test_ckpts:
+        policy_idxes = [idx for idx in range(len(policy_paths))]
+    else:
+        # Include the first and the last policy, and evenly spread out among the rest.
+        policy_idxes = np.round(np.linspace(0, len(policy_paths) - 1, num_test_ckpts)).astype(int)
+    logging.info(f"Policies to test: {[policy_paths[idx] for idx in policy_idxes]}")
     final_stats_dict = {}
 
     for count, idx in enumerate(policy_idxes):
         policy_path = policy_paths[idx]
 
         logging.info(f"Start testing policy [{count + 1}/{len(policy_idxes)}] {policy_path}")
+
         policy = th.load(policy_path)
 
         device = get_device(device_name)
@@ -93,6 +98,8 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         policy.eval()
 
         if write_video:
+            policy_filename = policy_path.split('/')[-1].split('.')[0]
+            video_file_name = f"rollout_{policy_filename}.mp4"
             video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
             video_writer = TensorFrameWriter(video_fp.name,
                                              color_space=auto.load_color_space())
@@ -126,7 +133,8 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                 'return_mean': eval_data_frame['mean_score'].mean(),
             }
 
-        elif (env_cfg['benchmark_name'] in ('dm_control', 'atari', 'minecraft')):
+        elif (env_cfg['benchmark_name'] in ('dm_control', 'atari', 'minecraft',
+                                           'procgen')):
             # must import this to register envs
             from il_representations.envs import dm_control_envs  # noqa: F401
 

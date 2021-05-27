@@ -223,7 +223,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
                          encoder_or_path=encoder)
     color_space = auto_env.load_color_space()
     augmenter = None
-    if augmenter:
+    if bc['augs']:
         augmenter = StandardAugmentations.from_string_spec(
             bc['augs'], stack_color_space=color_space)
 
@@ -253,9 +253,11 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
 
     save_interval = bc['save_every_n_batches']
     epoch_length = int(bc['nominal_length'] / bc['batch_size'])
+    model_save_dir = os.path.join(out_dir, 'snapshots')
+    os.makedirs(model_save_dir, exist_ok=True)
     if save_interval is not None:
         optional_model_saver = BCModelSaver(policy,
-                                            os.path.join(out_dir, 'snapshots'),
+                                            model_save_dir,
                                             epoch_length,
                                             save_interval)
     else:
@@ -267,7 +269,9 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
                   log_interval=bc['log_interval'],
                   on_epoch_end=optional_model_saver)
 
-    final_path = os.path.join(out_dir, final_pol_name)
+    final_pol_name = f'policy_{bc["n_batches"]}_batches.pt'
+
+    final_path = os.path.join(model_save_dir, final_pol_name)
     logging.info(f"Saving final BC policy to {final_path}")
     trainer.save_policy(final_path)
     return final_path

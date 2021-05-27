@@ -216,7 +216,7 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                'finger-spin', 'cheetah-run', 'reacher-easy'
+                'finger-spin', 'cheetah-run',
             ]
             ]))
 
@@ -224,13 +224,29 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def cfg_run_few_trajs_long_dm_control():
+    def cfg_bench_micro_sweep_procgen():
+        """Tiny sweep over two procgen configs."""
+        spec = dict(env_cfg=tune.grid_search(
+            [
+                {
+                    'benchmark_name': 'procgen',
+                    'task_name': procgen_env_name
+                } for procgen_env_name in [
+                'coinrun', 'miner', 'fruitbot'
+            ]
+            ]))
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
+    def cfg_run_few_trajs_2m_updates():
         """For experiments running very few BC trajs"""
         spec = dict(il_train={
             'bc': {
-                'n_batches': 10000000,
-                # 'n_trajs': tune.grid_search([1, 10, 30]),
-                'save_every_n_batches': 5e4
+                'n_batches': 2000000,
+                'n_trajs': tune.grid_search([5, 10]),
             }
         })
 
@@ -333,6 +349,7 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
+            'n_epochs': 100,
         }
 
         _ = locals()
@@ -343,6 +360,7 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'TemporalCPC',
+
         }
 
         _ = locals()
