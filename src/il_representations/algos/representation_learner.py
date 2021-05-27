@@ -289,18 +289,18 @@ class RepresentationLearner(BaseEnvironmentLearner):
             timer_last_batches_trained = batches_trained
             for step, batch in enumerate(dataloader):
                 # Construct batch (currently just using Torch's default batch-creator)
-                contexts, targets, traj_ts_info, extra_context = self.unpack_batch(batch)
+                raw_contexts, raw_targets, traj_ts_info, extra_context = self.unpack_batch(batch)
 
                 # Use an algorithm-specific augmentation strategy to augment either
                 # just context, or both context and targets
-                contexts, targets = self._prep_tensors(contexts), self._prep_tensors(targets)
+                raw_contexts, raw_targets = self._prep_tensors(raw_contexts), self._prep_tensors(raw_targets)
                 extra_context = self._prep_tensors(extra_context)
                 traj_ts_info = self._prep_tensors(traj_ts_info)
                 # Note: preprocessing might be better to do on CPU if, in future, we can parallelize doing so
-                contexts = self._preprocess(contexts)
+                raw_contexts = self._preprocess(raw_contexts)
                 if self.preprocess_target:
-                    targets = self._preprocess(targets)
-                contexts, targets = self.augmenter(contexts, targets)
+                    raw_targets = self._preprocess(raw_targets)
+                contexts, targets = self.augmenter(raw_contexts, raw_targets)
                 extra_context = self._preprocess_extra_context(extra_context)
                 # This is typically a noop, but sometimes we also augment the extra context
                 extra_context = self.augmenter.augment_extra_context(extra_context)
