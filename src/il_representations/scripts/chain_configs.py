@@ -240,6 +240,19 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_run_few_trajs_2m_updates():
+        """For experiments running very few BC trajs"""
+        spec = dict(il_train={
+            'bc': {
+                'n_batches': 2000000,
+                'n_trajs': tune.grid_search([5, 10]),
+            }
+        })
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_bench_one_task_magical():
         """Just one simple MAGICAL config."""
         env_cfg = {

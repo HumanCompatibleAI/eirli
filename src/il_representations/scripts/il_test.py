@@ -74,17 +74,20 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
     policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
                     if os.path.isfile(os.path.join(policy_dir, f))]
-    logging.info(f"Policies to test: {policy_paths}")
 
-    # Get the indexes of ckpts to test. It includes the first and the last policy, and
-    # evenly spread out the rest.
-    policy_idxes = np.round(np.linspace(0, len(policy_paths) - 1, num_test_ckpts)).astype(int)
+    # Get the indexes of ckpts to test.
+    if len(policy_paths) < num_test_ckpts:
+        policy_idxes = [idx for idx in range(len(policy_paths))]
+    else:
+        # Include the first and the last policy, and evenly spread out among the rest.
+        policy_idxes = np.round(np.linspace(0, len(policy_paths) - 1, num_test_ckpts)).astype(int)
+    logging.info(f"Policies to test: {[policy_paths[idx] for idx in policy_idxes]}")
     final_stats_dict = {}
 
     for count, idx in enumerate(policy_idxes):
         policy_path = policy_paths[idx]
 
-        logging.info(f"Start testing policy [{count}/{len(policy_idxes)}] {policy_path}")
+        logging.info(f"Start testing policy [{count+1}/{len(policy_idxes)}] {policy_path}")
 
         policy = th.load(policy_path)
 
