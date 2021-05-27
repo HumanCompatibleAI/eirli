@@ -95,7 +95,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         policy = policy.to(device)
         policy.eval()
 
-        if write_video:
+        if write_video and env_cfg['benchmark_name'] != 'procgen':
             policy_filename = policy_path.split('/')[-1].split('.')[0]
             video_file_name = f"rollout_{policy_filename}.mp4"
             video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
@@ -173,12 +173,13 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                         video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
         elif env_cfg['benchmark_name'] in ('procgen'):
+            full_env_name = auto.get_gym_env_name()
             final_stats_dict = collections.OrderedDict([
                 ('full_env_name', full_env_name),
                 ('policy_path', policy_path),
                 ('seed', seed),
             ])
-            for start_level in [0, 200]:
+            for start_level in [0, 1000]:
                 vec_env = auto.load_vec_env(procgen_start_level=start_level)
 
                 # sample some trajectories
@@ -193,8 +194,10 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                 stats = il_rollout.rollout_stats(trajectories)
                 stats = collections.OrderedDict([(key, stats[key])
                                                  for key in sorted(stats)])
+
                 game_level = 'train_level' if start_level == 0 else 'test_level'
-                final_stats_dict.update({game_level: stats.items()})
+                final_stats_dict.update({game_level: stats})
+
 
                 # print it out
                 kv_message = '\n'.join(f"  {key}={value}"
@@ -202,6 +205,25 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                 logging.info(f"Evaluation stats on '{full_env_name}': {kv_message}")
 
                 vec_env.close()
+
+                if write_video:
+                    assert len(trajectories) > 0
+                    # write the trajectories in sequence
+
+                    policy_filename = policy_path.split('/')[-1].split('.')[0]
+                    video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
+                    video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
+                    video_writer = TensorFrameWriter(video_fp.name,
+                                                     color_space=auto.load_color_space())
+
+                    for traj in trajectories:
+                        for step_tensor in traj.obs:
+                            video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
+
+                    video_writer.close()
+                    il_test_ex.add_artifact(video_fp.name, video_file_name)
+                    video_fp.close()
+
 
         else:
             raise NotImplementedError("policy evaluation on benchmark_name="
@@ -215,7 +237,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
             il_test_ex.add_artifact(fp.name, f'eval_{count}.json')
 
         # also save video
-        if write_video:
+        if write_video and env_cfg['benchmark_name'] != 'procgen':
             video_writer.close()
             il_test_ex.add_artifact(video_fp.name, video_file_name)
             video_fp.close()

@@ -123,7 +123,7 @@ def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
 @env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, dm_control_full_env_names,
                  dm_control_frame_stack, minecraft_max_env_steps,
-                 procgen_frame_stack, procten_start_level=0):
+                 procgen_frame_stack, procgen_start_level=0):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     n_envs, venv_parallel, parallel_workers = _get_venv_opts()
@@ -175,11 +175,12 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
     elif benchmark_name == 'procgen':
+        mode = 'easy' if procgen_start_level == 0 else 'hard'
         raw_procgen_env = ProcgenEnv(num_envs=1,
                                      env_name=gym_env_name,
                                      num_levels=200,
                                      start_level=procgen_start_level,
-                                     distribution_mode='easy')
+                                     distribution_mode=mode)
         raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
         raw_procgen_env = VecMonitor(venv=raw_procgen_env, filename=None,
                                             keep_buf=100)
