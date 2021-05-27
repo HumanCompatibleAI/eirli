@@ -349,6 +349,7 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
+            'n_epochs': 100,
         }
 
         _ = locals()
@@ -359,6 +360,7 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'TemporalCPC',
+
         }
 
         _ = locals()
