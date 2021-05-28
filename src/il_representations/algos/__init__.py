@@ -227,6 +227,10 @@ class DynamicsPrediction(RepresentationLearner):
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        # This allows us to pass an `encoder_arch_key` to `decoder`. If we don't
+        # supply it explicitly then the decoder tries to do something clever &
+        # infer the decoder architecture from the encoder architecture, which
+        # breaks in cases when the encoder architecture is an arbitrary lambda.
         dec_encoder_cls_key = decoder_kwargs.get(
             'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
@@ -259,6 +263,7 @@ class VariationalAutoencoder(RepresentationLearner):
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        # See comment in DynamicsPrediction
         dec_encoder_cls_key = decoder_kwargs.get(
             'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
@@ -285,6 +290,7 @@ class Autoencoder(RepresentationLearner):
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
         decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        # See comment in DynamicsPrediction
         dec_encoder_cls_key = decoder_kwargs.get(
             'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 

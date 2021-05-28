@@ -85,7 +85,7 @@ def make_jt_configs(train_ex):
     def env_use_magical():
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MatchRegions-Demo-v0',
+            'task_name': 'CHANGE_TASK_NAME',
             'magical_remove_null_actions': False,
         }
 
