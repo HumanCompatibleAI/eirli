@@ -26,6 +26,8 @@ lower() {
 
 launch_seed() {
     for env_name in "${env_names[@]}"; do
+        lower_env="$(lower "$env_name")"
+
         # "oracle" BC baselines that get access to test data
         submit_expt exp_ident="repl_noid_test_variant_cheating_100k" \
             "${repl_config[@]}" "env_cfg.task_name=${env_name}-Demo-v0" \
