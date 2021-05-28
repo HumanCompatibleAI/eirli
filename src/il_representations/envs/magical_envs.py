@@ -106,6 +106,8 @@ def load_data(
 def get_env_name_magical(task_name, magical_preproc):
     # For MAGICAL, the 'task_name' is a MAGICAL env name _without_ the
     # preprocessor; think MoveToCorner-Demo-v0 or ClusterShape-TestAll-v0.
+    # (note that il_test.py will test on all variants of task_name, even
+    # if task_name is just the demo task)
     try:
         EnvName(task_name)
     except ValueError as ex:

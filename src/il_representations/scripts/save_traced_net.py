@@ -95,6 +95,8 @@ def main(args: argparse.Namespace) -> None:
     print(f"Loading model from '{args.module_path}'")
     network = load_eval_net(args.module_path)
     encoder = fetch_encoder(network)
+    # we trace the encoder with torchscript so that it can be saved
+    # and loaded without having `il_representations` installed
     traced_encoder = trace_encoder(encoder)
     save_name = auto_save_name(args.module_path)
     os.makedirs(args.dest_dir, exist_ok=True)

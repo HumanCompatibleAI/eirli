@@ -46,7 +46,8 @@ def hacky_run_commandline(exp, argv):
 
 
 def run_joint_training_remote(extra_args):
-    """This function executes the experiment as a Ray task."""
+    """This function executes the experiment. It is intended to be wrapped with
+    ray.remote and run as a Ray task."""
     from il_representations.scripts.joint_training import add_fso, train_ex
     add_fso()
     argv = ['placeholder arg because only argv[1:] is used', 'train']
@@ -86,7 +87,8 @@ def main(args, sacred_args):
 
 
 # allow_abbrev stops argparse from swallowing genuine Sacred arguments that
-# happen to be prefixes of the --ray-* arguments below
+# happen to be prefixes of the --ray-* arguments below. e.g. you can do
+# "./script.py --ray-address localhost:6060 some_namedconfig variable.foo=42".
 parser = argparse.ArgumentParser(allow_abbrev=False)
 parser.add_argument('--ray-address',
                     default='localhost:42000',

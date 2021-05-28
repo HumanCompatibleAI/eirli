@@ -73,6 +73,7 @@ def make_jt_configs(train_ex):
                 'target_pair_constructor_kwargs': {
                     'temporal_offset': 8,
                 },
+                'batch_size': 192,
             },
         }
         repl_weight = 1.0
@@ -84,7 +85,7 @@ def make_jt_configs(train_ex):
     def env_use_magical():
         env_cfg = {
             'benchmark_name': 'magical',
-            'task_name': 'MatchRegions-Demo-v0',
+            'task_name': 'CHANGE_TASK_NAME',
             'magical_remove_null_actions': False,
         }
 
