@@ -178,7 +178,7 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         mode = 'easy' if procgen_start_level == 0 else 'hard'
         raw_procgen_env = ProcgenEnv(num_envs=1,
                                      env_name=gym_env_name,
-                                     num_levels=200,
+                                     num_levels=100,
                                      start_level=procgen_start_level,
                                      distribution_mode=mode)
         raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
