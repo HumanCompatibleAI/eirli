@@ -73,6 +73,7 @@ def make_jt_configs(train_ex):
                 'target_pair_constructor_kwargs': {
                     'temporal_offset': 8,
                 },
+                'batch_size': 192,
             },
         }
         repl_weight = 1.0
