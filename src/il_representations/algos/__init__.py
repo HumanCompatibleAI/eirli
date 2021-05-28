@@ -1,7 +1,7 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
-    infer_action_shape_info
+    infer_action_shape_info, PolicyEncoder
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
     ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
@@ -321,6 +321,24 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      loss_calculator=NegativeLogLikelihood,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
+                                     decoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class PolicyPrediction(RepresentationLearner):
+    """
+    BC auxiliary loss.
+    """
+    def __init__(self, **kwargs):
+        algo_hardcoded_kwargs = dict(encoder=PolicyEncoder,
+                                     decoder=ActionPredictionHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=NegativeLogLikelihood,
+                                     target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(action_space=kwargs['action_space']),
                                      preprocess_target=False)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
