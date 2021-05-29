@@ -125,6 +125,7 @@ class VecMonitor(VecEnvWrapper):
                 for k in self.info_keywords:
                     epinfo[k] = info[k]
                 info['episode'] = epinfo
+                info['terminal_observation'] = obs[0]
                 if self.keep_buf:
                     self.epret_buf.append(ret)
                     self.eplen_buf.append(eplen)
