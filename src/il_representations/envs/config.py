@@ -180,7 +180,9 @@ def env_data_defaults():
     # ProcGen config variables
     # ###########################
     procgen_demo_paths = {
-        'coinrun': 'procgen/demo_coinrun.pickle'
+        'coinrun': 'procgen/demo_coinrun.pickle',
+        'ninja': 'procgen/demo_ninja.pickle',
+        'jumper': 'procgen/demo_jumper.pickle',
     }
 
     _ = locals()
