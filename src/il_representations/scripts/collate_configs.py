@@ -20,13 +20,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('search_dir',
                     help='directory to search for config files in')
 
-# take(n, it) is useful when testing a long-lived generator
-#
-# T = TypeVar('T')
-# def take(n: int, it: Iterator[T]) -> Iterator[T]:
-#     for _, elem in zip(range(n), it):
-#         yield elem
-
 
 def config_generator(search_dir: str,
                      *,
@@ -64,7 +57,7 @@ def load_config(config_path: str) -> dict:
 
 def hash_config(config_dict: dict, *,
                 forbidden=('seed', 'encoder_path')) -> str:
-    """Filter config dict, modulo seed, encoder path, etc."""
+    """Hash config dict, modulo seed, encoder path, etc."""
     filtered = copy.copy(config_dict)
     for forbidden_key in forbidden:
         if forbidden_key in filtered:

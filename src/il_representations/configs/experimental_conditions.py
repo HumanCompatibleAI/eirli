@@ -127,22 +127,7 @@ def stooke_contrastive_hyperparams_dmc():
     optimizer_kwargs = {'lr': 0.001}
     _ = locals()
     del _
-
-
-@represent_ex.named_config
-# TODO CURRENTLY NONSENSE, REPLACE AFTER HP TUNING
-def hp_tuned_augmentation_set():
-    algo_params = {'augmenter_kwargs': {'augmenter_spec': 'REPLACE-ME'}}
-    _ = locals()
-    del _
-
-
-@represent_ex.named_config
-# TODO CURRENTLY NONSENSE, REPLACE AFTER HP TUNING
-def hp_tuned_vae_lr():
-    optimizer_kwargs = {'lr': 'REPLACE-ME'}
-    _ = locals()
-    del _
+   
 
 @represent_ex.named_config
 def stooke_momentum_hyperparams_dmc():
