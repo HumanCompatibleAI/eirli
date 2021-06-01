@@ -74,6 +74,8 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
     policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
                     if os.path.isfile(os.path.join(policy_dir, f))]
+    policy_paths.sort()
+    logging.info(f"Policies to test: {policy_paths}")
 
     # Get the indexes of ckpts to test.
     if len(policy_paths) < num_test_ckpts:
@@ -87,7 +89,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
     for count, idx in enumerate(policy_idxes):
         policy_path = policy_paths[idx]
 
-        logging.info(f"Start testing policy [{count+1}/{len(policy_idxes)}] {policy_path}")
+        logging.info(f"Start testing policy [{count + 1}/{len(policy_idxes)}] {policy_path}")
 
         policy = th.load(policy_path)
 
@@ -208,7 +210,6 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
                 if write_video:
                     assert len(trajectories) > 0
-                    # write the trajectories in sequence
 
                     policy_filename = policy_path.split('/')[-1].split('.')[0]
                     video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
@@ -216,6 +217,7 @@ def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                     video_writer = TensorFrameWriter(video_fp.name,
                                                      color_space=auto.load_color_space())
 
+                    # write the trajectories in sequence
                     for traj in trajectories:
                         for step_tensor in traj.obs:
                             video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)

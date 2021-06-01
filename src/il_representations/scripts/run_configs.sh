@@ -1,18 +1,19 @@
 #!/bin/bash
 
-exp_id="procgen-repl"
+exp_id="dmc"
 n_batches=2000000
 
 for repl in \
-    "cfg_repl_vae" \
+    "cfg_repl_temporal_cpc" \
     ; do
-    CUDA_VISIBLE_DEVICES=1,3 xvfb-run -a python src/il_representations/scripts/pretrain_n_adapt.py with \
+    CUDA_VISIBLE_DEVICES=0 python src/il_representations/scripts/pretrain_n_adapt.py with \
         cfg_force_use_repl \
         ${repl} \
         cfg_il_bc_nofreeze \
-        cfg_bench_micro_sweep_procgen \
+        cfg_bench_micro_sweep_dm_control \
+        cfg_run_few_trajs_2m_updates \
         exp_ident=${exp_id}-${repl} \
         tune_run_kwargs.num_samples=5 \
-        tune_run_kwargs.resources_per_trial.gpu=0.2 \
-        il_train.bc.n_batches=$n_batches &
+        tune_run_kwargs.resources_per_trial.gpu=0.1 
+        # il_train.bc.n_batches=$n_batches &
 done
