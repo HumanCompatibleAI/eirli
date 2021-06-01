@@ -155,6 +155,8 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
+    # In case this run is continued from another run
+    log_start_batch = 0
 
     _ = locals()
     del _
@@ -183,6 +185,9 @@ def make_policy(observation_space,
         'ortho_init': False,
     }
     if encoder_or_path is not None:
+        if isinstance(encoder_or_path, sb3_pols.ActorCriticCnnPolicy):
+            return encoder_or_path
+
         if isinstance(encoder_or_path, str):
             encoder = th.load(encoder_or_path)
         else:
@@ -217,7 +222,8 @@ def add_infos(data_iter):
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
-                   device_name, final_pol_name, shuffle_buffer_size):
+                   device_name, final_pol_name, shuffle_buffer_size,
+                   log_start_batch):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          encoder_or_path=encoder)
@@ -259,13 +265,19 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc, encoder,
         optional_model_saver = BCModelSaver(policy,
                                             model_save_dir,
                                             epoch_length,
-                                            save_interval)
+                                            save_interval,
+                                            start_batch=log_start_batch)
     else:
         optional_model_saver = None
 
+    if log_start_batch:
+        bc_batches = bc['n_batches'] - log_start_batch
+    else:
+        bc_batches = bc['n_batches']
+
     logging.info("Beginning BC training")
     trainer.train(n_epochs=None,
-                  n_batches=bc['n_batches'],
+                  n_batches=bc_batches,
                   log_interval=bc['log_interval'],
                   on_epoch_end=optional_model_saver)
 
