@@ -53,8 +53,7 @@ launch_seed() {
 
 launch_seed
 launch_seed
+launch_seed
+launch_seed
+launch_seed
 wait
-launch_seed
-launch_seed
-wait
-launch_seed
