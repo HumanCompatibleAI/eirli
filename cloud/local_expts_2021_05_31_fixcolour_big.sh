@@ -33,8 +33,8 @@ lower() {
 }
 
 launch_seed() {
-    for repl_config in "${repl_configs[@]}"; do
-        for env_name in "${env_names[@]}"; do
+    for env_name in "${env_names[@]}"; do
+        for repl_config in "${repl_configs[@]}"; do
             lower_env="$(lower "$env_name")"
             # using test variant demos
             # (we don't explicitly seed; leave that to Sacred)
