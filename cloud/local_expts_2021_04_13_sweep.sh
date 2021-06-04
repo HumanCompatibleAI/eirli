@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Big sweep over many repL algorithms and many environments. Sam is using this
+# for his quals slides, but it's generally useful to get an overview of how well
+# different things work.
+
 set -euo pipefail
 
 base_cfgs=("cfg_base_5seed_1cpu_pt25gpu"
