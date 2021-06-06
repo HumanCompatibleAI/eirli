@@ -49,14 +49,19 @@ def get_meta_dict(benchmark_name: str, _config: dict) -> dict:
     return meta_dict
 
 
-def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None):
+def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None,
+                 overwrite_existing=False):
     """Write a series of frames to a webdataset shard. This function also makes
     sure to write the metadata dictionary `meta_dict` at the beginning of the
     shard, as expected by the data-loading utilities in `read_dataset.py`."""
     out_dir = os.path.dirname(out_file_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    with wds.TarWriter(out_file_path, keep_meta=True, compress=True) \
+    if overwrite_existing:
+        out_file = wds.gopen.gopen(out_file_path, 'wb')
+    else:
+        out_file = wds.gopen.gopen(out_file_path, 'xb')
+    with wds.TarWriter(out_file, keep_meta=True, compress=True) \
           as writer:  # noqa: E207
         # first write _metadata.meta.pickle containing the benchmark config
         writer.dwrite(key='_metadata', meta_pickle=meta_dict)
