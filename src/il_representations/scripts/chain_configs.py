@@ -216,7 +216,7 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                'finger-spin', 'cheetah-run', 'reacher-easy'
+                'finger-spin', 'cheetah-run',
             ]
             ]))
 
@@ -225,7 +225,7 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_bench_micro_sweep_procgen():
-        """Tiny sweep over three procgen configs."""
+        """Tiny sweep over two procgen configs."""
         spec = dict(env_cfg=tune.grid_search(
             [
                 {
@@ -233,22 +233,6 @@ def make_chain_configs(experiment_obj):
                     'task_name': procgen_env_name
                 } for procgen_env_name in [
                 'coinrun', 'miner', 'fruitbot'
-            ]
-            ]))
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_bench_micro_sweep_procgen_colorful():
-        """Tiny sweep over two colorful procgen configs."""
-        spec = dict(env_cfg=tune.grid_search(
-            [
-                {
-                    'benchmark_name': 'procgen',
-                    'task_name': procgen_env_name
-                } for procgen_env_name in [
-               'jumper', 'ninja'
             ]
             ]))
 
@@ -364,6 +348,7 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
+            'n_epochs': 100,
         }
 
         _ = locals()
@@ -374,6 +359,7 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'TemporalCPC',
+
         }
 
         _ = locals()
