@@ -353,8 +353,8 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
     il_train_model_path = il_train_rv['result']['model_path']
     if not isinstance(il_train_model_path, Path):
         il_train_model_path = Path(il_train_model_path)
-    il_policy_dir = os.path.join(il_train_model_path.parent.absolute(),
-                                 'snapshot')
+    il_policy_dir = os.path.dirname(il_train_rv['result']['model_path'])
+
 
     # Run il test
     merged_il_test_config = update(
