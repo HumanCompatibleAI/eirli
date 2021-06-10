@@ -225,7 +225,7 @@ def make_chain_configs(experiment_obj):
 
     @experiment_obj.named_config
     def cfg_bench_micro_sweep_procgen():
-        """Tiny sweep over two procgen configs."""
+        """Tiny sweep over three procgen configs."""
         spec = dict(env_cfg=tune.grid_search(
             [
                 {
@@ -233,6 +233,22 @@ def make_chain_configs(experiment_obj):
                     'task_name': procgen_env_name
                 } for procgen_env_name in [
                 'coinrun', 'miner', 'fruitbot'
+            ]
+            ]))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_bench_micro_sweep_procgen_colorful():
+        """Tiny sweep over two colorful procgen configs."""
+        spec = dict(env_cfg=tune.grid_search(
+            [
+                {
+                    'benchmark_name': 'procgen',
+                    'task_name': procgen_env_name
+                } for procgen_env_name in [
+               'jumper', 'ninja'
             ]
             ]))
 

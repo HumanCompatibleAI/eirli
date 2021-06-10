@@ -49,7 +49,7 @@ def bc_defaults():
     # (however, large numbers prevent us from having to recreate the
     # data iterator frequently)
     nominal_length = int(1e5)
-    save_every_n_batches = 10000
+    save_every_n_batches = 50000
 
     _ = locals()
     del _

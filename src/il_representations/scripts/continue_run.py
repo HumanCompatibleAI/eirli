@@ -106,6 +106,7 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
         model_save_dir = os.path.join(exp_dir, 'snapshots')
         benchmark_name = config['env_cfg']['benchmark_name']
         task_name = config['env_cfg']['task_name']
+        exp_ident = config['exp_ident']
 
         # Skip this dir if it doesn't have any saved models.
         if not os.path.isdir(model_save_dir):
