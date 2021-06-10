@@ -66,6 +66,7 @@ def run_single_exp(merged_config, log_dir, exp_name):
         "dir": ret_val.observers[0].dir,
     }
 
+
 @fix_ex.config
 def base_config():
     exp_name = "fix"
@@ -74,23 +75,49 @@ def base_config():
 
     # Assuming exp_path is the folder that's at the top of an experiment. i.e.
     # The one contains 'repl', 'il_train', and 'il_test'.
-    exp_path = None
-    cuda_devices = '0'
+    exp_path = '/userhome/cs/cyn0531/il-representations/runs/chain_runs/26'
+    cuda_devices = '3'
     num_test_ckpts = 20
     write_video = True
-    start_test_threshold = 1500000
+    start_test_threshold = 1900000
+    test_range = [16, 24]
 
 @fix_ex.main
 def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
-        start_test_threshold):
+        start_test_threshold, test_range):
     # Identify all the snapshot/ dir to find the latest saved models.
     il_train_dir = os.path.join(exp_path, 'il_train')
-    il_train_exps = [name for name in os.listdir(il_train_dir) \
+    il_train_exps = [name for name in os.listdir(il_train_dir)
                      if os.path.isdir(os.path.join(il_train_dir, name))]
     il_train_exps = sorted(il_train_exps)
-    breakpoint()
+    if test_range:
+        il_train_exps = il_train_exps[test_range[0]:test_range[1]]
     il_train_exps = [os.path.join(il_train_dir, exp_dir) for exp_dir in
                      il_train_exps]
+
+    tested_exps = []
+    # identify which exp has been tested and skip that later.
+    il_test_dir = os.path.join(exp_path, 'il_test')
+    if os.path.isdir(il_test_dir):
+        il_test_exps = [name for name in os.listdir(il_test_dir)
+                        if os.path.isdir(os.path.join(il_test_dir, name))]
+        il_test_exps = sorted(il_test_exps)
+        il_test_exps = [os.path.join(il_test_dir, exp_dir) for exp_dir
+                        in il_test_exps]
+        for exp_dir in il_test_exps:
+            test_config_file = os.path.join(exp_dir, 'config.json')
+
+            if not os.path.isfile(test_config_file):
+                continue
+
+            with open(test_config_file, 'r') as json_file:
+                test_config = json.load(json_file)
+
+            test_files = [name for name in os.listdir(exp_dir)]
+            if 'eval_19.json' in test_files:
+                tested_exps.append(test_config['policy_dir'])
+
+    print(il_train_exps)
     for exp_dir in il_train_exps:
         config_file = os.path.join(exp_dir, 'config.json')
 
@@ -133,10 +160,14 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
             exp_result = run_single_exp(config, log_dir=exp_dir,
                                         exp_name='il_train')
         if stage_to_run == 'il_test':
+            if model_save_dir in tested_exps:
+                continue
             if last_saved_batch > start_test_threshold:
+                print(f'Evaluate {model_save_dir}')
                 os.system(f'CUDA_VISIBLE_DEVICES={cuda_devices} '
                           f'python ./src/il_representations/scripts/il_test.py with \\'
                           f'policy_dir={model_save_dir} \\'
+                          f'exp_ident={exp_ident} \\'
                           f'num_test_ckpts={num_test_ckpts} \\'
                           f'write_video={write_video} \\'
                           f'env_cfg.benchmark_name={benchmark_name} \\'
