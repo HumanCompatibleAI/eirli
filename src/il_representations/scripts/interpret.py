@@ -412,6 +412,6 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_config
 
 
 if __name__ == '__main__':
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
+    sacred.SETTINGS['CAPTURE_MODE'] = 'no'
     interp_ex.observers.append(FileStorageObserver('runs/interpret_runs'))
     interp_ex.run_commandline()

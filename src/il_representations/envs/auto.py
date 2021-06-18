@@ -23,11 +23,15 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
+<<<<<<< HEAD
 from il_representations.envs.procgen_envs import (load_dataset_procgen,
                                                   get_procgen_env_name,
                                                   VecExtractDictObs,
                                                   VecMonitor)
 from il_representations.scripts.utils import update as dict_update
+=======
+from il_representations.script_utils import update as dict_update
+>>>>>>> master
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
@@ -58,7 +62,7 @@ def benchmark_is_available(benchmark_name):
     elif benchmark_name == 'minecraft':
         # we check whether minecraft is installed by importing minerl
         try:
-            import minerl  # noqa: F401
+            __import__('minerl')  # noqa: F401
             return True, None
         except ImportError as ex:
             return False, "MineRL not installed, cannot use Minecraft " \
@@ -200,8 +204,8 @@ def _get_default_env_cfg(_config):
 @env_data_ingredient.capture
 def get_data_dir(benchmark_name, task_key, data_type, data_root):
     """Get the data directory for a given benchmark ("magical", "dm_control",
-    etc.), task (e.g. "MoveToCorner", "finger-spin") and data type (e.g.
-    "demos", "random")."""
+    etc.), task (e.g. "MoveToCorner-Demo-v0", "finger-spin") and data type
+    (e.g. "demos", "random")."""
     return os.path.join(data_root, 'data', 'processed',
                         data_type, benchmark_name, task_key)
 
@@ -238,7 +242,7 @@ def load_wds_datasets(configs):
         # generate config dict, including defaults
         assert isinstance(config, dict) and config.keys() <= {
             'type', 'env_cfg'
-        }
+        }, config
         orig_config = config
         config = dict_update(defaults, config)
         data_type = config['type']

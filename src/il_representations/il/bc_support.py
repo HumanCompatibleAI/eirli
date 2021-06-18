@@ -15,13 +15,12 @@ class BCModelSaver:
         self.batch_count = start_batch
         self.epoch_length = epoch_length
 
-    def __call__(self, **kwargs):
+    def __call__(self, batch_num, **kwargs):
         """It is assumed that this is called on epoch end."""
-        self.batch_count += self.epoch_length
-        if self.batch_count >= self.last_save_batches + self.save_interval_batches:
+        if batch_num >= self.last_save_batches + self.save_interval_batches:
             os.makedirs(self.save_dir, exist_ok=True)
-            save_fn = f'policy_{self.batch_count:08d}_batches.pt'
+            save_fn = f'policy_{batch_num:08d}_batches.pt'
             save_path = os.path.join(self.save_dir, save_fn)
             th.save(self.policy, save_path)
             print(f"Saved policy to {save_path}!")
-            self.last_save_batches = self.batch_count
+            self.last_save_batches = batch_num

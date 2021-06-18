@@ -23,7 +23,8 @@ def env_cfg_defaults():
     # set this to one of the options in ALL_BENCHMARK_NAMES
     benchmark_name = 'dm_control'
     # format for env_name depends in benchmark:
-    # - MAGICAL: use env name prefixes like MoveToRegion, ClusterShape, etc.
+    # - MAGICAL: use env names without preprocessors, like
+    #   MoveToRegion-Demo-v0, ClusterShape-TestAll-v0, etc.
     # - dm_control: in dm_control parlance, use [domain name]-[task name], like
     #  'finger-spin', 'cheetah-run', etc.
     # - Atari: use fully qualified Gym names (e.g. PongNoFrameskip-v4)
@@ -140,14 +141,14 @@ def env_data_defaults():
         #     ln -s /scratch/sam/il-demos/magical/${dname}-2020-*/ \
         #         ./data/magical/${dname};
         # done
-        'MoveToCorner': 'data/magical/move-to-corner/',
-        'MoveToRegion': 'data/magical/move-to-region/',
-        'MatchRegions': 'data/magical/match-regions/',
-        'MakeLine': 'data/magical/make-line/',
-        'FixColour': 'data/magical/fix-colour/',
-        'FindDupe': 'data/magical/find-dupe/',
-        'ClusterColour': 'data/magical/cluster-colour/',
-        'ClusterShape': 'data/magical/cluster-shape/',
+        'MoveToCorner-Demo-v0': 'data/magical/move-to-corner/',
+        'MoveToRegion-Demo-v0': 'data/magical/move-to-region/',
+        'MatchRegions-Demo-v0': 'data/magical/match-regions/',
+        'MakeLine-Demo-v0': 'data/magical/make-line/',
+        'FixColour-Demo-v0': 'data/magical/fix-colour/',
+        'FindDupe-Demo-v0': 'data/magical/find-dupe/',
+        'ClusterColour-Demo-v0': 'data/magical/cluster-colour/',
+        'ClusterShape-Demo-v0': 'data/magical/cluster-shape/',
     }
 
     # ###########################

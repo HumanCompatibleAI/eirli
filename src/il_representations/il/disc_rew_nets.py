@@ -1,19 +1,18 @@
 """Custom discriminator/reward networks for `imitation`."""
 
+from imitation.rewards.reward_nets import RewardNet
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 import torch as th
 from torch import nn
-from stable_baselines3.common.preprocessing import get_flattened_obs_dim
-from il_representations.algos.encoders import compute_rep_shape_encoder, BaseEncoder
+
+from il_representations.algos.encoders import (BaseEncoder,
+                                               compute_rep_shape_encoder)
 
 
 class ImageDiscrimNet(nn.Module):
     """Image-based discriminator network. This is intended to be passed as a
     `discrim_net` argument to `DiscrimNetGAIL` in
     `imitation.rewards.discrim_net`."""
-
-    # TODO(sam): make this take an `Encoder` (either `StochasticEncoder` or
-    # `DeterministicEncoder`) instead.
-
     def __init__(self,
                  observation_space,
                  action_space,
@@ -24,15 +23,18 @@ class ImageDiscrimNet(nn.Module):
         super().__init__()
 
         if encoder is not None:
-            assert encoder_cls is None, "cannot supply both encoder and encoder_cls"
+            assert encoder_cls is None, \
+                "cannot supply both encoder and encoder_cls"
             self.obs_encoder = encoder
-            obs_out_dim, = compute_rep_shape_encoder(observation_space, self.obs_encoder)
+            obs_out_dim, = compute_rep_shape_encoder(observation_space,
+                                                     self.obs_encoder)
         else:
             if encoder_cls is None:
                 encoder_cls = BaseEncoder
             if encoder_kwargs is None:
                 encoder_kwargs = {}
-            self.obs_encoder = encoder_cls(obs_space=observation_space, representation_dim=fc_dim,
+            self.obs_encoder = encoder_cls(obs_space=observation_space,
+                                           representation_dim=fc_dim,
                                            **encoder_kwargs)
             obs_out_dim = fc_dim
 
@@ -60,3 +62,35 @@ class ImageDiscrimNet(nn.Module):
         assert final_result.shape == (observation.size(0), )
 
         return final_result
+
+
+class _IDNWithoutNextStateOrAction(ImageDiscrimNet):
+    def forward(self, state, action, next_state, done, traj_info=None):
+        return super().forward(state, action, traj_info=traj_info)
+
+
+class ImageRewardNet(RewardNet):
+    """Reward net for AIRL that wraps ImageDiscrimNet (which basically does the
+    thing we want anyway)."""
+    def __init__(self, observation_space, action_space, **idn_kwargs):
+        super().__init__(observation_space=observation_space,
+                         action_space=action_space,
+                         use_state=True,
+                         use_action=True,
+                         use_next_state=False,
+                         use_done=False,
+                         normalize_images=True)
+        self._base_reward_net = _IDNWithoutNextStateOrAction(
+            observation_space=observation_space,
+            action_space=action_space,
+            **idn_kwargs)
+
+    @property
+    def base_reward_net(self):
+        return self._base_reward_net
+
+    def reward_train(self, state, action, next_state, done):
+        # no shaping network (what does that even achieve?)
+        rew = self.base_reward_net(state, action, next_state, done)
+        assert rew.shape == state.shape[:1]
+        return rew

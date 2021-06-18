@@ -1,27 +1,21 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
-import collections
-import json
 import logging
 import tempfile
 import os
 
-import imitation.data.rollout as il_rollout
 import imitation.util.logger as imitation_logger
-import numpy as np
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
-from stable_baselines3.common.utils import get_device
 import torch as th
 
 from il_representations.algos.utils import set_global_seeds
-from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             venv_opts_ingredient)
-from il_representations.utils import TensorFrameWriter
+from il_representations.pol_eval import do_final_eval
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 il_test_ex = Experiment('il_test',
                         ingredients=[
                             # We need env_cfg_ingredient to know which
@@ -42,6 +36,8 @@ def default_config():
     policy_dir = None
     n_rollouts = 100
     device_name = 'auto'
+    # use deterministic policy?
+    deterministic_policy = False
     # run_id is written into the produced DataFrame to indicate what model is
     # being tested
     run_id = 'test'
@@ -58,8 +54,9 @@ def default_config():
 
 
 @il_test_ex.main
-def run(policy_dir, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
-        write_video, video_file_name, torch_num_threads, num_test_ckpts):
+def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
+        write_video, video_file_name, torch_num_threads, deterministic_policy,
+        num_test_ckpts):
     set_global_seeds(seed)
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)

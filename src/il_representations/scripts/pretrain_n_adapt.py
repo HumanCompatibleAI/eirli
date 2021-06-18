@@ -1,9 +1,11 @@
 import collections
 import copy
+import faulthandler
 from glob import glob
 import logging
 import os
 import os.path as osp
+import signal
 from time import time
 from pathlib import Path
 import weakref
@@ -22,17 +24,18 @@ import skopt
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.scripts import experimental_conditions  # noqa: F401
-from il_representations.scripts.chain_configs import make_chain_configs
-from il_representations.scripts.hp_tuning import make_hp_tuning_configs
-from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
+from il_representations.configs.chain_configs import make_chain_configs
+from il_representations.configs.hp_tuning import make_hp_tuning_configs
+from il_representations.configs.icml_hp_tuning import make_icml_tuning_configs
+from il_representations.configs.icml_experiment_configs import make_dataset_experiment_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
-from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
-from il_representations.utils import hash_configs, up
+from il_representations.script_utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
+from il_representations.utils import hash_configs, up, WrappedConfig
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 chain_ex = Experiment(
     'chain',
     ingredients=[
@@ -46,7 +49,7 @@ chain_ex = Experiment(
     ])
 cwd = os.getcwd()
 
-
+make_dataset_experiment_configs(chain_ex)
 make_icml_tuning_configs(chain_ex)
 
 # Add configs to experiment for hyperparameter tuning
@@ -64,7 +67,9 @@ def get_stages_to_run(stages_to_run):
     try:
         stage = StagesToRun(upper_str)
     except ValueError as ex:
+        # pytype: disable=missing-parameter
         options = [f"'{s.name}'" for s in StagesToRun]
+        # pytype: enable=missing-parameter
         raise ValueError(
             f"Could not convert '{stages_to_run}' to StagesToRun ({ex}). "
             f"Available options are {', '.join(options)}")
@@ -140,7 +145,7 @@ def run_single_exp(merged_config, log_dir, exp_name):
     """
     # we need to run the workaround in each raylet, so we do it at the start of
     # run_single_exp
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+    sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
     from il_representations.scripts.il_test import il_test_ex
     from il_representations.scripts.il_train import il_train_ex
     from il_representations.scripts.run_rep_learner import represent_ex
@@ -508,11 +513,6 @@ def base_config():
     del _
 
 
-class WrappedConfig():
-    def __init__(self, config_dict):
-        self.config_dict = config_dict
-
-
 def trainable_function(config):
     # The 'config' dict that gets passed in looks something like this:
     #
@@ -599,6 +599,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
         reuse_repl, repl_encoder_path, on_cluster):
+    faulthandler.register(signal.SIGUSR1)
 
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)

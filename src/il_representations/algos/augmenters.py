@@ -1,22 +1,17 @@
-import enum
-from torchvision import transforms
-from imitation.augment.color import ColorSpace  # noqa: F401
-from imitation.augment.convenience import StandardAugmentations
-from il_representations.algos.utils import gaussian_blur
-import torch
-from abc import ABC, abstractmethod
-import PIL
 """
 These are pretty basic: when constructed, they take in a list of augmentations, and
 either augment just the context, or both the context and the target, depending on the algorithm.
 """
+from abc import ABC, abstractmethod
+
+from imitation.augment.color import ColorSpace  # noqa: F401
+
+from il_representations.utils import augmenter_from_spec
 
 
 class Augmenter(ABC):
     def __init__(self, augmenter_spec, color_space):
-        augment_op = StandardAugmentations.from_string_spec(
-            augmenter_spec, color_space)
-        self.augment_op = augment_op
+        self.augment_op = augmenter_from_spec(augmenter_spec, color_space)
 
     @abstractmethod
     def __call__(self, contexts, targets):
