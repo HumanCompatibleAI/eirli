@@ -135,6 +135,57 @@ def do_final_eval(*,
                 for step_tensor in traj.obs:
                     video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
+    elif env_cfg['benchmark_name'] in ('procgen'):
+        full_env_name = auto.get_gym_env_name()
+        final_stats_dict = collections.OrderedDict([
+            ('full_env_name', full_env_name),
+            ('policy_path', policy_path),
+            ('seed', seed),
+        ])
+        for start_level in [0, 1000]:
+            vec_env = auto.load_vec_env(procgen_start_level=start_level)
+
+            # sample some trajectories
+            rng = np.random.RandomState(seed)
+            trajectories = il_rollout.generate_trajectories(
+                policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
+            # make sure all the actions are finite
+            for traj in trajectories:
+                assert np.all(np.isfinite(traj.acts)), traj.acts
+
+            # the "stats" dict has keys {return,len}_{min,max,mean,std}
+            stats = il_rollout.rollout_stats(trajectories)
+            stats = collections.OrderedDict([(key, stats[key])
+                                             for key in sorted(stats)])
+
+            game_level = 'train_level' if start_level == 0 else 'test_level'
+            final_stats_dict.update({game_level: stats})
+
+
+            # print it out
+            kv_message = '\n'.join(f"  {key}={value}"
+                                   for key, value in stats.items())
+            logging.info(f"Evaluation stats on '{full_env_name}': {kv_message}")
+
+            vec_env.close()
+
+            if write_video:
+                assert len(trajectories) > 0
+
+                policy_filename = policy_path.split('/')[-1].split('.')[0]
+                video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
+                video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
+                video_writer = TensorFrameWriter(video_fp.name,
+                                                 color_space=auto.load_color_space())
+
+                # write the trajectories in sequence
+                for traj in trajectories:
+                    for step_tensor in traj.obs:
+                        video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
+
+                video_writer.close()
+                il_test_ex.add_artifact(video_fp.name, video_file_name)
+                video_fp.close()
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
                                   f"{env_cfg['benchmark_name']!r} is not "
@@ -145,7 +196,7 @@ def do_final_eval(*,
         json.dump(final_stats_dict, fp, indent=2, sort_keys=False)
 
     # also save video
-    if write_video:
+    if write_video and env_cfg['benchmark_name'] != 'procgen':
         video_writer.close()
 
     return final_stats_dict
