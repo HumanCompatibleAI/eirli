@@ -23,15 +23,11 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
-<<<<<<< HEAD
 from il_representations.envs.procgen_envs import (load_dataset_procgen,
                                                   get_procgen_env_name,
                                                   VecExtractDictObs,
                                                   VecMonitor)
-from il_representations.scripts.utils import update as dict_update
-=======
 from il_representations.script_utils import update as dict_update
->>>>>>> master
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
