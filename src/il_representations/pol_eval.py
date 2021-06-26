@@ -28,6 +28,7 @@ def do_final_eval(*,
                   deterministic_policy,
                   device,
                   write_video=False,
+                  eval_file_name='eval.json',
                   video_file_name=None):
     """Do final evaluation of a policy & write eval.json file.
 
@@ -43,6 +44,8 @@ def do_final_eval(*,
         device (Union[str, th.Device]): Torch device or device name to use for
             evaluation.
         write_video (bool): should trajectories be rendered as video?
+        eval_file_name (Optional[str]): filename for writing evaluation
+            results.
         video_file_name (Optional[str]): filename for when write_video=True
     """
     policy = th.load(policy_path)
@@ -142,6 +145,9 @@ def do_final_eval(*,
             ('policy_path', policy_path),
             ('seed', seed),
         ])
+
+        # In Procgen, we use start_level=0 to test on train level, and 1000 for
+        # test level.
         for start_level in [0, 1000]:
             vec_env = auto.load_vec_env(procgen_start_level=start_level)
 
@@ -192,7 +198,7 @@ def do_final_eval(*,
                                   "yet supported")
 
     # save to a .json file
-    with open(os.path.join(out_dir, 'eval.json'), 'w') as fp:
+    with open(os.path.join(out_dir, eval_file_name), 'w') as fp:
         json.dump(final_stats_dict, fp, indent=2, sort_keys=False)
 
     # also save video
