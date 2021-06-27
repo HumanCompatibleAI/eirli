@@ -19,8 +19,7 @@ def _get_procgen_data_opts(data_root, procgen_demo_paths):
 
 
 @env_cfg_ingredient.capture
-def load_dataset_procgen(task_name, procgen_frame_stack, n_traj=None,
-                         chans_first=True):
+def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True):
     data_root, procgen_demo_paths = _get_procgen_data_opts()
 
     # load trajectories from disk
