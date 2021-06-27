@@ -3,6 +3,7 @@ import collections
 import json
 import logging
 import os
+import ntpath
 
 import imitation.data.rollout as il_rollout
 import numpy as np
@@ -167,7 +168,6 @@ def do_final_eval(*,
             game_level = 'train_level' if start_level == 0 else 'test_level'
             final_stats_dict.update({game_level: stats})
 
-
             # print it out
             kv_message = '\n'.join(f"  {key}={value}"
                                    for key, value in stats.items())
@@ -178,11 +178,11 @@ def do_final_eval(*,
             if write_video:
                 assert len(trajectories) > 0
 
-                policy_filename = policy_path.split('/')[-1].split('.')[0]
+                policy_filename = ntpath.basename(policy_path)
                 video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
-                video_fp = tempfile.NamedTemporaryFile("wb", suffix=video_file_name)
-                video_writer = TensorFrameWriter(video_fp.name,
-                                                 color_space=auto.load_color_space())
+                video_writer = TensorFrameWriter(
+                    os.path.join(out_dir, video_file_name),
+                    color_space=auto.load_color_space())
 
                 # write the trajectories in sequence
                 for traj in trajectories:
@@ -190,8 +190,6 @@ def do_final_eval(*,
                         video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
                 video_writer.close()
-                il_test_ex.add_artifact(video_fp.name, video_file_name)
-                video_fp.close()
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
                                   f"{env_cfg['benchmark_name']!r} is not "

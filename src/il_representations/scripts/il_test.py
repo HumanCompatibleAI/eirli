@@ -4,6 +4,7 @@ import logging
 import tempfile
 import os
 import ntpath
+import re
 from pathlib import Path
 
 import imitation.util.logger as imitation_logger
@@ -11,6 +12,7 @@ import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 import torch as th
+import numpy as np
 
 from il_representations.algos.utils import set_global_seeds
 from il_representations.envs.config import (env_cfg_ingredient,
@@ -84,27 +86,32 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
             policy_idxes = [idx for idx in range(len(policy_paths))]
         else:
             # Include the first and the last policy, and evenly spread out among the rest.
-            policy_idxes = np.round(np.linspace(0, len(policy_paths) - 1, num_test_ckpts)).astype(int)
+            policy_idxes = np.round(
+                np.linspace(0, len(policy_paths) - 1,
+                            num_test_ckpts)).astype(int)
         logging.info(f"Policies to test: {[policy_paths[idx] for idx in policy_idxes]}")
 
         for count, idx in enumerate(policy_idxes):
             policy_path = policy_paths[idx]
             policy_name = ntpath.basename(policy_path)
             # Get nupdate info from policy_name, typically "policy_00050000_batches.pt"
-            n_update = policy_name.split('_')[1]
+            policy_name_match = re.match(r"policy_(?P<n_update>\d+)_batches.pt",
+                                         policy_name)
+            n_update = policy_name_match.group('n_update')
 
             logging.info(f"Start testing policy [{count + 1}/{len(policy_idxes)}] {policy_path}")
             eval_file_name = f'eval_{n_update}_batches.json'
 
-            _ = do_final_eval(
-                    policy_path=policy_path,
-                    n_rollouts=n_rollouts,
-                    out_dir=log_dir,
-                    seed=seed,
-                    run_id=run_id,
-                    deterministic_policy=deterministic_policy,
-                    device=device,
-                    eval_file_name=eval_file_name)
+            test_result = do_final_eval(
+                policy_path=policy_path,
+                n_rollouts=n_rollouts,
+                out_dir=log_dir,
+                seed=seed,
+                run_id=run_id,
+                deterministic_policy=deterministic_policy,
+                device=device_name,
+                eval_file_name=eval_file_name)
+            logging.info(f"test result: {test_result}")
 
     return do_final_eval(
         policy_path=policy_path,
