@@ -128,7 +128,7 @@ class LossDecoder(nn.Module):
             # We better not have had a learned standard deviation in
             # the encoder, since there's no clear way on how to pass
             # it forward
-            assert np.all((z_dist.stddev == 1).cpu().numpy())
+            assert torch.all(z_dist.stddev == 1.0)
             stddev = self.ones_like_projection_dim(mean)
         else:
             stddev = stdev_layer(z_vector)
