@@ -139,7 +139,7 @@ def do_final_eval(*,
                 for step_tensor in traj.obs:
                     video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
-    elif env_cfg['benchmark_name'] in ('procgen'):
+    elif env_cfg['benchmark_name'] == ('procgen'):
         full_env_name = auto.get_gym_env_name()
         final_stats_dict = collections.OrderedDict([
             ('full_env_name', full_env_name),
