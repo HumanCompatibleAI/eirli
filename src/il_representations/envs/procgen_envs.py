@@ -1,14 +1,12 @@
 import os
-import random
 import numpy as np
 import time
-from abc import ABC, abstractmethod
 from collections import deque
-
-from procgen.gym_registration import make_env, register_environments
+from abc import abstractmethod
 
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
+from il_representations.envs.utils import stack_obs_oldest_first
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
 
 
@@ -41,8 +39,9 @@ def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True):
     if chans_first:
         for key in ('obs', ):
             dataset_dict[key] = np.transpose(dataset_dict[key], (0, 3, 1, 2))
-    dataset_dict['obs'] = _stack_obs_oldest_first(dataset_dict['obs'],
-                                                  procgen_frame_stack)
+    dataset_dict['obs'] = stack_obs_oldest_first(dataset_dict['obs'],
+                                                 procgen_frame_stack,
+                                                 use_zeroed_frames=True)
 
     return dataset_dict
 
@@ -50,20 +49,6 @@ def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True):
 @env_cfg_ingredient.capture
 def get_procgen_env_name(task_name):
     return f'procgen-{task_name}-v0'
-
-
-@env_cfg_ingredient.capture
-def _stack_obs_oldest_first(obs_arr, procgen_frame_stack):
-    frame_accumulator = np.repeat([obs_arr[0]], procgen_frame_stack, axis=0)
-    c, h, w = obs_arr.shape[1:]
-    out_sequence = []
-    for in_frame in obs_arr:
-        frame_accumulator = np.concatenate(
-            [frame_accumulator[1:], [in_frame]], axis=0)
-        out_sequence.append(frame_accumulator.reshape(
-            procgen_frame_stack * c, h, w))
-    out_sequence = np.stack(out_sequence, axis=0)
-    return out_sequence
 
 
 class VecEnvObservationWrapper(VecEnvWrapper):
@@ -133,5 +118,3 @@ class VecMonitor(VecEnvWrapper):
                 self.eplens[i] = 0
                 newinfos[i] = info
         return obs, rews, dones, newinfos
-
-

@@ -1,4 +1,5 @@
 import gym
+import numpy as np
 
 
 def serialize_gym_space(space):
@@ -36,3 +37,29 @@ class _KwargSerialisableObject:
 
     def __reduce__(self):
         return (_inflate_object, (self.object_type, self.kwargs))
+
+
+def stack_obs_oldest_first(obs_arr, frame_stack, use_zeroed_frames=True):
+    """Takes an array of shape [T, C, H, W] and stacks the entries to produce a
+    new array of shape [T, C*frame_stack, H, W] with frames stacked along the
+    channels axis. Frames at stacked oldest-first, and the first frame_stack-1
+    frames have zeros instead of older frames (because older frames don't
+    exist). This is meant to be compatible with VecFrameStack in SB3."""
+
+    if use_zeroed_frames:  # Typically for dmc environments.
+        frame_accumulator = np.repeat(np.zeros_like(obs_arr[0][None]),
+                                      frame_stack,
+                                      axis=0)
+    else:  # Repeat the first frame. Typically used for Gym and Procgen.
+        frame_accumulator = np.repeat([obs_arr[0]], frame_stack, axis=0)
+
+    c, h, w = obs_arr.shape[1:]
+    out_sequence = []
+    for in_frame in obs_arr:
+        frame_accumulator = np.concatenate(
+            [frame_accumulator[1:], [in_frame]], axis=0)
+        out_sequence.append(frame_accumulator.reshape(
+            frame_stack * c, h, w))
+    out_sequence = np.stack(out_sequence, axis=0)
+    return out_sequence
+
