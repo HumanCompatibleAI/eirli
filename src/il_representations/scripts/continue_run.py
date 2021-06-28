@@ -104,9 +104,11 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
             continue
 
         saved_models = [m for m in os.listdir(model_save_dir)]
-        sorted_idx = sorted(range(len(saved_models)), key=lambda
-                            k: int(saved_models[k].split('_')[-2]))
-        saved_models = [saved_models[k] for k in sorted_idx]
+        # Saved models usually have name "policy_{nupdate}_batches.pt".
+        # Here we are sorting models according to nupdate with ascending
+        # order.
+        saved_models = sorted(saved_models, key=lambda p:
+                              int(p.split('_')[-2]))
         last_model = os.path.join(model_save_dir, saved_models[-1])
         last_saved_batch = int(saved_models[-1].split('_')[-2])
 
