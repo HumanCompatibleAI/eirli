@@ -91,8 +91,8 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
 
         with open(config_file, 'r') as json_file:
             config = json.load(json_file)
-        assert config['algo'] == 'bc', 'Currently only support continue \
-            running BC exps.'
+        assert config['algo'] == 'bc', 'Currently only support continue ' \
+            'running BC exps.'
 
         model_save_dir = os.path.join(exp_dir, 'snapshots')
         benchmark_name = config['env_cfg']['benchmark_name']
