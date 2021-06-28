@@ -190,6 +190,7 @@ def do_final_eval(*,
                         video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
                 video_writer.close()
+
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
                                   f"{env_cfg['benchmark_name']!r} is not "
@@ -200,7 +201,7 @@ def do_final_eval(*,
         json.dump(final_stats_dict, fp, indent=2, sort_keys=False)
 
     # also save video
-    if write_video and env_cfg['benchmark_name'] != 'procgen':
+    if write_video:
         video_writer.close()
 
     return final_stats_dict
