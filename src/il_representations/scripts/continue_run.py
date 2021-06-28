@@ -10,6 +10,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
+from il_representations.scripts.pretrain_n_adapt import run_single_exp
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
 fix_ex = Experiment(
@@ -24,47 +25,6 @@ fix_ex = Experiment(
         venv_opts_ingredient,
     ])
 cwd = os.getcwd()
-
-def run_single_exp(merged_config, log_dir, exp_name):
-    """
-    Run a specified experiment. We could not pass each Sacred experiment in
-    because they are not pickle serializable, which is not supported by Ray
-    (when running this as a remote function).
-
-    params:
-        merged_config: The config that should be used in the sub-experiment;
-                       formed by calling merge_configs()
-        log_dir: The log directory of current chain experiment.
-        exp_name: Specify the experiment type in ['repl', 'il_train',
-            'il_test']
-    """
-    # we need to run the workaround in each raylet, so we do it at the start of
-    # run_single_exp
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
-    from il_representations.scripts.il_test import il_test_ex
-    from il_representations.scripts.il_train import il_train_ex
-    from il_representations.scripts.run_rep_learner import represent_ex
-
-    if exp_name == 'repl':
-        inner_ex = represent_ex
-    elif exp_name == 'il_train':
-        inner_ex = il_train_ex
-    elif exp_name == 'il_test':
-        inner_ex = il_test_ex
-    else:
-        raise NotImplementedError(
-            f"exp_name must be one of repl, il_train, or il_test. Value passed in: {exp_name}")
-
-    observer = FileStorageObserver(os.path.join(log_dir, exp_name))
-    inner_ex.observers.append(observer)
-    ret_val = inner_ex.run(config_updates=merged_config)
-    return {
-        "type": exp_name,
-        "result": ret_val.result,
-        # FIXME(sam): this is dependent on us having exactly one
-        # observer, and it being a FileStorageObserver
-        "dir": ret_val.observers[0].dir,
-    }
 
 
 @fix_ex.config
@@ -114,6 +74,10 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
                 test_config = json.load(json_file)
 
             test_files = [name for name in os.listdir(exp_dir)]
+
+            # The below line can be pretty flexible; you can modify
+            # the condition according to your testing config. Directories
+            # added to tested_exps will not be tested again.
             if 'eval_19.json' in test_files:
                 tested_exps.append(test_config['policy_dir'])
 
