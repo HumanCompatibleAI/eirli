@@ -81,7 +81,7 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
             if 'eval_19.json' in test_files:
                 tested_exps.append(test_config['policy_dir'])
 
-    print(il_train_exps)
+    print('Detected il_train_exps:', il_train_exps)
     for exp_dir in il_train_exps:
         config_file = os.path.join(exp_dir, 'config.json')
 
@@ -91,8 +91,8 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
 
         with open(config_file, 'r') as json_file:
             config = json.load(json_file)
-        assert config['algo'] == 'bc', 'Currently only support continue \
-            running BC exps.'
+        assert config['algo'] == 'bc', 'Currently only support continue ' \
+            'running BC exps.'
 
         model_save_dir = os.path.join(exp_dir, 'snapshots')
         benchmark_name = config['env_cfg']['benchmark_name']
@@ -103,7 +103,7 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
         if not os.path.isdir(model_save_dir):
             continue
 
-        saved_models = [m for m in os.listdir(model_save_dir)]
+        saved_models = os.listdir(model_save_dir)
         # Saved models usually have name "policy_{nupdate}_batches.pt".
         # Here we are sorting models according to nupdate with ascending
         # order.
@@ -147,4 +147,3 @@ def main(argv=None):
 
 if __name__ == '__main__':
     main()
-
