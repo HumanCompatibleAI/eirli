@@ -103,7 +103,7 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
         if not os.path.isdir(model_save_dir):
             continue
 
-        saved_models = [m for m in os.listdir(model_save_dir)]
+        saved_models = os.listdir(model_save_dir)
         sorted_idx = sorted(range(len(saved_models)), key=lambda
                             k: int(saved_models[k].split('_')[-2]))
         saved_models = [saved_models[k] for k in sorted_idx]
