@@ -208,7 +208,10 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
-    # In case this run is continued from another run
+    # Sometimes we reload trained policies from a previously failed run.
+    # log_start_batch stands for the actual n_update the policy previously gets
+    # trained, so when saving policies we use its actual batch update number as
+    # its identifier.
     log_start_batch = 0
     ortho_init = False
     log_std_init = 0.0
@@ -338,22 +341,17 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     )
 
     save_interval = bc['save_every_n_batches']
-    epoch_length = int(bc['nominal_length'] / bc['batch_size'])
     model_save_dir = os.path.join(out_dir, 'snapshots')
     os.makedirs(model_save_dir, exist_ok=True)
     if save_interval is not None:
-        optional_model_saver = BCModelSaver(policy,
+        epoch_end_callbacks = [BCModelSaver(policy,
                                             model_save_dir,
-                                            epoch_length,
                                             save_interval,
-                                            start_batch=log_start_batch)
+                                            start_nupdate=log_start_batch)]
     else:
         epoch_end_callbacks = []
 
-    if log_start_batch:
-        bc_batches = bc['n_batches'] - log_start_batch
-    else:
-        bc_batches = bc['n_batches']
+    bc_batches = bc['n_batches']
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=None,
