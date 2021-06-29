@@ -299,10 +299,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                          action_space=venv_chans_first.action_space,
                          freeze_pol_encoder=freeze_encoder)
     color_space = auto_env.load_color_space()
-    augmenter = None
-    if bc['augs']:
-        augmenter = StandardAugmentations.from_string_spec(
-            bc['augs'], stack_color_space=color_space)
+    augmenter = augmenter_from_spec(bc['augs'], color_space)
 
     # build dataset in the format required by imitation
     nom_num_epochs = bc['nominal_num_epochs']

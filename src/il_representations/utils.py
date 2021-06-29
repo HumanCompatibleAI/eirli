@@ -373,6 +373,8 @@ def augmenter_from_spec(spec, color_space):
         return StandardAugmentations.from_string_spec(spec, color_space)
     elif isinstance(spec, dict):
         return StandardAugmentations(**spec, stack_color_space=color_space)
+    elif spec is None:
+        return None
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
