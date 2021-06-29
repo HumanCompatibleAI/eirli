@@ -78,7 +78,9 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
         policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
                         if os.path.isfile(os.path.join(policy_dir, f))]
-        policy_paths.sort()
+        policy_paths.sort(key=lambda k:
+                          int(re.match(r'policy_(?P<n_update>\d+)_batches.pt',
+                                       k).group('n_update')))
         logging.info(f"Policies to test: {policy_paths}")
 
         # Get the indexes of ckpts to test.
@@ -95,9 +97,8 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
             policy_path = policy_paths[idx]
             policy_name = ntpath.basename(policy_path)
             # Get nupdate info from policy_name, typically "policy_00050000_batches.pt"
-            policy_name_match = re.match(r"policy_(?P<n_update>\d+)_batches.pt",
-                                         policy_name)
-            n_update = policy_name_match.group('n_update')
+            n_update = re.match(r"policy_(?P<n_update>\d+)_batches.pt",
+                                policy_name).group('n_update')
 
             logging.info(f"Start testing policy [{count + 1}/{len(policy_idxes)}] {policy_path}")
             eval_file_name = f'eval_{n_update}_batches.json'
