@@ -255,45 +255,33 @@ def make_policy(*,
     # encoder architecture & kwargs.
     encoder = load_encoder(observation_space=observation_space,
                            freeze=freeze_pol_encoder)
-    policy_kwargs = {
-        'features_extractor_class': EncoderFeatureExtractor,
-        'features_extractor_kwargs': {
-            "encoder": encoder,
-        },
-        'net_arch': postproc_arch,
-        'observation_space': observation_space,
-        'action_space': action_space,
-        # SB3 policies require a learning rate for the embedded optimiser. BC
-        # should not use that optimiser, though, so we set the LR to some
-        # insane value that is guaranteed to cause problems if the optimiser
-        # accidentally is used for something (using infinite or non-numeric
-        # values fails initial validation, so we need an insane-but-finite
-        # number).
-        'lr_schedule':
-        (lambda _: 1e100) if lr_schedule is None else lr_schedule,
-        'ortho_init': ortho_init,
-        'log_std_init': log_std_init
-    }
-    if encoder_or_path is not None:
-        if isinstance(encoder_or_path, sb3_pols.ActorCriticCnnPolicy):
-            return encoder_or_path
 
-        if isinstance(encoder_or_path, str):
-            encoder = th.load(encoder_or_path)
-        else:
-            encoder = encoder_or_path
-        assert isinstance(encoder, nn.Module)
+    # If the loaded encoder is an ActorCriticCnnPolicy, e.g., it's loaded from
+    # a previously failed run, skip the initialization process.
+    if isinstance(encoder, sb3_pols.ActorCriticCnnPolicy):
+        policy = encoder
     else:
-        encoder = BaseEncoder(observation_space, **encoder_kwargs)
-    policy_kwargs = {
-        'features_extractor_class': EncoderFeatureExtractor,
-        'features_extractor_kwargs': {
-            "encoder": encoder,
-        },
-        **common_policy_kwargs,
-    }
+        policy_kwargs = {
+            'features_extractor_class': EncoderFeatureExtractor,
+            'features_extractor_kwargs': {
+                "encoder": encoder,
+            },
+            'net_arch': postproc_arch,
+            'observation_space': observation_space,
+            'action_space': action_space,
+            # SB3 policies require a learning rate for the embedded optimiser. BC
+            # should not use that optimiser, though, so we set the LR to some
+            # insane value that is guaranteed to cause problems if the optimiser
+            # accidentally is used for something (using infinite or non-numeric
+            # values fails initial validation, so we need an insane-but-finite
+            # number).
+            'lr_schedule':
+            (lambda _: 1e100) if lr_schedule is None else lr_schedule,
+            'ortho_init': ortho_init,
+            'log_std_init': log_std_init
+        }
 
-    policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
+        policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
 
     if print_policy_summary:
         # print policy info in case it is useful for the caller
