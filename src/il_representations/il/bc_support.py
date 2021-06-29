@@ -18,6 +18,7 @@ class BCModelSaver:
         # the n_update number it has been trained for, and save the policy
         # file using its actual batch update number.
         self.start_nupdate = start_nupdate
+        self.last_save_path = None
 
     def __call__(self, batch_num, **kwargs):
         """It is assumed that this is called on epoch end."""
@@ -29,3 +30,5 @@ class BCModelSaver:
             th.save(self.policy, save_path)
             print(f"Saved policy to {save_path}!")
             self.last_save_batches = batch_num
+            self.last_save_path = save_path
+            assert os.path.isfile(self.last_save_path)

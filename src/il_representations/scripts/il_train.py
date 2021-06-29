@@ -344,10 +344,11 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     model_save_dir = os.path.join(out_dir, 'snapshots')
     os.makedirs(model_save_dir, exist_ok=True)
     if save_interval is not None:
-        epoch_end_callbacks = [BCModelSaver(policy,
-                                            model_save_dir,
-                                            save_interval,
-                                            start_nupdate=log_start_batch)]
+        model_saver = BCModelSaver(policy,
+                                   model_save_dir,
+                                   save_interval,
+                                   start_nupdate=log_start_batch)
+        epoch_end_callbacks = [model_saver]
     else:
         epoch_end_callbacks = []
 
@@ -359,11 +360,8 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                   log_interval=bc['log_interval'],
                   epoch_end_callbacks=epoch_end_callbacks)
 
-    final_pol_name = f'policy_{bc["n_batches"]}_batches.pt'
-
-    final_path = os.path.join(model_save_dir, final_pol_name)
-    logging.info(f"Saving final BC policy to {final_path}")
-    trainer.save_policy(final_path)
+    model_saver(bc_batches)
+    final_path = model_saver.last_save_path
     return final_path
 
 
