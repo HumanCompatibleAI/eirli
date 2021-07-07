@@ -79,7 +79,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
         policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
                         if os.path.isfile(os.path.join(policy_dir, f))]
         policy_paths.sort(key=lambda k:
-                          int(re.match(r'policy_(?P<n_update>\d+)_batches.pt',
+                          int(re.match(r'.*policy_(?P<n_update>\d+)_batches.pt',
                                        k).group('n_update')))
         logging.info(f"Policies to test: {policy_paths}")
 
