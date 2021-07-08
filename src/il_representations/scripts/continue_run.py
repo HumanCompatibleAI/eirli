@@ -132,7 +132,7 @@ def run(stage_to_run, exp_path, cuda_devices, num_test_ckpts, write_video,
                 print(f'Evaluate {model_save_dir}')
                 os.system(f'CUDA_VISIBLE_DEVICES={cuda_devices} '
                           f'python ./src/il_representations/scripts/il_test.py with \\'
-                          f'policy_dir={model_save_dir} \\'
+                          f'policy_path={last_model} \\'
                           f'exp_ident={exp_ident} \\'
                           f'num_test_ckpts={num_test_ckpts} \\'
                           f'write_video={write_video} \\'
