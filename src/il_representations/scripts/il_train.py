@@ -343,14 +343,12 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     save_interval = bc['save_every_n_batches']
     model_save_dir = os.path.join(out_dir, 'snapshots')
     os.makedirs(model_save_dir, exist_ok=True)
-    if save_interval is not None:
-        model_saver = BCModelSaver(policy,
-                                   model_save_dir,
-                                   save_interval,
-                                   start_nupdate=log_start_batch)
-        epoch_end_callbacks = [model_saver]
-    else:
-        epoch_end_callbacks = []
+    model_saver = BCModelSaver(policy,
+                               model_save_dir,
+                               save_interval,
+                               start_nupdate=log_start_batch)
+
+    epoch_end_callbacks = [model_saver] if save_interval else []
 
     bc_batches = bc['n_batches']
 
