@@ -358,7 +358,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                   log_interval=bc['log_interval'],
                   epoch_end_callbacks=epoch_end_callbacks)
 
-    model_saver(bc_batches)
+    model_saver.save(bc_batches)
     final_path = model_saver.last_save_path
     return final_path
 

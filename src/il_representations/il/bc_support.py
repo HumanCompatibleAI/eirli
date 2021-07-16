@@ -19,16 +19,20 @@ class BCModelSaver:
         # file using its actual batch update number.
         self.start_nupdate = start_nupdate
         self.last_save_path = None
+        os.makedirs(self.save_dir, exist_ok=True)
 
     def __call__(self, batch_num, **kwargs):
         """It is assumed that this is called on epoch end."""
         batch_num = batch_num + self.start_nupdate
         if batch_num >= self.last_save_batches + self.save_interval_batches:
-            os.makedirs(self.save_dir, exist_ok=True)
-            save_fn = f'policy_{batch_num:08d}_batches.pt'
-            save_path = os.path.join(self.save_dir, save_fn)
-            th.save(self.policy, save_path)
-            print(f"Saved policy to {save_path}!")
-            self.last_save_batches = batch_num
-            self.last_save_path = save_path
-            assert os.path.isfile(self.last_save_path)
+            self.save(batch_num)
+
+    def save(self, batch_num):
+        """Save policy."""
+        save_fn = f'policy_{batch_num:08d}_batches.pt'
+        save_path = os.path.join(self.save_dir, save_fn)
+        th.save(self.policy, save_path)
+        print(f"Saved policy to {save_path}!")
+        self.last_save_batches = batch_num
+        self.last_save_path = save_path
+        assert os.path.isfile(self.last_save_path)
