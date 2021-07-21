@@ -49,7 +49,7 @@ def bc_defaults():
     augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     log_interval = 500
     batch_size = 32
-    save_every_n_batches = None
+    save_every_n_batches = 50000
     optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
