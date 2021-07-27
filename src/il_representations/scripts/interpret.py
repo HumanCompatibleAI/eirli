@@ -65,7 +65,7 @@ def base_config():
     #     'layer_activation',
     #     'layer_gradxact'
     # ]
-    chosen_algo = 'saliency'
+    chosen_algo = 'integrated_gradient'
 
     layer_kwargs = {
         'layer_conductance': {'module': 'encoder', 'layer_idx': 2},
@@ -353,7 +353,8 @@ def choose_layer(network, module_name, layer_idx):
 
 
 @interp_ex.main
-def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_configs):
+def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, 
+        dataset_configs, save_image):
     # setup environment & dataset
     datasets, combined_meta = auto_env.load_wds_datasets(configs=dataset_configs)
     observation_space = combined_meta['observation_space']
@@ -387,7 +388,7 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_config
             video_writer.add_tensor(preprocess_obs(interpreted_img,
                                                    observation_space,
                                                    normalize_images=True))
-        else:
+        if save_image:
             save_img(interpreted_img,
                      save_name=f'{chosen_algo}_{itr}',
                      save_dir=log_dir,
