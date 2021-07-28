@@ -252,12 +252,20 @@ def make_policy(*,
                 postproc_arch,
                 freeze_pol_encoder,
                 lr_schedule=None,
-                print_policy_summary=True):
+                print_policy_summary=True,
+                modified_encoder_path=None,
+                encoder_kwargs=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
+    load_encoder_kwargs = {}
+    if modified_encoder_path:
+        load_encoder_kwargs['encoder_path'] = modified_encoder_path
+    if encoder_kwargs:
+        load_encoder_kwargs['encoder_kwargs'] = encoder_kwargs
     encoder = load_encoder(observation_space=observation_space,
-                           freeze=freeze_pol_encoder)
+                           freeze=freeze_pol_encoder,
+                           **load_encoder_kwargs)
 
     # If the loaded encoder is an ActorCriticCnnPolicy, e.g., it's loaded from
     # a previously failed run, skip the initialization process.
