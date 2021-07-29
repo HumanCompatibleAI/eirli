@@ -18,12 +18,11 @@ def files_are_identical(p1, p2, read_size=(1 << 16) - 1):
     Note that this only works for ordinary files, and not sockets etc.; for
     'interactive' files, `BufferedReader.read()` might return a short read
     before EOF, in which case this function will break."""
-    with open(p1, 'rb') as fp1, open(p2, 'rb') as fp2:
-        r1 = io.BufferedReader(fp1, read_size)
-        r2 = io.BufferedReader(fp2, read_size)
+    with open(p1, 'rb', buffering=read_size) as fp1, \
+         open(p2, 'rb', buffering=read_size) as fp2:
         while True:
-            fp1_contents = r1.read(read_size)
-            fp2_contents = r2.read(read_size)
+            fp1_contents = fp1.read(read_size)
+            fp2_contents = fp2.read(read_size)
             if fp1_contents != fp2_contents:
                 return False
             if not fp1_contents or not fp2_contents:

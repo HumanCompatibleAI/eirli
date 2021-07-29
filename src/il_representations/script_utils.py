@@ -1,9 +1,8 @@
 import collections
 import copy
 import enum
+from typing import TypeVar
 import urllib
-import torch
-from torchsummary import summary
 
 
 class StagesToRun(str, enum.Enum):
@@ -36,7 +35,10 @@ def update(d, *updates):
     return d
 
 
-def sacred_copy(o):
+T = TypeVar('T')
+
+
+def sacred_copy(o: T) -> T:
     """Perform a deep copy on nested dictionaries and lists.
 
     If `d` is an instance of dict or list, copies `d` to a dict or list
@@ -67,11 +69,3 @@ def detect_ec2():
                 raise ValueError(f"Received unexpected response from '{EC2_ID_URL}'")
     except urllib.error.URLError:
         return False
-
-
-def print_policy_info(policy, obs_space):
-    """Print model information of the policy"""
-    print(policy)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    policy = policy.to(device)
-    summary(policy, (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2]))

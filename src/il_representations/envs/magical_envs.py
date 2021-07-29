@@ -6,11 +6,12 @@ import logging
 import os
 import random
 import shutil
-from typing import List
+from typing import List, Tuple
 
 import imitation.data.rollout as il_rollout
 from imitation.util.util import make_vec_env
 from magical import register_envs, saved_trajectories
+from magical.benchmarks import EnvName
 from magical.evaluation import EvaluationProtocol
 import numpy as np
 import torch as th
@@ -26,7 +27,7 @@ def load_data(
         pickle_paths: List[str],
         preprocessor_name: str,
         remove_null_actions: bool = False,
-):
+) -> Tuple[dict, str]:
     """Load MAGICAL data from pickle files."""
 
     # First we load pickles off disk and infer the env name from their content.
@@ -35,6 +36,7 @@ def load_data(
     # class, except that the observation is a dictionary instead of an ndarray.
     env_name = None
     demo_trajectories = []
+    assert len(demo_trajectories) > 0
     for demo_dict in saved_trajectories.load_demos(pickle_paths):
         new_env_name = demo_dict['env_name']
         if env_name is None:
@@ -46,7 +48,7 @@ def load_data(
                     f"environments: {env_name}, {new_env_name} ")
 
         demo_trajectories.append(demo_dict['trajectory'])
-
+    assert env_name is not None
     del new_env_name  # unused
 
     # Now we apply the supplied preprocessor, if any, to the loaded
@@ -102,11 +104,17 @@ def load_data(
 
 @env_cfg_ingredient.capture
 def get_env_name_magical(task_name, magical_preproc):
-    # for MAGICAL, the 'task_name' is a prefix like MoveToCorner or
-    # ClusterShape
-    orig_env_name = task_name + '-Demo-v0'
+    # For MAGICAL, the 'task_name' is a MAGICAL env name _without_ the
+    # preprocessor; think MoveToCorner-Demo-v0 or ClusterShape-TestAll-v0.
+    # (note that il_test.py will test on all variants of task_name, even
+    # if task_name is just the demo task)
+    try:
+        EnvName(task_name)
+    except ValueError as ex:
+        raise ValueError(
+            f"Could not parse task_name='{task_name}' as a MAGICAL task: {ex}")
     gym_env_name = saved_trajectories.splice_in_preproc_name(
-        orig_env_name, magical_preproc)
+        task_name, magical_preproc)
     return gym_env_name
 
 
@@ -139,6 +147,8 @@ def load_dataset_magical(
     dataset_dict, loaded_env_name = load_data(
         demo_paths, preprocessor_name=magical_preproc,
         remove_null_actions=magical_remove_null_actions)
+    # this might happen if there were no demos paths
+    assert loaded_env_name is not None
     gym_env_name = get_env_name_magical()
     assert loaded_env_name.startswith(gym_env_name.rsplit('-')[0])
     return dataset_dict
@@ -181,12 +191,14 @@ class SB3EvaluationProtocol(EvaluationProtocol):
     """MAGICAL 'evaluation protocol' for Stable Baselines 3 policies."""
 
     # TODO: more docs, document __init__ in particular
-    def __init__(self, policy, run_id, seed, video_writer=None, **kwargs):
+    def __init__(self, policy, run_id, seed, video_writer=None, *,
+                 deterministic_policy, **kwargs):
         super().__init__(**kwargs)
         self._run_id = run_id
         self.policy = policy
         self.seed = seed
         self.video_writer = video_writer
+        self.deterministic_policy = deterministic_policy
 
     @property
     def run_id(self):
@@ -206,7 +218,8 @@ class SB3EvaluationProtocol(EvaluationProtocol):
             self.policy,
             vec_env_chans_last,
             sample_until=il_rollout.min_episodes(self.n_rollouts),
-            rng=rng)
+            rng=rng,
+            deterministic_policy=self.deterministic_policy)
         scores = []
         for trajectory in trajectories[:self.n_rollouts]:
             scores.append(trajectory.infos[-1]['eval_score'])
