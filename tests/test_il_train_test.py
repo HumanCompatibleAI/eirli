@@ -23,6 +23,7 @@ def test_il_train_test(env_cfg, algo, il_train_ex, il_test_ex,
         'device_name': 'cpu',
     }
 
+    final_pol_name = 'last_test_policy.pt'
     # train
     il_train_run = il_train_ex.run(config_updates={
         'algo': algo,
