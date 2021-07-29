@@ -17,7 +17,8 @@ def _get_procgen_data_opts(data_root, procgen_demo_paths):
 
 
 @env_cfg_ingredient.capture
-def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True):
+def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True,
+                         n_traj=None):
     data_root, procgen_demo_paths = _get_procgen_data_opts()
 
     # load trajectories from disk
@@ -28,6 +29,12 @@ def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True):
     cat_acts = np.concatenate(trajectories['acts'], axis=0)
     cat_rews = np.concatenate(trajectories['rews'], axis=0)
     cat_dones = np.concatenate(trajectories['dones'], axis=0)
+    if n_traj is not None:
+        nth_traj_end_idx = [i for i, n in enumerate(cat_dones) if n == True][n_traj-1] + 1
+        cat_obs = cat_obs[:nth_traj_end_idx]
+        cat_acts = cat_acts[:nth_traj_end_idx]
+        cat_rews = cat_rews[:nth_traj_end_idx]
+        cat_dones = cat_dones[:nth_traj_end_idx]
 
     dataset_dict = {
         'obs': cat_obs,

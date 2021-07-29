@@ -55,6 +55,8 @@ def benchmark_is_available(benchmark_name):
         return True, None
     elif benchmark_name == 'atari':
         return True, None
+    elif benchmark_name == 'procgen':
+        return True, None
     elif benchmark_name == 'minecraft':
         # we check whether minecraft is installed by importing minerl
         try:
