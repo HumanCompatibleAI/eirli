@@ -25,7 +25,7 @@ def test_il_train_test(env_cfg, algo, il_train_ex, il_test_ex,
 
     final_pol_name = 'last_test_policy.pt'
     # train
-    il_train_ex.run(config_updates={
+    il_train_run = il_train_ex.run(config_updates={
         'algo': algo,
         'final_pol_name': final_pol_name,
         # these defaults make training cheap
@@ -33,12 +33,15 @@ def test_il_train_test(env_cfg, algo, il_train_ex, il_test_ex,
         **ENV_DATA_VENV_OPTS_TEST_CONFIG,
         **common_cfg,
     })
+
     # FIXME(sam): same comment as elsewhere: should have a better way of
     # getting at saved policies.
     log_dir = file_observer.dir
 
     # test
-    policy_path = os.path.join(log_dir, final_pol_name)
+    # policy_path = os.path.join(log_dir, final_pol_name)
+    policy_path = il_train_run.result['model_path']
+    print(policy_path)
     il_test_ex.run(
         config_updates={
             'n_rollouts': 2,
