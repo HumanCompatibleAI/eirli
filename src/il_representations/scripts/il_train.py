@@ -49,7 +49,12 @@ def bc_defaults():
     augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     log_interval = 500
     batch_size = 32
+    # The interval to save BC policy networks. If it's set to None,
+    # intermediate policies will not be saved.
     save_every_n_batches = 50000
+    if save_every_n_batches is not None:
+        assert isinstance(save_every_n_batches, int) and \
+                save_every_n_batches > 0
     optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
