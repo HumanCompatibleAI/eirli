@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
 import logging
-import tempfile
 import os
-import ntpath
 import re
 from pathlib import Path
 
@@ -95,7 +93,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
         for count, idx in enumerate(policy_idxes):
             policy_path = policy_paths[idx]
-            policy_name = ntpath.basename(policy_path)
+            policy_name = os.path.basename(policy_path)
             # Get nupdate info from policy_name, typically "policy_00050000_batches.pt"
             n_update = re.match(r"policy_(?P<n_update>\d+)_batches.pt",
                                 policy_name).group('n_update')
