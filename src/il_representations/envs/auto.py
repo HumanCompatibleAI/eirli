@@ -69,24 +69,25 @@ def benchmark_is_available(benchmark_name):
 
 
 @env_cfg_ingredient.capture
-def load_dict_dataset(benchmark_name, n_traj=None, task_name=None):
+def load_dict_dataset(benchmark_name, n_traj=None, **kwargs):
     """Load a dict-type dataset. Also see load_wds_datasets, which instead
     lods a set of datasets that have been stored in a webdataset-compatible
     format."""
-    kwargs = {'n_traj': n_traj, 'task_name': task_name}
-    # Remove keys if None
-    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+    # Check if kwargs has unexpected keys
+    if kwargs is not None:
+        assert set(kwargs.keys()) <= set(['task_name'])
 
     if benchmark_name == 'magical':
-        dataset_dict = load_dataset_magical(**kwargs)
+        dataset_dict = load_dataset_magical(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'dm_control':
-        dataset_dict = load_dataset_dm_control(**kwargs)
+        dataset_dict = load_dataset_dm_control(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'atari':
-        dataset_dict = load_dataset_atari(**kwargs)
+        dataset_dict = load_dataset_atari(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'minecraft':
-        dataset_dict = load_dataset_minecraft(**kwargs)
+        dataset_dict = load_dataset_minecraft(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'procgen':
-        dataset_dict = load_dataset_procgen(**kwargs)
+        dataset_dict = load_dataset_procgen(n_traj=n_traj, **kwargs)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 

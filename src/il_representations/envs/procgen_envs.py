@@ -27,7 +27,7 @@ def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True,
     cat_rews = np.concatenate(trajectories['rews'], axis=0)
     cat_dones = np.concatenate(trajectories['dones'], axis=0)
     if n_traj is not None:
-        nth_traj_end_idx = [i for i, n in enumerate(cat_dones) if n == True][n_traj-1] + 1
+        nth_traj_end_idx = [i for i, n in enumerate(cat_dones) if n is True][n_traj-1] + 1
         cat_obs = cat_obs[:nth_traj_end_idx]
         cat_nobs = cat_nobs[:nth_traj_end_idx]
         cat_acts = cat_acts[:nth_traj_end_idx]
