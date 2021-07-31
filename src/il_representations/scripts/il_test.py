@@ -2,7 +2,6 @@
 """Run an IL algorithm in some selected domain."""
 import logging
 import os
-import re
 from pathlib import Path
 
 import imitation.util.logger as imitation_logger
@@ -16,6 +15,7 @@ from il_representations.algos.utils import set_global_seeds
 from il_representations.envs.config import (env_cfg_ingredient,
                                             venv_opts_ingredient)
 from il_representations.pol_eval import do_final_eval
+from il_representations.utils import get_policy_nupdate
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 il_test_ex = Experiment('il_test',
@@ -76,9 +76,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
 
         policy_paths = [os.path.join(policy_dir, f) for f in os.listdir(policy_dir)
                         if os.path.isfile(os.path.join(policy_dir, f))]
-        policy_paths.sort(key=lambda k:
-                          int(re.match(r'.*policy_(?P<n_update>\d+)_batches.pt',
-                                       k).group('n_update')))
+        policy_paths.sort(key=lambda k: get_policy_nupdate(k))
         logging.info(f"Policies to test: {policy_paths}")
 
         # Get the indexes of ckpts to test.
@@ -95,8 +93,7 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
             policy_path = policy_paths[idx]
             policy_name = os.path.basename(policy_path)
             # Get nupdate info from policy_name, typically "policy_00050000_batches.pt"
-            n_update = re.match(r"policy_(?P<n_update>\d+)_batches.pt",
-                                policy_name).group('n_update')
+            n_update = get_policy_nupdate(policy_name)
 
             logging.info(f"Start testing policy [{count + 1}/{len(policy_idxes)}] {policy_path}")
             eval_file_name = f'eval_{n_update}_batches.json'
