@@ -108,6 +108,10 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
                 device=device_name,
                 eval_file_name=eval_file_name)
             logging.info(f"test result: {test_result}")
+    elif num_test_ckpts == 1:
+        logging.info(f"Policy to test: {policy_path}")
+    else:
+        raise ValueError('num_test_ckpts should >= 1.')
 
     return do_final_eval(
         policy_path=policy_path,
