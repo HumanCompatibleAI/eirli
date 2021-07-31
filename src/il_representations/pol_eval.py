@@ -3,7 +3,6 @@ import collections
 import json
 import logging
 import os
-import ntpath
 
 import imitation.data.rollout as il_rollout
 import numpy as np
@@ -178,7 +177,9 @@ def do_final_eval(*,
             if write_video:
                 assert len(trajectories) > 0
 
-                policy_filename = ntpath.basename(policy_path)
+                policy_filename = os.path.basename(policy_path)
+                # Remove file extension
+                policy_filename = os.path.splitext(policy_filename)[0]
                 video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
                 video_writer = TensorFrameWriter(
                     os.path.join(out_dir, video_file_name),
