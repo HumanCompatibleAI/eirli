@@ -8,9 +8,9 @@ import os
 from imitation.util.util import make_vec_env
 from procgen import ProcgenEnv
 from stable_baselines3.common.atari_wrappers import AtariWrapper
-from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage, \
-SubprocVecEnv
-
+from stable_baselines3.common.vec_env import (VecFrameStack,
+                                              VecTransposeImage,
+                                              SubprocVecEnv)
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.data.read_dataset import load_ilr_datasets
 from il_representations.envs.atari_envs import load_dataset_atari
@@ -23,10 +23,9 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
-from il_representations.envs.procgen_envs import (load_dataset_procgen,
-                                                  get_procgen_env_name,
-                                                  VecExtractDictObs,
-                                                  VecMonitor)
+from il_representations.envs.procgen_envs import load_dataset_procgen
+from il_representations.envs.baselines_vendored import (VecExtractDictObs,
+                                                        VecMonitor)
 from il_representations.script_utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
