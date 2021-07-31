@@ -420,8 +420,7 @@ def print_policy_info(policy, obs_space):
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     policy = policy.to(device)
     obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
-    # TODO: The below line has a bug since the policy's output isn't a tensor.
-    # summary(policy, obs_shape)
+    summary(policy, obs_shape)
 
 
 @functools.total_ordering
