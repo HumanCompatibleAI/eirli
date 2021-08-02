@@ -28,13 +28,12 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.il.utils import add_infos, streaming_extract_keys
 from il_representations.utils import augmenter_from_spec, freeze_params
-from il_representations.scripts.policy_utils import make_policy
+from il_representations.scripts.policy_utils import make_policy, ModelSaver
 
 
 bc_ingredient = Ingredient('bc')
@@ -280,10 +279,10 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     save_interval = bc['save_every_n_batches']
     model_save_dir = os.path.join(out_dir, 'snapshots')
     os.makedirs(model_save_dir, exist_ok=True)
-    model_saver = BCModelSaver(policy,
-                               model_save_dir,
-                               save_interval,
-                               start_nupdate=log_start_batch)
+    model_saver = ModelSaver(policy,
+                             model_save_dir,
+                             save_interval,
+                             start_nupdate=log_start_batch)
 
     epoch_end_callbacks = [model_saver] if save_interval else []
 

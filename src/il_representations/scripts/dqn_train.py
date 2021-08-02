@@ -15,6 +15,7 @@ from torch.optim.adam import Adam
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 from stable_baselines3.dqn import CnnPolicy, DQN
+from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.preprocessing import preprocess_obs
 
 from il_representations.algos.encoders import BaseEncoder
@@ -24,7 +25,7 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.scripts.policy_utils import make_policy
+from il_representations.scripts.policy_utils import make_policy, ModelSaver
 from il_representations.utils import augmenter_from_spec
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
@@ -54,25 +55,32 @@ def default_config():
         obs_encoder_cls_kwargs={}
     )
     n_batches = 5000
+    n_trajs = None
     augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     save_every_n_batches = 50000
-    n_trajs = None
+    n_traj = None
     torch_num_threads = None
+    # the number of 'epochs' is used by the LR scheduler
+    # (we still do `n_batches` total training, the scheduler just gets a chance
+    # to update after every `n_batches / nominal_num_epochs` batches)
+    nominal_num_epochs = 1
     postproc_arch = ()
 
 
 @dqn_ex.capture
-def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs,
+def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                     device_name, final_pol_name, freeze_encoder, postproc_arch,
-                    encoder_path, encoder_kwargs,):
+                    encoder_path, encoder_kwargs, nominal_num_epochs,
+                    save_every_n_batches):
     observation_space = venv_chans_first.observation_space
+    device = get_device("auto" if device_name is None else device_name)
     policy = make_policy(observation_space=observation_space,
                          action_space=venv_chans_first.action_space,
                          postproc_arch=postproc_arch,
                          freeze_pol_encoder=freeze_encoder,
                          policy_class=CnnPolicy,
                          encoder_path=encoder_path,
-                         encoder_kwargs=encoder_kwargs)
+                         encoder_kwargs=encoder_kwargs).to(device)
 
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(augs, color_space)
@@ -110,12 +118,22 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs,
                                   done=done)
 
     # Call DQN training.
+    n_update_per_epoch = int(n_batches / nominal_num_epochs)
+    model_saver = ModelSaver(trainer.policy,
+                             save_dir=os.path.join(out_dir, 'snapshots'),
+                             save_interval_batches=save_every_n_batches)
+    for epoch in range(nominal_num_epochs):
+        print(f'Training [{epoch}/{nominal_num_epochs}] epochs...')
+        trainer.train(n_update_per_epoch)
 
-    # Save policy.
+        model_saver(n_update_per_epoch)
+
+    model_saver.save(n_batches)
+    return model_saver.last_save_path
 
 
 @dqn_ex.main
-def train(seed, torch_num_threads, dataset_configs, _config):
+def train(seed, torch_num_threads, dataset_configs, n_traj, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
@@ -126,7 +144,7 @@ def train(seed, torch_num_threads, dataset_configs, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
-        dict_dataset = auto_env.load_dict_dataset()
+        dict_dataset = auto_env.load_dict_dataset(n_traj=n_traj)
 
         final_path = do_training_dqn(
             dict_dataset=dict_dataset,
