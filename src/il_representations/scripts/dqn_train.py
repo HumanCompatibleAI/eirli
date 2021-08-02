@@ -15,6 +15,7 @@ from torch.optim.adam import Adam
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 from stable_baselines3.dqn import CnnPolicy, DQN
+from stable_baselines3.common.preprocessing import preprocess_obs
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
@@ -61,10 +62,11 @@ def default_config():
 
 
 @dqn_ex.capture
-def do_training_dqn(venv_chans_first, demo_webdatasets, out_dir, augs,
+def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs,
                     device_name, final_pol_name, freeze_encoder, postproc_arch,
                     encoder_path, encoder_kwargs,):
-    policy = make_policy(observation_space=venv_chans_first.observation_space,
+    observation_space = venv_chans_first.observation_space
+    policy = make_policy(observation_space=observation_space,
                          action_space=venv_chans_first.action_space,
                          postproc_arch=postproc_arch,
                          freeze_pol_encoder=freeze_encoder,
@@ -75,11 +77,37 @@ def do_training_dqn(venv_chans_first, demo_webdatasets, out_dir, augs,
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(augs, color_space)
 
-    # Build dataset in the format required by SB3's dqn training.
+    trainer = DQN(
+        policy='CnnPolicy',
+        env=venv_chans_first,
+        device=device_name
+    )
+    trainer.policy = policy
 
-    # Initialize DQN agent.
+    # Push data into DQN agent's memory.
+    for idx in range(len(dict_dataset['obs'])):
+        obs, next_obs, action, reward, done = dict_dataset['obs'][idx], \
+                                              dict_dataset['next_obs'][idx], \
+                                              dict_dataset['acts'][idx], \
+                                              dict_dataset['rews'][idx], \
+                                              dict_dataset['dones'][idx]
+        obs = preprocess_obs(th.tensor(obs),
+                             observation_space,
+                             normalize_images=True)
+        next_obs = preprocess_obs(th.tensor(next_obs),
+                                  observation_space,
+                                  normalize_images=True)
+        if augmenter is not None:
+            # Here we unsqueeze the obs first since the augmenter only takes
+            # [N, C, H, W] inputs, so we need to fake a "batch size" here.
+            obs = augmenter(th.unsqueeze(obs, dim=0)).squeeze()
+            next_obs = augmenter(th.unsqueeze(next_obs, dim=0)).squeeze()
 
-    # Load data into DQN agent's memory.
+        trainer.replay_buffer.add(obs=obs,
+                                  next_obs=next_obs,
+                                  action=action,
+                                  reward=reward,
+                                  done=done)
 
     # Call DQN training.
 
@@ -98,11 +126,10 @@ def train(seed, torch_num_threads, dataset_configs, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
-        demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
-            configs=dataset_configs)
+        dict_dataset = auto_env.load_dict_dataset()
 
         final_path = do_training_dqn(
-            demo_webdatasets=demo_webdatasets,
+            dict_dataset=dict_dataset,
             venv_chans_first=venv,
             out_dir=log_dir)
 
