@@ -17,12 +17,14 @@ from sacred.observers import FileStorageObserver
 from stable_baselines3.dqn import CnnPolicy
 
 from il_representations.algos.encoders import BaseEncoder
-from il_representations.algos.utils import set_global_seeds
+from il_representations.algos.utils import set_global_seeds, load_encoder
 from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
+from il_representations.scripts.policy_utils import make_policy
+from il_representations.utils import augmenter_from_spec
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 dqn_ex = Experiment(
@@ -58,10 +60,20 @@ def default_config():
 
 
 @dqn_ex.capture
-def do_training_dqn():
-    policy = make_policy()
+def do_training_dqn(venv_chans_first, demo_webdatasets, out_dir, augs,
+                    device_name, final_pol_name, freeze_encoder, ortho_init,
+                    postproc_arch, encoder_path, encoder_kwargs):
+    policy = make_policy(observation_space=venv_chans_first.observation_space,
+                         action_space=venv_chans_first.action_space,
+                         ortho_init=ortho_init,
+                         postproc_arch=postproc_arch,
+                         freeze_pol_encoder=freeze_encoder,
+                         policy_class=CnnPolicy,
+                         encoder_path=encoder_path,
+                         encoder_kwargs=encoder_kwargs)
+
     color_space = auto_env.load_color_space()
-    augmenter = augmenter_from_spec(bc['augs'], color_space)
+    augmenter = augmenter_from_spec(augs, color_space)
 
     # Build dataset in the format required by SB3's dqn training.
 
@@ -89,10 +101,10 @@ def train(seed, torch_num_threads, dataset_configs, _config):
         demo_webdatasets, combined_meta = auto_env.load_wds_datasets(
             configs=dataset_configs)
 
-    final_path = do_training_dqn(
-                demo_webdatasets=demo_webdatasets,
-                venv_chans_first=venv,
-                out_dir=log_dir)
+        final_path = do_training_dqn(
+            demo_webdatasets=demo_webdatasets,
+            venv_chans_first=venv,
+            out_dir=log_dir)
 
     return {'model_path': os.path.abspath(final_path)}
 
