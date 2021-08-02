@@ -233,6 +233,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          ortho_init=ortho_init,
+                         log_std_init=log_std_init,
                          postproc_arch=postproc_arch,
                          freeze_pol_encoder=freeze_encoder,
                          encoder_path=encoder_path,
@@ -328,6 +329,7 @@ def do_training_gail(
     encoder_path,
     encoder_kwargs,
     ortho_init,
+    log_std_init,
     postproc_arch,
 ):
     device = get_device(device_name)
@@ -341,6 +343,7 @@ def do_training_gail(
         assert not use_sde
         return make_policy(observation_space=observation_space,
                            ortho_init=ortho_init,
+                           log_std_init=log_std_init,
                            postproc_arch=postproc_arch,
                            encoder_path=encoder_path,
                            encoder_kwargs=encoder_kwargs,

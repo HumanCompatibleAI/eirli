@@ -14,10 +14,10 @@ from torch import nn
 from torch.optim.adam import Adam
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
-from stable_baselines3.dqn import CnnPolicy
+from stable_baselines3.dqn import CnnPolicy, DQN
 
 from il_representations.algos.encoders import BaseEncoder
-from il_representations.algos.utils import set_global_seeds, load_encoder
+from il_representations.algos.utils import set_global_seeds
 from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
@@ -57,15 +57,15 @@ def default_config():
     save_every_n_batches = 50000
     n_trajs = None
     torch_num_threads = None
+    postproc_arch = ()
 
 
 @dqn_ex.capture
 def do_training_dqn(venv_chans_first, demo_webdatasets, out_dir, augs,
-                    device_name, final_pol_name, freeze_encoder, ortho_init,
-                    postproc_arch, encoder_path, encoder_kwargs):
+                    device_name, final_pol_name, freeze_encoder, postproc_arch,
+                    encoder_path, encoder_kwargs,):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
-                         ortho_init=ortho_init,
                          postproc_arch=postproc_arch,
                          freeze_pol_encoder=freeze_encoder,
                          policy_class=CnnPolicy,
