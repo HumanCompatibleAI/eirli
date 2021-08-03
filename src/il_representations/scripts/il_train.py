@@ -16,28 +16,25 @@ import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
-import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
 import torch as th
-from torch import nn
 from torch.optim.adam import Adam
 
-from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
+from il_representations.data.read_dataset import (datasets_to_loader,
+                                                  SubdatasetExtractor)
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.il.bc_support import BCModelSaver
 from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.il.utils import add_infos, streaming_extract_keys
-from il_representations.policy_interfacing import EncoderFeatureExtractor
-from il_representations.utils import (augmenter_from_spec, freeze_params,
-                                      print_policy_info)
+from il_representations.utils import augmenter_from_spec, freeze_params
+from il_representations.scripts.policy_utils import make_policy, ModelSaver
+
 
 bc_ingredient = Ingredient('bc')
 
@@ -240,89 +237,19 @@ def default_config():
 
 
 @il_train_ex.capture
-def load_encoder_or_policy(*,
-                           encoder_path,
-                           policy_continue_path,
-                           algo,
-                           freeze,
-                           encoder_kwargs,
-                           observation_space):
-    encoder_or_policy = None
-    # Load a previously saved policy.
-    if policy_continue_path is not None:
-        assert algo == 'bc', 'Currently only support policy reload for BC.'
-        encoder_or_policy = th.load(policy_continue_path)
-        assert isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy)
-    else:  # Load an existing encoder, or initialize a new one.
-        if encoder_path is not None:
-            encoder_or_policy = th.load(encoder_path)
-            assert isinstance(encoder_or_policy, nn.Module)
-        else:
-            encoder_or_policy = BaseEncoder(observation_space,
-                                            **encoder_kwargs)
-    if freeze:
-        freeze_params(encoder_or_policy)
-        assert len(list(encoder_or_policy.parameters())) == 0
-    return encoder_or_policy
-
-
-@il_train_ex.capture
-def make_policy(*,
-                observation_space,
-                action_space,
-                ortho_init,
-                log_std_init,
-                postproc_arch,
-                freeze_pol_encoder,
-                lr_schedule=None,
-                print_policy_summary=True):
-    # TODO(sam): this should be unified with the representation learning code
-    # so that it can be configured in the same way, with the same default
-    # encoder architecture & kwargs.
-    encoder_or_policy = load_encoder_or_policy(
-        observation_space=observation_space,
-        freeze=freeze_pol_encoder)
-    if isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy):
-        policy = encoder_or_policy
-    else:
-        encoder = encoder_or_policy
-        policy_kwargs = {
-            'features_extractor_class': EncoderFeatureExtractor,
-            'features_extractor_kwargs': {
-                "encoder": encoder,
-            },
-            'net_arch': postproc_arch,
-            'observation_space': observation_space,
-            'action_space': action_space,
-            # SB3 policies require a learning rate for the embedded optimiser. BC
-            # should not use that optimiser, though, so we set the LR to some
-            # insane value that is guaranteed to cause problems if the optimiser
-            # accidentally is used for something (using infinite or non-numeric
-            # values fails initial validation, so we need an insane-but-finite
-            # number).
-            'lr_schedule':
-            (lambda _: 1e100) if lr_schedule is None else lr_schedule,
-            'ortho_init': ortho_init,
-            'log_std_init': log_std_init
-        }
-
-        policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
-
-    if print_policy_summary:
-        # print policy info in case it is useful for the caller
-        print("Policy info:")
-        print_policy_info(policy, observation_space)
-
-    return policy
-
-
-@il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                    device_name, final_pol_name, shuffle_buffer_size,
-                   log_start_batch, freeze_encoder):
+                   log_start_batch, freeze_encoder, ortho_init,
+                   log_std_init, postproc_arch, encoder_path,
+                   encoder_kwargs):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
-                         freeze_pol_encoder=freeze_encoder)
+                         ortho_init=ortho_init,
+                         log_std_init=log_std_init,
+                         postproc_arch=postproc_arch,
+                         freeze_pol_encoder=freeze_encoder,
+                         encoder_path=encoder_path,
+                         encoder_kwargs=encoder_kwargs)
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(bc['augs'], color_space)
 
@@ -365,10 +292,10 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     save_interval = bc['save_every_n_batches']
     model_save_dir = os.path.join(out_dir, 'snapshots')
     os.makedirs(model_save_dir, exist_ok=True)
-    model_saver = BCModelSaver(policy,
-                               model_save_dir,
-                               save_interval,
-                               start_nupdate=log_start_batch)
+    model_saver = ModelSaver(policy,
+                             model_save_dir,
+                             save_interval,
+                             start_nupdate=log_start_batch)
 
     epoch_end_callbacks = [model_saver] if save_interval else []
 
@@ -412,6 +339,10 @@ def do_training_gail(
     gail,
     shuffle_buffer_size,
     encoder_path,
+    encoder_kwargs,
+    ortho_init,
+    log_std_init,
+    postproc_arch,
 ):
     device = get_device(device_name)
 
@@ -423,8 +354,12 @@ def do_training_gail(
         actually use it, unlike BC)."""
         assert not use_sde
         return make_policy(observation_space=observation_space,
+                           ortho_init=ortho_init,
+                           log_std_init=log_std_init,
+                           postproc_arch=postproc_arch,
+                           encoder_path=encoder_path,
+                           encoder_kwargs=encoder_kwargs,
                            action_space=action_space,
-                           lr_schedule=lr_schedule,
                            freeze_pol_encoder=_gail_should_freeze('pol'))
 
     def linear_lr_schedule(prog_remaining):
