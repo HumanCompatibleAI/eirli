@@ -37,6 +37,8 @@ def make_policy(*,
                 log_std_init=0.0,
                 lr_schedule=None,
                 policy_class=sb3_pols.ActorCriticCnnPolicy,
+                optimizer_class=th.optim.Adam,
+                optimizer_kwargs=None,
                 print_policy_summary=True):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
@@ -71,6 +73,10 @@ def make_policy(*,
 
         policy = policy_class(**policy_kwargs)
     elif policy_class == CnnPolicy:
+        policy_kwargs.update({'optimizer_class': optimizer_class,
+                              'optimizer_kwargs': optimizer_kwargs,
+                              })
+
         policy = policy_class(**policy_kwargs)
     else:
         raise NotImplementedError

@@ -65,14 +65,21 @@ def default_config():
     # to update after every `n_batches / nominal_num_epochs` batches)
     nominal_num_epochs = 1
     postproc_arch = ()
+    optimizer_class = Adam
+    learning_rate = 1e-3
+    # In SB3's DQNPolicy's implementation, learning rate is not specified as a
+    # optimizer_kwarg, but through lr_schedule
+    optimizer_kwargs = dict()
 
 
-@dqn_ex.capture
+@dqn_train_ex.capture
 def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                     device_name, final_pol_name, freeze_encoder, postproc_arch,
                     encoder_path, encoder_kwargs, nominal_num_epochs,
-                    save_every_n_batches):
+                    save_every_n_batches, optimizer_class, optimizer_kwargs,
+                    learning_rate):
     observation_space = venv_chans_first.observation_space
+    lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
     policy = make_policy(observation_space=observation_space,
                          action_space=venv_chans_first.action_space,
@@ -80,13 +87,14 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                          freeze_pol_encoder=freeze_encoder,
                          policy_class=CnnPolicy,
                          encoder_path=encoder_path,
-                         encoder_kwargs=encoder_kwargs).to(device)
+                         encoder_kwargs=encoder_kwargs,
+                         optimizer_class=optimizer_class,
+                         optimizer_kwargs=optimizer_kwargs,
+                         lr_schedule=lr_schedule).to(device)
 
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(augs, color_space)
     dataset_length = len(dict_dataset['obs'])
-    if lr_scheduler_cls is not None:
-        lr_scheduler = lr_scheduler_cls(**lr_scheduler_kwargs)
 
     trainer = DQN(
         policy='CnnPolicy',
