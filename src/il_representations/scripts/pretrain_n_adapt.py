@@ -379,6 +379,7 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
         )
         dqn_train_rv = run_single_exp(merged_dqn_train_config, log_dir, 'dqn_train')
         trained_policy_path = dqn_train_rv['result']['model_path']
+    assert trained_policy_path is not None
 
     # Run il test
     merged_il_test_config = update(
@@ -431,28 +432,36 @@ def run_repl_only_exp(*, rep_ex_config, env_cfg_config, env_data_config,
     logging.info("RepL experiment completed")
 
 
-def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
-                    env_data_config, venv_opts_config, log_dir):
-    """Experiment that runs only imitation learning."""
+def run_il_or_rl_only_exp(*, il_train_ex_config, il_test_ex_config,
+                          dqn_train_ex_config, env_cfg_config,
+                          env_data_config, venv_opts_config, log_dir):
+    """Experiment that runs only imitation learning or reinforcement learning."""
     rng = np.random.RandomState()
+    il_or_rl_train_ex_config = il_train_ex_config if il_train_ex_config is not \
+                               None else dqn_train_ex_config
+    exp_name = 'il_train' if il_train_ex_config is not \
+                               None else 'dqn_train'
 
-    merged_il_train_config = update(
+    merged_il_or_rl_train_config = update(
         {'seed': rng.randint(1 << 31)},
-        il_train_ex_config,
+        il_or_rl_train_ex_config,
         {
             'env_cfg': env_cfg_config,
             'env_data': env_data_config,
             'venv_opts': venv_opts_config,
         },
     )
-    il_train_rv = run_single_exp(merged_il_train_config, log_dir,
-                                 'il_train')
-    il_policy_path = il_train_rv['result']['model_path']
+    il_or_rl_train_rv = run_single_exp(merged_il_or_rl_train_config, log_dir,
+                                       exp_name)
+    il_or_rl_policy_path = il_or_rl_train_rv['result']['model_path']
+
+    # Although it's called 'il_test', the script can be used for testing RL
+    # trained policy too. TODO(Cynthia): Should we consider renaming it?
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_policy_path,
+            'policy_path': il_or_rl_policy_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
@@ -460,7 +469,7 @@ def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
     il_test_rv = run_single_exp(merged_il_test_config, log_dir, 'il_test')
 
     report_final_experiment_results({
-        "all_experiment_rvs": [il_train_rv, il_test_rv],
+        "all_experiment_rvs": [il_or_rl_train_rv, il_test_rv],
         **il_test_rv["result"],
     })
 
@@ -484,6 +493,7 @@ def base_config():
         # *intended for Tune grid search).
         'repl': {},
         'il_train': {},
+        'dqn_train': {},
         'il_test': {},
         'env_cfg': {},
         'env_data': {},
@@ -613,12 +623,23 @@ def trainable_function(config):
                             full_run_start_time=run_start_time)
 
         if stages_to_run == StagesToRun.IL_ONLY:
-            run_il_only_exp(il_train_ex_config=il_train or {},
-                            il_test_ex_config=il_test or {},
-                            env_cfg_config=env_cfg or {},
-                            env_data_config=env_data or {},
-                            venv_opts_config=venv_opts or {},
-                            log_dir=log_dir)
+            run_il_or_rl_only_exp(il_train_ex_config=il_train or {},
+                                  dqn_train_ex_config=None,
+                                  il_test_ex_config=il_test or {},
+                                  env_cfg_config=env_cfg or {},
+                                  env_data_config=env_data or {},
+                                  venv_opts_config=venv_opts or {},
+                                  log_dir=log_dir)
+
+        if stages_to_run == StagesToRun.RL_ONLY:
+            run_il_or_rl_only_exp(il_train_ex_config=None,
+                                  dqn_train_ex_config=dqn_train,
+                                  il_test_ex_config=il_test or {},
+                                  env_cfg_config=env_cfg or {},
+                                  env_data_config=env_data or {},
+                                  venv_opts_config=venv_opts or {},
+                                  log_dir=log_dir)
+
         if stages_to_run == StagesToRun.REPL_ONLY:
             run_repl_only_exp(rep_ex_config=repl or {},
                               env_cfg_config=env_cfg or {},
@@ -638,6 +659,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)
     il_train_ex_config = sacred_copy(il_train)
+    dqn_train_ex_config = sacred_copy(dqn_train)
     il_test_ex_config = sacred_copy(il_test)
     env_cfg_config = sacred_copy(env_cfg)
     env_data_config = sacred_copy(env_data)
@@ -654,6 +676,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
     ingredient_configs_dict = {
         'repl': rep_ex_config,
         'il_train': il_train_ex_config,
+        'dqn_train': dqn_train_ex_config,
         'il_test': il_test_ex_config,
         'env_cfg': env_cfg_config,
         'env_data': env_data_config,
@@ -678,6 +701,10 @@ def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
             'return_mean',
             StagesToRun.IL_ONLY:
             'return_mean',
+            StagesToRun.REPL_AND_RL:
+            'return_mean',
+            StagesToRun.RL_ONLY:
+            'return_mean',
             # repl_loss is returned by run_rep_learner.run()
             StagesToRun.REPL_ONLY:
             'repl_loss',
@@ -688,18 +715,28 @@ def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
     # the outcome.
 
     if stages_to_run == StagesToRun.IL_ONLY \
-       and 'repl' in spec:
+       and 'repl' in spec and 'dqn_train' in spec:
         logging.warning(
             "You only asked to tune IL, so I'm removing the representation "
-            "learning config from the Tune spec.")
+            "learning and RL config from the Tune spec.")
         del spec['repl']
+        del spec['dqn_train']
 
     if stages_to_run == StagesToRun.REPL_ONLY \
-       and 'il_train' in spec:
+       and 'il_train' in spec and 'dqn_train' in spec:
         logging.warning(
             "You only asked to tune RepL, so I'm removing the imitation "
-            "learning config from the Tune spec.")
+            "learning and RL config from the Tune spec.")
         del spec['il_train']
+        del spec['dqn_train']
+
+    if stages_to_run == StagesToRun.RL_ONLY \
+       and 'il_train' in spec and 'repl' in spec:
+        logging.warning(
+            "You only asked to tune RL, so I'm removing the imitation "
+            "learning and representation learning config from the Tune spec.")
+        del spec['il_train']
+        del spec['repl']
 
     # make Ray run from this directory
     ray_dir = os.path.join(log_dir)

@@ -354,6 +354,20 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_rl_only():
+        stages_to_run = StagesToRun.RL_ONLY
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_rl():
+        stages_to_run = StagesToRun.REPL_AND_RL
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_repl_moco():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
@@ -644,6 +658,16 @@ def make_chain_configs(experiment_obj):
             'bc': {
                 'n_batches': 15000,
             },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
+    def cfg_dqn_nofreeze():
+        dqn_train = {
             'freeze_encoder': False,
         }
 

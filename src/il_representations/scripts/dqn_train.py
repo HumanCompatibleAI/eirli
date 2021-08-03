@@ -29,7 +29,7 @@ from il_representations.scripts.policy_utils import make_policy, ModelSaver
 from il_representations.utils import augmenter_from_spec
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
-dqn_ex = Experiment(
+dqn_train_ex = Experiment(
     'dqn_train',
     ingredients=[
         env_cfg_ingredient,
@@ -38,7 +38,7 @@ dqn_ex = Experiment(
     ])
 
 
-@dqn_ex.config
+@dqn_train_ex.config
 def default_config():
     # TODO(Cynthia): Add comments for these variables, so future users know
     # what they mean.
@@ -84,16 +84,20 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
 
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(augs, color_space)
+    dataset_length = len(dict_dataset['obs'])
+    if lr_scheduler_cls is not None:
+        lr_scheduler = lr_scheduler_cls(**lr_scheduler_kwargs)
 
     trainer = DQN(
         policy='CnnPolicy',
         env=venv_chans_first,
-        device=device_name
+        device=device_name,
+        buffer_size=dataset_length
     )
     trainer.policy = policy
 
     # Push data into DQN agent's memory.
-    for idx in range(len(dict_dataset['obs'])):
+    for idx in range(dataset_length):
         obs, next_obs, action, reward, done = dict_dataset['obs'][idx], \
                                               dict_dataset['next_obs'][idx], \
                                               dict_dataset['acts'][idx], \
@@ -132,13 +136,13 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
     return model_saver.last_save_path
 
 
-@dqn_ex.main
+@dqn_train_ex.main
 def train(seed, torch_num_threads, dataset_configs, n_traj, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
-    log_dir = os.path.abspath(dqn_ex.observers[0].dir)
+    log_dir = os.path.abspath(dqn_train_ex.observers[0].dir)
 
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
@@ -155,5 +159,5 @@ def train(seed, torch_num_threads, dataset_configs, n_traj, _config):
 
 
 if __name__ == '__main__':
-    dqn_ex.observers.append(FileStorageObserver('runs/dqn_runs'))
-    dqn_ex.run_commandline()
+    dqn_train_ex.observers.append(FileStorageObserver('runs/dqn_runs'))
+    dqn_train_ex.run_commandline()
