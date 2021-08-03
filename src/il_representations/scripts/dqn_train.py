@@ -30,7 +30,7 @@ from il_representations.utils import augmenter_from_spec
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 dqn_ex = Experiment(
-    'dqn',
+    'dqn_train',
     ingredients=[
         env_cfg_ingredient,
         venv_opts_ingredient,

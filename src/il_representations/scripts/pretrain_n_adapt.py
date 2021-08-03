@@ -30,6 +30,7 @@ from il_representations.configs.icml_hp_tuning import make_icml_tuning_configs
 from il_representations.configs.icml_experiment_configs import make_dataset_experiment_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
+from il_representations.scripts.dqn_train import dqn_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
 from il_representations.script_utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
 from il_representations.utils import hash_configs, up, WrappedConfig
@@ -43,6 +44,7 @@ chain_ex = Experiment(
         represent_ex,
         il_train_ex,
         il_test_ex,
+        dqn_train_ex,
         env_cfg_ingredient,
         env_data_ingredient,
         venv_opts_ingredient,
@@ -149,6 +151,7 @@ def run_single_exp(merged_config, log_dir, exp_name):
     from il_representations.scripts.il_test import il_test_ex
     from il_representations.scripts.il_train import il_train_ex
     from il_representations.scripts.run_rep_learner import represent_ex
+    from il_representations.scripts.dqn_train import dqn_train_ex
 
     if exp_name == 'repl':
         inner_ex = represent_ex
@@ -156,6 +159,8 @@ def run_single_exp(merged_config, log_dir, exp_name):
         inner_ex = il_train_ex
     elif exp_name == 'il_test':
         inner_ex = il_test_ex
+    elif exp_name == 'dqn_train':
+        inner_ex = dqn_train_ex
     else:
         raise NotImplementedError(
             f"exp_name must be one of repl, il_train, or il_test. Value passed in: {exp_name}")
@@ -249,9 +254,9 @@ def resolve_env_cfg(merged_repl_config):
 
 
 def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
-                    env_cfg_config, env_data_config, venv_opts_config,
-                    reuse_repl, repl_encoder_path, full_run_start_time,
-                    log_dir):
+                    dqn_ex_config, env_cfg_config, env_data_config,
+                    venv_opts_config, reuse_repl, repl_encoder_path,
+                    full_run_start_time, log_dir):
     """
     Run representation learning, imitation learning's training and testing
     sequentially.
@@ -264,6 +269,9 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
             any modifications we might have made in an macro_experiment config
             update.
         il_test_ex_config: Config of il_test_ex. It's the default config plus
+            any modifications we might have made in an macro_experiment config
+            update.
+        dqn_ex_config: Config of dqn_ex. It's the default config plus
             any modifications we might have made in an macro_experiment config
             update.
         shared_configs: Config keys shared between two or more experiments.
@@ -344,25 +352,40 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
         }
 
     # Run il train
-    merged_il_train_config = update(
-        {'seed': rng.randint(1 << 31)},
-        il_train_ex_config,
-        {
-            'encoder_path': pretrained_encoder_path,
-            'env_cfg': env_cfg_config,
-            'env_data': env_data_config,
-            'venv_opts': venv_opts_config,
-        },
-    )
-    il_train_rv = run_single_exp(merged_il_train_config, log_dir, 'il_train')
-    il_train_model_path = il_train_rv['result']['model_path']
+    trained_policy_path = None
+    if il_train_ex_config is not None:
+        merged_il_train_config = update(
+            {'seed': rng.randint(1 << 31)},
+            il_train_ex_config,
+            {
+                'encoder_path': pretrained_encoder_path,
+                'env_cfg': env_cfg_config,
+                'env_data': env_data_config,
+                'venv_opts': venv_opts_config,
+            },
+        )
+        il_train_rv = run_single_exp(merged_il_train_config, log_dir, 'il_train')
+        trained_policy_path = il_train_rv['result']['model_path']
+    elif dqn_ex_config is not None:
+        merged_dqn_train_config = update(
+            {'seed': rng.randint(1 << 31)},
+            dqn_ex_config,
+            {
+                'encoder_path': pretrained_encoder_path,
+                'env_cfg': env_cfg_config,
+                'env_data': env_data_config,
+                'venv_opts': venv_opts_config,
+            },
+        )
+        dqn_train_rv = run_single_exp(merged_dqn_train_config, log_dir, 'dqn_train')
+        trained_policy_path = dqn_train_rv['result']['model_path']
 
     # Run il test
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_model_path,
+            'policy_path': trained_policy_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
@@ -561,12 +584,13 @@ def trainable_function(config):
             run_start_time,
             # Optional ingredient configs
             il_train=None, il_test=None, repl=None, env_cfg=None,
-            env_data=None, venv_opts=None):
+            dqn_train=None, env_data=None, venv_opts=None):
 
         if stages_to_run == StagesToRun.REPL_AND_IL:
             run_end2end_exp(rep_ex_config=repl or {},
                             il_train_ex_config=il_train or {},
                             il_test_ex_config=il_test or {},
+                            dqn_ex_config=None,
                             env_cfg_config=env_cfg or {},
                             env_data_config=env_data or {},
                             venv_opts_config=venv_opts or {},
@@ -574,6 +598,20 @@ def trainable_function(config):
                             repl_encoder_path=repl_encoder_path,
                             log_dir=log_dir,
                             full_run_start_time=run_start_time)
+
+        if stages_to_run == StagesToRun.REPL_AND_RL:
+            run_end2end_exp(rep_ex_config=repl or {},
+                            il_train_ex_config=None,
+                            il_test_ex_config=il_test or {},
+                            dqn_ex_config=dqn_train or {},
+                            env_cfg_config=env_cfg or {},
+                            env_data_config=env_data or {},
+                            venv_opts_config=venv_opts or {},
+                            reuse_repl=reuse_repl,
+                            repl_encoder_path=repl_encoder_path,
+                            log_dir=log_dir,
+                            full_run_start_time=run_start_time)
+
         if stages_to_run == StagesToRun.IL_ONLY:
             run_il_only_exp(il_train_ex_config=il_train or {},
                             il_test_ex_config=il_test or {},
@@ -591,10 +629,10 @@ def trainable_function(config):
 
 
 @chain_ex.main
-def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
-        venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
-        skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
-        reuse_repl, repl_encoder_path, on_cluster):
+def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
+        env_data, venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run,
+        use_skopt, skopt_search_mode, skopt_ref_configs, skopt_space,
+        exp_ident, reuse_repl, repl_encoder_path, on_cluster):
     faulthandler.register(signal.SIGUSR1)
 
     print(f"Ray init kwargs: {ray_init_kwargs}")
