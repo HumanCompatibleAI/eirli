@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """BC implementation that makes it easy to use auxiliary losses."""
-import itertools as it
-
 import gym
 from stable_baselines3.common import preprocessing
 import torch
 
-from il_representations.data.read_dataset import datasets_to_loader
+from il_representations.data.read_dataset import (SubdatasetExtractor,
+                                                  datasets_to_loader)
 from il_representations.il.utils import streaming_extract_keys
 from il_representations.utils import repeat_chain_non_empty
 
 
 def _prep_batch_bc(batch, observation_space, augmentation_fn, device):
     """Take a batch from the data loader and prepare it for BC."""
-    acts_tensor = (
-        torch.as_tensor(batch["acts"]).contiguous().to(device)
-    )
+    acts_tensor = (torch.as_tensor(batch["acts"]).contiguous().to(device))
     obs_tensor = torch.as_tensor(batch["obs"]).contiguous().to(device)
     obs_tensor = preprocessing.preprocess_obs(
         obs_tensor,
@@ -56,21 +53,30 @@ class BC:
         """Trainable parameters for BC (only includes policy parameters)."""
         return self.policy.parameters()
 
-    def make_data_iter(self, il_dataset, augmentation_fn, batch_size,
-                       n_batches, shuffle_buffer_size):
+    def make_data_iter(self,
+                       il_dataset,
+                       augmentation_fn,
+                       batch_size,
+                       n_batches,
+                       shuffle_buffer_size,
+                       n_trajs=None):
+        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
         expert_data_loader = datasets_to_loader(
             il_dataset,
             batch_size=batch_size,
             nominal_length=batch_size * n_batches,
             shuffle=True,
             shuffle_buffer_size=shuffle_buffer_size,
-            preprocessors=[streaming_extract_keys("obs", "acts")])
+            preprocessors=[
+                subdataset_extractor,
+                streaming_extract_keys("obs", "acts")
+            ])
         data_iter = repeat_chain_non_empty(expert_data_loader)
         for batch in data_iter:
-            yield _prep_batch_bc(
-                batch=batch, observation_space=self.observation_space,
-                augmentation_fn=augmentation_fn,
-                device=self.policy.device)
+            yield _prep_batch_bc(batch=batch,
+                                 observation_space=self.observation_space,
+                                 augmentation_fn=augmentation_fn,
+                                 device=self.policy.device)
 
     def batch_forward(self, obs_acts):
         """Do a forward pass of the network, given a set of observations and

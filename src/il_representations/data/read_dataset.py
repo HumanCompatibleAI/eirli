@@ -106,6 +106,8 @@ class InterleavedDataset(IterableDataset):
 
 class SubdatasetExtractor:
     def __init__(self, n_trajs=None):
+        assert n_trajs is None or n_trajs > 0
+
         self.n_trajs = n_trajs
 
         traj_info = n_trajs if n_trajs else 'full'
@@ -123,7 +125,8 @@ class SubdatasetExtractor:
             if trajectory_ind == self.n_trajs:
                 break
 
-        assert self.n_trajs is None or trajectory_ind == self.n_trajs, (self.n_trajs, trajectory_ind)
+        assert self.n_trajs is None or trajectory_ind == self.n_trajs, \
+            (self.n_trajs, trajectory_ind)
 
 
 def strip_extensions(dataset):

@@ -95,9 +95,11 @@ def bc_defaults():
     postproc_arch = [128]
     # evaluation interval
     short_eval_interval = 5000
-    # number of trajectories for short intermediate evals
+    # number of trajectories for short intermediate evils
     # (not the final eval)
     short_eval_n_traj = 10
+    # set this to a number to limit the number of trajectories BC can use
+    n_trajs = None
 
     _ = locals()
     del _
@@ -222,7 +224,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         augmentation_fn=bc_augmentation_fn,
         batch_size=bc['batch_size'],
         n_batches=n_batches,
-        shuffle_buffer_size=shuffle_buffer_size)
+        shuffle_buffer_size=shuffle_buffer_size,
+        n_trajs=bc['n_trajs'])
 
     # optimizer and LR scheduler
     params_list_dedup = deduplicate_params(

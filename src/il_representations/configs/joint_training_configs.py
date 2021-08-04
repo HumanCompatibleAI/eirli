@@ -1,7 +1,6 @@
 from il_representations.algos import (DynamicsPrediction,
-                                      InverseDynamicsPrediction,
-                                      VariationalAutoencoder,
-                                      TemporalCPC)
+                                      InverseDynamicsPrediction, TemporalCPC,
+                                      VariationalAutoencoder)
 
 
 def make_jt_configs(train_ex):
@@ -97,6 +96,29 @@ def make_jt_configs(train_ex):
         env_cfg = {
             'benchmark_name': 'dm_control',
             'task_name': 'reacher-easy',
+        }
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_data_demos():
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos'},
+            ]
+        }
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_data_demos_random():
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos'},
+                {'type': 'random'},
+            ]
         }
 
         _ = locals()
