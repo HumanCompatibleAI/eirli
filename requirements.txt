@@ -24,6 +24,7 @@ Pillow~=7.2.0
 # webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
 webdataset==0.1.40
 tqdm~=4.48.0
+procgen==0.10.4
 
 # this fork of torchsummary can deal with layers that don't produce tensors
 git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
