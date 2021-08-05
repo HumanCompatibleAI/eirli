@@ -6,9 +6,12 @@ https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master/fqf_iqn_qrdqn/agent/
 """
 from collections import deque
 from typing import Optional
+import warnings
 
-import gym
+from imitation.data.rollout import (generate_trajectories, min_timesteps,
+                                    rollout_stats)
 import numpy as np
+from stable_baselines3.common.vec_env import VecEnv
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -176,11 +179,18 @@ class LazyMemory(dict):
 
         return states, actions, rewards, next_states, dones
 
+    def get(self):
+        return dict(self)
+
     def __len__(self):
         return len(self['state'])
 
-    def get(self):
-        return dict(self)
+
+def has_params(module, recurse=True):
+    """Check whether Torch module has parameters"""
+    for param in module.parameters(recurse=recurse):
+        return True
+    return False
 
 
 def initialize_weights_xavier(m, gain=1.0):
@@ -188,6 +198,10 @@ def initialize_weights_xavier(m, gain=1.0):
         torch.nn.init.xavier_uniform_(m.weight, gain=gain)
         if m.bias is not None:
             torch.nn.init.constant_(m.bias, 0)
+    elif has_params(m, recurse=False):
+        warnings.warn(f"Module {m} has its own parameters, but "
+                      "initialize_weights_xavier cannot handle it.",
+                      stacklevel=2)
 
 
 def initialize_weights_he(m):
@@ -195,8 +209,9 @@ def initialize_weights_he(m):
         torch.nn.init.kaiming_uniform_(m.weight)
         if m.bias is not None:
             torch.nn.init.constant_(m.bias, 0)
-    # FIXME(sam): add error message if we get a module that (1) has parameters,
-    # but (2) isn't one of the modules that we can actually handle
+    elif has_params(m, recurse=False):
+        warnings.warn(f"Module {m} has its own parameters, but this function "
+                      "initialize_weights_he cannot handle it.", stacklevel=2)
 
 
 class DQNBase(nn.Module):
@@ -395,7 +410,7 @@ class FQF(nn.Module):
                     states=None,
                     state_embeddings=None,
                     fraction_net=None):
-        # FIXME(sam): makie it so that this function takes:
+        # FIXME(sam): make it so that this function takes:
         # - taus xor tau_hats
         # - states xor state_embeddings
         # (unless there is some compelling reason to support both interfaces)
@@ -426,10 +441,10 @@ class FQF(nn.Module):
         return q
 
 
-class FQFAgent(nn.Module):
+class FQFAgent():
     def __init__(self,
-                 env: gym.Env,
-                 test_env: gym.Env,
+                 venv: VecEnv,
+                 test_venv: VecEnv,
                  num_steps: int = 5 * (10**7),
                  batch_size: int = 32,
                  N: int = 32,
@@ -451,26 +466,63 @@ class FQFAgent(nn.Module):
                  num_eval_steps: int = 125000,
                  max_episode_steps: int = 27000,
                  grad_clipping: Optional[float] = None,
-                 cuda: bool = True):
-        self.env = env
-        self.test_env = test_env
+                 device: torch.device = torch.device('cpu')):
+        """Construct the FQF agent.
 
-        self.device = torch.device(
-            "cuda" if cuda and torch.cuda.is_available() else "cpu")
+        TODO(sam): finish this (long) docstring.
 
-        self.online_net = None
-        self.target_net = None
+        Args:
+           venv: vec environment to use for training. Should have only one
+               underlying env (i.e. we can't train on actual batched vecenvs).
+           test_venv: vec environment to use for evaluation. A separate
+               environment is used for testing so that the agent can step the
+               test environment without resetting the training environment.
+           num_steps:
+           batch_size: batch size for updates.
+           N: number of quantiles to propose.
+           num_cosines:
+           ent_coef:
+           kappa:
+           quantile_lr:
+           fraction_lr:
+           memory_size: max number of time steps to keep in replay buffer.
+           gamma: discount rate.
+           update_interval:
+           target_update_interval:
+           start_steps:
+           epsilon_train:
+           epsilon_eval:
+           epsilon_decay_steps:
+           log_interval: length of running mean to keep for train stats.
+           eval_interval:
+           num_eval_steps:
+           max_episode_steps:
+           grad_clipping: magnitude at which to clip gradients. Each network
+               will be clipped separately with a global 2-norm clip (set to
+               None to disable).
+           device: device to place networks on.
+        """
+        # for training, we assume a venv with just one underlying environment
+        # (we are using a venv rather than a gym env because all our other code
+        # in the IL representations project works with venvs)
+        assert venv.num_envs == 1, \
+            "expected venv with 1 env, got venv with {self.venv.num_envs} envs"
+        assert test_venv.num_envs >= 1
+        self.venv = venv
+        self.test_venv = test_venv
+
+        self.device = device
 
         # Replay memory which is memory-efficient to store stacked frames.
-        self.memory = LazyMemory(memory_size, self.env.observation_space.shape,
-                                 self.device)
+        self.memory = LazyMemory(
+            memory_size, self.venv.observation_space.shape, self.device)
 
         self.train_return_running_mean = RunningMeanStats(log_interval)
 
         self.steps = 0
         self.episodes = 0
         self.best_eval_score = -np.inf
-        self.num_actions = self.env.action_space.n
+        self.num_actions = self.venv.action_space.n
         self.num_steps = num_steps
         self.batch_size = batch_size
 
@@ -491,13 +543,13 @@ class FQFAgent(nn.Module):
 
         # Online network.
         self.online_net = FQF(
-            num_channels=env.observation_space.shape[0],
+            num_channels=venv.observation_space.shape[0],
             num_actions=self.num_actions,
             N=N,
             num_cosines=num_cosines,
         ).to(self.device)
         # Target network.
-        self.target_net = FQF(num_channels=env.observation_space.shape[0],
+        self.target_net = FQF(num_channels=venv.observation_space.shape[0],
                               num_actions=self.num_actions,
                               N=N,
                               num_cosines=num_cosines,
@@ -533,7 +585,17 @@ class FQFAgent(nn.Module):
 
     def run(self):
         while True:
-            self.train_episode()
+            stats = self.train_episode()
+            print(f'Episode done, total steps {self.steps}. Stats:')
+            print('-' * 50)
+            for k, v in stats.items():
+                if isinstance(v, float):
+                    v_fmt = f'{v:.5g}'
+                else:
+                    v_fmt = str(v)
+                print(f'| {k:25} | {v_fmt:>18} |')
+            print('-' * 50)
+            print()
             if self.steps > self.num_steps:
                 break
 
@@ -549,42 +611,41 @@ class FQFAgent(nn.Module):
             return np.random.rand() < self.epsilon_eval
         return np.random.rand() < self.epsilon_train.get()
 
-    def explore(self) -> int:
+    def explore(self, states: np.ndarray) -> np.ndarray:
         # Act with randomness.
-        action = self.env.action_space.sample()
+        n_states = len(states)
+        action = np.array([
+            self.venv.action_space.sample() for _ in range(n_states)
+        ])
         return action
 
-    def exploit(self, state: np.ndarray) -> int:
+    def exploit(self, states: np.ndarray) -> int:
         # Act without randomness.
-        state = torch.ByteTensor(state).unsqueeze(0).to(
+        state = torch.ByteTensor(states).to(
             self.device).float() / 255.
         with torch.no_grad():
-            action = self.online_net.calculate_q(states=state).argmax().item()
-        return action
+            actions_dev = self.online_net.calculate_q(states=state).argmax()
+            actions = actions_dev.cpu().numpy()
+        return actions
 
     def train_episode(self):
         self.online_net.train()
         self.target_net.train()
 
         self.episodes += 1
-        episode_return = 0.
+        episode_return = 0
         episode_steps = 0
 
         done = False
-        state = self.env.reset()
+        state, = self.venv.reset()
 
-        while (not done) and episode_steps <= self.max_episode_steps:
-            # NOTE: Noises can be sampled only after self.learn(). However, I
-            # sample noises before every action, which seems to lead better
-            # performances.
-            self.online_net.sample_noise()
-
+        while not done and episode_steps <= self.max_episode_steps:
             if self.is_random(is_eval=False):
-                action = self.explore()
+                action, = self.explore(state[None])
             else:
-                action = self.exploit(state)
+                action, = self.exploit(state[None])
 
-            next_state, reward, done, _ = self.env.step(action)
+            (next_state, ), (reward, ), (done, ), _ = self.venv.step([action])
 
             # To calculate efficiently, I just set priority=max_priority here.
             self.memory.append(state, action, reward, next_state, done)
@@ -619,46 +680,34 @@ class FQFAgent(nn.Module):
             self.evaluate()
             self.online_net.train()
 
+    def _eval_policy(self, states):
+        """This is the policy that we use to sample trajectories during
+        evaluation. It independently chooses to explore or exploit at each time
+        step and for each environment in the vecenv."""
+        random_mask = np.array(
+            [self.is_random(eval=True) for _ in range(len(states))])
+        explore_inds = np.nonzero(random_mask)
+        exploit_inds = np.nonzero(~random_mask)
+        all_actions = np.zeros((len(states, ), ), dtype=np.int64)
+        all_actions[explore_inds] = self.explore(states[explore_inds])
+        all_actions[exploit_inds] = self.exploit(states[exploit_inds])
+        return all_actions
+
     def evaluate(self):
         self.online_net.eval()
-        num_episodes = 0
-        num_steps = 0
-        total_return = 0.0
-
-        while True:
-            state = self.test_env.reset()
-            episode_steps = 0
-            episode_return = 0.0
-            done = False
-            while (not done) and episode_steps <= self.max_episode_steps:
-                if self.is_random(is_eval=True):
-                    action = self.explore()
-                else:
-                    action = self.exploit(state)
-
-                next_state, reward, done, _ = self.test_env.step(action)
-                num_steps += 1
-                episode_steps += 1
-                episode_return += reward
-                state = next_state
-
-            num_episodes += 1
-            total_return += episode_return
-
-            if num_steps > self.num_eval_steps:
-                break
-
-        mean_return = total_return / num_episodes
+        trajectories = generate_trajectories(
+            self._eval_policy, self.test_venv,
+            sample_until=min_timesteps(self.num_eval_steps))
+        stats = rollout_stats(trajectories)
+        mean_return = stats['return_mean']
 
         if mean_return > self.best_eval_score:
             self.best_eval_score = mean_return
 
-        # We log evaluation results along with training frames = 4 * steps.
-        return {'mean_return': mean_return, 'num_steps': self.steps}
-
-    def __del__(self):
-        self.env.close()
-        self.test_env.close()
+        return {
+            'mean_return': mean_return,
+            'num_steps': sum(len(traj.obs) for traj in trajectories),
+        }
 
     def update_target(self):
         self.target_net.dqn_net.load_state_dict(
@@ -669,9 +718,6 @@ class FQFAgent(nn.Module):
             self.online_net.cosine_net.state_dict())
 
     def learn(self):
-        self.online_net.sample_noise()
-        self.target_net.sample_noise()
-
         states, actions, rewards, next_states, dones =\
             self.memory.sample(self.batch_size)
         weights = None
@@ -820,3 +866,7 @@ class FQFAgent(nn.Module):
 
         return quantile_huber_loss, next_q.detach().mean().item(), \
             td_errors.detach().abs().sum(dim=1).mean(dim=1, keepdim=True)
+
+    def __del__(self):
+        self.venv.close()
+        self.test_venv.close()

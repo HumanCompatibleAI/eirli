@@ -112,10 +112,17 @@ def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
 
 @env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, dm_control_full_env_names,
-                 dm_control_frame_stack, minecraft_max_env_steps):
+                 dm_control_frame_stack, minecraft_max_env_steps, *,
+                 n_envs=None, venv_parallel=None, parallel_workers=None):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
-    n_envs, venv_parallel, parallel_workers = _get_venv_opts()
+    n_envs_opt, venv_parallel_opt, parallel_workers_opt = _get_venv_opts()
+    if n_envs is None:
+        n_envs = n_envs_opt
+    if venv_parallel is None:
+        venv_parallel = venv_parallel_opt
+    if parallel_workers is None:
+        parallel_workers = parallel_workers_opt
     gym_env_name = get_gym_env_name()
     if benchmark_name == 'magical':
         return make_vec_env(gym_env_name,
@@ -147,7 +154,6 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         raw_atari_env = make_vec_env(gym_env_name,
                                      n_envs=n_envs,
                                      parallel=venv_parallel,
-                                     parallel_workers=parallel_workers,
                                      wrapper_class=AtariWrapper)
         final_env = VecFrameStack(VecTransposeImage(raw_atari_env), 4)
         assert final_env.observation_space.shape == (4, 84, 84), \
