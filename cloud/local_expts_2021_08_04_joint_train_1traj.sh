@@ -24,13 +24,6 @@ submit_expt_pt3() {
         --ray-ngpus 0.3 "${base_cfgs[@]}" "$@" &
 }
 
-submit_expt_pt24() {
-    # submit joint training experiment to local Ray server (0.24 GPUs)
-    python -m il_representations.scripts.joint_training_cluster \
-        --ray-address="$ray_address" --ray-ncpus "$ray_ncpus" \
-        --ray-ngpus 0.24 "${base_cfgs[@]}" "$@" &
-}
-
 lower() {
     # convert string to lowercase
     echo "$1" | tr "[:upper:]" "[:lower:]"
@@ -68,7 +61,7 @@ launch_seed() {
             done
 
             # "oracle" BC baselines that get access to test data
-            submit_expt exp_ident="repl_noid_demos_test_variant_cheating${t_suffix}" \
+            submit_expt_pt3 exp_ident="repl_noid_demos_test_variant_cheating${t_suffix}" \
                 "env_cfg.task_name=${env_name}-Demo-v0" \
                 "bc_data_${lower_env}_demos_test" \
                 "repl_data_${lower_env}_demos_test" "bc.n_trajs=${n_trajs}"
