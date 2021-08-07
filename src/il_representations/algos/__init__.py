@@ -1,16 +1,16 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
-    infer_action_shape_info
+    RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info, \
+    ActionEncodingInverseDynamicsEncoder
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
-    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
+    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
     QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss, AELoss
-
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
     AugmentContextAndExtraContext
-from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
+from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor, \
+    JigsawPairConstructor
 from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
@@ -281,11 +281,9 @@ class VariationalAutoencoder(RepresentationLearner):
         super().__init__(**kwargs)
 
 
-class Autoencoder(RepresentationLearner):
+class Jigsaw(RepresentationLearner):
     """
-    A basic autoencoder that tries to reconstruct the
-    current frame, and calculates an MSE loss over current frame pixels,
-    using reconstruction loss.
+    A basic Jigsaw task that requires a network to solve Jigsaw puzzles.
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
@@ -294,15 +292,17 @@ class Autoencoder(RepresentationLearner):
         dec_encoder_cls_key = decoder_kwargs.get(
             'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
-        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
-                                     decoder=PixelDecoder,
+        algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
+                                     decoder=JigsawProjectionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
-                                     loss_calculator=AELoss,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=dec_encoder_cls_key,
-                                                         sample=True))
+                                     loss_calculator=CrossEntropyLoss,
+                                     target_pair_constructor=JigsawPairConstructor,
+                                     preprocess_target=False,
+                                     projection_dim=1000,
+                                     encoder_kwargs=dict(obs_encoder_cls_kwargs={'contain_fc_layer': False}),
+                                     decoder_kwargs=dict(architecture=[{'output_dim': 128},
+                                                                       {'output_dim': 128}]))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
