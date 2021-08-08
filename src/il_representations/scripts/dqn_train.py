@@ -10,6 +10,7 @@ import readline  # noqa: F401
 import signal
 import torch as th
 import numpy as np
+import pandas as pd
 from torch import nn
 from torch.optim.adam import Adam
 from sacred import Experiment, Ingredient
@@ -55,15 +56,15 @@ def default_config():
         obs_encoder_cls_kwargs={}
     )
     n_batches = 5000
-    n_trajs = None
-    augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
-    save_every_n_batches = 50000
+    batch_size = 256
+    augs = 'translate,erase,color_jitter_ex'
     n_traj = None
     torch_num_threads = None
     # the number of 'epochs' is used by the LR scheduler
     # (we still do `n_batches` total training, the scheduler just gets a chance
     # to update after every `n_batches / nominal_num_epochs` batches)
-    nominal_num_epochs = 1
+    nominal_num_epochs = 100
+    save_every_n_batches = int(n_batches / nominal_num_epochs)
     postproc_arch = ()
     optimizer_class = Adam
     learning_rate = 1e-3
@@ -77,7 +78,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                     device_name, final_pol_name, freeze_encoder, postproc_arch,
                     encoder_path, encoder_kwargs, nominal_num_epochs,
                     save_every_n_batches, optimizer_class, optimizer_kwargs,
-                    learning_rate):
+                    learning_rate, batch_size):
     observation_space = venv_chans_first.observation_space
     lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
@@ -95,17 +96,22 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(augs, color_space)
     dataset_length = len(dict_dataset['obs'])
+    progress_df = pd.DataFrame()
 
     trainer = DQN(
         policy='CnnPolicy',
         env=venv_chans_first,
         device=device_name,
-        buffer_size=dataset_length
+        buffer_size=dataset_length,
+        batch_size=batch_size,
     )
     trainer.policy = policy
 
     # Push data into DQN agent's memory.
+    print('Loading data...')
     for idx in range(dataset_length):
+        if idx % 1000 == 0:
+            print(f'Loading {idx}/{dataset_length}...')
         obs, next_obs, action, reward, done = dict_dataset['obs'][idx], \
                                               dict_dataset['next_obs'][idx], \
                                               dict_dataset['acts'][idx], \
@@ -117,11 +123,12 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
         next_obs = preprocess_obs(th.tensor(next_obs),
                                   observation_space,
                                   normalize_images=True)
+        obs, next_obs = th.unsqueeze(obs, dim=0), th.unsqueeze(next_obs, dim=0)
         if augmenter is not None:
             # Here we unsqueeze the obs first since the augmenter only takes
             # [N, C, H, W] inputs, so we need to fake a "batch size" here.
-            obs = augmenter(th.unsqueeze(obs, dim=0)).squeeze()
-            next_obs = augmenter(th.unsqueeze(next_obs, dim=0)).squeeze()
+            obs = augmenter(obs)
+            next_obs = augmenter(next_obs)
 
         trainer.replay_buffer.add(obs=obs,
                                   next_obs=next_obs,
@@ -136,9 +143,14 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                              save_interval_batches=save_every_n_batches)
     for epoch in range(nominal_num_epochs):
         print(f'Training [{epoch}/{nominal_num_epochs}] epochs...')
-        trainer.train(n_update_per_epoch)
+        policy, n_update, loss = trainer.train(n_update_per_epoch)
 
-        model_saver(n_update_per_epoch)
+        model_saver(n_update, policy=policy)
+        progress_df = progress_df.append(
+            pd.DataFrame({'n_update': n_update,
+                          'loss': loss},
+                         index=[n_update]).set_index('n_update'))
+        progress_df.to_csv(os.path.join(out_dir, 'progress.csv'))
 
     model_saver.save(n_batches)
     return model_saver.last_save_path
