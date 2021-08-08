@@ -10,6 +10,9 @@ from il_representations.utils import freeze_params, print_policy_info
 from il_representations.policy_interfacing import EncoderFeatureExtractor
 
 
+# TODO (Cynthia): This is not compatible with current changes on procgen
+# branch. Update load_encoder and make_policy functions when procgen gets
+# merged into master branch.
 def load_encoder(*,
                  encoder_path,
                  freeze,
@@ -110,13 +113,16 @@ class ModelSaver:
         """It is assumed that this is called on epoch end."""
         batch_num = batch_num + self.start_nupdate
         if batch_num >= self.last_save_batches + self.save_interval_batches:
-            self.save(batch_num)
+            self.save(batch_num, **kwargs)
 
-    def save(self, batch_num):
+    def save(self, batch_num, policy=None):
         """Save policy."""
         save_fn = f'policy_{batch_num:08d}_batches.pt'
         save_path = os.path.join(self.save_dir, save_fn)
-        th.save(self.policy, save_path)
+        if policy is None:
+            th.save(self.policy, save_path)
+        else:
+            th.save(policy, save_path)
         print(f"Saved policy to {save_path}!")
         self.last_save_batches = batch_num
         self.last_save_path = save_path
