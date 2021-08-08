@@ -420,6 +420,16 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_dynamics():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'DynamicsPrediction',
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_repl_temporal_cpc():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
