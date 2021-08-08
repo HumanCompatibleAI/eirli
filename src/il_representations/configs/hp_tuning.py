@@ -1,6 +1,6 @@
 import collections
 
-from torch.optim import lr_scheduler, SGD
+from torch.optim import lr_scheduler, SGD, Adam
 
 from il_representations.algos import augmenters, batch_extenders, encoders, losses, pair_constructors
 from il_representations.script_utils import StagesToRun
@@ -499,15 +499,21 @@ def make_hp_tuning_configs(experiment_obj):
         stages_to_run = StagesToRun.RL_ONLY
         # fail_fast=False needed to avoid the entire tuning run terminating on
         # the first trial failure
-        tune_run_kwargs = dict(num_samples=200, fail_fast=False)
+        tune_run_kwargs = dict(num_samples=200,
+                               max_failures=0,
+                               resources_per_trial=dict(
+                                   cpu=1,
+                                   gpu=0.5),
+                               fail_fast=False)
+
         dqn_train = {
             # starting with relatively small n_batches so we get quick
             # iteration
             'n_batches': 50000,
             'batch_size': 256,
             # 5 steps down, multiply by gamma each time
-            'optimizer_cls': Adam,
-            'learning_rate': 1e-3,
+            'optimizer_class': Adam,
+            'learning_rate': 3e-4,
         }
         venv_opts = {
             'venv_parallel': False,
@@ -516,7 +522,7 @@ def make_hp_tuning_configs(experiment_obj):
         skopt_space = collections.OrderedDict([
             ('dqn_train:learning_rate', (1e-4, 1e-2, 'log-uniform')),
             ('dqn_train:augs:translate', [True, False]),
-            ('dqn_train:augs:rotate', [True, False]),
+            # ('dqn_train:augs:rotate', [True, False]),
             ('dqn_train:augs:color_jitter_mid', [True, False]),
             ('dqn_train:augs:flip_lr', [True, False]),
             ('dqn_train:augs:noise', [True, False]),
@@ -525,14 +531,14 @@ def make_hp_tuning_configs(experiment_obj):
         ])
         skopt_ref_configs = [
             collections.OrderedDict([
-                ('il_train:learning_rate', 1e-3),
-                ('il_train:bc:augs:translate', True),
-                ('il_train:bc:augs:rotate', True),
-                ('il_train:bc:augs:color_jitter_mid', True),
-                ('il_train:bc:augs:flip_lr', False),
-                ('il_train:bc:augs:noise', True),
-                ('il_train:bc:augs:erase', True),
-                ('il_train:bc:augs:gaussian_blur', False),
+                ('dqn_train:learning_rate', 3e-4),
+                ('dqn_train:augs:translate', True),
+                # ('dqn_train:augs:rotate', True),
+                ('dqn_train:augs:color_jitter_mid', True),
+                ('dqn_train:augs:flip_lr', False),
+                ('dqn_train:augs:noise', True),
+                ('dqn_train:augs:erase', True),
+                ('dqn_train:augs:gaussian_blur', False),
             ]),
         ]
 
