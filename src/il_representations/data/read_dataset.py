@@ -105,25 +105,44 @@ class InterleavedDataset(IterableDataset):
 
 
 class SubdatasetExtractor:
-    def __init__(self, n_trajs=None):
+    def __init__(self, n_trajs=None, n_trans=None):
+        assert sum([n_config is None for n_config in [n_trajs, n_trans]]) != 0, \
+        'Specify one or none of n_traj and n_trans, not both.'
         self.n_trajs = n_trajs
+        self.n_trans = n_trans
 
-        traj_info = n_trajs if n_trajs else 'full'
-        logging.info(f"Training with {traj_info} trajectories.")
+        if self.n_trajs is not None:
+            logging.info(f"Training with {self.n_trajs} trajectories.")
+        elif self.n_trans is not None:
+            logging.info(f"Training with {self.n_trans} transitions.")
+        else:
+            logging.info(f"Training with full data.")
+
 
     def __call__(self, data_iter):
         trajectory_ind = 0
 
-        for step_dict in data_iter:
-            yield step_dict
+        if self.n_trans is not None:
+            trans_count = 0
+            for step_dict in data_iter:
+                trans_count += 1
+                yield step_dict
 
-            if step_dict['dones']:
-                trajectory_ind += 1
+                if trans_count == self.n_trans:
+                    break
 
-            if trajectory_ind == self.n_trajs:
-                break
+            assert trans_count == self.n_trans, (self.n_trans, trans_count)
+        else:
+            for step_dict in data_iter:
+                yield step_dict
 
-        assert self.n_trajs is None or trajectory_ind == self.n_trajs, (self.n_trajs, trajectory_ind)
+                if step_dict['dones']:
+                    trajectory_ind += 1
+
+                if trajectory_ind == self.n_trajs:
+                    break
+
+            assert self.n_trajs is None or trajectory_ind == self.n_trajs, (self.n_trajs, trajectory_ind)
 
 
 def strip_extensions(dataset):

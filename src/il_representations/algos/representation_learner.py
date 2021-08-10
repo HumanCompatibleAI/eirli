@@ -284,8 +284,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.encoder.train(val)
         self.decoder.train(val)
 
-    def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
-        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+    def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs,
+                       n_trans):
+        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs,
+                                                   n_trans=n_trans)
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=n_epochs * batches_per_epoch * self.batch_size,
@@ -300,7 +302,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
               end_callbacks=(), log_dir, log_interval=100,
               calc_log_interval=10, save_interval=1000, scheduler_cls=None,
               scheduler_kwargs=None, optimizer_cls=Adam,
-              optimizer_kwargs=None, n_trajs=None):
+              optimizer_kwargs=None, n_trajs=None, n_trans=None):
         """Run repL training loop.
 
         Args:
@@ -315,6 +317,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 perform. Total number of updates will be `batches_per_epoch *
                 n_epochs`.
             n_trajs (int): the total number of trajectories we want to use
+                for training. The default 'None' will use the whole dataset.
+            n_trans (int): the total number of transitions we want to use
                 for training. The default 'None' will use the whole dataset.
             callbacks ([dict -> None]): list of functions to call at the
                 end of each batch, after computing the loss and updating the
@@ -342,7 +346,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # dataset setup
         data_iter = self.make_data_iter(
             datasets=datasets, batches_per_epoch=batches_per_epoch,
-            n_epochs=n_epochs, n_trajs=n_trajs)
+            n_epochs=n_epochs, n_trajs=n_trajs, n_trans=n_trans)
 
         # optimizer and LR scheduler
         optimizer = optimizer_cls(self.all_trainable_params(),

@@ -55,15 +55,20 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
-    n_batches = 5000
+    n_batches = 2000000
     batch_size = 256
     augs = 'translate,erase,color_jitter_ex'
-    n_traj = None
+    # The number of trajectories to sample.
+    n_trajs = None
+    # The number of transitions to sample.
+    n_trans = None
+    assert sum([n_config is None for n_config in [n_trajs, n_trans]]) != 0, \
+    'Specify one or none of n_trajs and n_trans, not both.'
     torch_num_threads = None
     # the number of 'epochs' is used by the LR scheduler
     # (we still do `n_batches` total training, the scheduler just gets a chance
     # to update after every `n_batches / nominal_num_epochs` batches)
-    nominal_num_epochs = 100
+    nominal_num_epochs = 10
     save_every_n_batches = int(n_batches / nominal_num_epochs)
     postproc_arch = ()
     optimizer_class = Adam
@@ -78,7 +83,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                     device_name, final_pol_name, freeze_encoder, postproc_arch,
                     encoder_path, encoder_kwargs, nominal_num_epochs,
                     save_every_n_batches, optimizer_class, optimizer_kwargs,
-                    learning_rate, batch_size):
+                    learning_rate, batch_size, n_trans):
     observation_space = venv_chans_first.observation_space
     lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
@@ -95,7 +100,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
 
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(augs, color_space)
-    dataset_length = len(dict_dataset['obs'])
+    dataset_length = len(dict_dataset['obs']) if n_trans is None else n_trans
     progress_df = pd.DataFrame()
 
     trainer = DQN(
@@ -104,6 +109,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
         device=device_name,
         buffer_size=dataset_length,
         batch_size=batch_size,
+        optimize_memory_usage=True
     )
     trainer.policy = policy
 
@@ -157,7 +163,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
 
 
 @dqn_train_ex.main
-def train(seed, torch_num_threads, dataset_configs, n_traj, _config):
+def train(seed, torch_num_threads, n_trajs, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
@@ -168,7 +174,7 @@ def train(seed, torch_num_threads, dataset_configs, n_traj, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
-        dict_dataset = auto_env.load_dict_dataset(n_traj=n_traj)
+        dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs)
 
         final_path = do_training_dqn(
             dict_dataset=dict_dataset,
