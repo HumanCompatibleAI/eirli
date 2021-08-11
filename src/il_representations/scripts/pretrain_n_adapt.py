@@ -353,6 +353,7 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
 
     # Run il train
     trained_policy_path = None
+    il_train_rv, dqn_train_rv = None, None
     if il_train_ex_config is not None:
         merged_il_train_config = update(
             {'seed': rng.randint(1 << 31)},
@@ -393,10 +394,16 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
     )
     il_test_rv = run_single_exp(merged_il_test_config, log_dir, 'il_test')
 
-    report_final_experiment_results({
-        "all_experiment_rvs": [pretrain_rv, il_train_rv, il_test_rv],
-        **il_test_rv["result"],
-    })
+    if il_train_ex_config is not None:
+        report_final_experiment_results({
+            "all_experiment_rvs": [pretrain_rv, il_train_rv, il_test_rv],
+            **il_test_rv["result"],
+        })
+    elif dqn_ex_config is not None:
+        report_final_experiment_results({
+            "all_experiment_rvs": [pretrain_rv, dqn_train_rv, il_test_rv],
+            **il_test_rv["result"],
+        })
 
 
 def run_repl_only_exp(*, rep_ex_config, env_cfg_config, env_data_config,
