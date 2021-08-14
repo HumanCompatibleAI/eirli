@@ -103,10 +103,13 @@ def expand_dict_keys(config_dict):
     dictionaries for configuration. To emulate nested dictionaries, we use a
     plain dictionary with keys of the form "level1:level2:…". . The colons are
     then separated out by this function into a nested dict (e.g. {'level1':
-    {'level2': …}}). Example:
+    {'level2': …}}).
 
+    Example:
+```
     >>> expand_dict_keys({'x:y': 42, 'z': 4, 'x:u:v': 5, 'w': {'s:t': 99}})
     {'x': {'y': 42, 'u': {'v': 5}}, 'z': 4, 'w': {'s': {'t': 99}}}
+```
     """
     dict_type = type(config_dict)
     new_dict = dict_type()
@@ -136,7 +139,7 @@ def run_single_exp(merged_config, log_dir, exp_name):
     because they are not pickle serializable, which is not supported by Ray
     (when running this as a remote function).
 
-    params:
+    Params:
         merged_config: The config that should be used in the sub-experiment;
                        formed by calling merge_configs()
         log_dir: The log directory of current chain experiment.
@@ -203,13 +206,15 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
     A utility function for taking a trained repl encoder and symlinking it, with appropriate
     searchable directory name, to the repl run directory
 
-    :param repl_encoder_path: A path to an encoder checkpoint file. Assumed to be within a /checkpoints dir
+    Params:
+        repl_encoder_path: A path to an encoder checkpoint file. Assumed to be within a /checkpoints dir
     within a run of the `repl` experiment
-    :param repl_directory_dir: The directory where the symlinked listing of repl encoder should be stored
-    :param config_hash: The hash identifying the config attached to this repl run
-    :param seed: The seed for this repl run
-    :param config_path: The path to the config file for this repl run. If None, will try to search relative to
+        repl_directory_dir: The directory where the symlinked listing of repl encoder should be stored
+        config_hash: The hash identifying the config attached to this repl run
+        seed: The seed for this repl run
+        config_path: The path to the config file for this repl run. If None, will try to search relative to
                         repl_encoder_path
+
     """
     if config_path is None:
         config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')

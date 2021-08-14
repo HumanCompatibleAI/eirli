@@ -123,9 +123,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def _prep_tensors(self, tensors_or_arrays):
         """
-        :param tensors_or_arrays: A list of Torch tensors or numpy arrays (or None)
-        :return: A torch tensor moved to the device associated with this
-            learner, and converted to float
+        Args:
+            tensors_or_arrays: A list of Torch tensors or numpy arrays (or None)
+
+        Returns:
+            A torch tensor moved to the device associated with this learner, and converted to float dtype
         """
         if tensors_or_arrays is None:
             # sometimes we get passed optional arguments with default value
@@ -169,12 +171,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
     @staticmethod
     def _unpack_batch(batch):
         """
-        :param batch: A batch that may contain a numpy array of extra context,
-            but may also simply have an empty list as a placeholder value for
-            the `extra_context` key. If the latter, return None for
-            extra_context, rather than an empty list (Torch data loaders can
-            only work with lists and arrays, not None types)
-        :return:
+        Args:
+            batch: A batch that may contain a numpy array of extra context,
+                but may also simply have an empty list as a placeholder value for
+                the `extra_context` key. If the latter, return None for
+                extra_context, rather than an empty list (Torch data loaders can
+                only work with lists and arrays, not None types)
+
+        Returns:
+            A tuple of context, target, traj_ts_ids, and extra context
         """
         if len(batch['extra_context']) == 0:
             return batch['context'], batch['target'], batch['traj_ts_ids'], None
@@ -183,8 +188,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def all_trainable_params(self):
         """
-        :return: the trainable encoder parameters and the trainable decoder
-            parameters.
+        Returns the trainable encoder parameters and the trainable decoder parameters.
         """
         trainable_encoder_params = [
             p for p in self.encoder.parameters() if p.requires_grad
