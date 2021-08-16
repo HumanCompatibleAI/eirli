@@ -188,7 +188,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
     elif benchmark_name == 'procgen':
-        mode = 'easy' if procgen_start_level == 0 else 'hard'
+        # mode = 'easy' if procgen_start_level == 0 else 'hard'
+        mode = 'easy'
         raw_procgen_env = ProcgenEnv(num_envs=1,
                                      env_name=gym_env_name,
                                      num_levels=100,
