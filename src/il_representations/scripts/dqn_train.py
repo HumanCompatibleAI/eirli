@@ -123,18 +123,18 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                                               dict_dataset['acts'][idx], \
                                               dict_dataset['rews'][idx], \
                                               dict_dataset['dones'][idx]
-        obs = preprocess_obs(th.tensor(obs),
-                             observation_space,
-                             normalize_images=True)
-        next_obs = preprocess_obs(th.tensor(next_obs),
-                                  observation_space,
-                                  normalize_images=True)
-        obs, next_obs = th.unsqueeze(obs, dim=0), th.unsqueeze(next_obs, dim=0)
-        if augmenter is not None:
+        # obs = preprocess_obs(th.tensor(obs),
+        #                      observation_space,
+        #                      normalize_images=True)
+        # next_obs = preprocess_obs(th.tensor(next_obs),
+        #                           observation_space,
+        #                           normalize_images=True)
+        # obs, next_obs = th.unsqueeze(obs, dim=0), th.unsqueeze(next_obs, dim=0)
+        # if augmenter is not None:
             # Here we unsqueeze the obs first since the augmenter only takes
             # [N, C, H, W] inputs, so we need to fake a "batch size" here.
-            obs = augmenter(obs)
-            next_obs = augmenter(next_obs)
+            # obs = augmenter(obs)
+            # next_obs = augmenter(next_obs)
 
         trainer.replay_buffer.add(obs=obs,
                                   next_obs=next_obs,
@@ -147,9 +147,14 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
     model_saver = ModelSaver(trainer.policy,
                              save_dir=os.path.join(out_dir, 'snapshots'),
                              save_interval_batches=save_every_n_batches)
+    # trainer.learn(total_timesteps=1000000,
+    #               eval_log_path=os.path.join(out_dir, 'progress.csv'))
+
+
     for epoch in range(nominal_num_epochs):
         print(f'Training [{epoch}/{nominal_num_epochs}] epochs...')
-        policy, n_update, loss = trainer.train(n_update_per_epoch)
+        policy, n_update, loss = trainer.train(n_update_per_epoch,
+                                               batch_size=batch_size)
 
         model_saver(n_update, policy=policy)
         progress_df = progress_df.append(
@@ -174,7 +179,8 @@ def train(seed, torch_num_threads, n_trajs, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
-        dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs)
+        dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs,
+                                                  frame_stack=0)
 
         final_path = do_training_dqn(
             dict_dataset=dict_dataset,
