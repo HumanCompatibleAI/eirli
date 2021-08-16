@@ -76,17 +76,24 @@ def load_dict_dataset(benchmark_name, n_traj=None, **kwargs):
 
     # Check if kwargs has unexpected keys
     if kwargs is not None:
-        assert set(kwargs.keys()) <= set(['task_name'])
+        assert set(kwargs.keys()) <= set(['task_name',
+                                          'frame_stack'])
 
     if benchmark_name == 'magical':
         dataset_dict = load_dataset_magical(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'dm_control':
+        if 'frame_stack' in kwargs.keys():
+            kwargs['dm_control_frame_stack'] = kwargs['frame_stack']
+            del kwargs['frame_stack']
         dataset_dict = load_dataset_dm_control(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'atari':
         dataset_dict = load_dataset_atari(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'minecraft':
         dataset_dict = load_dataset_minecraft(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'procgen':
+        if 'frame_stack' in kwargs.keys():
+            kwargs['procgen_frame_stack'] = kwargs['frame_stack']
+            del kwargs['frame_stack']
         dataset_dict = load_dataset_procgen(n_traj=n_traj, **kwargs)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
