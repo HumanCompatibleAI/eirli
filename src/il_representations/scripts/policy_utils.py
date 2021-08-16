@@ -115,7 +115,7 @@ class ModelSaver:
         if batch_num >= self.last_save_batches + self.save_interval_batches:
             self.save(batch_num, **kwargs)
 
-    def save(self, batch_num, policy=None):
+    def save(self, batch_num, policy=None, **kwargs):
         """Save policy."""
         save_fn = f'policy_{batch_num:08d}_batches.pt'
         save_path = os.path.join(self.save_dir, save_fn)
