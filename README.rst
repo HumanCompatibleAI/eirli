@@ -15,6 +15,15 @@ This repo has two main goals:
    sequential learning, particularly imitation learning and offline
    reinforcement learning
 
+Common Use Cases
+================
+So, you want to...
+
+- Reproduce our results. You can find scripts and instructions here [TODO] to help reproduce our benchmark results.
+- Design and experiment with a new representation learning algorithm using our modular components.
+- Use our algorithm definitions in a setting other than sequential learning
+
+
 Modular Algorithm Design
 ========================
 
@@ -30,23 +39,20 @@ transformation to the context, some transformation to the target, and
 then calculating a loss as a function of those two transformations.
 Sometimes an extra context object is passed in
 
-Some examples are: - In SimCLR, the context and target are the same
-image frame, and augmentation and then encoding is applied to both
-context and target, before pulling the context and target
-representations together [TODO mention projection decoder] - In
-TemporalCPC, the context is a frame at time t, and the target a frame at
-time t+k, and then, similarly to SimCLR above, augmentation is applied
-to the frame before it's put through an encoder, and the two resulting
-representations pulled together - In a Variational Autoencoder, the
-context and target are the same image frame. An bottleneck encoder and
-then a reconstructive decoder are applied to the context, and this
-reconstructed context is compared to the target through a L2 pixel loss
-- A Dynamics Prediction model can be seen as an analogical combination
-of an autoencoder (which tries to predict a full image frame) and
-TemporalCPC, which predicts future information based on current
-information. In the case of a Dynamics model, we predict a future frame
-(the target) given the current frame (context) and an action as extra
-context.
+Some examples are:
+
+- In **SimCLR**, the context and target are the same image frame, and augmentation and then encoding is
+  applied to both context and target, before pulling the context and target representations together [TODO mention projection decoder]
+- In **TemporalCPC**, the context is a frame at time t, and the target a frame at time t+k, and
+  then, similarly to SimCLR above, augmentation is applied to the frame before it's put through an
+  encoder, and the two resulting representations pulled together
+- In a **Variational Autoencoder**, the context and target are the same image frame. An bottleneck encoder
+  and then a reconstructive decoder are applied to the context, and this reconstructed context is compared
+  to the target through a L2 pixel loss
+- A **Dynamics Prediction** model can be seen as an conceptual combination of an autoencoder
+  (which tries to predict the current full image frame) and TemporalCPC, which predicts future information
+  based on current information. In the case of a Dynamics model, we predict a future frame (the target)
+  given the current frame (context) and an action as extra context.
 
 This abstraction isn't perfect, but we believe it is coherent enough to
 allow for a good number of shared mechanisms between algorithms, and
@@ -95,4 +101,6 @@ components]
 Training Scripts
 ================
 
-Training machinery for this
+In addition to machinery for constructing algorithms, the repo contains a set of Sacred-based training scripts for
+testing different Representation Learning algorithms as either pretraining or joint training components within an
+imitation learning pipeline. These are likeliest to be a fit for your use case if you
