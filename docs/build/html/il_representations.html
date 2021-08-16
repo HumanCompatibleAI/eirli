@@ -87,8 +87,9 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">il_representations</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">il_representations package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
@@ -257,14 +258,14 @@
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.collate_configs">il_representations.scripts.collate_configs module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.grab_some_stuff_and_pickle_it">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.il_test">il_representations.scripts.il_test module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-il-test-module">il_representations.scripts.il_test module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.il_train">il_representations.scripts.il_train module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-interpret-module">il_representations.scripts.interpret module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.interpret">il_representations.scripts.interpret module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.joint_training">il_representations.scripts.joint_training module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.joint_training_cluster">il_representations.scripts.joint_training_cluster module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_demos">il_representations.scripts.mkdataset_demos module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_random">il_representations.scripts.mkdataset_random module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.pretrain_n_adapt">il_representations.scripts.pretrain_n_adapt module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-pretrain-n-adapt-module">il_representations.scripts.pretrain_n_adapt module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.render_dataset">il_representations.scripts.render_dataset module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.run_rep_learner">il_representations.scripts.run_rep_learner module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.save_traced_net">il_representations.scripts.save_traced_net module</a></li>
@@ -320,7 +321,7 @@ results.</p></li>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.policy_interfacing.EncoderFeatureExtractor">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.policy_interfacing.</span></span><span class="sig-name descname"><span class="pre">EncoderFeatureExtractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.policy_interfacing.EncoderFeatureExtractor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">stable_baselines3.common.policies.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">stable_baselines3.common.policies.stable_baselines3.common.policies.BaseFeaturesExtractor._name</span></code></p>
 <p>Wraps a BaseEncoder so that it can be used as a policy feature
 extractor.</p>
 <dl class="py method">
@@ -333,7 +334,7 @@ extractor.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.policy_interfacing.ObsEncoderFeatureExtractor">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.policy_interfacing.</span></span><span class="sig-name descname"><span class="pre">ObsEncoderFeatureExtractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.policy_interfacing.ObsEncoderFeatureExtractor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">stable_baselines3.common.policies.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">stable_baselines3.common.policies.stable_baselines3.common.policies.BaseFeaturesExtractor._name</span></code></p>
 <p>Wraps an observation encoder so that it can be used as a policy feature
 extractor.</p>
 <dl class="py method">
@@ -400,7 +401,7 @@ IL, or both.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="il_representations.script_utils.sacred_copy">
-<span class="sig-prename descclassname"><span class="pre">il_representations.script_utils.</span></span><span class="sig-name descname"><span class="pre">sacred_copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">o</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">il_representations.script_utils.T</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">il_representations.script_utils.T</span><a class="headerlink" href="#il_representations.script_utils.sacred_copy" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">il_representations.script_utils.</span></span><span class="sig-name descname"><span class="pre">sacred_copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">o</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">il_representations.script_utils.T</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">il_representations.script_utils.T</span></span></span><a class="headerlink" href="#il_representations.script_utils.sacred_copy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform a deep copy on nested dictionaries and lists.</p>
 <p>If <cite>d</cite> is an instance of dict or list, copies <cite>d</cite> to a dict or list
 where the values are recursively copied using <cite>sacred_copy</cite>. Otherwise, <cite>d</cite>
@@ -500,7 +501,7 @@ needed.  Both arguments passed are str objects.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.utils.SigmoidRescale">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">SigmoidRescale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SigmoidRescale" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>Rescales input to be in [min_val, max_val]; useful for pixel decoder.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.utils.SigmoidRescale.forward">
@@ -540,7 +541,7 @@ want to time, then <cite>.stop(“some_name_for_op”)</cite> immediately afterw
 (e.g. “some_name_for_op” and any other names you use).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.utils.Timers.dump_stats">
-<span class="sig-name descname"><span class="pre">dump_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_running</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#il_representations.utils.Timers.dump_stats" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">dump_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_running</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.utils.Timers.dump_stats" title="Permalink to this definition">¶</a></dt>
 <dd><p>Clear all timer records and return a nested dictionary of stats.
 Keys at top level of dict are timer names, keys at second level are
 stat names (min/mean/max/std), and values at second level are just
@@ -555,13 +556,13 @@ floats.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.utils.Timers.start">
-<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">None</span><a class="headerlink" href="#il_representations.utils.Timers.start" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.utils.Timers.start" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start a timer.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.utils.Timers.stop">
-<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_running</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">None</span><a class="headerlink" href="#il_representations.utils.Timers.stop" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_running</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.utils.Timers.stop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stop a timer.</p>
 </dd></dl>
 
@@ -599,8 +600,8 @@ and give them require_grad=False. This is a slightly hacky way of
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.get_policy_nupdate">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">get_policy_nupdate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">policy_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.get_policy_nupdate" title="Permalink to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="il_representations.utils.get_policy_update">
+<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">get_policy_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">policy_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.get_policy_update" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">

@@ -5,11 +5,13 @@
 
 Welcome to Representations for Sequence Learning's documentation!
 =================================================================
+.. include:: ../../README.rst
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   data
    modules
 
 

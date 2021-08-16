@@ -85,8 +85,9 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">il_representations</a></li>
 </ul>
 
@@ -222,6 +223,8 @@
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.AsymmetricProjectionHead">AsymmetricProjectionHead (class in il_representations.algos.decoders)</a>
 </li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.attribute_image_features">attribute_image_features() (in module il_representations.scripts.interpret)</a>
+</li>
       <li><a href="il_representations.algos.html#il_representations.algos.augmenters.AugmentContextAndExtraContext.augment_extra_context">augment_extra_context() (il_representations.algos.augmenters.AugmentContextAndExtraContext method)</a>
 
       <ul>
@@ -290,8 +293,6 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.cache_repl_encoder">cache_repl_encoder() (in module il_representations.scripts.pretrain_n_adapt)</a>
-</li>
       <li><a href="il_representations.algos.html#il_representations.algos.losses.AsymmetricContrastiveLoss.calculate_logits_and_labels">calculate_logits_and_labels() (il_representations.algos.losses.AsymmetricContrastiveLoss method)</a>
 
       <ul>
@@ -306,7 +307,7 @@
 </li>
       <li><a href="il_representations.envs.html#il_representations.envs.minecraft_envs.channels_first">channels_first() (in module il_representations.envs.minecraft_envs)</a>
 </li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.CheckpointFIFOScheduler">CheckpointFIFOScheduler (class in il_representations.scripts.pretrain_n_adapt)</a>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.choose_layer">choose_layer() (in module il_representations.scripts.interpret)</a>
 </li>
       <li><a href="il_representations.scripts.html#il_representations.scripts.collate_configs.IndentedStream.close">close() (il_representations.scripts.collate_configs.IndentedStream method)</a>
 
@@ -440,8 +441,6 @@
 </li>
       <li><a href="il_representations.html#il_representations.policy_interfacing.EncoderFeatureExtractor">EncoderFeatureExtractor (class in il_representations.policy_interfacing)</a>
 </li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.expand_dict_keys">expand_dict_keys() (in module il_representations.scripts.pretrain_n_adapt)</a>
-</li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.ExpSequential">ExpSequential (class in il_representations.algos.decoders)</a>
 </li>
       <li><a href="il_representations.envs.html#il_representations.envs.minecraft_envs.MinecraftVectorWrapper.extract_action">extract_action() (il_representations.envs.minecraft_envs.MinecraftVectorWrapper static method)</a>
@@ -453,6 +452,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="il_representations.scripts.html#il_representations.scripts.save_traced_net.fetch_encoder">fetch_encoder() (in module il_representations.scripts.save_traced_net)</a>
+</li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.figure_2_tensor">figure_2_tensor() (in module il_representations.scripts.interpret)</a>
 </li>
       <li><a href="il_representations.test_support.html#il_representations.test_support.utils.files_are_identical">files_are_identical() (in module il_representations.test_support.utils)</a>
 </li>
@@ -519,6 +520,8 @@
 </li>
         <li><a href="il_representations.html#il_representations.policy_interfacing.ObsEncoderFeatureExtractor.forward">(il_representations.policy_interfacing.ObsEncoderFeatureExtractor method)</a>
 </li>
+        <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.Network.forward">(il_representations.scripts.interpret.Network method)</a>
+</li>
         <li><a href="il_representations.html#il_representations.utils.SigmoidRescale.forward">(il_representations.utils.SigmoidRescale method)</a>
 </li>
       </ul></li>
@@ -546,6 +549,8 @@
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.losses.GaussianPriorLoss">GaussianPriorLoss (class in il_representations.algos.losses)</a>
 </li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.InterpAlgos.get">get() (il_representations.scripts.interpret.InterpAlgos method)</a>
+</li>
       <li><a href="il_representations.algos.html#il_representations.algos.get_action_representation_dim">get_action_representation_dim() (in module il_representations.algos)</a>
 </li>
       <li><a href="il_representations.scripts.html#il_representations.scripts.save_traced_net.get_config_path">get_config_path() (in module il_representations.scripts.save_traced_net)</a>
@@ -558,31 +563,27 @@
 </li>
       <li><a href="il_representations.envs.html#il_representations.envs.minecraft_envs.get_env_name_minecraft">get_env_name_minecraft() (in module il_representations.envs.minecraft_envs)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="il_representations.envs.html#il_representations.envs.auto.get_gym_env_name">get_gym_env_name() (in module il_representations.envs.auto)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.utils.LinearWarmupCosine.get_lr">get_lr() (il_representations.algos.utils.LinearWarmupCosine method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="il_representations.data.html#il_representations.data.write_dataset.get_meta_dict">get_meta_dict() (in module il_representations.data.write_dataset)</a>
 </li>
       <li><a href="il_representations.scripts.html#il_representations.scripts.render_dataset.get_n_chans">get_n_chans() (in module il_representations.scripts.render_dataset)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.encoders.get_obs_encoder_cls">get_obs_encoder_cls() (in module il_representations.algos.encoders)</a>
 </li>
-      <li><a href="il_representations.html#il_representations.utils.get_policy_nupdate">get_policy_nupdate() (in module il_representations.utils)</a>
+      <li><a href="il_representations.html#il_representations.utils.get_policy_update">get_policy_update() (in module il_representations.utils)</a>
 </li>
       <li><a href="il_representations.envs.html#il_representations.envs.procgen_envs.get_procgen_env_name">get_procgen_env_name() (in module il_representations.envs.procgen_envs)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.get_projection_modules">get_projection_modules() (in module il_representations.algos.decoders)</a>
 </li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.get_repl_dir">get_repl_dir() (in module il_representations.scripts.pretrain_n_adapt)</a>
-</li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.get_sequential_from_architecture">get_sequential_from_architecture() (in module il_representations.algos.decoders)</a>
 </li>
       <li><a href="il_representations.configs.html#il_representations.configs.hp_tuning.get_space_and_ref_configs">get_space_and_ref_configs() (in module il_representations.configs.hp_tuning)</a>
-</li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.get_stages_to_run">get_stages_to_run() (in module il_representations.scripts.pretrain_n_adapt)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.LossDecoder.get_vector">get_vector() (il_representations.algos.decoders.LossDecoder method)</a>
 </li>
@@ -963,17 +964,17 @@
 </li>
       </ul></li>
       <li>
-    il_representations.scripts.il_test
-
-      <ul>
-        <li><a href="il_representations.scripts.html#module-il_representations.scripts.il_test">module</a>
-</li>
-      </ul></li>
-      <li>
     il_representations.scripts.il_train
 
       <ul>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.il_train">module</a>
+</li>
+      </ul></li>
+      <li>
+    il_representations.scripts.interpret
+
+      <ul>
+        <li><a href="il_representations.scripts.html#module-il_representations.scripts.interpret">module</a>
 </li>
       </ul></li>
       <li>
@@ -1002,13 +1003,6 @@
 
       <ul>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_random">module</a>
-</li>
-      </ul></li>
-      <li>
-    il_representations.scripts.pretrain_n_adapt
-
-      <ul>
-        <li><a href="il_representations.scripts.html#module-il_representations.scripts.pretrain_n_adapt">module</a>
 </li>
       </ul></li>
       <li>
@@ -1089,6 +1083,8 @@
 </li>
       <li><a href="il_representations.data.html#il_representations.data.read_dataset.InterleavedDataset">InterleavedDataset (class in il_representations.data.read_dataset)</a>
 </li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.InterpAlgos">InterpAlgos (class in il_representations.scripts.interpret)</a>
+</li>
       <li><a href="il_representations.algos.html#il_representations.algos.encoders.InverseDynamicsEncoder">InverseDynamicsEncoder (class in il_representations.algos.encoders)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.InverseDynamicsPrediction">InverseDynamicsPrediction (class in il_representations.algos)</a>
@@ -1165,8 +1161,6 @@
 
       <ul>
         <li><a href="il_representations.scripts.html#il_representations.scripts.joint_training_cluster.main">(in module il_representations.scripts.joint_training_cluster)</a>
-</li>
-        <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.main">(in module il_representations.scripts.pretrain_n_adapt)</a>
 </li>
         <li><a href="il_representations.scripts.html#il_representations.scripts.save_traced_net.main">(in module il_representations.scripts.save_traced_net)</a>
 </li>
@@ -1303,9 +1297,9 @@
 </li>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.grab_some_stuff_and_pickle_it">il_representations.scripts.grab_some_stuff_and_pickle_it</a>
 </li>
-        <li><a href="il_representations.scripts.html#module-il_representations.scripts.il_test">il_representations.scripts.il_test</a>
-</li>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.il_train">il_representations.scripts.il_train</a>
+</li>
+        <li><a href="il_representations.scripts.html#module-il_representations.scripts.interpret">il_representations.scripts.interpret</a>
 </li>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.joint_training">il_representations.scripts.joint_training</a>
 </li>
@@ -1314,8 +1308,6 @@
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_demos">il_representations.scripts.mkdataset_demos</a>
 </li>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_random">il_representations.scripts.mkdataset_random</a>
-</li>
-        <li><a href="il_representations.scripts.html#module-il_representations.scripts.pretrain_n_adapt">il_representations.scripts.pretrain_n_adapt</a>
 </li>
         <li><a href="il_representations.scripts.html#module-il_representations.scripts.render_dataset">il_representations.scripts.render_dataset</a>
 </li>
@@ -1350,10 +1342,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="il_representations.algos.html#il_representations.algos.losses.NegativeLogLikelihood">NegativeLogLikelihood (class in il_representations.algos.losses)</a>
 </li>
-      <li><a href="il_representations.html#il_representations.script_utils.ReuseRepl.NO">NO (il_representations.script_utils.ReuseRepl attribute)</a>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.Network">Network (class in il_representations.scripts.interpret)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="il_representations.html#il_representations.script_utils.ReuseRepl.NO">NO (il_representations.script_utils.ReuseRepl attribute)</a>
+</li>
       <li><a href="il_representations.algos.html#il_representations.algos.augmenters.NoAugmentation">NoAugmentation (class in il_representations.algos.augmenters)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.NoOp">NoOp (class in il_representations.algos.decoders)</a>
@@ -1368,12 +1362,10 @@
 </li>
       <li><a href="il_representations.envs.html#il_representations.envs.magical_envs.SB3EvaluationProtocol.obtain_scores">obtain_scores() (il_representations.envs.magical_envs.SB3EvaluationProtocol method)</a>
 </li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.CheckpointFIFOScheduler.on_trial_complete">on_trial_complete() (il_representations.scripts.pretrain_n_adapt.CheckpointFIFOScheduler method)</a>
+      <li><a href="il_representations.algos.html#il_representations.algos.decoders.LossDecoder.ones_like_projection_dim">ones_like_projection_dim() (il_representations.algos.decoders.LossDecoder method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="il_representations.algos.html#il_representations.algos.decoders.LossDecoder.ones_like_projection_dim">ones_like_projection_dim() (il_representations.algos.decoders.LossDecoder method)</a>
-</li>
       <li><a href="il_representations.algos.html#il_representations.algos.encoders.RecurrentEncoder.ones_like_representation_dim">ones_like_representation_dim() (il_representations.algos.encoders.RecurrentEncoder method)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.decoders.OnlyTargetProjectionHead">OnlyTargetProjectionHead (class in il_representations.algos.decoders)</a>
@@ -1390,13 +1382,17 @@
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.utils.plot">plot() (in module il_representations.algos.utils)</a>
 </li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.plot_linear_layer_attributions">plot_linear_layer_attributions() (in module il_representations.scripts.interpret)</a>
+</li>
       <li><a href="il_representations.algos.html#il_representations.algos.utils.plot_single">plot_single() (in module il_representations.algos.utils)</a>
 </li>
       <li><a href="il_representations.il.html#il_representations.il.ppo_gail.PPO">PPO (class in il_representations.il.ppo_gail)</a>
 </li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.save_traced_net.pre_order_children">pre_order_children() (in module il_representations.scripts.save_traced_net)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.save_traced_net.pre_order_children">pre_order_children() (in module il_representations.scripts.save_traced_net)</a>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.prepare_network">prepare_network() (in module il_representations.scripts.interpret)</a>
 </li>
       <li><a href="il_representations.html#il_representations.utils.print_policy_info">print_policy_info() (in module il_representations.utils)</a>
 </li>
@@ -1406,6 +1402,8 @@
         <li><a href="il_representations.envs.html#il_representations.envs.baselines_vendored.VecExtractDictObs.process">(il_representations.envs.baselines_vendored.VecExtractDictObs method)</a>
 </li>
       </ul></li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.process_data">process_data() (in module il_representations.scripts.interpret)</a>
+</li>
       <li><a href="il_representations.html#il_representations.utils.pyhash_mutable_types">pyhash_mutable_types() (in module il_representations.utils)</a>
 </li>
   </ul></td>
@@ -1432,9 +1430,9 @@
 </li>
       <li><a href="il_representations.html#il_representations.utils.recursively_sort">recursively_sort() (in module il_representations.utils)</a>
 </li>
-      <li><a href="il_representations.envs.html#il_representations.envs.dm_control_envs.register_dmc_envs">register_dmc_envs() (in module il_representations.envs.dm_control_envs)</a>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.InterpAlgos.register">register() (il_representations.scripts.interpret.InterpAlgos method)</a>
 </li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.relative_symlink">relative_symlink() (in module il_representations.scripts.pretrain_n_adapt)</a>
+      <li><a href="il_representations.envs.html#il_representations.envs.dm_control_envs.register_dmc_envs">register_dmc_envs() (in module il_representations.envs.dm_control_envs)</a>
 </li>
       <li><a href="il_representations.html#il_representations.utils.repeat_chain_non_empty">repeat_chain_non_empty() (in module il_representations.utils)</a>
 </li>
@@ -1445,8 +1443,6 @@
       <li><a href="il_representations.scripts.html#il_representations.scripts.joint_training.repl_setup">repl_setup() (in module il_representations.scripts.joint_training)</a>
 </li>
       <li><a href="il_representations.html#il_representations.utils.RepLSaveExampleBatchesCallback">RepLSaveExampleBatchesCallback (class in il_representations.utils)</a>
-</li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.report_final_experiment_results">report_final_experiment_results() (in module il_representations.scripts.pretrain_n_adapt)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.representation_learner.RepresentationLearner">RepresentationLearner (class in il_representations.algos.representation_learner)</a>
 </li>
@@ -1464,11 +1460,9 @@
         <li><a href="il_representations.html#il_representations.utils.Timers.reset">(il_representations.utils.Timers method)</a>
 </li>
       </ul></li>
-      <li><a href="il_representations.algos.html#il_representations.algos.encoders.Resnet18">Resnet18 (class in il_representations.algos.encoders)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.resolve_env_cfg">resolve_env_cfg() (in module il_representations.scripts.pretrain_n_adapt)</a>
+      <li><a href="il_representations.algos.html#il_representations.algos.encoders.Resnet18">Resnet18 (class in il_representations.algos.encoders)</a>
 </li>
       <li><a href="il_representations.html#il_representations.script_utils.ReuseRepl">ReuseRepl (class in il_representations.script_utils)</a>
 </li>
@@ -1481,13 +1475,11 @@
       <li><a href="il_representations.scripts.html#il_representations.scripts.grab_some_stuff_and_pickle_it.run">run() (in module il_representations.scripts.grab_some_stuff_and_pickle_it)</a>
 
       <ul>
-        <li><a href="il_representations.scripts.html#il_representations.scripts.il_test.run">(in module il_representations.scripts.il_test)</a>
+        <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.run">(in module il_representations.scripts.interpret)</a>
 </li>
         <li><a href="il_representations.scripts.html#il_representations.scripts.mkdataset_demos.run">(in module il_representations.scripts.mkdataset_demos)</a>
 </li>
         <li><a href="il_representations.scripts.html#il_representations.scripts.mkdataset_random.run">(in module il_representations.scripts.mkdataset_random)</a>
-</li>
-        <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.run">(in module il_representations.scripts.pretrain_n_adapt)</a>
 </li>
         <li><a href="il_representations.scripts.html#il_representations.scripts.render_dataset.run">(in module il_representations.scripts.render_dataset)</a>
 </li>
@@ -1496,17 +1488,9 @@
         <li><a href="il_representations.scripts.html#il_representations.scripts.truncate_datasets_icml.run">(in module il_representations.scripts.truncate_datasets_icml)</a>
 </li>
       </ul></li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.run_end2end_exp">run_end2end_exp() (in module il_representations.scripts.pretrain_n_adapt)</a>
-</li>
       <li><a href="il_representations.envs.html#il_representations.envs.magical_envs.SB3EvaluationProtocol.run_id">run_id (il_representations.envs.magical_envs.SB3EvaluationProtocol property)</a>
 </li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.run_il_only_exp">run_il_only_exp() (in module il_representations.scripts.pretrain_n_adapt)</a>
-</li>
       <li><a href="il_representations.scripts.html#il_representations.scripts.joint_training_cluster.run_joint_training_remote">run_joint_training_remote() (in module il_representations.scripts.joint_training_cluster)</a>
-</li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.run_repl_only_exp">run_repl_only_exp() (in module il_representations.scripts.pretrain_n_adapt)</a>
-</li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.run_single_exp">run_single_exp() (in module il_representations.scripts.pretrain_n_adapt)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1529,6 +1513,8 @@
       <li><a href="il_representations.html#il_representations.utils.SaneList">SaneList (class in il_representations.utils)</a>
 </li>
       <li><a href="il_representations.il.html#il_representations.il.bc_support.BCModelSaver.save">save() (il_representations.il.bc_support.BCModelSaver method)</a>
+</li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.save_img">save_img() (in module il_representations.scripts.interpret)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.utils.save_model">save_model() (in module il_representations.algos.utils)</a>
 </li>
@@ -1553,6 +1539,8 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="il_representations.algos.html#il_representations.algos.utils.show_image">show_image() (in module il_representations.algos.utils)</a>
+</li>
+      <li><a href="il_representations.scripts.html#il_representations.scripts.interpret.show_img_grid">show_img_grid() (in module il_representations.scripts.interpret)</a>
 </li>
       <li><a href="il_representations.algos.html#il_representations.algos.utils.show_plt_image">show_plt_image() (in module il_representations.algos.utils)</a>
 </li>
@@ -1630,7 +1618,7 @@
         <li><a href="il_representations.scripts.html#il_representations.scripts.joint_training.train">(in module il_representations.scripts.joint_training)</a>
 </li>
       </ul></li>
-      <li><a href="il_representations.scripts.html#il_representations.scripts.pretrain_n_adapt.trainable_function">trainable_function() (in module il_representations.scripts.pretrain_n_adapt)</a>
+      <li><a href="il_representations.il.html#il_representations.il.disc_rew_nets.ImageDiscrimNet.training">training (il_representations.il.disc_rew_nets.ImageDiscrimNet attribute)</a>
 </li>
       <li><a href="il_representations.scripts.html#il_representations.scripts.grab_some_stuff_and_pickle_it.trajectory_iter">trajectory_iter() (in module il_representations.scripts.grab_some_stuff_and_pickle_it)</a>
 

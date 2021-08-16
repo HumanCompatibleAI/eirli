@@ -87,7 +87,7 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">il_representations</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
@@ -284,7 +284,7 @@ bit of data that pair constructors can return, to be passed forward for use here
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.ActionConditionedVectorDecoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">ActionConditionedVectorDecoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.ActionConditionedVectorDecoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>A decoder that concatenates the frame representation
 and the action representation, and predicts a vector from it
 for use in contrastive losses</p>
@@ -303,7 +303,7 @@ for use in contrastive losses</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.ActionPredictionHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">ActionPredictionHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.ActionPredictionHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>A decoder that takes in two vector representations of frames
 (one in context, one in extra_context), and produces a prediction
 of the action taken in between the frames</p>
@@ -322,7 +322,7 @@ of the action taken in between the frames</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.AsymmetricProjectionHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">AsymmetricProjectionHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.AsymmetricProjectionHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.AsymmetricProjectionHead.decode_context">
 <span class="sig-name descname"><span class="pre">decode_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.AsymmetricProjectionHead.decode_context" title="Permalink to this definition">¶</a></dt>
@@ -343,14 +343,12 @@ of the action taken in between the frames</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.BYOLProjectionHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">BYOLProjectionHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.BYOLProjectionHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.BYOLProjectionHead.decode_target">
 <span class="sig-name descname"><span class="pre">decode_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.BYOLProjectionHead.decode_target" title="Permalink to this definition">¶</a></dt>
 <dd><p>Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-a backwards hook, but seemed overly complex for an initial proof of concept
-:param x:
-:return:</p>
+a backwards hook, but seemed overly complex for an initial proof of concept</p>
 </dd></dl>
 
 <dl class="py method">
@@ -363,7 +361,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.ContrastiveInverseDynamicsConcatenationHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">ContrastiveInverseDynamicsConcatenationHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.ContrastiveInverseDynamicsConcatenationHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.ContrastiveInverseDynamicsConcatenationHead.decode_target">
 <span class="sig-name descname"><span class="pre">decode_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.ContrastiveInverseDynamicsConcatenationHead.decode_target" title="Permalink to this definition">¶</a></dt>
@@ -379,7 +377,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.ExpSequential">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">ExpSequential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.ExpSequential" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.ExpSequential.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.ExpSequential.forward" title="Permalink to this definition">¶</a></dt>
@@ -390,7 +388,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.LossDecoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">LossDecoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.LossDecoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.LossDecoder.decode_context">
 <span class="sig-name descname"><span class="pre">decode_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.LossDecoder.decode_context" title="Permalink to this definition">¶</a></dt>
@@ -421,14 +419,12 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.MomentumProjectionHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">MomentumProjectionHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.MomentumProjectionHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.MomentumProjectionHead.decode_target">
 <span class="sig-name descname"><span class="pre">decode_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.MomentumProjectionHead.decode_target" title="Permalink to this definition">¶</a></dt>
 <dd><p>Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-a backwards hook, but seemed overly complex for an initial proof of concept
-:param x:
-:return:</p>
+a backwards hook, but seemed overly complex for an initial proof of concept</p>
 </dd></dl>
 
 <dl class="py method">
@@ -441,7 +437,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.NoOp">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">NoOp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.NoOp" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.NoOp.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.NoOp.forward" title="Permalink to this definition">¶</a></dt>
@@ -452,7 +448,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.OnlyTargetProjectionHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">OnlyTargetProjectionHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.OnlyTargetProjectionHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.OnlyTargetProjectionHead.decode_context">
 <span class="sig-name descname"><span class="pre">decode_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.OnlyTargetProjectionHead.decode_context" title="Permalink to this definition">¶</a></dt>
@@ -468,7 +464,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.PixelDecoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">PixelDecoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.PixelDecoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.PixelDecoder.decode_target">
 <span class="sig-name descname"><span class="pre">decode_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.PixelDecoder.decode_target" title="Permalink to this definition">¶</a></dt>
@@ -484,7 +480,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.SymmetricProjectionHead">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.decoders.</span></span><span class="sig-name descname"><span class="pre">SymmetricProjectionHead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.SymmetricProjectionHead" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.decoders.SymmetricProjectionHead.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z_dist</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.decoders.SymmetricProjectionHead.forward" title="Permalink to this definition">¶</a></dt>
@@ -521,7 +517,7 @@ BatchExtender module</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.ActionEncodingEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">ActionEncodingEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.ActionEncodingEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>An encoder that uses DeterministicEncoder logic for encoding the <cite>context</cite> and <cite>target</cite> pixel frames,
 but which encodes an <cite>extra_context</cite> object containing actions into a vector form</p>
 <dl class="py method">
@@ -539,7 +535,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.ActionEncodingInverseDynamicsEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">ActionEncodingInverseDynamicsEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.ActionEncodingInverseDynamicsEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.ActionEncodingInverseDynamicsEncoder.encode_extra_context">
 <span class="sig-name descname"><span class="pre">encode_extra_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.ActionEncodingInverseDynamicsEncoder.encode_extra_context" title="Permalink to this definition">¶</a></dt>
@@ -555,7 +551,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.BaseEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">BaseEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.BaseEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.BaseEncoder.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.BaseEncoder.forward" title="Permalink to this definition">¶</a></dt>
@@ -576,7 +572,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.BasicCNN">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">BasicCNN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.BasicCNN" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>Similar to the CNN from the Nature DQN paper.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.BasicCNN.forward">
@@ -588,7 +584,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.CoordConv">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">CoordConv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.CoordConv" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>Add coordinates in [0,1] to an image, like CoordConv paper.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.CoordConv.forward">
@@ -600,7 +596,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.Encoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">Encoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.Encoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py property">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.Encoder.device">
 <em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#il_representations.algos.encoders.Encoder.device" title="Permalink to this definition">¶</a></dt>
@@ -626,7 +622,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.InverseDynamicsEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">InverseDynamicsEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.InverseDynamicsEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.InverseDynamicsEncoder.encode_extra_context">
 <span class="sig-name descname"><span class="pre">encode_extra_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.InverseDynamicsEncoder.encode_extra_context" title="Permalink to this definition">¶</a></dt>
@@ -642,7 +638,7 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.MAGICALCNN">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">MAGICALCNN</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.MAGICALCNN" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>The CNN from the MAGICAL paper.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.MAGICALCNN.forward">
@@ -654,14 +650,12 @@ but which encodes an <cite>extra_context</cite> object containing actions into a
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.MomentumEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">MomentumEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.MomentumEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.MomentumEncoder.encode_target">
 <span class="sig-name descname"><span class="pre">encode_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.MomentumEncoder.encode_target" title="Permalink to this definition">¶</a></dt>
 <dd><p>Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
-a backwards hook, but seemed overly complex for an initial proof of concept
-:param x:
-:return:</p>
+a backwards hook, but seemed overly complex for an initial proof of concept</p>
 </dd></dl>
 
 <dl class="py method">
@@ -674,7 +668,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.RecurrentEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">RecurrentEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.RecurrentEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.RecurrentEncoder.encode_target">
 <span class="sig-name descname"><span class="pre">encode_target</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.RecurrentEncoder.encode_target" title="Permalink to this definition">¶</a></dt>
@@ -695,7 +689,7 @@ a backwards hook, but seemed overly complex for an initial proof of concept
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.Resnet18">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">Resnet18</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.Resnet18" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torchvision.models.resnet.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torchvision.models.resnet.torchvision.models.resnet.ResNet._name</span></code></p>
 <p>Version of Torch’s resnet18 model. Copied from resnet.py, with some
 modifications:</p>
 <ul class="simple">
@@ -715,7 +709,7 @@ by average-pooling. I haven’t tested it, but expect it will help a bit
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.TargetStoringActionEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">TargetStoringActionEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.TargetStoringActionEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>Identical to VAE encoder, but inherits from ActionEncodingEncoder,
 so we get that class’s additional implementation
 of <cite>encode_extra_context</cite>. If being used for Dynamics, can use with learn_scale=False. If being used
@@ -730,7 +724,7 @@ for TemporalVAE, use learn_scale=True</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.encoders.VAEEncoder">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.encoders.</span></span><span class="sig-name descname"><span class="pre">VAEEncoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.encoders.VAEEncoder" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
 <p>An encoder that uses a normal encoder’s logic for encoding
 context (with learned stddev), but for target, just returns a delta distribution
 around ground truth pixels, since we don’t want to vector-encode
@@ -909,7 +903,7 @@ struggle around 1e-4, and doesn’t learn anything around 1e-3.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.optimizers.LARS">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.optimizers.</span></span><span class="sig-name descname"><span class="pre">LARS</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.optimizers.LARS" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.optim.optimizer.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.optim.optimizer.torch.optim.optimizer.Optimizer._name</span></code></p>
 <p>Implements layer-wise adaptive rate scaling for SGD.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -1014,12 +1008,7 @@ state at time (t+1) and extra context is the action taken at time (t)</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.representation_learner.RepresentationLearner.all_trainable_params">
 <span class="sig-name descname"><span class="pre">all_trainable_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.representation_learner.RepresentationLearner.all_trainable_params" title="Permalink to this definition">¶</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>the trainable encoder parameters and the trainable decoder
-parameters.</p>
-</dd>
-</dl>
+<dd><p>Returns the trainable encoder parameters and the trainable decoder parameters.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1121,7 +1110,7 @@ epoch. <cite>most_recent_encoder_checkpoint_path</cite> is self-explanatory.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.algos.utils.LinearWarmupCosine">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.algos.utils.</span></span><span class="sig-name descname"><span class="pre">LinearWarmupCosine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.utils.LinearWarmupCosine" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.optim.lr_scheduler.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.optim.lr_scheduler.torch.optim.lr_scheduler._LRScheduler._name</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.algos.utils.LinearWarmupCosine.get_lr">
 <span class="sig-name descname"><span class="pre">get_lr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.utils.LinearWarmupCosine.get_lr" title="Permalink to this definition">¶</a></dt>
@@ -1142,7 +1131,7 @@ epoch. <cite>most_recent_encoder_checkpoint_path</cite> is self-explanatory.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="il_representations.algos.utils.accuracy">
-<span class="sig-prename descclassname"><span class="pre">il_representations.algos.utils.</span></span><span class="sig-name descname"><span class="pre">accuracy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.utils.accuracy" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">il_representations.algos.utils.</span></span><span class="sig-name descname"><span class="pre">accuracy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topk</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1,)</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.algos.utils.accuracy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the precision&#64;k for the specified values of k</p>
 </dd></dl>
 

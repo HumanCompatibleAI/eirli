@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Search &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>Representation Learner Usage &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
   
 
   
@@ -25,7 +25,6 @@
   
 
   
-    
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
@@ -40,10 +39,8 @@
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-    <script type="text/javascript" src="_static/searchtools.js"></script>
-    <script type="text/javascript" src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="#" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -70,7 +67,7 @@
 
           
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -90,8 +87,8 @@
             
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">il_representations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
 </ul>
 
             
@@ -140,10 +137,14 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Search</li>
+      <li>Representation Learner Usage</li>
     
     
       <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/representation_learner_usage.rst.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
     
@@ -155,18 +156,31 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="representation-learner-usage">
+<h1>Representation Learner Usage<a class="headerlink" href="#representation-learner-usage" title="Permalink to this headline">¶</a></h1>
+<p>All implementations of representation learning algorithms in this codebase are built around one central abstraction,
+which is, perhaps not surprisingly, a class called <cite>RepresentationLearner</cite>. This class defines the
+general framework by which components of representation learner training happen. Design of different variants of
+RepL algorithms is accomplished by creating a learner which takes in and runs different implementations of those component steps.</p>
+<div class="section" id="training-a-pre-defined-representation-learner">
+<h2>Training a Pre-Defined Representation Learner<a class="headerlink" href="#training-a-pre-defined-representation-learner" title="Permalink to this headline">¶</a></h2>
+<p>Here is an example of training a simple, pre-defined representation learner:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">il_representations.algos</span> <span class="kn">import</span> <span class="n">SimCLR</span>
+<span class="n">simclr_model</span> <span class="o">=</span> <span class="n">SimCLR</span><span class="p">()</span>
+<span class="n">loss_record</span><span class="p">,</span> <span class="n">encoder_path</span> <span class="o">=</span> <span class="n">simclr_model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">batches_per_epoch</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="existing-pre-defined-representation-learners">
+<h3>Existing Pre-Defined Representation Learners<a class="headerlink" href="#existing-pre-defined-representation-learners" title="Permalink to this headline">¶</a></h3>
+<p>Hi</p>
+</div>
+</div>
+<div class="section" id="defining-a-new-representation-learner">
+<h2>Defining a New Representation Learner<a class="headerlink" href="#defining-a-new-representation-learner" title="Permalink to this headline">¶</a></h2>
+<p>Hello</p>
+</div>
+</div>
 
-  
-  <div id="search-results">
-  
-  </div>
 
            </div>
            
@@ -208,14 +222,7 @@
   
   
     
-  
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
    
-
 
 </body>
 </html>

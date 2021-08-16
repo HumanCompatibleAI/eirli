@@ -87,7 +87,7 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">il_representations</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
@@ -239,14 +239,28 @@ actions.</p>
 <p>Custom discriminator/reward networks for <cite>imitation</cite>.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.disc_rew_nets.</span></span><span class="sig-name descname"><span class="pre">ImageDiscrimNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.</span></code></p>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.disc_rew_nets.</span></span><span class="sig-name descname"><span class="pre">ImageDiscrimNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_cls</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fc_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
 <p>Image-based discriminator network. This is intended to be passed as a
 <cite>discrim_net</cite> argument to <cite>DiscrimNetGAIL</cite> in
 <cite>imitation.rewards.discrim_net</cite>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Defines the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet.training">
+<span class="sig-name descname"><span class="pre">training</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet.training" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -254,7 +268,7 @@ actions.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageRewardNet">
 <em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.disc_rew_nets.</span></span><span class="sig-name descname"><span class="pre">ImageRewardNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageRewardNet" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">imitation.rewards.reward_nets.</span></code></p>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">imitation.rewards.reward_nets.imitation.rewards.reward_nets.RewardNet._name</span></code></p>
 <p>Reward net for AIRL that wraps ImageDiscrimNet (which basically does the
 thing we want anyway).</p>
 <dl class="py property">
@@ -312,8 +326,8 @@ when using any environment—if the desired <cite>eval_score</cite> key is not i
 then it won’t add any log entries).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.il.score_logging.SB3ScoreLoggingCallback">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.score_logging.</span></span><span class="sig-name descname"><span class="pre">SB3ScoreLoggingCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.score_logging.SB3ScoreLoggingCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">stable_baselines3.common.callbacks.</span></code></p>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.score_logging.</span></span><span class="sig-name descname"><span class="pre">SB3ScoreLoggingCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.score_logging.SB3ScoreLoggingCallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">stable_baselines3.common.callbacks.BaseCallback</span></code></p>
 <p>Callback for SB3 RL algorithms which extracts the ‘eval_score’ from the
 step info dict (if it exists) and includes it in the logs. Useful for
 MAGICAL, which reports end-of-trajectory performance using <cite>eval_score</cite>.</p>

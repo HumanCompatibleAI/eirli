@@ -41,7 +41,7 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="il_representations" href="modules.html" /> 
+    <link rel="next" title="Dataset and environment README" href="data.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -86,8 +86,9 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">il_representations</a></li>
 </ul>
 
@@ -158,9 +159,105 @@
             
   <div class="section" id="welcome-to-representations-for-sequence-learning-s-documentation">
 <h1>Welcome to Representations for Sequence Learning’s documentation!<a class="headerlink" href="#welcome-to-representations-for-sequence-learning-s-documentation" title="Permalink to this headline">¶</a></h1>
+</div>
+<div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>Over the past handful of years, representation learning has exploded as
+a subfield, and, with it have come a plethora of new methods, each
+slightly different from the other.</p>
+<p>This repo has two main goals:</p>
+<ol class="arabic simple">
+<li><p>To create a modular algorithm definition system that allows
+researchers to easily pick and choose from a wide array of commonly
+used design axes</p></li>
+<li><p>To facilitate testing of representations within the context of
+sequential learning, particularly imitation learning and offline
+reinforcement learning</p></li>
+</ol>
+</div>
+<div class="section" id="modular-algorithm-design">
+<h1>Modular Algorithm Design<a class="headerlink" href="#modular-algorithm-design" title="Permalink to this headline">¶</a></h1>
+<p>This library was designed in a way that breaks down the definition of a
+representation learning algorithm into several key parts. The intention
+was that this system be flexible enough many commonly used algorithms
+can be defined through different combinations of these modular
+components.</p>
+<p>The design relies on the central concept of a “context” and a “target”.
+In very rough terms, all of our algorithms work by applying some
+transformation to the context, some transformation to the target, and
+then calculating a loss as a function of those two transformations.
+Sometimes an extra context object is passed in</p>
+<p>Some examples are:</p>
+<ul class="simple">
+<li><p>In <strong>SimCLR</strong>, the context and target are the same image frame, and augmentation and then encoding is
+applied to both context and target, before pulling the context and target representations together [TODO mention projection decoder]</p></li>
+<li><p>In <strong>TemporalCPC</strong>, the context is a frame at time t, and the target a frame at time t+k, and
+then, similarly to SimCLR above, augmentation is applied to the frame before it’s put through an
+encoder, and the two resulting representations pulled together</p></li>
+<li><p>In a <strong>Variational Autoencoder</strong>, the context and target are the same image frame. An bottleneck encoder
+and then a reconstructive decoder are applied to the context, and this reconstructed context is compared
+to the target through a L2 pixel loss</p></li>
+<li><p>A <strong>Dynamics Prediction</strong> model can be seen as an conceptual combination of an autoencoder
+(which tries to predict the current full image frame) and TemporalCPC, which predicts future information
+based on current information. In the case of a Dynamics model, we predict a future frame (the target)
+given the current frame (context) and an action as extra context.</p></li>
+</ul>
+<p>This abstraction isn’t perfect, but we believe it is coherent enough to
+allow for a good number of shared mechanisms between algorithms, and
+flexible enough to support a wide variety of them.</p>
+<p>The modular design mentioned above is facilitated through the use of a
+number of class interfaces, each of which handles a different component
+of the algorithm. By selecting different implementations of these shared
+interfaces, and creating a RepresentationLearner that takes them as
+arguments, and handles the base machinery of performing transformations</p>
+<p>[TODO create diagram]</p>
+<ol class="arabic simple">
+<li><p>TargetPairConstructer - This component takes in a set of trajectories
+(assumed to be [CHECK THIS?] ordered lists of observations and
+actions) and creates a dataset of (context, target, optional extra
+context) pairs that will be shuffled to form the training set.</p></li>
+<li><p>Augmenter - This component governs whether either or both of the
+context and target objects are augmented before being passed to the
+encoder. Note that this concept only meaningfully applies when the
+object being augmented is an image frame.</p></li>
+<li><p>Encoder - The encoder is responsible for taking in an image frame and
+producing a learned vector representation. It is optionally chained
+with a Decoder to produce the input to the loss function (which may
+be a reconstructed image in the case of VAE or Dynamics, or may be a
+projected version of the learned representation in the case of
+contrastive methods like SimCLR that use a projection head)</p></li>
+<li><p>Decoder - As mentioned above, the Decoder acts as a bridge between
+the representation in the form you want to use for transfer, and
+whatever input is required your loss function, which is often some
+transformation of that canonical representation.</p></li>
+<li><p>BatchExtender - This component is used for situations where you want
+to calculate loss on batch elements that are not part of the batch
+that went through your encoder and decoder on this step. This is
+centrally used for contrastive methods that use momentum, since in
+that case, you want to use elements from a cached store of
+previously-calculated representations as negatives in your
+contrastive loss</p></li>
+<li><p>LossCalculator - This component takes in the transformed context and
+transformed target and handles the loss calculation, along with any
+transformations that need to happen as a part of that calculation.</p></li>
+</ol>
+<p>[TODO walk through examples of combined algorithms from these
+components]</p>
+</div>
+<div class="section" id="training-scripts">
+<h1>Training Scripts<a class="headerlink" href="#training-scripts" title="Permalink to this headline">¶</a></h1>
+<p>Training machinery for this</p>
 <div class="toctree-wrapper compound">
-<p class="caption"><span class="caption-text">Contents:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="data.html#sacred-ingredients">Sacred ingredients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#creating-gym-environments">Creating Gym environments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#loading-demonstrations-from-their-native-format">Loading demonstrations from their ‘native’ format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#the-webdataset-format">The webdataset format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="data.html#adding-support-for-a-new-benchmark">Adding support for a new benchmark</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">il_representations</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
 </ul>
@@ -183,7 +280,7 @@
           </div>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="modules.html" class="btn btn-neutral float-right" title="il_representations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="data.html" class="btn btn-neutral float-right" title="Dataset and environment README" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

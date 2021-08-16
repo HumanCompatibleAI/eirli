@@ -18,7 +18,7 @@ Sacred ingredients
 The data-loading pipeline is configured using three different Sacred
 ingredients:
 
--  ```env_cfg_ingredient`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L10-L68>`__:
+-  `env_cfg_ingredient <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L10-L68>`_:
    In principle, this ingredient contains all the information necessary
    to create a Gym environment for a specific combination of benchmark
    and task. The two most important config keys are ``benchmark_name``
@@ -27,10 +27,10 @@ ingredients:
    the current task within the selected benchmark; e.g. finger-spin or
    MoveToCorner-Demo-v0). There are also some benchmark-specific config
    keys for, e.g., preprocessing.
--  ```venv_opts_ingredient`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L71-L92>`__:
+-  `venv_opts_ingredient <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L71-L92>`_:
    Additional options required to construct a vecenv (e.g. the number of
    environments to run in parallel).
--  ```env_data_ingredient`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L95-L173>`__:
+-  `env_data_ingredient <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/config.py#L95-L173>`_:
    Contains paths to data files on disk. Has quite a few
    dataset-specific keys, particularly for loading 'native'-format
    datasets (as described further down).
@@ -46,7 +46,7 @@ Creating Gym environments
 -------------------------
 
 Gym environments can be created with
-```auto.load_vec_env()`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L68-L109>`__.
+`auto.load_vec_env() <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L68-L109>`_.
 This uses ``env_cfg['benchmark_name']`` (from the ``env_cfg_ingredient``
 Sacred ingredient) to dispatch to a benchmark-specific routine for
 creating vecenvs. The benchmark-specific routines make use of both
@@ -63,9 +63,9 @@ Demonstrations for each benchmark were originally generated in a few
 different formats. For instance, the MAGICAL reference demonstrations
 are distributed as pickles, while the Atari demonstrations were saved as
 Numpy ``.npz`` files (see the `data formats
-GDoc <https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5>`__
+GDoc <https://docs.google.com/document/d/1YrXFCmCjdK2HK-WFrKNUjx03pwNUfNA6wwkO1QexfwY/edit#heading=h.akt76l1pl1l5>`_
 for more detail). The
-```auto.load_dataset_dict()`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L26-L45>`__
+`auto.load_dataset_dict() <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L26-L45>`_
 function provides a uniform interface to these formats.
 
 Like ``auto.load_vec_env()``, the ``auto.load_dict_dataset()`` function
@@ -75,7 +75,7 @@ format. Those benchmark-specific loading functions in turn look at
 benchmark-specific config keys in ``env_data`` (from
 ``env_data_ingredient``) to locate the demonstrations. For example,
 ``benchmark_name="magical"`` dispatches to
-```envs.magical_envs.load_data()`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/magical_envs.py#L25-L100>`__,
+`envs.magical_envs.load_data() <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/magical_envs.py#L25-L100>`_,
 which looks up the current task name (i.e. ``env_cfg["task_name"]``) in
 ``env_data["magical_demo_dirs"]`` to determine where the relevant
 demonstrations are stored.
@@ -132,8 +132,8 @@ High-level interface and configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Within our codebase, the high-level interface for loading datasets in
-the webdataset format is the ```auto.load_wds_datasets()``
-function <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L126-L200>`__.
+the webdataset format is the `auto.load_wds_datasets()
+function <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/envs/auto.py#L126-L200>`_.
 This takes a list of configurations for single-task datasets, and
 returns an list containing one webdataset ``Dataset`` for each task. It
 is then the responsibility of the calling code to apply any necessary
@@ -148,11 +148,11 @@ syntax used for the ``dataset_configs`` configuration option in
 Each element of the list passed to ``auto.load_wds_datasets()`` is a
 dict which may contain the following keys:
 
-.. code:: python
+..
 
     {
         # the type of data to be loaded
-        "type": "demos" | "random" | …,
+        "type": "demos" | "random" |
         # a dictionary containing some subset of configuration keys from `env_cfg_ingredient`
         "env_cfg": {…},
     }
@@ -165,25 +165,38 @@ current configuration of ``"env_cfg_ingredient"``. This allows one to
 define new dataset configurations that override only some aspects of the
 current ``"env_cfg_ingredient"`` configuration.
 
-This configuration syntax might be more clear with a few examples:
+This configuration syntax might be clearer with a few examples:
 
 -  Training on random rollouts and demonstrations using the current
    benchmark name from ``env_cfg_ingredient``:
 
-``python    dataset_configs = [{"type": "demos"}, {"type": "random"}]``
+::
+
+    dataset_configs = [{"type": "demos"}, {"type": "random"}]
+
 - Training on demos from both the default task from
 ``env_cfg_ingredient``, and another task called "finger-spin". Notice
 that this time the first config dict does not have *any* keys; this is
 equivalent to using ``{"type": "demos"}`` as we did above.
 ``"type": "demos"`` is also implicit in the second dict.
 
-``python    dataset_configs = [{}, {"env_cfg": {"task_name": "finger-spin"}}]``
+::
+
+    dataset_configs = [{}, {"env_cfg": {"task_name": "finger-spin"}}]
+
 - Combining the examples above, here is an example that trains on demos
 from the current task, random rollouts from the current task, demos from
 a second task called ``"finger-spin"``, and random rollouts from a third
 task called ``"cheetah-run"``:
 
-``python    dataset_configs = [        {},        {"type": "random"},        {"env_cfg": {"task_name": "finger-spin"}},        {"type": "random", "env_cfg": {"task": "cheetah-run"}},    ]``
+::
+
+    dataset_configs = [
+    {},
+    {"type": "random"},
+    {"env_cfg": {"task_name": "finger-spin"}},
+    {"type": "random", "env_cfg": {"task": "cheetah-run"}},
+    ]
 
 Since ``env_cfg_ingredient`` does not allow for specification of data
 paths, the configurations passed to ``auto.load_wds_datasets()`` also do
@@ -259,22 +272,22 @@ Writing datasets in the webdataset format
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convenience functions for writing datasets are located in
-```data.write_dataset`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/write_dataset.py>`__.
+`data.write_dataset <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/write_dataset.py>`_.
 In particular, this contains a helper function for extracting metadata
 from an ``env_cfg_ingredient`` configuration
-(```get_meta_dict()`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/write_dataset.py#L21-L49>`__)
+(`get_meta_dict() <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/write_dataset.py#L21-L49>`_)
 and a helper for writing a series of frames to an
 appropriately-structured tar archive
-(```write_frames()`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/write_dataset.py#L52-L71>`__).
+(`write_frames() <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/write_dataset.py#L52-L71>`_).
 These helpers are currently used by two scripts, which are good
 resources for understanding how to write webdatasets:
 
--  ```mkdataset_demos.py`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/scripts/mkdataset_demos.py>`__:
+-  `mkdataset_demos.py <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/scripts/mkdataset_demos.py>`_:
    Converts between dict format and webdataset format. That is, the
    script loads a dataset from its 'native' on-disk format into a dict
    using ``auto.load_dict_dataset()``, then writes the data into a new
    webdataset.
--  ```mkdataset_random.py`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/scripts/mkdataset_random.py>`__:
+-  `mkdataset_random.py <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/scripts/mkdataset_random.py>`_:
    Generates random rollouts on a specified environment and then saves
    them into a webdataset.
 
@@ -282,7 +295,7 @@ Loading data: from shard to minibatch
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The main abstraction provided by the webdataset library is the
-```Dataset`` <https://github.com/tmbdev/webdataset/blob/b208b15f6a5b14b8e597d5fc182f6945e6390d84/webdataset/dataset.py#L409-L462>`__
+`Dataset <https://github.com/tmbdev/webdataset/blob/b208b15f6a5b14b8e597d5fc182f6945e6390d84/webdataset/dataset.py#L409-L462>`_
 class. Given a series of URLs pointing to different shards of a dataset,
 this class iterates over the contents over the shards, one URL at a
 time. webdataset's ``Dataset`` is a valid subclass of Torch's
@@ -295,19 +308,19 @@ For repL, our pipeline looks something like this:
    does bookkeeping like decoding ``.pickle`` files in the shard into
    Python objects (instead of yielding raw bytes as training samples!),
    and grouping samples with the same frame prefix (e.g. ``frame000``,
-   ``frame001``, etc.). Our code also uses a `special ``Dataset``
-   subclass <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/read_dataset.py#L13-L71>`__
+   ``frame001``, etc.). Our code also uses a `special Dataset
+   subclass <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/read_dataset.py#L13-L71>`_
    that makes the contents of ``_metadata.meta.pickle`` accessible as a
    dataset instance attribute.
 2. **Target pair constructor:** After training samples are decoded, they
    can be grouped into context and target pairs for the purpose of repL.
-   The ```TargetPairConstructor``
-   interface <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/algos/pair_constructors.py#L39-L49>`__
+   The `TargetPairConstructor
+   interface <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/algos/pair_constructors.py#L39-L49>`_
    is simply a generator that processes one sample at a time from the
    dataset iterator. Since samples are written and read in temporal
    order, it is possible for these generators to, e.g., create target
    and context pairs out of temporally adjacent pairs
-   (`example <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/algos/pair_constructors.py#L117-L163>`__).
+   (`example <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/algos/pair_constructors.py#L117-L163>`_).
 3. **Optional shuffling:** Since webdataset ``Dataset``\ s are
    ``Iterable`` datasets, it is not possible to shuffle the entire
    dataset in-memory. Instead, the repL code can optionally apply a
@@ -326,7 +339,7 @@ For repL, our pipeline looks something like this:
    from the second dataset, and so on. Instead, we create a separate
    webdataset ``Dataset`` for each sub-dataset used for multitask
    training, and then multiplex those ``Dataset``\ s with
-   ```InterleavedDataset`` <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/read_dataset.py#L74-L116>`__.
+   `InterleavedDataset <https://github.com/HumanCompatibleAI/il-representations/blob/77b557654d1d48a966e84b22d101b06f8ca5b476/src/il_representations/data/read_dataset.py#L74-L116>`_.
    ``InterleavedDataset`` is an ``IterableDataset`` that repeatedly
    chooses a sub-dataset uniformly at random and yields a single sample
    from that. This ensures that the different sub-datasets are equally
