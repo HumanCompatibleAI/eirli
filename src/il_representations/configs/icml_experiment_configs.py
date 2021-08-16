@@ -110,6 +110,7 @@ def make_dataset_experiment_configs(experiment_obj):
             'algo': ICMLTemporalCPC,
             'algo_params': {
                 'target_pair_constructor_kwargs': {
+                    # FIXME(sam): this should be 8, why did I make it 4?
                     'temporal_offset': 4,
                 }
             }
