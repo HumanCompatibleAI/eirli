@@ -440,6 +440,37 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_tcpc8():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'target_pair_constructor_kwargs':{
+                    'temporal_offset': 8
+                }
+            }
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_tcpc4():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'target_pair_constructor_kwargs':{
+                    'temporal_offset': 4
+                }
+            }
+        }
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
     def cfg_data_repl_demos():
         """Training on both demos and random rollouts for the current
         environment."""
