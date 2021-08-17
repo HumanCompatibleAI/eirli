@@ -643,6 +643,16 @@ class InverseDynamicsEncoder(BaseEncoder):
         return Delta(x)
 
 
+class ActionPredictionEncoder(BaseEncoder):
+    def encode_extra_context(self, x, traj_info):
+        # identity; we don't use extra_context
+        return x
+
+    def encode_target(self, x, traj_info):
+        # encode actions, just like InverseDynamicsEncoder
+        return Delta(x)
+
+
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
                  momentum_weight=0.999, obs_encoder_cls=None, obs_encoder_cls_kwargs=None):

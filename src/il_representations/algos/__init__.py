@@ -1,5 +1,5 @@
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
+from il_representations.algos.encoders import ActionPredictionEncoder, MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
     infer_action_shape_info
 from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
@@ -322,6 +322,27 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
                                      decoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class ActionPrediction(RepresentationLearner):
+    """
+    Predicts action for current state. Essentially just a BC auxiliary loss.
+    """
+    def __init__(self, **kwargs):
+        algo_hardcoded_kwargs = dict(encoder=ActionPredictionEncoder,
+                                     decoder=ActionPredictionHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=NegativeLogLikelihood,
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(mode='action_prediction'),
+                                     decoder_kwargs=dict(
+                                         action_space=kwargs['action_space'],
+                                         use_extra_context=False),
                                      preprocess_target=False)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 

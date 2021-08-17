@@ -2,13 +2,6 @@
 
 # Joint training repL + BC experiments
 
-# FIXME(sam): here are the main things I want in here:
-# - [DONE] Have both unrestricted runs and one-traj runs.
-# - [DONE] Envs: MR, MTC, MTR
-# - repL data configs: demos+random on train env, also that plus demos+random on
-#   test env.
-# - [DONE] RepL methods: TCPC-8, ID, FD, VAE
-
 set -e
 
 ray_address="localhost:42000"

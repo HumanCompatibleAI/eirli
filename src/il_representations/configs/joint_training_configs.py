@@ -1,4 +1,4 @@
-from il_representations.algos import (DynamicsPrediction,
+from il_representations.algos import (ActionPrediction, DynamicsPrediction,
                                       InverseDynamicsPrediction, TemporalCPC,
                                       VariationalAutoencoder)
 
@@ -57,6 +57,17 @@ def make_jt_configs(train_ex):
         # inverse dynamics
         repl = {
             'algo': InverseDynamicsPrediction,
+        }
+        repl_weight = 1.0
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_ap():
+        # action prediction (aka BC)
+        repl = {
+            'algo': ActionPrediction,
         }
         repl_weight = 1.0
 
