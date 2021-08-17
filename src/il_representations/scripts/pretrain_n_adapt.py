@@ -7,6 +7,7 @@ import os
 import os.path as osp
 import signal
 from time import time
+from pathlib import Path
 import weakref
 
 import numpy as np
@@ -354,13 +355,14 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
         },
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir, 'il_train')
+    il_train_model_path = il_train_rv['result']['model_path']
 
     # Run il test
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_rv['result']['model_path'],
+            'policy_path': il_train_model_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
@@ -422,12 +424,12 @@ def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir,
                                  'il_train')
-
+    il_policy_path = il_train_rv['result']['model_path']
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_rv['result']['model_path'],
+            'policy_path': il_policy_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
