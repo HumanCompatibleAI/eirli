@@ -8,9 +8,9 @@ import os
 from imitation.util.util import make_vec_env
 from procgen import ProcgenEnv
 from stable_baselines3.common.atari_wrappers import AtariWrapper
-from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage, \
-SubprocVecEnv
-
+from stable_baselines3.common.vec_env import (VecFrameStack,
+                                              VecTransposeImage,
+                                              SubprocVecEnv)
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.data.read_dataset import load_ilr_datasets
 from il_representations.envs.atari_envs import load_dataset_atari
@@ -23,10 +23,9 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
-from il_representations.envs.procgen_envs import (load_dataset_procgen,
-                                                  get_procgen_env_name,
-                                                  VecExtractDictObs,
-                                                  VecMonitor)
+from il_representations.envs.procgen_envs import load_dataset_procgen
+from il_representations.envs.baselines_vendored import (VecExtractDictObs,
+                                                        VecMonitor)
 from il_representations.script_utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
@@ -55,6 +54,8 @@ def benchmark_is_available(benchmark_name):
         return True, None
     elif benchmark_name == 'atari':
         return True, None
+    elif benchmark_name == 'procgen':
+        return True, None
     elif benchmark_name == 'minecraft':
         # we check whether minecraft is installed by importing minerl
         try:
@@ -68,24 +69,25 @@ def benchmark_is_available(benchmark_name):
 
 
 @env_cfg_ingredient.capture
-def load_dict_dataset(benchmark_name, n_traj=None, task_name=None):
+def load_dict_dataset(benchmark_name, n_traj=None, **kwargs):
     """Load a dict-type dataset. Also see load_wds_datasets, which instead
     lods a set of datasets that have been stored in a webdataset-compatible
     format."""
-    kwargs = {'n_traj': n_traj, 'task_name': task_name}
-    # Remove keys if None
-    kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
+    # Check if kwargs has unexpected keys
+    if kwargs is not None:
+        assert set(kwargs.keys()) <= set(['task_name'])
 
     if benchmark_name == 'magical':
-        dataset_dict = load_dataset_magical(**kwargs)
+        dataset_dict = load_dataset_magical(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'dm_control':
-        dataset_dict = load_dataset_dm_control(**kwargs)
+        dataset_dict = load_dataset_dm_control(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'atari':
-        dataset_dict = load_dataset_atari(**kwargs)
+        dataset_dict = load_dataset_atari(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'minecraft':
-        dataset_dict = load_dataset_minecraft(**kwargs)
+        dataset_dict = load_dataset_minecraft(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'procgen':
-        dataset_dict = load_dataset_procgen(**kwargs)
+        dataset_dict = load_dataset_procgen(n_traj=n_traj, **kwargs)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 

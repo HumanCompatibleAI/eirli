@@ -33,6 +33,10 @@ ENV_CFG_TEST_CONFIGS = [
         'benchmark_name': 'dm_control',
         'task_name': 'reacher-easy',
     },
+    {
+        'benchmark_name': 'procgen',
+        'task_name': 'coinrun',
+    },
     # TODO(sam): re-enable this once we're using Atari tasks (2021-04-07)
     # {
     #     'benchmark_name': 'atari',

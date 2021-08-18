@@ -273,6 +273,38 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_bench_micro_sweep_procgen():
+        """Tiny sweep over three procgen configs."""
+        spec = dict(env_cfg=tune.grid_search(
+            [
+                {
+                    'benchmark_name': 'procgen',
+                    'task_name': procgen_env_name
+                } for procgen_env_name in [
+                'coinrun', 'miner', 'fruitbot'
+            ]
+            ]))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_bench_full_sweep_procgen():
+        """Sweep over all five procgen configs."""
+        spec = dict(env_cfg=tune.grid_search(
+            [
+                {
+                    'benchmark_name': 'procgen',
+                    'task_name': procgen_env_name
+                } for procgen_env_name in [
+                'coinrun', 'miner', 'fruitbot', 'jumper', 'ninja'
+            ]
+            ]))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_bench_one_task_magical():
         """Just one simple MAGICAL config."""
         env_cfg = {
