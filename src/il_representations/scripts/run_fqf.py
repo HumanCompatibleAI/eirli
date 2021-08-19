@@ -69,7 +69,7 @@ def train(seed, torch_num_threads, device, exp_ident, _config):
         agent = FQFAgent(venv, test_venv)
 
         logging.info("Running agent")
-        agent.run()
+        agent.run(im_log.sb_logger)
 
         logging.info("Done!")
 

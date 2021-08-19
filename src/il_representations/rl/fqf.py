@@ -4,46 +4,67 @@ Originally copied from @ku2482 on Github (MIT license):
 
 https://github.com/ku2482/fqf-iqn-qrdqn.pytorch/blob/master/fqf_iqn_qrdqn/agent/fqf_agent.py
 """
-from collections import deque
-from typing import Optional
 import warnings
+from collections import deque
+from typing import Iterable, Optional, Tuple
 
+import numpy as np
+import torch
+import torch.nn.functional as F
 from imitation.data.rollout import (generate_trajectories, min_timesteps,
                                     rollout_stats)
-import numpy as np
 from stable_baselines3.common.vec_env import VecEnv
-import torch
 from torch import nn
-import torch.nn.functional as F
 from torch.optim import Adam, RMSprop
 
 
-def update_params(optim,
+def update_params(optim: torch.optim.Optimizer,
                   loss: torch.Tensor,
-                  networks,
+                  networks: Iterable[torch.nn.Module],
                   retain_graph: bool = False,
-                  grad_clipping: Optional[float] = None):
+                  grad_clipping: Optional[float] = None) -> None:
+    """Perform backprop and optimiser step with gradient clipping.
+
+    Args:
+        optim: Torch optimiser for `networks`.
+        loss: loss to do .backward() call on.
+        networks: networks to update.
+        retain_graph: should graph be retained in `loss.backward()`?
+        grad_clipping: optional magnitude at which to clip each network's
+            gradient norm. Leave as None (the default) to disable gradient
+            clipping.
+    """
     optim.zero_grad()
     loss.backward(retain_graph=retain_graph)
     # Clip norms of gradients to stebilize training.
-    if grad_clipping:
+    if grad_clipping is not None:
         for net in networks:
             torch.nn.utils.clip_grad_norm_(net.parameters(), grad_clipping)
     optim.step()
 
 
-def disable_gradients(network):
+def disable_gradients(network: torch.nn.Module) -> None:
+    """Set `.requires_grad=False` for all network params.
+
+    This is used to prevent target networks from being updated after
+    backprop."""
     # Disable calculations of gradients.
     for param in network.parameters():
         param.requires_grad = False
 
 
-def calculate_huber_loss(td_errors, kappa=1.0):
+def calculate_huber_loss(td_errors: torch.Tensor,
+                         kappa: float = 1.0) -> torch.Tensor:
+    """Standard Huber loss with quadratic portion occupying the `[-kappa,
+    kappa]` range; linear with gradient `kappa` outside that range."""
     return torch.where(td_errors.abs() <= kappa, 0.5 * td_errors.pow(2),
                        kappa * (td_errors.abs() - 0.5 * kappa))
 
 
-def calculate_quantile_huber_loss(td_errors, taus, weights=None, kappa=1.0):
+def calculate_quantile_huber_loss(td_errors: torch.Tensor, taus: torch.Tensor,
+                                  weights: torch.Tensor = None,
+                                  kappa: float = 1.0) -> torch.Tensor:
+    """Calculate quantile Huber loss, just like QR-DQN and FQF papers."""
     assert not taus.requires_grad
     batch_size, N, N_dash = td_errors.shape
 
@@ -53,7 +74,7 @@ def calculate_quantile_huber_loss(td_errors, taus, weights=None, kappa=1.0):
 
     # Calculate quantile huber loss element-wisely.
     element_wise_quantile_huber_loss = torch.abs(taus[..., None] - (
-        td_errors.detach() < 0).float()) * element_wise_huber_loss / kappa
+            td_errors.detach() < 0).float()) * element_wise_huber_loss / kappa
     assert element_wise_quantile_huber_loss.shape == (batch_size, N, N_dash)
 
     # Quantile huber loss.
@@ -61,6 +82,9 @@ def calculate_quantile_huber_loss(td_errors, taus, weights=None, kappa=1.0):
         dim=1).mean(dim=1, keepdim=True)
     assert batch_quantile_huber_loss.shape == (batch_size, 1)
 
+    # TODO(sam): what do these weights represent? Are we double-normalising
+    # when we multiply by the weights and then take a mean, rather than a sum?
+    # Extend docstring to explain what is going on.
     if weights is not None:
         quantile_huber_loss = (batch_quantile_huber_loss * weights).mean()
     else:
@@ -69,7 +93,8 @@ def calculate_quantile_huber_loss(td_errors, taus, weights=None, kappa=1.0):
     return quantile_huber_loss
 
 
-def evaluate_quantile_at_action(s_quantiles, actions):
+def evaluate_quantile_at_action(s_quantiles: torch.Tensor,
+                                actions: torch.Tensor) -> torch.Tensor:
     assert s_quantiles.shape[0] == actions.shape[0]
 
     batch_size = s_quantiles.shape[0]
@@ -85,19 +110,23 @@ def evaluate_quantile_at_action(s_quantiles, actions):
 
 
 class RunningMeanStats:
-    def __init__(self, n=10):
+    """Record a running mean by storing a sliding window of values."""
+
+    def __init__(self, n: int = 10):
         self.n = n
         self.stats = deque(maxlen=n)
 
-    def append(self, x):
+    def append(self, x: float):
         self.stats.append(x)
 
-    def get(self):
+    def get(self) -> float:
         return np.mean(self.stats)
 
 
 class LinearAnnealer:
-    def __init__(self, start_value, end_value, num_steps):
+    """Linearly anneal some value over a particular number of time steps."""
+
+    def __init__(self, start_value: float, end_value: float, num_steps: int):
         assert num_steps > 0 and isinstance(num_steps, int)
 
         self.steps = 0
@@ -108,23 +137,24 @@ class LinearAnnealer:
         self.a = (self.end_value - self.start_value) / self.num_steps
         self.b = self.start_value
 
-    def step(self):
+    def step(self) -> None:
         self.steps = min(self.num_steps, self.steps + 1)
 
-    def get(self):
+    def get(self) -> float:
         assert 0 < self.steps <= self.num_steps
         return self.a * self.steps + self.b
 
 
 class LazyMemory(dict):
-    def __init__(self, capacity, state_shape, device):
+    def __init__(self, capacity: int, state_shape: tuple,
+                 device: torch.device):
         super(LazyMemory, self).__init__()
         self.capacity = int(capacity)
         self.state_shape = state_shape
         self.device = device
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         self['state'] = []
         self['next_state'] = []
 
@@ -135,10 +165,12 @@ class LazyMemory(dict):
         self._n = 0
         self._p = 0
 
-    def append(self, state, action, reward, next_state, done):
+    def append(self, state: np.ndarray, action: int, reward: float,
+               next_state: np.ndarray, done: bool) -> None:
         self._append(state, action, reward, next_state, done)
 
-    def _append(self, state, action, reward, next_state, done):
+    def _append(self, state: np.ndarray, action: int, reward: float,
+                next_state: np.ndarray, done: bool) -> None:
         self['state'].append(state)
         self['next_state'].append(next_state)
         self['action'][self._p] = action
@@ -150,20 +182,25 @@ class LazyMemory(dict):
 
         self.truncate()
 
-    def truncate(self):
+    def truncate(self) -> None:
         while len(self) > self.capacity:
             del self['state'][0]
             del self['next_state'][0]
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray,
+                                               np.ndarray, np.ndarray,
+                                               np.ndarray]:
         indices = np.random.randint(low=0, high=len(self), size=batch_size)
         return self._sample(indices, batch_size)
 
-    def _sample(self, indices, batch_size):
+    def _sample(self, indices: np.ndarray,
+                batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray,
+                                          np.ndarray, np.ndarray]:
         bias = -self._p if self._n == self.capacity else 0
 
         states = np.empty((batch_size, *self.state_shape), dtype=np.uint8)
-        next_states = np.empty((batch_size, *self.state_shape), dtype=np.uint8)
+        next_states = np.empty((batch_size, *self.state_shape),
+                               dtype=np.uint8)
 
         for i, index in enumerate(indices):
             _index = np.mod(index + bias, self.capacity)
@@ -179,21 +216,21 @@ class LazyMemory(dict):
 
         return states, actions, rewards, next_states, dones
 
-    def get(self):
+    def get(self) -> dict:
         return dict(self)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self['state'])
 
 
-def has_params(module, recurse=True):
+def has_params(module: torch.nn.Module, recurse: bool = True):
     """Check whether Torch module has parameters"""
     for param in module.parameters(recurse=recurse):
         return True
     return False
 
 
-def initialize_weights_xavier(m, gain=1.0):
+def initialize_weights_xavier(m: torch.nn.Module, gain: float = 1.0):
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
         torch.nn.init.xavier_uniform_(m.weight, gain=gain)
         if m.bias is not None:
@@ -204,18 +241,29 @@ def initialize_weights_xavier(m, gain=1.0):
                       stacklevel=2)
 
 
-def initialize_weights_he(m):
+def initialize_weights_he(m: torch.nn.Module):
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
         torch.nn.init.kaiming_uniform_(m.weight)
         if m.bias is not None:
             torch.nn.init.constant_(m.bias, 0)
     elif has_params(m, recurse=False):
-        warnings.warn(f"Module {m} has its own parameters, but this function "
+        warnings.warn(f"Module {m} has its own parameters, but "
                       "initialize_weights_he cannot handle it.", stacklevel=2)
 
 
+def record_mean_dict(sb_logger, value_dict):
+    """Log all the {name: value} pairs in the given dict to SB3, converting
+    Torch objects etc. as necessary."""
+    for name, value in value_dict.items():
+        if isinstance(value, torch.Tensor):
+            value = value.item()
+        sb_logger.record_mean(name, value)
+
+
 class DQNBase(nn.Module):
-    def __init__(self, num_channels, embedding_dim=7 * 7 * 64):
+    """State embedding netowrk. May be a slightly deeper Nature DQN?"""
+
+    def __init__(self, num_channels: int, embedding_dim: int = 7 * 7 * 64):
         super(DQNBase, self).__init__()
 
         self.net = nn.Sequential(
@@ -229,7 +277,7 @@ class DQNBase(nn.Module):
 
         self.embedding_dim = embedding_dim
 
-    def forward(self, states):
+    def forward(self, states: torch.Tensor) -> torch.Tensor:
         batch_size = states.shape[0]
 
         # Calculate embeddings of states.
@@ -242,7 +290,9 @@ class DQNBase(nn.Module):
 
 
 class FractionProposalNetwork(nn.Module):
-    def __init__(self, N=32, embedding_dim=7 * 7 * 64):
+    """Network to propose quantile fractions for FQF.."""
+
+    def __init__(self, N: int = 32, embedding_dim: int = 7 * 7 * 64):
         super(FractionProposalNetwork, self).__init__()
 
         self.net = nn.Sequential(nn.Linear(
@@ -252,8 +302,7 @@ class FractionProposalNetwork(nn.Module):
         self.N = N
         self.embedding_dim = embedding_dim
 
-    def forward(self, state_embeddings):
-
+    def forward(self, state_embeddings: torch.Tensor) -> torch.Tensor:
         batch_size = state_embeddings.shape[0]
 
         # Calculate (log of) probabilities q_i in the paper.
@@ -281,16 +330,24 @@ class FractionProposalNetwork(nn.Module):
         return taus, tau_hats, entropies
 
 
-class CosineEmbeddingNetwork(nn.Module):
-    def __init__(self, num_cosines=64, embedding_dim=7 * 7 * 64):
-        super(CosineEmbeddingNetwork, self).__init__()
+class CosineFractionEmbeddingNetwork(nn.Module):
+    """Network that computes an embedding for quantile fractions tau by
+      (1) first applying cosine to tau*pi*i for different values of i=1 to
+          num_cosines, then
+      (2) applying a linear layer and ReLU.
+    The cosine-then-linear trick is used in both the IQN paper and the FQF
+    paper."""
+
+    def __init__(self, num_cosines: int = 64,
+                 embedding_dim: int = 7 * 7 * 64):
+        super(CosineFractionEmbeddingNetwork, self).__init__()
 
         self.net = nn.Sequential(nn.Linear(num_cosines, embedding_dim),
                                  nn.ReLU())
         self.num_cosines = num_cosines
         self.embedding_dim = embedding_dim
 
-    def forward(self, taus):
+    def forward(self, taus: torch.Tensor) -> torch.Tensor:
         batch_size = taus.shape[0]
         N = taus.shape[1]
 
@@ -299,7 +356,7 @@ class CosineEmbeddingNetwork(nn.Module):
                                     end=self.num_cosines + 1,
                                     dtype=taus.dtype,
                                     device=taus.device).view(
-                                        1, 1, self.num_cosines)
+            1, 1, self.num_cosines)
 
         # Calculate cos(i * \pi * \tau).
         cosines = torch.cos(taus.view(batch_size, N, 1) * i_pi).view(
@@ -312,9 +369,12 @@ class CosineEmbeddingNetwork(nn.Module):
         return tau_embeddings
 
 
-class QuantileNetwork(nn.Module):
-    def __init__(self, num_actions, embedding_dim=7 * 7 * 64):
-        super(QuantileNetwork, self).__init__()
+class QuantileValueNetwork(nn.Module):
+    """Compute quantile values for each action, given merged state and
+    quantile fraction embeddings."""
+
+    def __init__(self, num_actions: int, embedding_dim: int = 7 * 7 * 64):
+        super().__init__()
 
         self.net = nn.Sequential(
             nn.Linear(embedding_dim, 512),
@@ -325,7 +385,8 @@ class QuantileNetwork(nn.Module):
         self.num_actions = num_actions
         self.embedding_dim = embedding_dim
 
-    def forward(self, state_embeddings, tau_embeddings):
+    def forward(self, state_embeddings: torch.Tensor,
+                tau_embeddings: torch.Tensor) -> torch.Tensor:
         assert state_embeddings.shape[0] == tau_embeddings.shape[0]
         assert state_embeddings.shape[1] == tau_embeddings.shape[2]
 
@@ -343,32 +404,38 @@ class QuantileNetwork(nn.Module):
             batch_size * N, self.embedding_dim)
 
         # Calculate quantile values.
-        quantiles = self.net(embeddings)
+        quantile_values = self.net(embeddings)
 
-        return quantiles.view(batch_size, N, self.num_actions)
+        return quantile_values.view(batch_size, N, self.num_actions)
 
 
 class FQF(nn.Module):
+    """Container for FQF networks and loss. Makes it easy to share
+    representation (in the form of `self.dqn_net`). Also makes it easy to
+    instantiate separate target networks with identical architecture."""
+
     def __init__(self,
-                 num_channels,
-                 num_actions,
-                 N=32,
-                 num_cosines=32,
-                 embedding_dim=7 * 7 * 64,
-                 target=False):
-        super(FQF, self).__init__()
+                 num_channels: int,
+                 num_actions: int,
+                 N: int = 32,
+                 num_cosines: int = 32,
+                 embedding_dim: int = 7 * 7 * 64,
+                 target: bool = False):
+        super().__init__()
 
         # Feature extractor of DQN.
-        self.dqn_net = DQNBase(num_channels=num_channels)
+        self.feature_extractor = DQNBase(num_channels=num_channels)
         # Cosine embedding network.
-        self.cosine_net = CosineEmbeddingNetwork(num_cosines=num_cosines,
-                                                 embedding_dim=embedding_dim)
+        self.fraction_embedding_net = CosineFractionEmbeddingNetwork(
+            num_cosines=num_cosines,
+            embedding_dim=embedding_dim)
         # Quantile network.
-        self.quantile_net = QuantileNetwork(num_actions=num_actions, )
+        self.quantile_value_net = QuantileValueNetwork(
+            num_actions=num_actions, )
 
         # Fraction proposal network.
         if not target:
-            self.fraction_net = FractionProposalNetwork(
+            self.fraction_proposal_net = FractionProposalNetwork(
                 N=N, embedding_dim=embedding_dim)
 
         self.N = N
@@ -377,39 +444,45 @@ class FQF(nn.Module):
         self.embedding_dim = embedding_dim
         self.target = target
 
-    def calculate_state_embeddings(self, states):
-        return self.dqn_net(states)
+    def calculate_state_embeddings(self,
+                                   states: torch.Tensor) -> torch.Tensor:
+        return self.feature_extractor(states)
 
     def calculate_fractions(self,
-                            states=None,
-                            state_embeddings=None,
-                            fraction_net=None):
+                            states: torch.Tensor = None,
+                            state_embeddings: torch.Tensor = None,
+                            fraction_proposal_net: torch.Tensor = None) -> \
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         assert states is not None or state_embeddings is not None
-        assert not self.target or fraction_net is not None
+        assert not self.target or fraction_proposal_net is not None
 
         if state_embeddings is None:
-            state_embeddings = self.dqn_net(states)
+            state_embeddings = self.feature_extractor(states)
 
-        fraction_net = fraction_net if self.target else self.fraction_net
-        taus, tau_hats, entropies = fraction_net(state_embeddings)
+        fraction_proposal_net = fraction_proposal_net if self.target \
+            else self.fraction_proposal_net
+        taus, tau_hats, entropies = fraction_proposal_net(state_embeddings)
 
         return taus, tau_hats, entropies
 
-    def calculate_quantiles(self, taus, states=None, state_embeddings=None):
+    def calculate_quantile_values(self, taus: torch.Tensor,
+                                  states: torch.Tensor = None,
+                                  state_embeddings: torch.Tensor = None) -> torch.Tensor:
         assert states is not None or state_embeddings is not None
 
         if state_embeddings is None:
-            state_embeddings = self.dqn_net(states)
+            state_embeddings = self.feature_extractor(states)
 
-        tau_embeddings = self.cosine_net(taus)
-        return self.quantile_net(state_embeddings, tau_embeddings)
+        tau_embeddings = self.fraction_embedding_net(taus)
+        return self.quantile_value_net(state_embeddings, tau_embeddings)
 
-    def calculate_q(self,
-                    taus=None,
-                    tau_hats=None,
-                    states=None,
-                    state_embeddings=None,
-                    fraction_net=None):
+    def calculate_q(
+            self,
+            taus: Optional[torch.Tensor] = None,
+            tau_hats: Optional[torch.Tensor] = None,
+            states: Optional[torch.Tensor] = None,
+            state_embeddings: Optional[torch.Tensor] = None,
+            fraction_net: Optional[torch.nn.Module] = None) -> torch.Tensor:
         # FIXME(sam): make it so that this function takes:
         # - taus xor tau_hats
         # - states xor state_embeddings
@@ -419,33 +492,37 @@ class FQF(nn.Module):
         assert not self.target or fraction_net is not None
 
         if state_embeddings is None:
-            state_embeddings = self.dqn_net(states)
+            state_embeddings = self.feature_extractor(states)
 
         batch_size = state_embeddings.shape[0]
 
         # Calculate fractions.
         if taus is None or tau_hats is None:
             taus, tau_hats, _ = self.calculate_fractions(
-                state_embeddings=state_embeddings, fraction_net=fraction_net)
+                state_embeddings=state_embeddings,
+                fraction_proposal_net=fraction_net)
 
         # Calculate quantiles.
-        quantile_hats = self.calculate_quantiles(
+        quantile_value_hats = self.calculate_quantile_values(
             tau_hats, state_embeddings=state_embeddings)
-        assert quantile_hats.shape == (batch_size, self.N, self.num_actions)
+        assert quantile_value_hats.shape == (
+            batch_size, self.N, self.num_actions)
 
         # Calculate expectations of value distribution.
-        q = ((taus[:, 1:, None] - taus[:, :-1, None]) * quantile_hats)\
+        q = ((taus[:, 1:, None] - taus[:, :-1, None]) * quantile_value_hats) \
             .sum(dim=1)
         assert q.shape == (batch_size, self.num_actions)
 
         return q
 
 
-class FQFAgent():
+class FQFAgent:
+    """Trainer class for FQF."""
+
     def __init__(self,
                  venv: VecEnv,
                  test_venv: VecEnv,
-                 num_steps: int = 5 * (10**7),
+                 num_steps: int = 5 * (10 ** 7),
                  batch_size: int = 32,
                  N: int = 32,
                  num_cosines: int = 64,
@@ -453,15 +530,16 @@ class FQFAgent():
                  kappa: float = 1.0,
                  quantile_lr: float = 5e-5,
                  fraction_lr: float = 2.5e-9,
-                 memory_size: int = int(10**6),
+                 memory_size: int = int(10 ** 6),
                  gamma: float = 0.99,
                  update_interval: int = 4,
                  target_update_interval: int = 10000,
+                 log_interval: int = 1000,
                  start_steps: int = 50000,
                  epsilon_train: float = 0.01,
                  epsilon_eval: float = 0.001,
                  epsilon_decay_steps: int = 250000,
-                 log_interval: int = 100,
+                 running_mean_steps: int = 100,
                  eval_interval: int = 250000,
                  num_eval_steps: int = 125000,
                  max_episode_steps: int = 27000,
@@ -489,11 +567,12 @@ class FQFAgent():
            gamma: discount rate.
            update_interval:
            target_update_interval:
+           log_interval: number of steps to wait between dumping logs
            start_steps:
            epsilon_train:
            epsilon_eval:
            epsilon_decay_steps:
-           log_interval: length of running mean to keep for train stats.
+           running_mean_steps: length of running mean to keep for train stats.
            eval_interval:
            num_eval_steps:
            max_episode_steps:
@@ -503,21 +582,24 @@ class FQFAgent():
            device: device to place networks on.
         """
         # for training, we assume a venv with just one underlying environment
-        # (we are using a venv rather than a gym env because all our other code
-        # in the IL representations project works with venvs)
+        # (we are using a venv rather than a gym env because all our other
+        # code in the IL representations project works with venvs)
         assert venv.num_envs == 1, \
-            "expected venv with 1 env, got venv with {self.venv.num_envs} envs"
+            f"expected venv with 1 env, got venv with {self.venv.num_envs} " \
+            "envs"
         assert test_venv.num_envs >= 1
         self.venv = venv
         self.test_venv = test_venv
 
         self.device = device
 
+        self.log_interval = log_interval
+
         # Replay memory which is memory-efficient to store stacked frames.
         self.memory = LazyMemory(
             memory_size, self.venv.observation_space.shape, self.device)
 
-        self.train_return_running_mean = RunningMeanStats(log_interval)
+        self.train_return_running_mean = RunningMeanStats(running_mean_steps)
 
         self.steps = 0
         self.episodes = 0
@@ -561,15 +643,15 @@ class FQFAgent():
         disable_gradients(self.target_net)
 
         self.fraction_optim = RMSprop(
-            self.online_net.fraction_net.parameters(),
+            self.online_net.fraction_proposal_net.parameters(),
             lr=fraction_lr,
             alpha=0.95,
             eps=0.00001)
 
         self.quantile_optim = Adam(
-            list(self.online_net.dqn_net.parameters()) +
-            list(self.online_net.cosine_net.parameters()) +
-            list(self.online_net.quantile_net.parameters()),
+            list(self.online_net.feature_extractor.parameters()) +
+            list(self.online_net.fraction_embedding_net.parameters()) +
+            list(self.online_net.quantile_value_net.parameters()),
             lr=quantile_lr,
             eps=1e-2 / batch_size)
 
@@ -583,27 +665,25 @@ class FQFAgent():
         self.num_cosines = num_cosines
         self.kappa = kappa
 
-    def run(self):
+    def run(self, sb_logger):
         while True:
-            stats = self.train_episode()
-            print(f'Episode done, total steps {self.steps}. Stats:')
-            print('-' * 50)
-            for k, v in stats.items():
-                if isinstance(v, float):
-                    v_fmt = f'{v:.5g}'
-                else:
-                    v_fmt = str(v)
-                print(f'| {k:25} | {v_fmt:>18} |')
-            print('-' * 50)
-            print()
+            stats = self.train_episode(sb_logger)
+            # print(f'Episode done, total steps {self.steps}. Stats:')
+            # print('-' * 50)
+            # for k, v in stats.items():
+            #     if isinstance(v, float):
+            #         v_fmt = f'{v:.5g}'
+            #     else:
+            #         v_fmt = str(v)
+            #     print(f'| {k:25} | {v_fmt:>18} |')
+            # print('-' * 50)
+            # print()
+            if self.steps > self.start_steps and self.steps % self.log_interval == 0:
+                sb_logger.dump()
             if self.steps > self.num_steps:
                 break
 
-    def is_update(self) -> bool:
-        return self.steps % self.update_interval == 0\
-            and self.steps >= self.start_steps
-
-    def is_random(self, is_eval: bool = False) -> bool:
+    def should_explore(self, is_eval: bool = False) -> bool:
         # Use e-greedy for evaluation.
         if self.steps < self.start_steps:
             return True
@@ -619,7 +699,7 @@ class FQFAgent():
         ])
         return action
 
-    def exploit(self, states: np.ndarray) -> int:
+    def exploit(self, states: np.ndarray) -> np.ndarray:
         # Act without randomness.
         state = torch.ByteTensor(states).to(
             self.device).float() / 255.
@@ -628,7 +708,7 @@ class FQFAgent():
             actions = actions_dev.cpu().numpy()
         return actions
 
-    def train_episode(self):
+    def train_episode(self, sb_logger):
         self.online_net.train()
         self.target_net.train()
 
@@ -640,12 +720,12 @@ class FQFAgent():
         state, = self.venv.reset()
 
         while not done and episode_steps <= self.max_episode_steps:
-            if self.is_random(is_eval=False):
+            if self.should_explore(is_eval=False):
                 action, = self.explore(state[None])
             else:
                 action, = self.exploit(state[None])
 
-            (next_state, ), (reward, ), (done, ), _ = self.venv.step([action])
+            (next_state,), (reward,), (done,), _ = self.venv.step([action])
 
             # To calculate efficiently, I just set priority=max_priority here.
             self.memory.append(state, action, reward, next_state, done)
@@ -655,45 +735,47 @@ class FQFAgent():
             episode_return += reward
             state = next_state
 
-            self.train_step_interval()
+            # doing the update
+            self.epsilon_train.step()
+
+            if self.steps % self.target_update_interval == 0:
+                self.update_target()
+
+            if self.steps % self.update_interval == 0 \
+                    and self.steps >= self.start_steps:
+                learn_stats = self.learn()
+                record_mean_dict(sb_logger, learn_stats)
+
+            if self.steps % self.eval_interval == 0:
+                eval_stats = self.evaluate()
+                record_mean_dict(sb_logger, eval_stats)
+                self.online_net.train()
 
         # We log running mean of stats.
         self.train_return_running_mean.append(episode_return)
 
-        return {
+        train_stats_dict = {
             'train_return': self.train_return_running_mean.get(),
             'episodes': self.episodes,
             'episode_steps': episode_steps,
             'episode_return': episode_return,
         }
+        record_mean_dict(sb_logger, train_stats_dict)
 
-    def train_step_interval(self):
-        self.epsilon_train.step()
-
-        if self.steps % self.target_update_interval == 0:
-            self.update_target()
-
-        if self.is_update():
-            self.learn()
-
-        if self.steps % self.eval_interval == 0:
-            self.evaluate()
-            self.online_net.train()
-
-    def _eval_policy(self, states):
+    def _eval_policy(self, states: np.ndarray) -> np.ndarray:
         """This is the policy that we use to sample trajectories during
         evaluation. It independently chooses to explore or exploit at each time
         step and for each environment in the vecenv."""
         random_mask = np.array(
-            [self.is_random(eval=True) for _ in range(len(states))])
+            [self.should_explore(eval=True) for _ in range(len(states))])
         explore_inds = np.nonzero(random_mask)
         exploit_inds = np.nonzero(~random_mask)
-        all_actions = np.zeros((len(states, ), ), dtype=np.int64)
+        all_actions = np.zeros((len(states, ),), dtype=np.int64)
         all_actions[explore_inds] = self.explore(states[explore_inds])
         all_actions[exploit_inds] = self.exploit(states[exploit_inds])
         return all_actions
 
-    def evaluate(self):
+    def evaluate(self) -> dict:
         self.online_net.eval()
         trajectories = generate_trajectories(
             self._eval_policy, self.test_venv,
@@ -705,20 +787,20 @@ class FQFAgent():
             self.best_eval_score = mean_return
 
         return {
-            'mean_return': mean_return,
-            'num_steps': sum(len(traj.obs) for traj in trajectories),
+            'eval_mean_return': mean_return,
+            'eval_num_steps': sum(len(traj.obs) for traj in trajectories),
         }
 
-    def update_target(self):
-        self.target_net.dqn_net.load_state_dict(
-            self.online_net.dqn_net.state_dict())
-        self.target_net.quantile_net.load_state_dict(
-            self.online_net.quantile_net.state_dict())
-        self.target_net.cosine_net.load_state_dict(
-            self.online_net.cosine_net.state_dict())
+    def update_target(self) -> None:
+        self.target_net.feature_extractor.load_state_dict(
+            self.online_net.feature_extractor.state_dict())
+        self.target_net.quantile_value_net.load_state_dict(
+            self.online_net.quantile_value_net.state_dict())
+        self.target_net.fraction_embedding_net.load_state_dict(
+            self.online_net.fraction_embedding_net.state_dict())
 
-    def learn(self):
-        states, actions, rewards, next_states, dones =\
+    def learn(self) -> dict:
+        states, actions, rewards, next_states, dones = \
             self.memory.sample(self.batch_size)
         weights = None
 
@@ -726,13 +808,13 @@ class FQFAgent():
         state_embeddings = self.online_net.calculate_state_embeddings(states)
 
         # Calculate fractions of current states and entropies.
-        taus, tau_hats, entropies =\
+        taus, tau_hats, entropies = \
             self.online_net.calculate_fractions(
                 state_embeddings=state_embeddings.detach())
 
         # Calculate quantile values of current states and actions at tau_hats.
         current_sa_quantile_hats = evaluate_quantile_at_action(
-            self.online_net.calculate_quantiles(
+            self.online_net.calculate_quantile_values(
                 tau_hats, state_embeddings=state_embeddings), actions)
         assert current_sa_quantile_hats.shape == (self.batch_size, self.N, 1)
 
@@ -740,7 +822,8 @@ class FQFAgent():
         # detach current_sa_quantile_hats because I calculate gradients of taus
         # explicitly, not by backpropagation.
         fraction_loss = self.calculate_fraction_loss(
-            state_embeddings.detach(), current_sa_quantile_hats.detach(), taus,
+            state_embeddings.detach(), current_sa_quantile_hats.detach(),
+            taus,
             actions, weights)
 
         quantile_loss, mean_q, errors = self.calculate_quantile_loss(
@@ -752,35 +835,31 @@ class FQFAgent():
 
         update_params(self.fraction_optim,
                       fraction_loss + entropy_loss,
-                      networks=[self.online_net.fraction_net],
+                      networks=[self.online_net.fraction_proposal_net],
                       retain_graph=True,
                       grad_clipping=self.grad_clipping)
         update_params(self.quantile_optim,
                       quantile_loss,
                       networks=[
-                          self.online_net.dqn_net, self.online_net.cosine_net,
-                          self.online_net.quantile_net
+                          self.online_net.feature_extractor,
+                          self.online_net.fraction_embedding_net,
+                          self.online_net.quantile_value_net
                       ],
                       retain_graph=False,
                       grad_clipping=self.grad_clipping)
 
-        mean_entropy_of_value_distribution = entropies.mean()
+        mean_ent_of_frac_dist = entropies.mean()
         rv_dict = {
-            'fraction_loss':
-            fraction_loss,
-            'quantile_loss':
-            quantile_loss,
-            'entropy_loss':
-            entropy_loss,
-            'mean_q':
-            mean_q,
-            'mean_entropy_of_value_distribution':
-            mean_entropy_of_value_distribution,
+            'fraction_loss': fraction_loss,
+            'quantile_loss': quantile_loss,
+            'entropy_loss': entropy_loss,
+            'mean_q': mean_q,
+            'mean_ent_of_frac_dist': mean_ent_of_frac_dist,
         }
         return rv_dict
 
-    def calculate_fraction_loss(self, state_embeddings, sa_quantile_hats, taus,
-                                actions, weights):
+    def calculate_fraction_loss(self, state_embeddings, sa_quantile_hats,
+                                taus, actions, weights):
         assert not state_embeddings.requires_grad
         assert not sa_quantile_hats.requires_grad
 
@@ -788,7 +867,7 @@ class FQFAgent():
 
         with torch.no_grad():
             sa_quantiles = evaluate_quantile_at_action(
-                self.online_net.calculate_quantiles(
+                self.online_net.calculate_quantile_values(
                     taus=taus[:, 1:-1], state_embeddings=state_embeddings),
                 actions)
             assert sa_quantiles.shape == (batch_size, self.N - 1, 1)
@@ -809,7 +888,7 @@ class FQFAgent():
 
         gradient_of_taus = (torch.where(signs_1, values_1, -values_1) +
                             torch.where(signs_2, values_2, -values_2)).view(
-                                batch_size, self.N - 1)
+            batch_size, self.N - 1)
         assert not gradient_of_taus.requires_grad
         assert gradient_of_taus.shape == taus[:, 1:-1].shape
 
@@ -817,7 +896,8 @@ class FQFAgent():
         # are calculated using chain rule.
         if weights is not None:
             fraction_loss = ((
-                (gradient_of_taus * taus[:, 1:-1]).sum(dim=1, keepdim=True)) *
+                                 (gradient_of_taus * taus[:, 1:-1]).sum(dim=1,
+                                                                        keepdim=True)) *
                              weights).mean()
         else:
             fraction_loss = \
@@ -835,11 +915,11 @@ class FQFAgent():
             # fractions to reduce computations. (i.e. next_tau_hats = tau_hats)
 
             # Calculate Q values of next states.
-            next_state_embeddings =\
+            next_state_embeddings = \
                 self.target_net.calculate_state_embeddings(next_states)
             next_q = self.target_net.calculate_q(
                 state_embeddings=next_state_embeddings,
-                fraction_net=self.online_net.fraction_net)
+                fraction_net=self.online_net.fraction_proposal_net)
 
             # Calculate greedy actions.
             next_actions = torch.argmax(next_q, dim=1, keepdim=True)
@@ -847,14 +927,15 @@ class FQFAgent():
 
             # Calculate quantile values of next states and actions at tau_hats.
             next_sa_quantile_hats = evaluate_quantile_at_action(
-                self.target_net.calculate_quantiles(
+                self.target_net.calculate_quantile_values(
                     taus=tau_hats, state_embeddings=next_state_embeddings),
                 next_actions).transpose(1, 2)
             assert next_sa_quantile_hats.shape == (self.batch_size, 1, self.N)
 
             # Calculate target quantile values.
             target_sa_quantile_hats = rewards[..., None] + (
-                1.0 - dones[..., None]) * self.gamma_n * next_sa_quantile_hats
+                    1.0 - dones[
+                ..., None]) * self.gamma_n * next_sa_quantile_hats
             assert target_sa_quantile_hats.shape == (self.batch_size, 1,
                                                      self.N)
 
@@ -862,7 +943,7 @@ class FQFAgent():
         assert td_errors.shape == (self.batch_size, self.N, self.N)
 
         quantile_huber_loss = calculate_quantile_huber_loss(
-            td_errors, tau_hats, weights, self.kappa)
+            td_errors, tau_hats, weights=weights, kappa=self.kappa)
 
         return quantile_huber_loss, next_q.detach().mean().item(), \
             td_errors.detach().abs().sum(dim=1).mean(dim=1, keepdim=True)
