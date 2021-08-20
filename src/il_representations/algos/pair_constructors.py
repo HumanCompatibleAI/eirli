@@ -30,8 +30,11 @@ admittedly a somewhat fuzzy match to the actual variety of techniques.
 
 from abc import ABC, abstractmethod
 import itertools
+import math
+import random
 
 import numpy as np
+from torchvision.transforms import functional as F
 
 
 class TargetPairConstructor(ABC):
@@ -116,7 +119,8 @@ class _CircularBuffer:
 
 class TemporalOffsetPairConstructor(TargetPairConstructor):
     def __init__(self, mode=None, temporal_offset=1):
-        assert mode in (None, 'dynamics', 'inverse_dynamics')
+        assert mode in (None, 'dynamics', 'inverse_dynamics',
+                        'action_prediction'), mode
         self.mode = mode
         self.k = temporal_offset
 
@@ -154,6 +158,13 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                         'extra_context': step_dict['obs'],
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
+                elif self.mode == 'action_prediction':
+                    yield {
+                        'context': obs_queue.get_oldest(),
+                        'target': act_queue.concat_all(),
+                        'extra_context': [],
+                        'traj_ts_ids': [trajectory_ind, timestep]
+                    }
                 else:
                     assert False, f"mode {self.mode} not recognised"
 
@@ -167,3 +178,83 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 act_queue.reset()
             else:
                 timestep += 1
+
+
+class JigsawPairConstructor(TargetPairConstructor):
+    def __init__(self, permutation_path='data/jigsaw_permutations_1000.npy', n_tiles=9):
+        # TODO: Find the actual path
+        self.permutation_path = permutation_path
+        self.permutation = np.load(self.permutation_path)
+        self.n_tiles = n_tiles
+        pass
+
+    def __call__(self, data_iter):
+        timestep = 0
+        traj_ind = 0
+
+        # Get tile dim
+        first_dict = next(data_iter)
+        original_h, original_w = first_dict['obs'][0].shape[-2], \
+                                 first_dict['obs'][0].shape[-1]
+
+        # We -2 after division here because, as the original paper indicated,
+        # preserving the whole image tile may let the network exploit edge information
+        # and not really learn useful representations. Therefore, here we are using
+        # the central-cropped version of these image tiles.
+        tile_h, tile_w = int(original_h / math.sqrt(self.n_tiles)) - 2, \
+                         int(original_w / math.sqrt(self.n_tiles)) - 2
+
+        permutation_class = [x for x in range(len(self.permutation))]
+        random.shuffle(permutation_class)
+        permute_idx = 0
+
+        for step_dict in data_iter:
+            # Process images into image tiles
+            obs = step_dict['obs']
+            processed_obs_list = []
+            target_list = []
+            for o in obs:
+                processed_obs = self.make_jigsaw_puzzle(o,
+                                                        permutation_class[permute_idx],
+                                                        tile_h,
+                                                        tile_w)
+                processed_obs_list.append(processed_obs)
+            target_list.append(permutation_class[permute_idx])
+            permute_idx = (permute_idx + 1) % len(self.permutation)
+
+            processed_obs_list = np.array(processed_obs_list)
+            target_list = np.array(target_list)
+            yield {
+                'context': processed_obs_list,
+                'target': target_list,
+                'extra_context': [],
+                'traj_ts_ids': [traj_ind, timestep],
+            }
+            if step_dict['dones']:
+                traj_ind += 1
+                timestep = 0
+            else:
+                timestep += 1
+
+    def make_jigsaw_puzzle(self, image, permutation_type, tile_h, tile_w):
+        permute = self.permutation[permutation_type]  # len(permute) = 9
+        n_tiles_sqrt = math.sqrt(self.n_tiles)  # If n_tiles = 9, n_tiles_sqrt = 3
+
+        img_tiles = []
+        unit_h = int(image.shape[0] / n_tiles_sqrt)
+        unit_w = int(image.shape[1] / n_tiles_sqrt)
+
+        for pos in permute:
+            pos_h = int(pos // n_tiles_sqrt) * unit_h
+            pos_w = int(pos % n_tiles_sqrt) * unit_w
+
+            # We +1 after pos_h and pos_w to center crop
+            processed_image = image[pos_h + 1:pos_h + 1 + tile_h, pos_w + 1:pos_w + 1 + tile_w]
+            img_tiles.append(processed_image)
+
+        new_img_h = int(img_tiles[0].shape[0] * n_tiles_sqrt)
+        new_img_w = int(img_tiles[0].shape[1] * n_tiles_sqrt)
+
+        img_tiles = np.array(img_tiles).reshape([new_img_h, new_img_w])
+        return img_tiles
+

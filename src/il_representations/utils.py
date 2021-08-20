@@ -373,6 +373,8 @@ def augmenter_from_spec(spec, color_space):
         return StandardAugmentations.from_string_spec(spec, color_space)
     elif isinstance(spec, dict):
         return StandardAugmentations(**spec, stack_color_space=color_space)
+    elif spec is None:
+        return None
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
@@ -570,3 +572,11 @@ def repeat_chain_non_empty(iterable):
             yielded_item = True
         if not yielded_item:
             raise EmptyIteratorException(f"iterable {iterable} was empty")
+
+
+def get_policy_nupdate(policy_path):
+    match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
+                            policy_path)
+    assert match_result is not None, 'policy_path does not fit pattern' \
+                                     '.*policy_(?P<n_update>\d+)_batches.pt'
+    return match_result.group('n_update')

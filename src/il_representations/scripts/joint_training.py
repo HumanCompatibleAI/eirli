@@ -19,7 +19,6 @@ from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
 import torch
-import torch as th
 from torch.optim.adam import Adam
 
 from il_representations import algos
@@ -42,10 +41,12 @@ from il_representations.utils import (Timers, augmenter_from_spec,
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 repl_ingredient = Ingredient('repl')
 bc_ingredient = Ingredient('bc')
+gail_ingredient = Ingredient('gail')
 train_ex = Experiment('train',
                       ingredients=[
                           repl_ingredient,
                           bc_ingredient,
+                          gail_ingredient,
                           env_cfg_ingredient,
                           env_data_ingredient,
                           venv_opts_ingredient,
@@ -95,9 +96,11 @@ def bc_defaults():
     postproc_arch = [128]
     # evaluation interval
     short_eval_interval = 5000
-    # number of trajectories for short intermediate evals
+    # number of trajectories for short intermediate evils
     # (not the final eval)
     short_eval_n_traj = 10
+    # set this to a number to limit the number of trajectories BC can use
+    n_trajs = None
 
     _ = locals()
     del _
@@ -107,6 +110,45 @@ def bc_defaults():
 def _bc_dummy(dataset_configs, augs):
     # DO NOT REMOVE THIS, REMOVING IT WILL BREAK SACRED
     # (see docstring for il_train._bc_dummy for explanation)
+    pass
+
+
+@gail_ingredient.config
+def gail_defaults():
+    ppo_n_epochs = 7
+    # "batch size" is actually the size of a _minibatch_. The amount of data
+    # used for each training update is ppo_n_steps*n_envs.
+    ppo_batch_size = 48
+    ppo_init_learning_rate = 0.00025
+    ppo_final_learning_rate = 0.0
+    ppo_gamma = 0.985
+    ppo_gae_lambda = 0.76
+    ppo_ent = 4.5e-8
+    ppo_adv_clip = 0.006
+    ppo_max_grad_norm = 1.0
+    # normalisation + clipping is experimental; previously I just did
+    # normalisation (to stddev of 0.1) with no clipping
+    ppo_norm_reward = True
+    ppo_clip_reward = float('inf')
+    # target standard deviation for rewards
+    ppo_reward_std = 0.01
+    # set these to True/False (or non-None, tru-ish/false-ish values) in order
+    # to override the root freeze_encoder setting (they will produce warnings)
+    freeze_pol_encoder = None
+    freeze_disc_encoder = None
+
+    disc_n_updates_per_round = 2
+    disc_batch_size = 48
+    disc_lr = 0.0006
+    disc_augs = "color_jitter_mid,erase,flip_lr,gaussian_blur,noise,rotate"
+
+    _ = locals()
+    del _
+
+
+@gail_ingredient.capture
+def _gail_dummy(dataset_configs, disc_augs):
+    # DO NOT REMOVE THIS, REMOVING IT WILL BREAK SACRED
     pass
 
 
@@ -150,6 +192,9 @@ def default_config():
 
     # will default to GPU if available, otherwise CPU
     device = "auto"
+
+    # choose 'gail' or 'bc'
+    il_algo = 'bc'
 
     _ = locals()
     del _
@@ -222,7 +267,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         augmentation_fn=bc_augmentation_fn,
         batch_size=bc['batch_size'],
         n_batches=n_batches,
-        shuffle_buffer_size=shuffle_buffer_size)
+        shuffle_buffer_size=shuffle_buffer_size,
+        n_trajs=bc['n_trajs'])
 
     # optimizer and LR scheduler
     params_list_dedup = deduplicate_params(
@@ -266,9 +312,9 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                 bc_path = save_dir / ("bc" + save_suffix)
                 repl_path = save_dir / ("repl" + save_suffix)
                 opt_path = save_dir / ("opt" + save_suffix)
-                th.save(bc_learner, bc_path)
-                th.save(repl_learner, repl_path)
-                th.save(optimizer, opt_path)
+                torch.save(bc_learner, bc_path)
+                torch.save(repl_learner, repl_path)
+                torch.save(optimizer, opt_path)
 
         # repl batch saving
         should_save_repl_batch = batch_num % repl['batch_save_interval'] == 0
@@ -326,7 +372,107 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
     # return final saved policy path
     pol_path = save_dir / "policy_final.ckpt"
     os.makedirs(save_dir, exist_ok=True)
-    th.save(bc_learner.policy, pol_path)
+    torch.save(bc_learner.policy, pol_path)
+    return pol_path
+
+
+@train_ex.capture
+def learn_repl_gail(repl_learner, repl_datasets, bc_learner,
+                    bc_augmentation_fn, bc_dataset, n_batches, optimizer_cls,
+                    optimizer_kwargs, repl_weight, log_dump_interval,
+                    model_save_interval, repl, gail, shuffle_buffer_size,
+                    log_dir, venv, log_calc_interval):
+    """Training loop for repL + GAIL (implemented as repL + PPO interleaved
+    with repL + discriminator training)."""
+
+    # dataset setup
+    repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
+                                                 batches_per_epoch=n_batches,
+                                                 n_epochs=1,
+                                                 n_trajs=None)
+    XXX_data_iter = bc_learner.make_data_iter(
+        il_dataset=bc_dataset,
+        augmentation_fn=bc_augmentation_fn,
+        batch_size=bc['batch_size'],
+        n_batches=n_batches,
+        shuffle_buffer_size=shuffle_buffer_size)
+
+    # optimizer and LR scheduler
+    params_list = list(repl_learner.all_trainable_params()) \
+        + list(bc_learner.all_trainable_params())
+    params_set = set()
+    params_list_dedup = []
+    for param in params_list:
+        if param not in params_set:
+            params_list_dedup.append(param)
+            params_set.add(param)
+    assert len(params_list_dedup) < len(params_list), \
+        "After param deduplication, the number of parameters did not drop. " \
+        "Is the encoder actually shared?"
+    del params_list, params_set
+    optimizer = optimizer_cls(params_list_dedup, **optimizer_kwargs)
+
+    timers = Timers()
+
+    repl_learner.set_train(True)
+
+    # some save paths
+    log_dir_path = pathlib.Path(log_dir)
+    save_dir = log_dir_path / "checkpoints"
+
+    assert n_batches > 0
+
+    while elapsed_timesteps < timestep_limit:
+        # sample trajectories
+        new_trajectories = sample_trajectories()
+        disc_buffer.append(new_trajectories)
+
+        # discriminator classifier updates
+        for _ in range(n_disc):
+            disc_batch = next(disc_data_iter)
+            disc_loss, disc_states = disc_learner.batch_forward(disc_batch)
+            disc_repl_batch = next(disc_repl_data_iter)
+            disc_repl_loss, disc_detached_debug_tensors = disc_repl_learner.batch_forward(disc_repl_batch)
+            disc_composite_loss = disc_loss + disc_repl_weight * disc_repl_loss
+            disc_optimizer.zero_grad()
+            disc_composite_loss.backward()
+            disc_optimizer.step()
+
+        # PPO epochs
+        for _ in range(n_ppo_epoch):
+            ppo_data_gen = make_ppo_data_gen()
+
+            # TODO(sam): handle re-computing rewards & calculating advantages
+
+            for ppo_sample in ppo_data_gen:
+                ppo_loss, ppo_stats_dict = ppo_learner.batch_forward(ppo_sample)
+                ppo_repl_batch = next(ppo_repl_data_iter)
+                ppo_repl_loss, ppo_detached_debug_tensors = ppo_repl_learner.batch_forward(ppo_repl_batch)
+                ppo_composite_loss = ppo_loss + ppo_repl_weight * ppo_repl_loss
+
+                # opt step + grad clip
+                pol_optimizer.zero_grad()
+                ppo_composite_loss.backward()
+                torch.nn.utils.clip_grad_norm_(ppo_learner.actor_critic.parameters(),
+                                               ppo_learner.max_grad_norm)
+                pol_optimizer.step()
+
+        # this block is the actual forward/backward logic (everything else
+        # is logging/checkpointing)
+        bc_batch = next(bc_data_iter)
+        bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
+        repl_batch = next(repl_data_iter)
+        repl_loss, detached_debug_tensors = repl_learner.batch_forward(
+            repl_batch)
+        composite_loss = bc_loss + repl_weight * repl_loss
+        optimizer.zero_grad()
+        composite_loss.backward()
+        optimizer.step()
+
+    # return final saved policy path
+    pol_path = save_dir / "policy_final.ckpt"
+    os.makedirs(save_dir, exist_ok=True)
+    torch.save(bc_learner.policy, pol_path)
     return pol_path
 
 
@@ -418,11 +564,27 @@ def bc_setup(venv, obs_encoder, n_batches, shuffle_buffer_size,
     return bc_learner, bc_aug_fn, il_demo_webdatasets
 
 
+@gail_ingredient.capture
+def gail_setup(venv, obs_encoder, n_batches, shuffle_buffer_size,
+               dataset_configs, batch_size, l2_weight, ent_weight, augs,
+               postproc_arch, device):
+    il_demo_webdatasets, il_combined_meta = auto_env.load_wds_datasets(
+        configs=dataset_configs)
+    policy = init_policy(observation_space=venv.observation_space,
+                         action_space=venv.action_space,
+                         obs_encoder=obs_encoder,
+                         postproc_arch=postproc_arch)
+    policy = policy.to(device)
+    color_space = il_combined_meta['color_space']
+    gail_aug_fn = augmenter_from_spec(augs, color_space)
+    raise NotImplementedError()
+
+
 @train_ex.main
 def train(seed, torch_num_threads, device, repl, bc, n_batches,
           shuffle_buffer_size, obs_encoder_cls, obs_encoder_kwargs,
           model_save_interval, representation_dim, exp_ident,
-          final_eval_n_traj, _config):
+          final_eval_n_traj, il_algo, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
@@ -431,7 +593,7 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     log_dir = os.path.abspath(train_ex.observers[0].dir)
     im_log.configure(log_dir, ["stdout", "csv", "tensorboard"])
     if torch_num_threads is not None:
-        th.set_num_threads(torch_num_threads)
+        torch.set_num_threads(torch_num_threads)
     device = get_device(device)
 
     with ExitStack() as exit_stack:
@@ -447,16 +609,6 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
                                       **obs_encoder_kwargs)
         orig_oe_params = list(obs_encoder.named_parameters())
 
-        # set up IL
-        bc_learner, bc_augmentation_fn, bc_dataset = bc_setup(
-            venv=venv,
-            n_batches=n_batches,
-            shuffle_buffer_size=shuffle_buffer_size,
-            obs_encoder=obs_encoder,
-            device=device)
-        bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
-                            named_parameters())
-
         # setup for repL
         repl_learner, repl_datasets = repl_setup(
             shuffle_buffer_size=shuffle_buffer_size,
@@ -464,19 +616,62 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
             representation_dim=representation_dim)
         repl_oe_params = list(repl_learner.encoder.network.named_parameters())
 
-        # are params actually shared?
-        assert orig_oe_params == bc_oe_params
-        assert orig_oe_params == repl_oe_params
-
         # learning loop
-        final_pol_path = learn_repl_bc(repl_learner=repl_learner,
-                                       repl_datasets=repl_datasets,
-                                       bc_learner=bc_learner,
-                                       bc_augmentation_fn=bc_augmentation_fn,
-                                       bc_dataset=bc_dataset,
-                                       model_save_interval=model_save_interval,
-                                       log_dir=log_dir,
-                                       venv=venv)
+        if il_algo == 'bc':
+            # set up IL
+            bc_learner, bc_augmentation_fn, bc_dataset = bc_setup(
+                venv=venv,
+                n_batches=n_batches,
+                shuffle_buffer_size=shuffle_buffer_size,
+                obs_encoder=obs_encoder,
+                device=device)
+            bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
+                                named_parameters())
+            # are params actually shared?
+            assert orig_oe_params == bc_oe_params
+            assert orig_oe_params == repl_oe_params
+            final_pol_path = learn_repl_bc(repl_learner=repl_learner,
+                                           repl_datasets=repl_datasets,
+                                           bc_learner=bc_learner,
+                                           bc_augmentation_fn=bc_augmentation_fn,
+                                           bc_dataset=bc_dataset,
+                                           model_save_interval=model_save_interval,
+                                           log_dir=log_dir,
+                                           venv=venv)
+        elif il_algo == 'gail':
+            # FIXME(sam): a few things GAIL does differently to BC:
+            # - Has a separate policy & discriminator which are trained in
+            #   alternating manner. Assuming I want them to be independent,
+            #   that means:
+            #
+            #   1. Having separate repL learners (& associated data structures)
+            #      for policy & discriminator.
+            #   2. Sharing model parameters between policy and policy repL
+            #      learner, as well as discriminator and discriminator repL
+            #      learner, but _not_ between policy and discriminator (weird).
+            # - Currently (?) only has augmentations for discriminator (but
+            #   that might change).
+            # - Will just need a totally different training loop to what BC
+            #   uses, since the alternating structure is much more complex.
+            # - Doing re-initialisable training (for running on GCP) may be
+            #   much more complicated for GAIL due to the nested training
+            #   loops. Keep this in mind while writing the training loop.
+
+            # set up IL
+            gail_oe_params = TODO  # will have to pull from disc & pol
+            # are params actually shared?
+            assert orig_oe_params == gail_oe_params
+            assert orig_oe_params == repl_oe_params
+            final_pol_path = learn_repl_gail(repl_learner=repl_learner,
+                                             repl_datasets=repl_datasets,
+                                             gail_learner=gail_learner,
+                                             gail_augmentation_fn=gail_augmentation_fn,
+                                             gail_dataset=gail_dataset,
+                                             model_save_interval=model_save_interval,
+                                             log_dir=log_dir,
+                                             venv=venv)
+        else:
+            raise ValueError(f"do not know how to handle il_algo={il_algo!r}")
 
     # final eval
     # (note that this is pulling in a bunch of params from env_cfg_ingredient

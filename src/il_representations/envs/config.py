@@ -6,7 +6,7 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "procgen"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -70,6 +70,11 @@ def env_cfg_defaults():
     # Minecraft-specific config variables
     # ###############################
     minecraft_max_env_steps = None
+
+    # ###############################
+    # Procgen-specific config variables
+    # ###############################
+    procgen_frame_stack = 4
 
     _ = locals()
     del _
@@ -170,6 +175,17 @@ def env_data_defaults():
         'data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
         'PongNoFrameskip-v4':
         'data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
+    }
+
+    # ###########################
+    # ProcGen config variables
+    # ###########################
+    procgen_demo_paths = {
+        'coinrun': 'procgen/demo_coinrun.pickle',
+        'fruitbot': 'procgen/demo_fruitbot.pickle',
+        'ninja': 'procgen/demo_ninja.pickle',
+        'jumper': 'procgen/demo_jumper.pickle',
+        'miner': 'procgen/demo_miner.pickle',
     }
 
     _ = locals()

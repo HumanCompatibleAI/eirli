@@ -1,7 +1,6 @@
-from il_representations.algos import (DynamicsPrediction,
-                                      InverseDynamicsPrediction,
-                                      VariationalAutoencoder,
-                                      TemporalCPC)
+from il_representations.algos import (ActionPrediction, DynamicsPrediction,
+                                      InverseDynamicsPrediction, SimCLR,
+                                      TemporalCPC, VariationalAutoencoder)
 
 
 def make_jt_configs(train_ex):
@@ -54,10 +53,33 @@ def make_jt_configs(train_ex):
         del _
 
     @train_ex.named_config
+    def repl_simclr():
+        # simclr
+        repl = {
+            'algo': SimCLR,
+        }
+        repl_weight = 1.0
+
+        _ = locals()
+        del _
+
+
+    @train_ex.named_config
     def repl_id():
         # inverse dynamics
         repl = {
             'algo': InverseDynamicsPrediction,
+        }
+        repl_weight = 1.0
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_ap():
+        # action prediction (aka BC)
+        repl = {
+            'algo': ActionPrediction,
         }
         repl_weight = 1.0
 
@@ -97,6 +119,29 @@ def make_jt_configs(train_ex):
         env_cfg = {
             'benchmark_name': 'dm_control',
             'task_name': 'reacher-easy',
+        }
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_data_demos():
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos'},
+            ]
+        }
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_data_demos_random():
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos'},
+                {'type': 'random'},
+            ]
         }
 
         _ = locals()

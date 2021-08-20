@@ -14,6 +14,7 @@ import copy
 import functools
 import inspect
 import os
+import math
 import traceback
 import warnings
 
@@ -130,6 +131,11 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 128, 'stride': 2, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
         ],
+    'MAGICALCNN-resnet-128-x2': [
+            {'out_dim': 64, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+        ],
     'MAGICALCNN-resnet-256': [
             {'out_dim': 64, 'stride': 4, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
@@ -198,6 +204,7 @@ class MAGICALCNN(nn.Module):
                  dropout=None,
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet-128',
+                 contain_fc_layer=True,
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
@@ -252,21 +259,25 @@ class MAGICALCNN(nn.Module):
             in_dim = layer_out_dim*w
         if 'resnet' in arch_str:
             conv_layers.append(nn.Conv2d(in_dim, 32, 1))
+            # conv_layers.append(nn.AdaptiveAvgPool2d((1, 1)))
+
         conv_layers.append(nn.Flatten())
 
-        # another FC layer to make feature maps the right size
-        fc_in_size, = compute_output_shape(observation_space, conv_layers)
-        fc_layers = [
-            nn.Linear(fc_in_size, 128 * w),
-            ActivationCls(),
-            nn.Linear(128 * w, representation_dim),
-        ]
-        if use_sn:
-            # apply SN to linear layers too
+        fc_layers = []
+        if contain_fc_layer:
+            # another FC layer to make feature maps the right size
+            fc_in_size, = compute_output_shape(observation_space, conv_layers)
             fc_layers = [
-                nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
-                for layer in fc_layers
+                nn.Linear(fc_in_size, 128 * w),
+                ActivationCls(),
+                nn.Linear(128 * w, representation_dim),
             ]
+            if use_sn:
+                # apply SN to linear layers too
+                fc_layers = [
+                    nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
+                    for layer in fc_layers
+                ]
 
         all_layers = [*conv_layers, *fc_layers]
         self.shared_network = nn.Sequential(*all_layers)
@@ -620,6 +631,52 @@ class VAEEncoder(BaseEncoder):
         return Delta(x)
 
 
+class JigsawEncoder(BaseEncoder):
+    """
+    A siamese-ennead network as defined in Unsupervised Learning of Visual
+    Representations by Solving Jigsaw Puzzles. It takes n_tiles images one
+    by one, then concat their output representations.
+    """
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, n_tiles=9,
+                 obs_encoder_cls_kwargs=None):
+        self.n_tiles = n_tiles
+        if self.n_tiles != 9:
+            raise NotImplementedError('Currently only support n_tiles=9')
+
+        # Note that in Jigsaw, representation_dim is not used because it will set 'contain_fc_layer' to False.
+        super().__init__(obs_space, representation_dim, obs_encoder_cls=obs_encoder_cls,
+                         latent_dim=latent_dim, obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
+
+    def encode_context(self, x, traj_info):
+        x = self.img_to_tiles(x)
+        encoder_output = []
+        for i in range(self.n_tiles):
+            input_i = x[:, i, :, :, :]
+            output_i = self.forward(input_i, traj_info).mean
+            encoder_output.append(output_i)
+        return torch.cat(encoder_output, axis=1)
+
+    def img_to_tiles(self, img):
+        """
+        Input:
+            img (tensor) - image to be processed, with shape [batch_size, C, H, W]
+        Return:
+            img_tiles (tensor) - Processed image tiles with shape [batch_size, 9, C, H/3, W/3]
+        """
+        batch_size, c, h, w = img.shape
+        unit_size = math.sqrt(self.n_tiles)
+
+        h_unit = int(h/unit_size)
+        w_unit = int(w/unit_size)
+
+        return img.view(batch_size, self.n_tiles, c, h_unit, w_unit)
+
+    def encode_target(self, x, traj_info):
+        # X here is the correct class number of the jigsaw permutation. We don't
+        # need any modification / encoding here.
+        return x
+
+
 class TargetStoringActionEncoder(ActionEncodingEncoder):
     """
     Identical to VAE encoder, but inherits from ActionEncodingEncoder,
@@ -633,14 +690,22 @@ class TargetStoringActionEncoder(ActionEncodingEncoder):
         return Delta(x)
 
 
-class InverseDynamicsEncoder(BaseEncoder):
+class PolicyEncoder(BaseEncoder):
+    def encode_target(self, x, traj_info):
+        # X here consists of the true actions, which is the "target" and thus doesn't get encoded
+        return Delta(x)
+
+
+class InverseDynamicsEncoder(PolicyEncoder):
     def encode_extra_context(self, x, traj_info):
         # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
         return self.encode_context(x, traj_info)
 
-    def encode_target(self, x, traj_info):
-        # X here consists of the true actions, which is the "target" and thus doesn't get encoded
-        return Delta(x)
+
+class ActionPredictionEncoder(PolicyEncoder):
+    def encode_extra_context(self, x, traj_info):
+        # identity; we don't use extra_context
+        return x
 
 
 class MomentumEncoder(Encoder):

@@ -1,20 +1,33 @@
-from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
-    infer_action_shape_info
-from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
-    BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
-    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead
-from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss, AELoss
-
-from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
-    AugmentContextAndExtraContext
-from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor
-from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
-from il_representations.algos.optimizers import LARS
-from il_representations.algos.representation_learner import get_default_args
 import logging
+
+from il_representations.algos.augmenters import (AugmentContextAndExtraContext,
+                                                 AugmentContextAndTarget,
+                                                 AugmentContextOnly,
+                                                 NoAugmentation)
+from il_representations.algos.batch_extenders import (IdentityBatchExtender,
+                                                      QueueBatchExtender)
+from il_representations.algos.decoders import (
+    ActionConditionedVectorDecoder, ActionPredictionHead,
+    AsymmetricProjectionHead, BYOLProjectionHead,
+    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead,
+    MomentumProjectionHead, NoOp, PixelDecoder, SymmetricProjectionHead)
+from il_representations.algos.encoders import (
+    ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder,
+    ActionPredictionEncoder, BaseEncoder, InverseDynamicsEncoder,
+    JigsawEncoder, MomentumEncoder, PolicyEncoder, RecurrentEncoder,
+    TargetStoringActionEncoder, VAEEncoder, infer_action_shape_info)
+from il_representations.algos.losses import (AELoss, AsymmetricContrastiveLoss,
+                                             BatchAsymmetricContrastiveLoss,
+                                             CEBLoss, GaussianPriorLoss,
+                                             MSELoss, NegativeLogLikelihood,
+                                             QueueAsymmetricContrastiveLoss,
+                                             SymmetricContrastiveLoss, VAELoss)
+from il_representations.algos.optimizers import LARS
+from il_representations.algos.pair_constructors import (
+    IdentityPairConstructor, JigsawPairConstructor,
+    TemporalOffsetPairConstructor)
+from il_representations.algos.representation_learner import (
+    DEFAULT_HARDCODED_PARAMS, RepresentationLearner, get_default_args)
 
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
@@ -281,11 +294,9 @@ class VariationalAutoencoder(RepresentationLearner):
         super().__init__(**kwargs)
 
 
-class Autoencoder(RepresentationLearner):
+class Jigsaw(RepresentationLearner):
     """
-    A basic autoencoder that tries to reconstruct the
-    current frame, and calculates an MSE loss over current frame pixels,
-    using reconstruction loss.
+    A basic Jigsaw task that requires a network to solve Jigsaw puzzles.
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
@@ -294,15 +305,17 @@ class Autoencoder(RepresentationLearner):
         dec_encoder_cls_key = decoder_kwargs.get(
             'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
-        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
-                                     decoder=PixelDecoder,
+        algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
+                                     decoder=JigsawProjectionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
-                                     loss_calculator=AELoss,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=dec_encoder_cls_key,
-                                                         sample=True))
+                                     loss_calculator=CrossEntropyLoss,
+                                     target_pair_constructor=JigsawPairConstructor,
+                                     preprocess_target=False,
+                                     projection_dim=1000,
+                                     encoder_kwargs=dict(obs_encoder_cls_kwargs={'contain_fc_layer': False}),
+                                     decoder_kwargs=dict(architecture=[{'output_dim': 128},
+                                                                       {'output_dim': 128}]))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
@@ -321,6 +334,45 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      loss_calculator=NegativeLogLikelihood,
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
+                                     decoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class ActionPrediction(RepresentationLearner):
+    """
+    Predicts action for current state. Essentially just a BC auxiliary loss.
+    """
+    def __init__(self, **kwargs):
+        algo_hardcoded_kwargs = dict(encoder=ActionPredictionEncoder,
+                                     decoder=ActionPredictionHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=NegativeLogLikelihood,
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(mode='action_prediction'),
+                                     decoder_kwargs=dict(
+                                         action_space=kwargs['action_space'],
+                                         use_extra_context=False),
+                                     preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class PolicyPrediction(RepresentationLearner):
+    """
+    BC auxiliary loss.
+    """
+    def __init__(self, **kwargs):
+        algo_hardcoded_kwargs = dict(encoder=PolicyEncoder,
+                                     decoder=ActionPredictionHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=NegativeLogLikelihood,
+                                     target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(action_space=kwargs['action_space']),
                                      preprocess_target=False)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)

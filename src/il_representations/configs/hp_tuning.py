@@ -490,3 +490,68 @@ def make_hp_tuning_configs(experiment_obj):
 
         _ = locals()
         del _
+
+    @experiment_obj.named_config
+    def temporal_cpc_tune_2021_08_09():
+        """Tunes abunch of HPs of TemporalCPC:
+
+        - Learning rate and batch size
+        - Freeze vs. not
+        - Representation dimension
+        - Various augmentation options (varied independently)
+        - The temporal skip (which is really important)
+
+        It's meant to be run with a series of namedconfigs that looks like
+        this:
+
+        cfg_base_5seed_1cpu_pt25gpu tune_run_kwargs.resources_per_trial.gpu=0.5
+        ray_init_kwargs.address=localhost:42000 cfg_use_magical
+        cfg_il_bc_20k_nofreeze il_train.bc.n_trajs=1
+        cfg_data_repl_rand_demos_magical_mt
+        env_cfg.task_name=MoveToCorner-Demo-v0
+        exp_ident=bc_tuning_tcpc_movetocorner_rand_demos_mt_1t tuning
+        temporal_cpc_tune_2021_08_09
+        """
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'augmenter': augmenters.AugmentContextAndTarget
+            }
+        }
+
+        # prefix to make names shorter
+        _aps = 'repl:algo_params:'
+        _augs = _aps + 'augmenter_kwargs:augmenter_spec:'
+
+        skopt_space = collections.OrderedDict([
+            # large batches may not matter
+            (_aps + 'batch_size', (64, 384)),
+            ('repl:optimizer_kwargs:lr', (1e-6, 1e-2, 'log-uniform')),
+            (_aps + 'representation_dim', (8, 512)),
+            ('il_train:freeze_encoder', [True, False]),
+            (_aps + 'target_pair_constructor_kwargs:temporal_offset', [0, 20]),
+            (_augs + 'translate', [True, False]),
+            (_augs + 'rotate', [True, False]),
+            (_augs + 'color_jitter_mid', [True, False]),
+            (_augs + 'flip_lr', [True, False]),
+            (_augs + 'noise', [True, False]),
+            (_augs + 'erase', [True, False]),
+            (_augs + 'gaussian_blur', [True, False]),
+        ])
+        skopt_ref_configs = [{
+            _aps + 'batch_size': 192,
+            'repl:optimizer_kwargs:lr': 0.0003,
+            _aps + 'representation_dim': 128,
+            'il_train:freeze_encoder': True,
+            _aps + 'target_pair_constructor_kwargs:temporal_offset': 4,
+            _augs + 'translate': True,
+            _augs + 'rotate': True,
+            _augs + 'color_jitter_mid': False,
+            _augs + 'flip_lr': False,
+            _augs + 'noise': False,
+            _augs + 'erase': False,
+            _augs + 'gaussian_blur': False,
+        }]
+
+        _ = locals()
+        del _, _aps, _augs
