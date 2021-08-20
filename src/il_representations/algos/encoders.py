@@ -633,24 +633,22 @@ class TargetStoringActionEncoder(ActionEncodingEncoder):
         return Delta(x)
 
 
-class InverseDynamicsEncoder(BaseEncoder):
-    def encode_extra_context(self, x, traj_info):
-        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
-        return self.encode_context(x, traj_info)
-
+class PolicyEncoder(BaseEncoder):
     def encode_target(self, x, traj_info):
         # X here consists of the true actions, which is the "target" and thus doesn't get encoded
         return Delta(x)
 
 
-class ActionPredictionEncoder(BaseEncoder):
+class InverseDynamicsEncoder(PolicyEncoder):
+    def encode_extra_context(self, x, traj_info):
+        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
+        return self.encode_context(x, traj_info)
+
+
+class ActionPredictionEncoder(PolicyEncoder):
     def encode_extra_context(self, x, traj_info):
         # identity; we don't use extra_context
         return x
-
-    def encode_target(self, x, traj_info):
-        # encode actions, just like InverseDynamicsEncoder
-        return Delta(x)
 
 
 class MomentumEncoder(Encoder):
