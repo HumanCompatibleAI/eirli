@@ -1,7 +1,8 @@
 from il_representations.algos import (DynamicsPrediction,
                                       InverseDynamicsPrediction,
                                       VariationalAutoencoder,
-                                      TemporalCPC)
+                                      TemporalCPC,
+                                      SimCLR)
 
 
 def make_jt_configs(train_ex):
@@ -54,6 +55,18 @@ def make_jt_configs(train_ex):
         del _
 
     @train_ex.named_config
+    def repl_simclr():
+        # simclr
+        repl = {
+            'algo': SimCLR,
+        }
+        repl_weight = 1.0
+
+        _ = locals()
+        del _
+
+
+    @train_ex.named_config
     def repl_id():
         # inverse dynamics
         repl = {
@@ -73,6 +86,7 @@ def make_jt_configs(train_ex):
                 'target_pair_constructor_kwargs': {
                     'temporal_offset': 8,
                 },
+                'batch_size': 192,
             },
         }
         repl_weight = 1.0

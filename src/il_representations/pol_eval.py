@@ -28,6 +28,7 @@ def do_final_eval(*,
                   deterministic_policy,
                   device,
                   write_video=False,
+                  eval_file_name='eval.json',
                   video_file_name=None):
     """Do final evaluation of a policy & write eval.json file.
 
@@ -43,6 +44,8 @@ def do_final_eval(*,
         device (Union[str, th.Device]): Torch device or device name to use for
             evaluation.
         write_video (bool): should trajectories be rendered as video?
+        eval_file_name (Optional[str]): filename for writing evaluation
+            results.
         video_file_name (Optional[str]): filename for when write_video=True
     """
     policy = th.load(policy_path)
@@ -135,13 +138,67 @@ def do_final_eval(*,
                 for step_tensor in traj.obs:
                     video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
 
+    elif env_cfg['benchmark_name'] == ('procgen'):
+        full_env_name = auto.get_gym_env_name()
+        final_stats_dict = collections.OrderedDict([
+            ('full_env_name', full_env_name),
+            ('policy_path', policy_path),
+            ('seed', seed),
+        ])
+
+        # In Procgen, we use start_level=0 to test on train level, and 1000 for
+        # test level.
+        for start_level in [0, 1000]:
+            vec_env = auto.load_vec_env(procgen_start_level=start_level)
+
+            # sample some trajectories
+            rng = np.random.RandomState(seed)
+            trajectories = il_rollout.generate_trajectories(
+                policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
+            # make sure all the actions are finite
+            for traj in trajectories:
+                assert np.all(np.isfinite(traj.acts)), traj.acts
+
+            # the "stats" dict has keys {return,len}_{min,max,mean,std}
+            stats = il_rollout.rollout_stats(trajectories)
+            stats = collections.OrderedDict([(key, stats[key])
+                                             for key in sorted(stats)])
+
+            game_level = 'train_level' if start_level == 0 else 'test_level'
+            final_stats_dict.update({game_level: stats})
+
+            # print it out
+            kv_message = '\n'.join(f"  {key}={value}"
+                                   for key, value in stats.items())
+            logging.info(f"Evaluation stats on '{full_env_name}': {kv_message}")
+
+            vec_env.close()
+
+            if write_video:
+                assert len(trajectories) > 0
+
+                policy_filename = os.path.basename(policy_path)
+                # Remove file extension
+                policy_filename = os.path.splitext(policy_filename)[0]
+                video_file_name = f"rollout_{policy_filename}_{game_level}.mp4"
+                video_writer = TensorFrameWriter(
+                    os.path.join(out_dir, video_file_name),
+                    color_space=auto.load_color_space())
+
+                # write the trajectories in sequence
+                for traj in trajectories:
+                    for step_tensor in traj.obs:
+                        video_writer.add_tensor(th.FloatTensor(step_tensor) / 255.)
+
+                video_writer.close()
+
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
                                   f"{env_cfg['benchmark_name']!r} is not "
                                   "yet supported")
 
     # save to a .json file
-    with open(os.path.join(out_dir, 'eval.json'), 'w') as fp:
+    with open(os.path.join(out_dir, eval_file_name), 'w') as fp:
         json.dump(final_stats_dict, fp, indent=2, sort_keys=False)
 
     # also save video
