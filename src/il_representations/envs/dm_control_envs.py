@@ -13,6 +13,7 @@ import numpy as np
 
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
+from il_representations.envs.utils import stack_obs_oldest_first
 
 IMAGE_SIZE = 100
 _REGISTERED = False
@@ -74,30 +75,6 @@ def register_dmc_envs():
                              frame_skip=8))
 
 
-@env_cfg_ingredient.capture
-def _stack_obs_oldest_first(obs_arr, dm_control_frame_stack):
-    """Takes an array of shape [T, C, H, W] and stacks the entries to produce a
-    new array of shape [T, C*frame_stack, H, W] with frames stacked along the
-    channels axis. Frames at stacked oldest-first, and the first frame_stack-1
-    frames have zeros instead of older frames (because older frames don't
-    exist). This is meant to be compatible with VecFrameStack in SB3. Notably,
-    it is _not_ compatible with frame stacking in Gym, which repeats the first
-    frame instead of using zeroed frames."""
-    frame_accumulator = np.repeat(np.zeros_like(obs_arr[0][None]),
-                                  dm_control_frame_stack,
-                                  axis=0)
-    c, h, w = obs_arr.shape[1:]
-    out_sequence = []
-    for in_frame in obs_arr:
-        # drop the oldest frame, and append the new frame
-        frame_accumulator = np.concatenate(
-            [frame_accumulator[1:], in_frame[None]], axis=0)
-        out_sequence.append(frame_accumulator.reshape(
-            dm_control_frame_stack * c, h, w))
-    out_sequence = np.stack(out_sequence, axis=0)
-    return out_sequence
-
-
 @env_data_ingredient.capture
 def _get_data_cfg(dm_control_demo_patterns, data_root):
     # workaround for Sacred issue #206
@@ -143,9 +120,11 @@ def load_dataset_dm_control(task_name, dm_control_full_env_names,
     # then concatenate the frame-stacked trajectories together to make one big
     # dataset
     cat_obs = np.concatenate([
-        _stack_obs_oldest_first(t.obs[:-1]) for t in loaded_trajs], axis=0)
+        stack_obs_oldest_first(t.obs[:-1],
+                               dm_control_frame_stack) for t in loaded_trajs], axis=0)
     cat_nobs = np.concatenate([
-        _stack_obs_oldest_first(t.obs[1:]) for t in loaded_trajs], axis=0)
+        stack_obs_oldest_first(t.obs[1:],
+                               dm_control_frame_stack) for t in loaded_trajs], axis=0)
     # the remaining entries don't need any special stacking, so we just
     # concatenate them
     cat_acts = np.concatenate([t.acts for t in loaded_trajs], axis=0)

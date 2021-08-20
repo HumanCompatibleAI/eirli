@@ -1,6 +1,6 @@
 from il_representations.algos import (ActionPrediction, DynamicsPrediction,
-                                      InverseDynamicsPrediction, TemporalCPC,
-                                      VariationalAutoencoder)
+                                      InverseDynamicsPrediction, SimCLR,
+                                      TemporalCPC, VariationalAutoencoder)
 
 
 def make_jt_configs(train_ex):
@@ -51,6 +51,18 @@ def make_jt_configs(train_ex):
 
         _ = locals()
         del _
+
+    @train_ex.named_config
+    def repl_simclr():
+        # simclr
+        repl = {
+            'algo': SimCLR,
+        }
+        repl_weight = 1.0
+
+        _ = locals()
+        del _
+
 
     @train_ex.named_config
     def repl_id():
