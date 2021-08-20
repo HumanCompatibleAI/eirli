@@ -2,11 +2,12 @@ import torch
 import sacred
 import math
 import cv2
-import sys
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
+from pathlib import Path
 
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -65,7 +66,7 @@ def base_config():
     #     'layer_activation',
     #     'layer_gradxact'
     # ]
-    chosen_algo = 'saliency'
+    chosen_algo = 'integrated_gradient'
 
     layer_kwargs = {
         'layer_conductance': {'module': 'encoder', 'layer_idx': 2},
@@ -102,15 +103,15 @@ interp_algos = InterpAlgos()
 
 @interp_ex.capture
 def prepare_network(combined_meta, encoder_path, verbose, device):
-    encoder = torch.load(encoder_path, map_location=device)
-    if isinstance(encoder, ActorCriticCnnPolicy):
-        policy = encoder
-    else:
-        policy = make_policy(combined_meta['observation_space'],
-                             combined_meta['action_space'],
-                             encoder,
-                             None,
-                             lr_schedule=None)
+    policy = make_policy(observation_space=combined_meta['observation_space'],
+                         action_space=combined_meta['action_space'],
+                         ortho_init=False,
+                         log_std_init=0.0,
+                         postproc_arch=(),
+                         freeze_pol_encoder=True,
+                         modified_encoder_path=encoder_path,
+                         encoder_kwargs={'hi': 1},
+                         lr_schedule=None)
     network = Network(policy).to(device)
     network.eval()
     if verbose:
@@ -144,7 +145,7 @@ def process_data(device, env_cfg, length):
 @interp_ex.capture
 def save_img(save_name, save_dir):
     plt.savefig(f'{save_dir}/{save_name}.png')
-    print(f'Saved image at {save_dir}/{save_name}.png')
+    # print(f'Saved image at {save_dir}/{save_name}.png')
     plt.close()
 
 
@@ -160,7 +161,7 @@ def figure_2_tensor(fig):
     image_shape = np.concatenate((image_shape, channel)).astype(int)
     image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
     image = image.reshape(image_shape)
-    image = torch.Tensor(image)
+    image = torch.Tensor(image.copy())
     return image
 
 
@@ -353,7 +354,8 @@ def choose_layer(network, module_name, layer_idx):
 
 
 @interp_ex.main
-def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_configs):
+def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, 
+        dataset_configs, save_image):
     # setup environment & dataset
     datasets, combined_meta = auto_env.load_wds_datasets(configs=dataset_configs)
     observation_space = combined_meta['observation_space']
@@ -361,7 +363,7 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_config
     network = prepare_network(combined_meta)
     images, labels = process_data()
 
-    log_dir = interp_ex.observers[0].dir if log_dir == 'default' else log_dir
+    log_dir = interp_ex.observers[0].dir
     filename = chosen_algo if filename == 'default' else filename
 
     if save_video:
@@ -387,11 +389,10 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename, dataset_config
             video_writer.add_tensor(preprocess_obs(interpreted_img,
                                                    observation_space,
                                                    normalize_images=True))
-        else:
-            save_img(interpreted_img,
-                     save_name=f'{chosen_algo}_{itr}',
-                     save_dir=log_dir,
-                     observation_space=observation_space)
+        if save_image:
+            Path(f'{log_dir}/images').mkdir(parents=True, exist_ok=True)
+            save_img(save_name=f'{filename}_{itr}',
+                     save_dir=f'{log_dir}/images')
         plt.close('all')
 
         # if layer_gradxact:

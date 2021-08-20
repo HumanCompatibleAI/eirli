@@ -275,7 +275,9 @@ def make_policy(*,
                 postproc_arch,
                 freeze_pol_encoder,
                 lr_schedule=None,
-                print_policy_summary=True):
+                print_policy_summary=True,
+                modified_encoder_path=None,
+                encoder_kwargs=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
