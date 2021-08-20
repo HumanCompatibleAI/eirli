@@ -14,6 +14,21 @@ cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 
 declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8"
                          "cfg_repl_simclr" "icml_vae")
+
+gpu_default=0.15
+declare -A gpu_overrides=(
+    ["cfg_repl_tcpc8"]="0.3"
+    ["cfg_repl_simclr"]="0.3"
+)
+gpu_config() {
+    # figures out GPU configuration string based on repL config, if any
+    repl_config="$1"
+    override="${gpu_overrides[$repl_config]}"
+    if [ -z "$override" ]; then
+        override="$gpu_default"
+    fi
+    echo "tune_run_kwargs.resources_per_trial.gpu=$override"
+}
 declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0" "MoveToCorner-Demo-v0")
 declare -a mg_dataset_configs=("cfg_data_repl_demos_random")
 
@@ -29,14 +44,16 @@ for magical_env in "${magical_envs[@]}"; do
         for mg_dataset_config in "${mg_dataset_configs[@]}"; do
             echo -e "\n *** TRAINING $repl_config ON $magical_env WITH DATASET $mg_dataset_config *** \n "
             submit_expt icml_il_on_repl_sweep cfg_repl_augs cfg_use_magical \
-                "$repl_config" "$mg_dataset_config" cfg_il_bc_20k_nofreeze  \
+                "$repl_config" "$(gpu_config "$repl_config")" \
+                "$mg_dataset_config" cfg_il_bc_20k_nofreeze \
                 exp_ident="neurips_repl_bc_${repl_config}_${mg_dataset_config}" \
                 "env_cfg.task_name=$magical_env"
         done
     done
     for use_augs in augs noaugs; do
         submit_expt icml_control cfg_use_magical  cfg_il_bc_20k_nofreeze \
-            "cfg_il_bc_${use_augs}" exp_ident="neurips_control_bc_${use_augs}" \
+            "$(gpu_config "no_repl")" "cfg_il_bc_${use_augs}" \
+            exp_ident="neurips_control_bc_${use_augs}" \
             "env_cfg.task_name=$magical_env"
     done
 done
