@@ -40,7 +40,9 @@
 
     
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Design Principles" href="rep_learner_design.html" />
+    <link rel="prev" title="Dataset Creation &amp; Environment Specification" href="data.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -86,9 +88,18 @@
             
             
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="modules.html">il_representations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Representation Learner Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#training-a-pre-defined-representation-learner">Training a Pre-Defined Representation Learner</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#defining-a-new-representation-learner">Defining a New Representation Learner</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#existing-pre-defined-representation-learners">Existing Pre-Defined Representation Learners</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
 </ul>
 
             
@@ -157,27 +168,71 @@
            <div itemprop="articleBody">
             
   <div class="section" id="representation-learner-usage">
-<h1>Representation Learner Usage<a class="headerlink" href="#representation-learner-usage" title="Permalink to this headline">¶</a></h1>
+<span id="rep-learner-usage"></span><h1>Representation Learner Usage<a class="headerlink" href="#representation-learner-usage" title="Permalink to this headline">¶</a></h1>
 <p>All implementations of representation learning algorithms in this codebase are built around one central abstraction,
 which is, perhaps not surprisingly, a class called <cite>RepresentationLearner</cite>. This class defines the
-general framework by which components of representation learner training happen. Design of different variants of
-RepL algorithms is accomplished by creating a learner which takes in and runs different implementations of those component steps.</p>
+general framework by which components of representation learner training happen. Different variants of
+RepL algorithms are designed by creating a learner which takes in and runs different implementations of those component steps.</p>
 <div class="section" id="training-a-pre-defined-representation-learner">
 <h2>Training a Pre-Defined Representation Learner<a class="headerlink" href="#training-a-pre-defined-representation-learner" title="Permalink to this headline">¶</a></h2>
-<p>Here is an example of training a simple, pre-defined representation learner:</p>
+<p>For the sake of our experimentation, we have defined a number of existing, commonly used algorithms, and have made
+them available to import and use directly.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">il_representations.algos</span> <span class="kn">import</span> <span class="n">SimCLR</span>
 <span class="n">simclr_model</span> <span class="o">=</span> <span class="n">SimCLR</span><span class="p">()</span>
-<span class="n">loss_record</span><span class="p">,</span> <span class="n">encoder_path</span> <span class="o">=</span> <span class="n">simclr_model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">batches_per_epoch</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<span class="c1"># Note: ds in these examples is a dataset in WebDataset form</span>
+<span class="n">loss_record</span><span class="p">,</span> <span class="n">encoder_path</span> <span class="o">=</span> <span class="n">simclr_model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="n">ds</span><span class="p">,</span> <span class="n">batches_per_epoch</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 </pre></div>
-</div>
-<div class="section" id="existing-pre-defined-representation-learners">
-<h3>Existing Pre-Defined Representation Learners<a class="headerlink" href="#existing-pre-defined-representation-learners" title="Permalink to this headline">¶</a></h3>
-<p>Hi</p>
 </div>
 </div>
 <div class="section" id="defining-a-new-representation-learner">
 <h2>Defining a New Representation Learner<a class="headerlink" href="#defining-a-new-representation-learner" title="Permalink to this headline">¶</a></h2>
-<p>Hello</p>
+<p>Let’s use the SimCLR example from above to walk through how you might create an algorithm that differs from it in some way.
+This is the code used in <cite>algos/__init__.py</cite> to define the SimCLR algorithm class, with some additional
+explanatory documentation added in for clarity’s sake. This explanation will assume you have some familiarity with the
+conceptual breakdown used in this codebase; if you’re unsure about that, you can read more <a class="reference internal" href="rep_learner_design.html#rep-learner-design"><span class="std std-ref">here!</span></a></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">SimCLR</span><span class="p">(</span><span class="n">RepresentationLearner</span><span class="p">):</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Implementation of SimCLR: A Simple Framework for</span>
+<span class="sd">Contrastive Learning of Visual Representations</span>
+<span class="sd">https://arxiv.org/abs/2002.05709</span>
+
+<span class="sd">This method works by using a contrastive loss to push together representations</span>
+<span class="sd">of two differently-augmented versions of the same image. In particular, it</span>
+<span class="sd">uses a symmetric contrastive loss, which compares the (target, context)</span>
+<span class="sd">similarity against similarity of context with all other targets, and also</span>
+<span class="sd">similarity of target with all other contexts.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="c1"># This is where we specify the RepresentationLearner arguments</span>
+    <span class="c1"># that are integral to the algorithm definition of SimCLR</span>
+
+    <span class="n">algo_hardcoded_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="c1"># We use our BaseEncoder to map from image to representation</span>
+                                 <span class="c1"># The output of `encoder` is what we use for transfer</span>
+                                 <span class="n">encoder</span><span class="o">=</span><span class="n">BaseEncoder</span><span class="p">,</span>
+                                 <span class="c1"># A MLP projection head, symmetric between context and target</span>
+                                 <span class="c1"># The output of `decoder` is passed to the loss function</span>
+                                 <span class="n">decoder</span><span class="o">=</span><span class="n">SymmetricProjectionHead</span><span class="p">,</span>
+                                 <span class="c1"># A contrastive loss where we try to predict</span>
+                                 <span class="c1"># target given context and also context given target</span>
+                                 <span class="n">loss_calculator</span><span class="o">=</span><span class="n">SymmetricContrastiveLoss</span><span class="p">,</span>
+                                 <span class="c1"># Augment both context and target before encoder</span>
+                                 <span class="n">augmenter</span><span class="o">=</span><span class="n">AugmentContextAndTarget</span><span class="p">,</span>
+                                 <span class="c1"># For SimCLR, the target and context are different</span>
+                                 <span class="c1"># augmentations of the same, &quot;Identity&quot; frame</span>
+                                 <span class="n">target_pair_constructor</span><span class="o">=</span><span class="n">IdentityPairConstructor</span><span class="p">,</span>
+                                 <span class="c1"># Since we&#39;re not using momentum here, the encoder</span>
+                                 <span class="c1"># batch is the same as the one used in the loss</span>
+                                 <span class="n">batch_extender</span><span class="o">=</span><span class="n">IdentityBatchExtender</span><span class="p">)</span>
+
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="n">validate_and_update_kwargs</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">algo_hardcoded_kwargs</span><span class="o">=</span><span class="n">algo_hardcoded_kwargs</span><span class="p">)</span>
+
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="section" id="existing-pre-defined-representation-learners">
+<h3>Existing Pre-Defined Representation Learners<a class="headerlink" href="#existing-pre-defined-representation-learners" title="Permalink to this headline">¶</a></h3>
+<p>You can find a list of existing algorithms at: <a class="reference internal" href="il_representations.algos.html#module-il_representations.algos" title="il_representations.algos"><code class="xref py py-mod docutils literal notranslate"><span class="pre">il_representations.algos</span></code></a></p>
+</div>
 </div>
 </div>
 
@@ -186,6 +241,10 @@ RepL algorithms is accomplished by creating a learner which takes in and runs di
            
           </div>
           <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="rep_learner_design.html" class="btn btn-neutral float-right" title="Design Principles" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="data.html" class="btn btn-neutral float-left" title="Dataset Creation &amp; Environment Specification" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
 
   <hr/>
 

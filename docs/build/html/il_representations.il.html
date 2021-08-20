@@ -89,26 +89,37 @@
             
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="modules.html">il_representations</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
-<li class="toctree-l3 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html">il_representations.configs package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a></li>
-<li class="toctree-l4 current"><a class="current reference internal" href="#">il_representations.il package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html">il_representations.scripts package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html">il_representations.test_support package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.configs.html">il_representations.configs package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">il_representations.il package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.bc">il_representations.il.bc module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.bc_support">il_representations.il.bc_support module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.disc_rew_nets">il_representations.il.disc_rew_nets module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.gail_pol_save">il_representations.il.gail_pol_save module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.ppo_gail">il_representations.il.ppo_gail module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.score_logging">il_representations.il.score_logging module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.utils">il_representations.il.utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il">Module contents</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.scripts.html">il_representations.scripts package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.test_support.html">il_representations.test_support package</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -158,8 +169,6 @@
   <ul class="wy-breadcrumbs">
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="modules.html">il_representations</a> &raquo;</li>
         
           <li><a href="il_representations.html">il_representations package</a> &raquo;</li>
         
@@ -244,6 +253,7 @@ actions.</p>
 <p>Image-based discriminator network. This is intended to be passed as a
 <cite>discrim_net</cite> argument to <cite>DiscrimNetGAIL</cite> in
 <cite>imitation.rewards.discrim_net</cite>.</p>
+<p>Initializes internal Module state, shared by both nn.Module and ScriptModule.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet.forward" title="Permalink to this definition">¶</a></dt>

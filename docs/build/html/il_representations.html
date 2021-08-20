@@ -42,7 +42,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="il_representations.algos package" href="il_representations.algos.html" />
-    <link rel="prev" title="il_representations" href="modules.html" /> 
+    <link rel="prev" title="Design Principles" href="rep_learner_design.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -89,27 +89,26 @@
             
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset and environment README</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="modules.html">il_representations</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">il_representations package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html">il_representations.configs package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.il.html">il_representations.il package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html">il_representations.scripts package</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html">il_representations.test_support package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">il_representations package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.configs.html">il_representations.configs package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.il.html">il_representations.il package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.scripts.html">il_representations.scripts package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="il_representations.test_support.html">il_representations.test_support package</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-il_representations.utils">il_representations.utils module</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#module-il_representations">Module contents</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.script_utils">il_representations.script_utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-il_representations">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -159,8 +158,6 @@
   <ul class="wy-breadcrumbs">
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-        
-          <li><a href="modules.html">il_representations</a> &raquo;</li>
         
       <li>il_representations package</li>
     
@@ -439,6 +436,13 @@ undesirable if e.g. <cite>d</cite> is an OrderedDict.</p>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">pdb.Pdb</span></code></p>
 <p>A Pdb subclass that may be used
 from a forked multiprocessing child</p>
+<p>Instantiate a line-oriented interpreter framework.</p>
+<p>The optional argument ‘completekey’ is the readline name of a
+completion key; it defaults to the Tab key. If completekey is
+not None and the readline module is available, command completion
+is done automatically. The optional arguments stdin and stdout
+specify alternate input and output file objects; if not specified,
+sys.stdin and sys.stdout are used.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="il_representations.utils.ForkedPdb.interaction">
 <span class="sig-name descname"><span class="pre">interaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.ForkedPdb.interaction" title="Permalink to this definition">¶</a></dt>
@@ -737,7 +741,7 @@ up(up(up(“foo/bar”))) == “..”</p>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
         <a href="il_representations.algos.html" class="btn btn-neutral float-right" title="il_representations.algos package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="modules.html" class="btn btn-neutral float-left" title="il_representations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="rep_learner_design.html" class="btn btn-neutral float-left" title="Design Principles" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

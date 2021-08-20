@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Dataset and environment README &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>Dataset Creation &amp; Environment Specification &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
   
 
   
@@ -41,7 +41,8 @@
     
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="il_representations.test_support package" href="il_representations.test_support.html" /> 
+    <link rel="next" title="Representation Learner Usage" href="representation_learner_usage.html" />
+    <link rel="prev" title="Welcome to Representations for Sequence Learning’s documentation!" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -88,8 +89,7 @@
             
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="modules.html">il_representations</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Dataset and environment README</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Dataset Creation &amp; Environment Specification</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#sacred-ingredients">Sacred ingredients</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#creating-gym-environments">Creating Gym environments</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#loading-demonstrations-from-their-native-format">Loading demonstrations from their ‘native’ format</a></li>
@@ -103,6 +103,9 @@
 <li class="toctree-l2"><a class="reference internal" href="#adding-support-for-a-new-benchmark">Adding support for a new benchmark</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
 </ul>
 
             
@@ -151,7 +154,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Dataset and environment README</li>
+      <li>Dataset Creation &amp; Environment Specification</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -170,8 +173,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="dataset-and-environment-readme">
-<h1>Dataset and environment README<a class="headerlink" href="#dataset-and-environment-readme" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="dataset-creation-environment-specification">
+<span id="dataset-and-environment"></span><h1>Dataset Creation &amp; Environment Specification<a class="headerlink" href="#dataset-creation-environment-specification" title="Permalink to this headline">¶</a></h1>
 <p><em>This README current as of 2020-11-29. Some aspects of the data-loading
 pipeline will probably change eventually, so expect this doc to be
 slightly out of date if you’re reading it 2-3 months (or more) in the
@@ -332,21 +335,21 @@ benchmark name from <code class="docutils literal notranslate"><span class="pre"
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>Training on demos from both the default task from</p></li>
-</ul>
-<p><code class="docutils literal notranslate"><span class="pre">env_cfg_ingredient</span></code>, and another task called “finger-spin”. Notice
+<li><p>Training on demos from both the default task from
+<code class="docutils literal notranslate"><span class="pre">env_cfg_ingredient</span></code>, and another task called “finger-spin”. Notice
 that this time the first config dict does not have <em>any</em> keys; this is
 equivalent to using <code class="docutils literal notranslate"><span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;demos&quot;}</span></code> as we did above.
-<code class="docutils literal notranslate"><span class="pre">&quot;type&quot;:</span> <span class="pre">&quot;demos&quot;</span></code> is also implicit in the second dict.</p>
+<code class="docutils literal notranslate"><span class="pre">&quot;type&quot;:</span> <span class="pre">&quot;demos&quot;</span></code> is also implicit in the second dict.</p></li>
+</ul>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dataset_configs</span> <span class="o">=</span> <span class="p">[{},</span> <span class="p">{</span><span class="s2">&quot;env_cfg&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;task_name&quot;</span><span class="p">:</span> <span class="s2">&quot;finger-spin&quot;</span><span class="p">}}]</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>Combining the examples above, here is an example that trains on demos</p></li>
-</ul>
-<p>from the current task, random rollouts from the current task, demos from
+<li><p>Combining the examples above, here is an example that trains on demos
+from the current task, random rollouts from the current task, demos from
 a second task called <code class="docutils literal notranslate"><span class="pre">&quot;finger-spin&quot;</span></code>, and random rollouts from a third
-task called <code class="docutils literal notranslate"><span class="pre">&quot;cheetah-run&quot;</span></code>:</p>
+task called <code class="docutils literal notranslate"><span class="pre">&quot;cheetah-run&quot;</span></code>:</p></li>
+</ul>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dataset_configs</span> <span class="o">=</span> <span class="p">[</span>
 <span class="p">{},</span>
 <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;random&quot;</span><span class="p">},</span>
@@ -541,7 +544,8 @@ trajectories for each fixture.</p></li>
           </div>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-        <a href="il_representations.test_support.html" class="btn btn-neutral float-left" title="il_representations.test_support package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="representation_learner_usage.html" class="btn btn-neutral float-right" title="Representation Learner Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to Representations for Sequence Learning’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

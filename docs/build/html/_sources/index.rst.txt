@@ -8,11 +8,14 @@ Welcome to Representations for Sequence Learning's documentation!
 .. include:: ../../README.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
    data
-   modules
+   representation_learner_usage
+   rep_learner_design
+   il_representations
+
 
 
 Indices and tables

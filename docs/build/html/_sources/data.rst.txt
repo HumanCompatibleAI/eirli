@@ -1,5 +1,8 @@
-Dataset and environment README
-==============================
+.. _dataset-and-environment:
+
+
+Dataset Creation & Environment Specification
+============================================
 
 *This README current as of 2020-11-29. Some aspects of the data-loading
 pipeline will probably change eventually, so expect this doc to be
@@ -175,19 +178,19 @@ This configuration syntax might be clearer with a few examples:
     dataset_configs = [{"type": "demos"}, {"type": "random"}]
 
 - Training on demos from both the default task from
-``env_cfg_ingredient``, and another task called "finger-spin". Notice
-that this time the first config dict does not have *any* keys; this is
-equivalent to using ``{"type": "demos"}`` as we did above.
-``"type": "demos"`` is also implicit in the second dict.
+  ``env_cfg_ingredient``, and another task called "finger-spin". Notice
+  that this time the first config dict does not have *any* keys; this is
+  equivalent to using ``{"type": "demos"}`` as we did above.
+  ``"type": "demos"`` is also implicit in the second dict.
 
 ::
 
     dataset_configs = [{}, {"env_cfg": {"task_name": "finger-spin"}}]
 
 - Combining the examples above, here is an example that trains on demos
-from the current task, random rollouts from the current task, demos from
-a second task called ``"finger-spin"``, and random rollouts from a third
-task called ``"cheetah-run"``:
+  from the current task, random rollouts from the current task, demos from
+  a second task called ``"finger-spin"``, and random rollouts from a third
+  task called ``"cheetah-run"``:
 
 ::
 

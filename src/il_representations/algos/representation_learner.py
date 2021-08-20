@@ -18,6 +18,8 @@ from il_representations.data.read_dataset import (SubdatasetExtractor,
                                                   datasets_to_loader)
 from il_representations.utils import (Timers, repeat_chain_non_empty,
                                       weight_grad_norms)
+import webdataset as wds
+
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -289,6 +291,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.decoder.train(val)
 
     def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
+
+        # if isinstance(datasets[0], wds.Dataset):
         subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
@@ -299,6 +303,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
             preprocessors=(subdataset_extractor, self.target_pair_constructor))
         data_iter = repeat_chain_non_empty(dataloader)
         return data_iter
+    # If the dataset is loaded all into memory right now, we can call self.target_pair_constructor
+    # on the entire thing. Then we need to randomly sample batches.
+    # One way to do this is to shuffle the whole dataset and then iterate through it. This means we get the same
+    # order each time through the epoch, but random order within a single epoch.
+    # If we know it doesn't have temporal structure, we could apply the target pair constructor on a batch level
+    # However, this is a little messy design-wise, because the opposite of a Webdataset isn't obviously
+    # "Something without temporal stucture"
+    # What if there are two non-Webdataset categories: a data iterator, and a dataset. I'm... not sure how to
+    # differentiate between those in a Pythonic way, which we'd need to if we wanted to apply TPC differently
+    # for a data iterator vs a dataset
 
     def learn(self, datasets, batches_per_epoch, n_epochs, *, callbacks=(),
               end_callbacks=(), log_dir, log_interval=100,

@@ -36,6 +36,8 @@ extensions = ['sphinx.ext.autodoc', 'sphinxcontrib.napoleon']
 autodoc_mock_imports = ["stable_baselines3", "imitation", "ray", "torch", "skopt", "webdataset", "dmc2gym",
                         "procgen", "torchsummary", "magical", "torchvision", "pyro", "captum"]
 
+autoclass_content = 'both'
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
