@@ -432,7 +432,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_data_repl_demos():
         """Training on both demos and random rollouts for the current
@@ -683,6 +682,41 @@ def make_chain_configs(experiment_obj):
         repl = {
             'algo': 'InverseDynamicsPrediction',
             'algo_params': {'batch_size': 32},
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_noaugs():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'augs': '',
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_augs():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'augs': 'translate,rotate,gaussian_blur,color_jitter_mid',
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_augs():
+        # a standard set of augmentations for repL, should work okay for any
+        # environment
+        repl = {
+            'augmenter_kwargs': {
+                'augmenter_spec':
+                'translate,rotate,gaussian_blur,color_jitter_mid',
+            },
         }
         _ = locals()
         del _
