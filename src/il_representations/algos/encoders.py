@@ -13,6 +13,7 @@ BatchExtender module
 import copy
 import functools
 import inspect
+import itertools as it
 import os
 import math
 import traceback
@@ -30,11 +31,17 @@ from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 from il_representations.algos.utils import independent_multivariate_normal
 
 
-def compute_output_shape(observation_space, layers):
+def compute_output_shape(observation_space, layers, device=None):
     """Compute the size of the output after passing an observation from
     `observation_space` through the given `layers`."""
     # [None] adds a batch dimension to the random observation
     torch_obs = torch.tensor(observation_space.sample()[None])
+    if device is None:
+        # get a param to infer device that layers are on
+        p_iter = it.chain.from_iterable(l.parameters() for l in layers)
+        param = next(p_iter)
+        device = param.device
+    torch_obs = torch_obs.to(param.device)
     with torch.no_grad():
         sample = preprocess_obs(torch_obs, observation_space,
                                 normalize_images=True)

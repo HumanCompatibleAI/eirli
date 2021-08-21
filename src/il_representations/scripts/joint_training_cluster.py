@@ -82,8 +82,12 @@ def main(args, sacred_args):
         # function directly instead (weird but whatever)
         remote_decorator = ray.remote
     remote_handle = remote_decorator(run_joint_training_remote)
-    remote_run = remote_handle.remote(sacred_args)
-    return ray.get(remote_run)
+    remote_runs = []
+    assert args.nseeds >= 1, args.nseeds
+    for _ in range(args.nseeds):
+        remote_run = remote_handle.remote(sacred_args)
+        remote_runs.append(remote_run)
+    return ray.get(remote_runs)
 
 
 # allow_abbrev stops argparse from swallowing genuine Sacred arguments that
@@ -101,6 +105,10 @@ parser.add_argument('--ray-ngpus',
                     default=None,
                     type=float,
                     help='number of GPUs for task')
+parser.add_argument('--nseeds',
+                    default=1,
+                    type=int,
+                    help='number of seeds to run')
 
 if __name__ == '__main__':
     main(*parser.parse_known_args())

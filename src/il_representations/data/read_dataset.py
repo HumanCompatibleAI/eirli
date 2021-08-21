@@ -155,9 +155,7 @@ def load_ilr_datasets(file_paths):
 def make_interleaved_dataset(
         *,
         datasets,
-        preprocessors,
         shuffle,
-        shuffle_buffer_size,
         max_workers,
         nominal_length,
         shuffle_buffer_size=1024,
