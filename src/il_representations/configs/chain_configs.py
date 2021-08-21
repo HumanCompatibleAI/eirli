@@ -713,9 +713,11 @@ def make_chain_configs(experiment_obj):
         # a standard set of augmentations for repL, should work okay for any
         # environment
         repl = {
-            'augmenter_kwargs': {
-                'augmenter_spec':
-                'translate,rotate,gaussian_blur,color_jitter_mid',
+            'algo_params': {
+                'augmenter_kwargs': {
+                    'augmenter_spec':
+                    'translate,rotate,gaussian_blur,color_jitter_mid',
+                },
             },
         }
         _ = locals()

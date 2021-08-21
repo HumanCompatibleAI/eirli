@@ -4,6 +4,8 @@
 # - repL/augs: Dynamics, InvDyn, SimCLR, TemporalCPC, VAE, BC+augs, BC-augs
 # - Tasks: MTC, MTR, MR
 # - #seeds: 5
+# - repL batch size of 64 for all the non-contrastive methods, 384 for
+#   contrastive ones.
 # Does only BC, and only demos+random repL data
 
 set -e
@@ -14,7 +16,6 @@ cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 
 declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8"
                          "cfg_repl_simclr" "icml_vae")
-
 gpu_default=0.15
 declare -A gpu_overrides=(
     ["cfg_repl_tcpc8"]="0.3"

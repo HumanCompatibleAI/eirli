@@ -126,7 +126,8 @@ def make_dataset_experiment_configs(experiment_obj):
 
     @experiment_obj.named_config
     def icml_vae():
-        repl = {'algo': ICMLVariationalAutoencoder}
+        repl = {'algo': ICMLVariationalAutoencoder,
+                'algo_params': {'batch_size': 64}}
         _ = locals()
         del _
 

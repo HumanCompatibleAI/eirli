@@ -55,8 +55,13 @@ def make_jt_configs(train_ex):
     @train_ex.named_config
     def repl_simclr():
         # simclr
+        # FIXME(sam): what is the batch size for this? What are the batch sizes
+        # for any of these?
         repl = {
             'algo': SimCLR,
+            'algo_params': {
+                'batch_size': 64,
+            },
         }
         repl_weight = 1.0
 
