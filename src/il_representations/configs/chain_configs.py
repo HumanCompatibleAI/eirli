@@ -453,6 +453,30 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_repl_5demos_random():
+        """Like cfg_data_repl_demos_random, but only includes the first five
+        demo trajectories."""
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos', 'env_data': {'wds_n_trajs': 5}},
+                {'type': 'random'}
+            ],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_il_5demos():
+        il_train = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_data': {'wds_n_trajs': 5},
+            }],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_random():
         """Training on both demos and random rollouts for the current
         environment."""
@@ -471,7 +495,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_data_repl_demos_magical_mt():

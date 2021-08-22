@@ -74,9 +74,6 @@ def default_config():
     batches_per_epoch = 1000
     n_epochs = 5
 
-    # Set number of trajectories needed in the dataset. If None, use the whole dataset.
-    n_trajs = None
-
     # how often should we save repL batch data?
     # (set to None to disable completely)
     repl_batch_save_interval = 1000
@@ -119,7 +116,7 @@ make_run_rep_learner_configs(represent_ex)
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask,
         debug_return_model, optimizer_cls, optimizer_kwargs, scheduler_cls,
-        scheduler_kwargs, log_interval, save_interval, n_trajs, _config):
+        scheduler_kwargs, log_interval, save_interval, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
 
@@ -190,7 +187,6 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         datasets=webdatasets,
         batches_per_epoch=batches_per_epoch,
         n_epochs=n_epochs,
-        n_trajs=n_trajs,
         callbacks=repl_callbacks,
         log_dir=log_dir,
         end_callbacks=repl_end_callbacks,

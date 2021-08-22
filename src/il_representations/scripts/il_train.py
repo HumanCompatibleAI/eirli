@@ -25,7 +25,7 @@ from torch.optim.adam import Adam
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
+from il_representations.data.read_dataset import datasets_to_loader
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -66,7 +66,6 @@ def bc_defaults():
     # regularisation
     ent_weight = 1e-3
     l2_weight = 1e-5
-    n_trajs = None
 
     _ = locals()
     del _
@@ -125,9 +124,6 @@ def gail_defaults():
     # TODO(sam): remove this if AIRL doesn't work; if AIRL does work, rename
     # `gail_ingredient` to `adv_il_ingredient` or similar
     use_airl = False
-
-    # trajectory subsampling
-    n_trajs = None
 
     _ = locals()
     del _
@@ -331,7 +327,6 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     # build dataset in the format required by imitation
     nom_num_epochs = bc['nominal_num_epochs']
     nom_num_batches = max(1, int(np.ceil(bc['n_batches'] / nom_num_epochs)))
-    subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
@@ -342,10 +337,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         nominal_length=bc['batch_size'] * nom_num_batches,
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[
-            subdataset_extractor,
-            streaming_extract_keys("obs", "acts")
-        ],
+        preprocessors=(streaming_extract_keys("obs", "acts"), ),
         drop_last=True)
 
     trainer = BC(
@@ -460,7 +452,6 @@ def do_training_gail(
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
 
-    subdataset_extractor = SubdatasetExtractor(n_trajs=gail['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=gail['disc_batch_size'],
@@ -472,8 +463,7 @@ def do_training_gail(
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[subdataset_extractor,
-                       streaming_extract_keys(
+        preprocessors=[streaming_extract_keys(
                            "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)

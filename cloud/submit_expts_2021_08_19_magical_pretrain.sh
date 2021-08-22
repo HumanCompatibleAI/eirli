@@ -6,20 +6,21 @@
 # - #seeds: 5
 # - repL batch size of 64 for all the non-contrastive methods, 384 for
 #   contrastive ones.
+# - RepL datasets: 5 demos + some large number of random rollouts. (IL uses 5
+#   demos too.)
 # Does only BC, and only demos+random repL data
 
 set -e
 
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=1")
-
+# WARNING: 5 demos here!
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5" "cfg_il_5demos")
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
-
 declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8"
                          "cfg_repl_simclr" "icml_vae")
-gpu_default=0.15
+gpu_default=0.1
 declare -A gpu_overrides=(
-    ["cfg_repl_tcpc8"]="0.3"
-    ["cfg_repl_simclr"]="0.3"
+    ["cfg_repl_tcpc8"]="0.2"
+    ["cfg_repl_simclr"]="0.2"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
@@ -31,7 +32,7 @@ gpu_config() {
     echo "tune_run_kwargs.resources_per_trial.gpu=$override"
 }
 declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0" "MoveToCorner-Demo-v0")
-declare -a mg_dataset_configs=("cfg_data_repl_demos_random")
+declare -a mg_dataset_configs=("cfg_data_repl_5demos_random")
 
 submit_expt() {
     # submit experiment to cluster using given args

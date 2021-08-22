@@ -124,6 +124,12 @@ def env_data_defaults():
     data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
     del _this_file_dir
 
+    # Maximum number of trajectories to load from webdatasets when using
+    # `auto.load_wds_datasets`. Set to None to have no limit. Code will error
+    # if a numerical limit is supplied but there are fewer trajectories in the
+    # dataset.
+    wds_n_trajs = None
+
     # ########################
     # MAGICAL config variables
     # ########################

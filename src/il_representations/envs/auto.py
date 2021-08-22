@@ -9,10 +9,10 @@ from imitation.util.util import make_vec_env
 from procgen import ProcgenEnv
 from stable_baselines3.common.atari_wrappers import AtariWrapper
 from stable_baselines3.common.vec_env import (VecFrameStack,
-                                              VecTransposeImage,
-                                              SubprocVecEnv)
+                                              VecTransposeImage)
 from il_representations.algos.augmenters import ColorSpace
-from il_representations.data.read_dataset import load_ilr_datasets
+from il_representations.data.read_dataset import (load_ilr_datasets,
+                                                  SubdatasetExtractor)
 from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -205,6 +205,11 @@ def _get_default_env_cfg(_config):
 
 
 @env_data_ingredient.capture
+def _get_default_env_data(_config):
+    return _config
+
+
+@env_data_ingredient.capture
 def get_data_dir(benchmark_name, task_key, data_type, data_root):
     """Get the data directory for a given benchmark ("magical", "dm_control",
     etc.), task (e.g. "MoveToCorner-Demo-v0", "finger-spin") and data type
@@ -220,21 +225,25 @@ def load_wds_datasets(configs):
         configs ([dict]): list of dicts with the following keys:
             - `type`: "random" or "demos", as appropriate.
             - `env_cfg`: subset of keys from `env_cfg_ingredient` specifying a
-            particular environment name, etc.
+               particular environment name, etc.
+            - `env_data`: subset of keys from `env_data_ingredient` specifying
+              a set of
           If any of the above keys are missing, they will be filled in with
-          defaults: `type` defaults to "demos", and `env_cfg` keys are taken
-          from `env_cfg_ingredient` by default. Only keys that differ from
-          those defaults need to be overridden. For instance, if
-          `env_cfg_ingredient` was configured with
-          `benchmark_name="dm_control"`, then you could set `configs =
-          [{"type": "random", "env_cfg": {"task_name": "finger_spin"}}]` to use
-          only rollouts from the `finger-spin` dm_control environment.
+          defaults: `type` defaults to "demos", while `env_cfg` keys are taken
+          from `env_cfg_ingredient` and `env_data` keys are taken from
+          `env_data_ingredient` by default. Only keys that differ from those
+          defaults need to be overridden. For instance, if `env_cfg_ingredient`
+          was configured with `benchmark_name="dm_control"`, then you could set
+          `configs = [{"type": "random", "env_cfg": {"task_name":
+          "finger_spin"}}]` to use only rollouts from the `finger-spin`
+          dm_control environment.
 
     (all other args are taken from env_data_ingredient)"""
     # by default we load demos for the configured base environment
     defaults = {
         'type': 'demos',
         'env_cfg': _get_default_env_cfg(),
+        'env_data': _get_default_env_data(),
     }
     all_datasets = []
 
@@ -244,24 +253,31 @@ def load_wds_datasets(configs):
     for config in configs:
         # generate config dict, including defaults
         assert isinstance(config, dict) and config.keys() <= {
-            'type', 'env_cfg'
+            'type', 'env_cfg', 'env_data',
         }, config
         orig_config = config
         config = dict_update(defaults, config)
         data_type = config['type']
         env_cfg = config['env_cfg']
-        benchmark_name = env_cfg["benchmark_name"]
+        env_data = config['env_data']
+        benchmark_name = env_cfg['benchmark_name']
         task_key = env_cfg['task_name']
         data_dir_for_config = get_data_dir(
             benchmark_name=benchmark_name, task_key=task_key,
-            data_type=data_type)
+            data_type=data_type, data_root=env_data['data_root'])
 
         tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tgz"))
         if len(tar_files) == 0:
             raise IOError(
                 f"did not find any files in '{data_dir_for_config}' (for "
                 f"dataset config '{orig_config}')")
-        all_datasets.append(load_ilr_datasets(tar_files))
+        loaded_ds = load_ilr_datasets(tar_files)
+        n_trajs = env_data['wds_n_trajs']
+        if n_trajs is not None:
+            subds_extractor = SubdatasetExtractor(
+                n_trajs=env_data['wds_n_trajs'])
+            loaded_ds = loaded_ds.pipe(subds_extractor)
+        all_datasets.append(loaded_ds)
 
     # get combined metadata for all datasets
     color_space = all_datasets[0].meta['color_space']

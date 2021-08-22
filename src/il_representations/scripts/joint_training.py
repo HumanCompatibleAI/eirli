@@ -99,8 +99,6 @@ def bc_defaults():
     # number of trajectories for short intermediate evils
     # (not the final eval)
     short_eval_n_traj = 10
-    # set this to a number to limit the number of trajectories BC can use
-    n_trajs = None
 
     _ = locals()
     del _
@@ -259,16 +257,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
                                                  batches_per_epoch=n_batches,
-                                                 n_epochs=1,
-                                                 n_trajs=None)
+                                                 n_epochs=1)
     latest_eval_stats = None
     bc_data_iter = bc_learner.make_data_iter(
         il_dataset=bc_dataset,
         augmentation_fn=bc_augmentation_fn,
         batch_size=bc['batch_size'],
         n_batches=n_batches,
-        shuffle_buffer_size=shuffle_buffer_size,
-        n_trajs=bc['n_trajs'])
+        shuffle_buffer_size=shuffle_buffer_size)
 
     # optimizer and LR scheduler
     params_list_dedup = deduplicate_params(
@@ -388,8 +384,7 @@ def learn_repl_gail(repl_learner, repl_datasets, bc_learner,
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
                                                  batches_per_epoch=n_batches,
-                                                 n_epochs=1,
-                                                 n_trajs=None)
+                                                 n_epochs=1)
     XXX_data_iter = bc_learner.make_data_iter(
         il_dataset=bc_dataset,
         augmentation_fn=bc_augmentation_fn,
