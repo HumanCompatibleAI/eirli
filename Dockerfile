@@ -3,7 +3,7 @@
 # - Uses Conda Python 3.7 instead of Python 3.6.
 # - Adds nfs
 # The Conda bits are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
-FROM nvidia/cuda:10.1-cudnn8-runtime-ubuntu18.04
+FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04
 
 RUN apt-get update -q \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
