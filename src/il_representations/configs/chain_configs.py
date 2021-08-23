@@ -98,7 +98,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def cfg_base_skopt_1cpu_pt25gpu_no_retry():
         # another config that is used for skopt tuning runs in lead-up to icml
