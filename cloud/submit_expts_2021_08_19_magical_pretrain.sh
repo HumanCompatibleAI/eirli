@@ -13,14 +13,14 @@
 set -e
 
 # WARNING: 5 demos here!
-base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5" "cfg_il_5demos")
+base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5" "cfg_data_il_5demos")
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8"
                          "cfg_repl_simclr" "icml_vae")
-gpu_default=0.1
+gpu_default=0.05
 declare -A gpu_overrides=(
-    ["cfg_repl_tcpc8"]="0.2"
-    ["cfg_repl_simclr"]="0.2"
+    ["cfg_repl_tcpc8"]="0.1"
+    ["cfg_repl_simclr"]="0.1"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
