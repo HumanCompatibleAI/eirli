@@ -22,10 +22,10 @@ base_cfgs=("n_batches=30000" "env_use_magical" "bc.short_eval_interval=2000"
 repl_configs=("repl_simclr" "repl_id" "repl_tcpc8" "repl_vae" "repl_fd"
               "repl_noid" "repl_noid_noaugs")
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion")
-gpu_default=0.05
+gpu_default=0.1
 declare -A gpu_overrides=(
-    ["repl_tcpc8"]="0.2"
-    ["repl_simclr"]="0.2"
+    ["repl_tcpc8"]="0.21"
+    ["repl_simclr"]="0.21"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any

@@ -18,10 +18,10 @@ base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8"
                          "cfg_repl_simclr" "icml_vae")
-gpu_default=0.05
+gpu_default=0.065
 declare -A gpu_overrides=(
-    ["cfg_repl_tcpc8"]="0.2"
-    ["cfg_repl_simclr"]="0.2"
+    ["cfg_repl_tcpc8"]="0.21"
+    ["cfg_repl_simclr"]="0.21"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
@@ -46,7 +46,7 @@ for magical_env in "${magical_envs[@]}"; do
     for repl_config in "${repl_configs[@]}"; do
         for mg_dataset_config in "${mg_dataset_configs[@]}"; do
             echo -e "\n *** TRAINING $repl_config ON $magical_env WITH DATASET $mg_dataset_config *** \n "
-            submit_expt cfg_repl_5k_il icml_il_on_repl_sweep  cfg_repl_augs cfg_use_magical \
+            submit_expt cfg_repl_5k_il cfg_repl_augs cfg_use_magical \
                 "$repl_config" "$(gpu_config "$repl_config")" \
                 "$mg_dataset_config" cfg_il_bc_20k_nofreeze \
                 exp_ident="neurips_repl_bc_${repl_config}_${mg_dataset_config}" \

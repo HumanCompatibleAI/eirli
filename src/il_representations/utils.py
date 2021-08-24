@@ -365,6 +365,11 @@ def up(p):
     return os.path.normpath(os.path.join(p, ".."))
 
 
+class IdentityModule(th.nn.Module):
+    def forward(self, x):
+        return x
+
+
 def augmenter_from_spec(spec, color_space):
     """Construct an image augmentation module from an augmenter spec, expressed
     as either a string of comma-separated augmenter names, or a dict of kwargs
@@ -377,7 +382,7 @@ def augmenter_from_spec(spec, color_space):
         # FIXME(sam): really this should return None, and I should fix callers
         # to reflect that. Right now the repL code does not handle the case
         # where this returns None.
-        return lambda x: x
+        return IdentityModule()
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
