@@ -5,6 +5,7 @@ import argparse
 import faulthandler
 import logging
 import signal
+import os
 
 from docopt import docopt
 import ray
@@ -45,9 +46,10 @@ def hacky_run_commandline(exp, argv):
     )
 
 
-def run_joint_training_remote(extra_args):
+def run_joint_training_remote(this_dir, extra_args):
     """This function executes the experiment. It is intended to be wrapped with
     ray.remote and run as a Ray task."""
+    os.chdir(this_dir)
     from il_representations.scripts.joint_training import add_fso, train_ex
     add_fso()
     argv = ['placeholder arg because only argv[1:] is used', 'train']
@@ -84,8 +86,9 @@ def main(args, sacred_args):
     remote_handle = remote_decorator(run_joint_training_remote)
     remote_runs = []
     assert args.nseeds >= 1, args.nseeds
+    this_dir = os.getcwd()
     for _ in range(args.nseeds):
-        remote_run = remote_handle.remote(sacred_args)
+        remote_run = remote_handle.remote(this_dir, sacred_args)
         remote_runs.append(remote_run)
     return ray.get(remote_runs)
 

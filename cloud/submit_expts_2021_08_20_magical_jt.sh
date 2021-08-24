@@ -8,14 +8,14 @@
 # - IL data: 5 demos
 # - repL data: 5 demos + all random rollouts
 # - Batch size of 64 for all repL algos except the contrastive ones, which are
-#   384 due to defaults.
+#   384.
 # - RepL weight is always 1.0, except in the controls where it is 0.0 (I can't
 #   disable repL entirely, so I just zero the weight).
 
 set -e
 
-ray_address="localhost:42000"
 ray_ncpus=1.0
+cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 nseeds=5
 base_cfgs=("n_batches=30000" "env_use_magical" "bc.short_eval_interval=2000"
            "augs_neurips_repl_bc" "bc_data_5demos" "repl_data_5demos_random")
@@ -24,8 +24,8 @@ repl_configs=("repl_noid" "repl_noid_noaugs" "repl_id"
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion")
 gpu_default=0.05
 declare -A gpu_overrides=(
-    ["repl_tcpc8"]="0.1"
-    ["repl_simclr"]="0.1"
+    ["repl_tcpc8"]="0.2"
+    ["repl_simclr"]="0.2"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
@@ -41,9 +41,9 @@ gpu_config() {
 submit_expt() {
     # submit joint training experiment to local Ray server
     n_gpus="$(gpu_config "$@")"
-    python -m il_representations.scripts.joint_training_cluster \
-        --ray-address="$ray_address" --ray-ncpus "$ray_ncpus" \
-        --ray-ngpus "$n_gpus" --nseeds "$nseeds" "${base_cfgs[@]}" "$@" &
+    ray submit --tmux "$cluster_cfg_path" ./submit_joint_training_cluster.py \
+        --ray-ncpus "$ray_ncpus" --ray-ngpus "$n_gpus" --nseeds "$nseeds" \
+        "${base_cfgs[@]}" "$@"
 }
 
 launch() {
