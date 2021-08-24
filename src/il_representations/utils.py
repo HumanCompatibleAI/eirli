@@ -374,7 +374,10 @@ def augmenter_from_spec(spec, color_space):
     elif isinstance(spec, dict):
         return StandardAugmentations(**spec, stack_color_space=color_space)
     elif spec is None:
-        return None
+        # FIXME(sam): really this should return None, and I should fix callers
+        # to reflect that. Right now the repL code does not handle the case
+        # where this returns None.
+        return lambda x: x
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 

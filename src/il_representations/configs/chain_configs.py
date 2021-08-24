@@ -713,7 +713,7 @@ def make_chain_configs(experiment_obj):
         il_train = {
             'algo': 'bc',
             'bc': {
-                'augs': '',
+                'augs': None,
             },
         }
         _ = locals()
