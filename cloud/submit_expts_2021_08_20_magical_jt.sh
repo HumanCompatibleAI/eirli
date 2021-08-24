@@ -19,13 +19,13 @@ cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 nseeds=5
 base_cfgs=("n_batches=30000" "env_use_magical" "bc.short_eval_interval=2000"
            "augs_neurips_repl_bc" "bc_data_5demos" "repl_data_5demos_random")
-repl_configs=("repl_noid" "repl_noid_noaugs" "repl_id"
-              "repl_vae" "repl_fd" "repl_simclr" "repl_tcpc8")
+repl_configs=("repl_simclr" "repl_id" "repl_tcpc8" "repl_vae" "repl_fd"
+              "repl_noid" "repl_noid_noaugs")
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion")
 gpu_default=0.05
 declare -A gpu_overrides=(
-    ["repl_tcpc8"]="0.2"
-    ["repl_simclr"]="0.2"
+    ["repl_tcpc8"]="0.125"
+    ["repl_simclr"]="0.125"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any

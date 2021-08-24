@@ -1,4 +1,4 @@
-from il_representations.script_utils import StagesToRun
+from il_representations.script_utils import StagesToRun, ReuseRepl
 from ray import tune
 
 
@@ -1045,5 +1045,14 @@ def make_chain_configs(experiment_obj):
             "venv_parallel": True
         }
 
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_5k_il():
+        repl = {'batches_per_epoch': 500,
+                'n_epochs': 10}
+        stages_to_run = StagesToRun.REPL_AND_IL
+        reuse_repl = ReuseRepl.NO
         _ = locals()
         del _
