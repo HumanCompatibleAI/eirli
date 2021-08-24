@@ -28,12 +28,12 @@ def make_jt_configs(train_ex):
             'algo_params': {
                 'batch_size': 2,
                 'augmenter_kwargs': {
-                    'augmenter_spec': '',
+                    'augmenter_spec': None,
                 },
             },
         }
         repl_weight = 0.0
-        bc = {'augs': ''}
+        bc = {'augs': None}
 
         _ = locals()
         del _
