@@ -18,7 +18,7 @@ base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8"
                          "cfg_repl_simclr" "icml_vae")
-gpu_default=0.065
+gpu_default=0.11
 declare -A gpu_overrides=(
     ["cfg_repl_tcpc8"]="0.21"
     ["cfg_repl_simclr"]="0.21"
