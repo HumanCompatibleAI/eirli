@@ -823,6 +823,95 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_il_gail_dmc_500k_nofreeze():
+        """GAIL config tailored to dm_control tasks. This was specifically
+        tuned for HalfCheetah at 500k steps, but should work for other tasks
+        too (HalfCheetah is just the hardest one)."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                'total_timesteps': 500000,
+                'ppo_n_steps': 8,
+                'ppo_n_epochs': 12,
+                'ppo_batch_size': 64,
+                'ppo_init_learning_rate': 1e-4,
+                'ppo_gamma': 0.99,
+                'ppo_gae_lambda': 0.8,
+                'ppo_ent': 1e-8,
+                'ppo_adv_clip': 0.02,
+                'disc_n_updates_per_round': 6,
+                'disc_batch_size': 48,
+                'disc_lr': 1e-3,
+                'disc_augs': {
+                    'rotate': True,
+                    'noise': True,
+                    'erase': True,
+                    'gaussian_blur': True,
+                    # note lack of color_jitter_mid, flip_lr, translate_ex; I
+                    # put those into HP optimiser, but didn't find that they
+                    # worked well
+                }
+            },
+            'freeze_encoder': False,
+        }
+        il_test = {
+            'deterministic_policy': True,
+        }
+        venv_opts = {
+            'n_envs': 32,
+            'venv_parallel': True,
+            'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_gail_dmc_1m_nofreeze():
+        """GAIL config tailored to dm_control tasks. This was specifically
+        tuned for HalfCheetah at 500k steps, but should work for other tasks
+        too (HalfCheetah is just the hardest one)."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                'total_timesteps': 1000000,
+                'ppo_n_steps': 8,
+                'ppo_n_epochs': 12,
+                'ppo_batch_size': 64,
+                'ppo_init_learning_rate': 1e-4,
+                'ppo_gamma': 0.99,
+                'ppo_gae_lambda': 0.8,
+                'ppo_ent': 1e-8,
+                'ppo_adv_clip': 0.02,
+                'disc_n_updates_per_round': 6,
+                'disc_batch_size': 48,
+                'disc_lr': 1e-3,
+                'disc_augs': {
+                    'rotate': True,
+                    'noise': True,
+                    'erase': True,
+                    'gaussian_blur': True,
+                    # note lack of color_jitter_mid, flip_lr, translate_ex; I
+                    # put those into HP optimiser, but didn't find that they
+                    # worked well
+                }
+            },
+            'freeze_encoder': False,
+        }
+        il_test = {
+            'deterministic_policy': True,
+        }
+        venv_opts = {
+            'n_envs': 32,
+            'venv_parallel': True,
+            'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
     def gail_mr_config_2021_03_29():
         """500k-step GAIL config tuned (and tested) for MatchRegions. Should get
         between ~0.42 and ~0.49 mean score (averaged across all variants)."""
