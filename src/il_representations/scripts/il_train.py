@@ -49,7 +49,12 @@ def bc_defaults():
     augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     log_interval = 500
     batch_size = 32
+    # The interval to save BC policy networks. If it's set to None,
+    # intermediate policies will not be saved.
     save_every_n_batches = 50000
+    if save_every_n_batches is not None:
+        assert isinstance(save_every_n_batches, int) and \
+                save_every_n_batches > 0
     optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
@@ -182,6 +187,14 @@ def default_config():
     # place to load pretrained encoder from (if not given, it will be
     # re-intialised from scratch)
     encoder_path = None
+    # In case we want to continue training a policy from a previously failed
+    # run, we provide the saved policy path here.
+    policy_continue_path = None
+    num_path_provided = sum(x is not None for x in [encoder_path,
+                                                    policy_continue_path])
+    # Either a pretrained encoder or a trained policy can be provided,
+    # but not both.
+    assert num_path_provided <= 1, 'Detected multiple paths for policy.'
     # file name for final policy
     final_pol_name = 'policy_final.pt'
     # Should we print a summary of the policy on init? This will show the
@@ -227,20 +240,30 @@ def default_config():
 
 
 @il_train_ex.capture
-def load_encoder(*,
-                 encoder_path,
-                 freeze,
-                 encoder_kwargs,
-                 observation_space):
-    if encoder_path is not None:
-        encoder = th.load(encoder_path)
-        assert isinstance(encoder, nn.Module)
-    else:
-        encoder = BaseEncoder(observation_space, **encoder_kwargs)
+def load_encoder_or_policy(*,
+                           encoder_path,
+                           policy_continue_path,
+                           algo,
+                           freeze,
+                           encoder_kwargs,
+                           observation_space):
+    encoder_or_policy = None
+    # Load a previously saved policy.
+    if policy_continue_path is not None:
+        assert algo == 'bc', 'Currently only support policy reload for BC.'
+        encoder_or_policy = th.load(policy_continue_path)
+        assert isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy)
+    else:  # Load an existing encoder, or initialize a new one.
+        if encoder_path is not None:
+            encoder_or_policy = th.load(encoder_path)
+            assert isinstance(encoder_or_policy, nn.Module)
+        else:
+            encoder_or_policy = BaseEncoder(observation_space,
+                                            **encoder_kwargs)
     if freeze:
-        freeze_params(encoder)
-        assert len(list(encoder.parameters())) == 0
-    return encoder
+        freeze_params(encoder_or_policy)
+        assert len(list(encoder_or_policy.parameters())) == 0
+    return encoder_or_policy
 
 
 @il_train_ex.capture
@@ -258,20 +281,13 @@ def make_policy(*,
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
-    load_encoder_kwargs = {}
-    if modified_encoder_path:
-        load_encoder_kwargs['encoder_path'] = modified_encoder_path
-    if encoder_kwargs:
-        load_encoder_kwargs['encoder_kwargs'] = encoder_kwargs
-    encoder = load_encoder(observation_space=observation_space,
-                           freeze=freeze_pol_encoder,
-                           **load_encoder_kwargs)
-
-    # If the loaded encoder is an ActorCriticCnnPolicy, e.g., it's loaded from
-    # a previously failed run, skip the initialization process.
-    if isinstance(encoder, sb3_pols.ActorCriticCnnPolicy):
-        policy = encoder
+    encoder_or_policy = load_encoder_or_policy(
+        observation_space=observation_space,
+        freeze=freeze_pol_encoder)
+    if isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy):
+        policy = encoder_or_policy
     else:
+        encoder = encoder_or_policy
         policy_kwargs = {
             'features_extractor_class': EncoderFeatureExtractor,
             'features_extractor_kwargs': {
@@ -481,7 +497,7 @@ def do_training_gail(
             **common_adv_il_kwargs,
             reward_net_cls=ImageRewardNet,
             reward_net_kwargs=dict(
-                encoder=load_encoder(
+                encoder=load_encoder_or_policy(
                     observation_space=venv_chans_first.observation_space,
                     freeze=_gail_should_freeze('disc'))
             )
@@ -490,7 +506,7 @@ def do_training_gail(
         discrim_net = ImageDiscrimNet(
             observation_space=venv_chans_first.observation_space,
             action_space=venv_chans_first.action_space,
-            encoder=load_encoder(
+            encoder=load_encoder_or_policy(
                 observation_space=venv_chans_first.observation_space,
                 freeze=_gail_should_freeze('disc')))
         trainer = GAIL(

@@ -420,8 +420,7 @@ def print_policy_info(policy, obs_space):
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     policy = policy.to(device)
     obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
-    # TODO: The below line has a bug since the policy's output isn't a tensor.
-    # summary(policy, obs_shape)
+    summary(policy, obs_shape)
 
 
 @functools.total_ordering
@@ -573,3 +572,11 @@ def repeat_chain_non_empty(iterable):
             yielded_item = True
         if not yielded_item:
             raise EmptyIteratorException(f"iterable {iterable} was empty")
+
+
+def get_policy_nupdate(policy_path):
+    match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
+                            policy_path)
+    assert match_result is not None, 'policy_path does not fit pattern' \
+                                     '.*policy_(?P<n_update>\d+)_batches.pt'
+    return match_result.group('n_update')
