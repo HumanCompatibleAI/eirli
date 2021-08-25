@@ -415,7 +415,18 @@ def make_chain_configs(experiment_obj):
         repl = {
             'algo': 'SimCLR',
         }
+        _ = locals()
+        del _
 
+    @experiment_obj.named_config
+    def cfg_repl_simclr_192():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {
+                'batch_size': 192,
+            }
+        }
         _ = locals()
         del _
 
@@ -426,7 +437,6 @@ def make_chain_configs(experiment_obj):
             'algo': 'TemporalCPC',
 
         }
-
         _ = locals()
         del _
 
@@ -440,9 +450,22 @@ def make_chain_configs(experiment_obj):
                     'temporal_offset': 8
                 }
             }
-
         }
+        _ = locals()
+        del _
 
+    @experiment_obj.named_config
+    def cfg_repl_tcpc8_192():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 8
+                },
+                'batch_size': 192,
+            }
+        }
         _ = locals()
         del _
 

@@ -82,7 +82,19 @@ def make_jt_configs(train_ex):
             },
         }
         repl_weight = 1.0
+        _ = locals()
+        del _
 
+    @train_ex.named_config
+    def repl_simclr_192():
+        # simclr, 192 batch size
+        repl = {
+            'algo': SimCLR,
+            'algo_params': {
+                'batch_size': 192,
+            },
+        }
+        repl_weight = 1.0
         _ = locals()
         del _
 
@@ -127,7 +139,22 @@ def make_jt_configs(train_ex):
             },
         }
         repl_weight = 1.0
+        _ = locals()
+        del _
 
+    @train_ex.named_config
+    def repl_tcpc8_192():
+        # temporal cpc (8 steps, batch size 192)
+        repl = {
+            'algo': TemporalCPC,
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 8,
+                },
+                'batch_size': 192,
+            },
+        }
+        repl_weight = 1.0
         _ = locals()
         del _
 

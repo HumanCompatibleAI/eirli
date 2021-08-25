@@ -585,6 +585,6 @@ def repeat_chain_non_empty(iterable):
 def get_policy_nupdate(policy_path):
     match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
                             policy_path)
-    assert match_result is not None, 'policy_path does not fit pattern' \
-                                     '.*policy_(?P<n_update>\d+)_batches.pt'
+    assert match_result is not None, r'policy_path does not fit pattern' \
+                                     r'.*policy_(?P<n_update>\d+)_batches.pt'
     return match_result.group('n_update')
