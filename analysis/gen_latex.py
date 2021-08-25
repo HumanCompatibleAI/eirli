@@ -14,10 +14,6 @@ def main():
         # Procgen exp_ident has format similar to 'coinrun-train_level'
         if '_' in row["exp_ident"]:
             exp_ident = row["exp_ident"].split('_')[0]
-            if 'easy' in row["exp_ident"]:
-                exp_ident += '-easy'
-            if 'hard' in row["exp_ident"]:
-                exp_ident += '-hard'
             row_print = f'{exp_ident} & '
         else:
             row_print = f'{row["exp_ident"]} & '
@@ -35,8 +31,8 @@ def main():
             std = value.split('±')[1].split(' ')[0]
             asterisk = '**' if '*' in value else ''
             # This expression is too long for our paper
-            # expression = f'{mean} $\\pm$ {std}{asterisk}'
-            expression = f'{mean}{asterisk}'
+            expression = f'{mean} $\\pm$ {std}{asterisk}'
+            # expression = f'{mean}{asterisk}'
 
             if key != 'BC with augs':
                 if float(mean) > float(bc_mean):
