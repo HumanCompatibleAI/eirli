@@ -315,10 +315,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # Create new dataset that is initialized with a given dataset, and, at initialization, iterates through the whole thing
             # and
             batch_loader = iter(DataLoader(datasets[0], batch_size=self.batch_size))
-            # return batch_loader
-            for batch in batch_loader:
-                breakpoint()
-                return self.target_pair_constructor(batch)
+            return batch_loader
+
 
 
     # If the dataset is loaded all into memory right now, we can call self.target_pair_constructor
@@ -380,6 +378,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             datasets=datasets, batches_per_epoch=batches_per_epoch,
             n_epochs=n_epochs, n_trajs=n_trajs)
 
+
         # optimizer and LR scheduler
         optimizer = optimizer_cls(self.all_trainable_params(),
                                   **to_dict(optimizer_kwargs))
@@ -412,6 +411,9 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 batch = next(data_iter)
                 # detached_debug_tensors isn't used directly in this function,
                 # but might be used by callbacks that exploit locals()
+                if isinstance(datasets[0], torch.utils.data.Dataset):
+                    batch = [{'obs': el} for el in batch['obs']]
+                    batch = self.target_pair_constructor(batch)
                 breakpoint()
                 loss, detached_debug_tensors = self.batch_forward(batch)
 
