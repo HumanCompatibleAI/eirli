@@ -210,8 +210,7 @@ def make_hp_tuning_configs(experiment_obj):
                                                                 'data/jigsaw_permutations_1000.npy')
 
         # We only set 10 runs here because it is only searching over the lr space.
-        tune_run_kwargs = dict(num_samples=10,
-                               queue_trials=True)
+        tune_run_kwargs = dict(num_samples=10)
         _ = locals()
         del _
 
