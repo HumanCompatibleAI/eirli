@@ -8,6 +8,7 @@ import stable_baselines3.common.distributions as sb3_dists
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 import torch
+from torch.utils.data import Dataset, DataLoader
 from torch.optim.adam import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
@@ -292,17 +293,34 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
 
-        # if isinstance(datasets[0], wds.Dataset):
-        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
-        dataloader = datasets_to_loader(
-            datasets, batch_size=self.batch_size,
-            nominal_length=n_epochs * batches_per_epoch * self.batch_size,
-            max_workers=self.dataset_max_workers,
-            shuffle_buffer_size=self.shuffle_buffer_size,
-            shuffle=self.shuffle_batches,
-            preprocessors=(subdataset_extractor, self.target_pair_constructor))
-        data_iter = repeat_chain_non_empty(dataloader)
-        return data_iter
+        if isinstance(datasets[0], wds.Dataset):
+            subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+            dataloader = datasets_to_loader(
+                datasets, batch_size=self.batch_size,
+                nominal_length=n_epochs * batches_per_epoch * self.batch_size,
+                max_workers=self.dataset_max_workers,
+                shuffle_buffer_size=self.shuffle_buffer_size,
+                shuffle=self.shuffle_batches,
+                preprocessors=(subdataset_extractor, self.target_pair_constructor))
+            data_iter = repeat_chain_non_empty(dataloader)
+            return data_iter
+        else:
+            assert len(datasets) == 1, "Currently non-webdatasets are only supported in single-dataset form"
+            assert isinstance(datasets[0], torch.utils.data.Dataset), "Currently, only Webdataset or Pytorch Dataset objects are supported"
+            # Create batch iterator
+
+            # Two options: one in-memory (that can do longer temporal patterns), and one on-batch, that could even happen
+            # after a batch is returned from make_data_iterator, so it doesn't matter that it's a yield (we'd just awkwardly
+            # call it over every item in the batch)
+            # Create new dataset that is initialized with a given dataset, and, at initialization, iterates through the whole thing
+            # and
+            batch_loader = iter(DataLoader(datasets[0], batch_size=self.batch_size))
+            # return batch_loader
+            for batch in batch_loader:
+                breakpoint()
+                return self.target_pair_constructor(batch)
+
+
     # If the dataset is loaded all into memory right now, we can call self.target_pair_constructor
     # on the entire thing. Then we need to randomly sample batches.
     # One way to do this is to shuffle the whole dataset and then iterate through it. This means we get the same
@@ -394,6 +412,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 batch = next(data_iter)
                 # detached_debug_tensors isn't used directly in this function,
                 # but might be used by callbacks that exploit locals()
+                breakpoint()
                 loss, detached_debug_tensors = self.batch_forward(batch)
 
                 if batches_trained % calc_log_interval == 0:

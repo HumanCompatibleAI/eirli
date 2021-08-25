@@ -9,12 +9,30 @@ from il_representations.envs import auto
 from il_representations.test_support.configuration import (
     ENV_CFG_TEST_CONFIGS, ENV_DATA_TEST_CONFIG, REPL_SMOKE_TEST_CONFIG)
 from il_representations.test_support.utils import is_representation_learner
-
+from torch.utils.data import Dataset
+from gym import spaces
 
 @pytest.mark.parametrize("algo", [
     el[1] for el in inspect.getmembers(algos)
     if is_representation_learner(el[1])
 ])
+
+class ToyPytorchDataset(Dataset):
+
+    def __getitem__(self, idx):
+        return {'obs': th.rand(size=(3, 64, 64))}
+
+    def __len__(self):
+        return 1000
+
+def test_pytorch_dataset():
+    tptd = ToyPytorchDataset()
+    algo = algos.SimCLR(observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
+                        action_space=spaces.Discrete(10),
+                        augmenter=algos.NoAugmentation,
+                        augmenter_kwargs={'augmenter_spec': None, 'color_space': None})
+    algo.learn(datasets=[tptd], batches_per_epoch=10, n_epochs=1, log_dir='temp')
+
 @pytest.mark.parametrize("env_cfg", ENV_CFG_TEST_CONFIGS)
 def test_algo(algo, env_cfg, represent_ex):
     """Check that multiple configurations of `represent_ex` runs to completion and

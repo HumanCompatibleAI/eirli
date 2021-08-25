@@ -574,7 +574,7 @@ def repeat_chain_non_empty(iterable):
             raise EmptyIteratorException(f"iterable {iterable} was empty")
 
 
-def get_policy_update(policy_path):
+def get_policy_nupdate(policy_path):
     match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
                             policy_path)
     assert match_result is not None, 'policy_path does not fit pattern' \
