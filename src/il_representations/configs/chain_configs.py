@@ -264,8 +264,8 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                'finger-spin', 'cheetah-run', 'reacher-easy'
-            ]
+                    'finger-spin', 'cheetah-run', 'reacher-easy'
+                ]
             ]))
 
         _ = locals()
@@ -274,15 +274,30 @@ def make_chain_configs(experiment_obj):
     @experiment_obj.named_config
     def cfg_bench_micro_sweep_procgen():
         """Tiny sweep over three procgen configs."""
-        spec = dict(env_cfg=tune.grid_search(
-            [
-                {
-                    'benchmark_name': 'procgen',
-                    'task_name': procgen_env_name
-                } for procgen_env_name in [
+        spec = dict(env_cfg=tune.grid_search([
+            {
+                'benchmark_name': 'procgen',
+                'task_name': procgen_env_name
+            } for procgen_env_name in [
                 'coinrun', 'miner', 'fruitbot'
             ]
-            ]))
+        ]))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_bench_procgen_cmfn():
+        """Procgen CoinRun/Miner/Fruitbot/Ninja sweep (we used this for NeurIPS
+        benchmarks track)."""
+        spec = dict(env_cfg=tune.grid_search([
+            {
+                'benchmark_name': 'procgen',
+                'task_name': procgen_env_name
+            } for procgen_env_name in [
+                'coinrun', 'miner', 'fruitbot', 'jumper',
+            ]
+        ]))
 
         _ = locals()
         del _
@@ -296,8 +311,8 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'procgen',
                     'task_name': procgen_env_name
                 } for procgen_env_name in [
-                'coinrun', 'miner', 'fruitbot', 'jumper', 'ninja'
-            ]
+                    'coinrun', 'miner', 'fruitbot', 'jumper', 'ninja'
+                ]
             ]))
 
         _ = locals()
@@ -703,6 +718,15 @@ def make_chain_configs(experiment_obj):
     def cfg_repl_inv_dyn():
         repl = {
             'algo': 'InverseDynamicsPrediction',
+            'algo_params': {'batch_size': 32},
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_dyn():
+        repl = {
+            'algo': 'DynamicsPrediction',
             'algo_params': {'batch_size': 32},
         }
         _ = locals()
