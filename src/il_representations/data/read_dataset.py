@@ -117,7 +117,7 @@ class SubdatasetExtractor:
         for step_dict in data_iter:
             yield step_dict
 
-            if step_dict['dones']:
+            if step_dict.get('dones', False):
                 trajectory_ind += 1
 
             if trajectory_ind == self.n_trajs:

@@ -293,42 +293,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
 
-        if isinstance(datasets[0], wds.Dataset):
-            subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
-            dataloader = datasets_to_loader(
-                datasets, batch_size=self.batch_size,
-                nominal_length=n_epochs * batches_per_epoch * self.batch_size,
-                max_workers=self.dataset_max_workers,
-                shuffle_buffer_size=self.shuffle_buffer_size,
-                shuffle=self.shuffle_batches,
-                preprocessors=(subdataset_extractor, self.target_pair_constructor))
-            data_iter = repeat_chain_non_empty(dataloader)
-            return data_iter
-        else:
-            assert len(datasets) == 1, "Currently non-webdatasets are only supported in single-dataset form"
-            assert isinstance(datasets[0], torch.utils.data.Dataset), "Currently, only Webdataset or Pytorch Dataset objects are supported"
-            # Create batch iterator
-
-            # Two options: one in-memory (that can do longer temporal patterns), and one on-batch, that could even happen
-            # after a batch is returned from make_data_iterator, so it doesn't matter that it's a yield (we'd just awkwardly
-            # call it over every item in the batch)
-            # Create new dataset that is initialized with a given dataset, and, at initialization, iterates through the whole thing
-            # and
-            batch_loader = iter(DataLoader(datasets[0], batch_size=self.batch_size))
-            return batch_loader
-
-
-
-    # If the dataset is loaded all into memory right now, we can call self.target_pair_constructor
-    # on the entire thing. Then we need to randomly sample batches.
-    # One way to do this is to shuffle the whole dataset and then iterate through it. This means we get the same
-    # order each time through the epoch, but random order within a single epoch.
-    # If we know it doesn't have temporal structure, we could apply the target pair constructor on a batch level
-    # However, this is a little messy design-wise, because the opposite of a Webdataset isn't obviously
-    # "Something without temporal stucture"
-    # What if there are two non-Webdataset categories: a data iterator, and a dataset. I'm... not sure how to
-    # differentiate between those in a Pythonic way, which we'd need to if we wanted to apply TPC differently
-    # for a data iterator vs a dataset
+        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+        dataloader = datasets_to_loader(
+            datasets, batch_size=self.batch_size,
+            nominal_length=n_epochs * batches_per_epoch * self.batch_size,
+            max_workers=self.dataset_max_workers,
+            shuffle_buffer_size=self.shuffle_buffer_size,
+            shuffle=self.shuffle_batches,
+            preprocessors=(subdataset_extractor, self.target_pair_constructor))
+        data_iter = repeat_chain_non_empty(dataloader)
+        return data_iter
 
     def learn(self, datasets, batches_per_epoch, n_epochs, *, callbacks=(),
               end_callbacks=(), log_dir, log_interval=100,
@@ -411,12 +385,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 batch = next(data_iter)
                 # detached_debug_tensors isn't used directly in this function,
                 # but might be used by callbacks that exploit locals()
-                if isinstance(datasets[0], torch.utils.data.Dataset):
-                    batch = [{'obs': el} for el in batch['obs']]
-                    batch = self.target_pair_constructor(batch)
-                breakpoint()
                 loss, detached_debug_tensors = self.batch_forward(batch)
-
                 if batches_trained % calc_log_interval == 0:
                     # TODO(sam): I suspect we can get the same effect by just
                     # detaching loss & waiting until after optimizer.step()

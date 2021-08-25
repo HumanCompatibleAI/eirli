@@ -1,9 +1,11 @@
 import inspect
 
+import pickle
 import pytest
 import torch as th
 
 from il_representations import algos
+from il_representations.utils import convert_to_simple_webdataset, load_simple_webdataset
 from il_representations.data import read_dataset
 from il_representations.envs import auto
 from il_representations.test_support.configuration import (
@@ -11,11 +13,11 @@ from il_representations.test_support.configuration import (
 from il_representations.test_support.utils import is_representation_learner
 from torch.utils.data import Dataset
 from gym import spaces
+import webdataset as wds
+from itertools import islice
 
-@pytest.mark.parametrize("algo", [
-    el[1] for el in inspect.getmembers(algos)
-    if is_representation_learner(el[1])
-])
+
+
 
 class ToyPytorchDataset(Dataset):
 
@@ -23,16 +25,27 @@ class ToyPytorchDataset(Dataset):
         return {'obs': th.rand(size=(3, 64, 64))}
 
     def __len__(self):
-        return 1000
+        return 100
+
 
 def test_pytorch_dataset():
     tptd = ToyPytorchDataset()
-    algo = algos.SimCLR(observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
+    full_wds_url = convert_to_simple_webdataset(dataset=tptd, file_out_path="temp", file_out_name="tptd")
+    tptd_wds = load_simple_webdataset(full_wds_url)
+    # tptd_wds = wds.Decoder(_my_sample_decoder)(initial_wds_dataset)
+    algo = algos.SimCLR(batch_size=10,
+                        observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
                         action_space=spaces.Discrete(10),
                         augmenter=algos.NoAugmentation,
                         augmenter_kwargs={'augmenter_spec': None, 'color_space': None})
-    algo.learn(datasets=[tptd], batches_per_epoch=10, n_epochs=1, log_dir='temp')
+    algo.learn(datasets=[tptd_wds], batches_per_epoch=10, n_epochs=1,
+               log_dir='temp', log_interval=1, calc_log_interval=1)
 
+
+@pytest.mark.parametrize("algo", [
+    el[1] for el in inspect.getmembers(algos)
+    if is_representation_learner(el[1])
+])
 @pytest.mark.parametrize("env_cfg", ENV_CFG_TEST_CONFIGS)
 def test_algo(algo, env_cfg, represent_ex):
     """Check that multiple configurations of `represent_ex` runs to completion and
