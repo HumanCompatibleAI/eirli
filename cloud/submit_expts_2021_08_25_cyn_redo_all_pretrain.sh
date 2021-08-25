@@ -10,15 +10,6 @@
 # - # of steps: 500,000 (should be doing more, but we have limited time)
 # Does only BC, and only demos+random repL data
 
-# TODO:
-# - **DONE** Set n_batches appropriately
-# - **In progress** Generate random rollouts for procgen. Push to GCP.
-# - **DONE** Create cfg_repl_{tcpc8,simclr}_192 configs
-# - Shellcheck, final proof-read.
-# - Figure out how to push all my git changes to gcp. May require manually
-#   shelling into each machine and doing a pull.
-# - Submit & twiddle thumbs.
-
 set -e
 
 # WARNING: unlimited demos here!

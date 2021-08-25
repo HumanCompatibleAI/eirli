@@ -17,7 +17,7 @@ set -e
 ray_ncpus=1.0
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 nseeds=5
-n_batches=500000  # hopefully finishes fast enough
+n_batches=500000  # hopefully finishes fast enough, may be too large even
 base_cfgs=("n_batches=$n_batches" "bc.short_eval_interval=20000"
            "augs_neurips_repl_bc" "repl_data_demos_random")
 repl_configs=("repl_simclr_192" "repl_tcpc8_192" "repl_id" "repl_vae" "repl_fd"
