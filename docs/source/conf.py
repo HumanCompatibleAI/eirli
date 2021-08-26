@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../../src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'Representations for Sequence Learning'
+project = 'Representations for Imitation Learning'
 copyright = '2021, Center for Human-Compatible AI'
 author = 'Center for Human-Compatible AI'
 
