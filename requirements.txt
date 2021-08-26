@@ -5,7 +5,6 @@ scikit_video==1.1.11
 matplotlib==3.4.2
 gym==0.18.0
 webdataset==0.1.40
-minerl.egg==info
 dmc2gym==1.0.0
 tqdm==4.48.2
 git+git://github.com/HumanCompatibleAI/stable-baselines3@ad902dd5f9d4afeef347897cb04c48a19a659ca3#egg=stable_baselines3
