@@ -1,10 +1,53 @@
-gym==0.19.0
-Sphinx==4.1.2
-sphinx-rtd-theme==0.5.2
-sphinxcontrib-applehelp==1.0.2
-sphinxcontrib-devhelp==1.0.2
-sphinxcontrib-htmlhelp==2.0.0
-sphinxcontrib-jsmath==1.0.1
-sphinxcontrib-napoleon==0.7
-sphinxcontrib-qthelp==1.0.3
-sphinxcontrib-serializinghtml==1.1.5
+# WARNING: requirements.txt is baked into the Dockerfile. If you change this
+# file, you will have to rebuild the Docker image and push it to Docker Hub.
+# Remember to update the image reference in .circleci/config.yml too.
+# (if not sure how to do all this, ask Sam)
+
+# OTHER WARNING: MineRL is being installed off of a github repo/branch,
+# and so can't be installed via pip. It is currently being installed in Docker
+# To get an environment set up that works for Minecraft, run minecraft_setup.sh
+
+numpy~=1.19.0
+gym[atari]~=0.17
+sacred~=0.8.1
+torch~=1.5.1
+opencv-python~=4.3.0.36
+torchvision~=0.6.1
+pyyaml~=5.3.1
+sacred~=0.8.1
+tensorboard~=2.2.0
+pytest~=5.4.3
+ray[tune]~=1.0.1
+PyYAML~=5.3.1
+scikit-video~=1.1.11
+Pillow~=7.2.0
+# webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
+webdataset==0.1.40
+tqdm~=4.48.0
+procgen==0.10.4
+
+# this fork of torchsummary can deal with layers that don't produce tensors
+git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
+
+# Jupyter Lab is used for our experiment analysis notebook
+jupyterlab~=2.2.6
+scikit-optimize~=0.8.1
+seaborn~=0.11.0
+pyro-ppl~=1.4.0
+# deps for Ray + GCP (see Ray issue #10724)
+cryptography~=3.1
+# my version of google-api-python-client fixes issue #873 in that repo (which
+# has been known since at least 2017, and seems unlikely to ever get fixed)
+# google-api-python-client~1.11.0
+git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
+
+# imitation needs special branch as of 2021-01-04
+# (also this is only installable with pip~=19.0 and earlier; new resolver breaks it)
+git+git://github.com/HumanCompatibleAI/imitation@08585bc90108fbad02359ae2e32c40352c369df8#egg=imitation
+# this branch has fixes to VecEnvTranspose, some new features for SubprocVecEnv, etc.
+git+git://github.com/HumanCompatibleAI/stable-baselines3@ad902dd5f9d4afeef347897cb04c48a19a659ca3#egg=stable_baselines3
+
+# environments
+magical-il~=0.0.1a4
+dm_control~=0.0.319497192
+git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
