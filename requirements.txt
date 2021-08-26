@@ -9,7 +9,7 @@ git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf254907
 tqdm==4.48.2
 git+git://github.com/HumanCompatibleAI/stable-baselines3@ad902dd5f9d4afeef347897cb04c48a19a659ca3#egg=stable_baselines3
 git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
-torchvision==0.6.1
+torchvision==0.10.0
 numpy==1.19.5
 scikit_optimize==0.8.1
 docopt==0.6.2
