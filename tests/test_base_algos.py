@@ -32,9 +32,10 @@ def test_pytorch_dataset():
     tptd = ToyPytorchDataset()
     full_wds_url = convert_to_simple_webdataset(dataset=tptd, file_out_path="temp", file_out_name="tptd")
     tptd_wds = load_simple_webdataset(full_wds_url)
-    algo = algos.VariationalAutoencoder(batch_size=10,
-                                        observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
-                                        action_space=None)
+    algo = algos.SimCLR(batch_size=10,
+                        observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
+                        action_space=None,
+                        augmenter=algos.NoAugmentation)
     algo.learn(datasets=[tptd_wds], batches_per_epoch=10, n_epochs=1,
                log_dir='temp', log_interval=1, calc_log_interval=1)
 

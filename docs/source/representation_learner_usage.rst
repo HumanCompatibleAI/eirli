@@ -18,7 +18,7 @@ them available to import and use directly.
 
 ::
 
-    from il_representations.algos import Variational Autoencoder
+    from il_representations.algos import SimCLR, NoAugmentation
     from il_representations.utils import convert_to_simple_webdataset, load_simple_webdataset
 
     # This step converts a Pytorch dataset of the form [{'obs': <image>}...] into a Webdataset
@@ -30,11 +30,12 @@ them available to import and use directly.
     wds = load_simple_webdataset(full_wds_url)
 
     # For this example, we're imagining a (3, 64, 64) image size
-    algo = algos.VariationalAutoencoder(batch_size=10,
-                                        observation_space=spaces.Box(shape=(3, 64, 64),
-                                                                     low=0,
-                                                                     high=1),
-                                        action_space=None)
+    algo = algos.SimCLR(batch_size=10,
+                        observation_space=spaces.Box(shape=(3, 64, 64),
+                                                     low=0,
+                                                     high=1),
+                        action_space=None,
+                        augmenter=NoAugmentation)
     # This trains for a single epoch of 10 batches, calculating logging
     # information and logging it every step. This is likely substantially
     # more logging than you'd want for a typical training use case
