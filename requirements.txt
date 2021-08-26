@@ -3,7 +3,7 @@ opencv_python==4.3.0.38
 ray==1.0.1.post1
 scikit_video==1.1.11
 matplotlib==3.4.2
-gym==0.18.0
+gym==0.19.0
 webdataset==0.1.40
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
 tqdm==4.48.2
