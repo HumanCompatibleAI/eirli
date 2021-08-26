@@ -18,10 +18,24 @@ them available to import and use directly.
 
 ::
 
-    from il_representations.algos import SimCLR
-    simclr_model = SimCLR()
-    # Note: ds in these examples is a dataset in WebDataset form
-    loss_record, encoder_path = simclr_model.learn(datasets=ds, batches_per_epoch=100)
+    from il_representations.algos import Variational Autoencoder
+    from il_representations.utils import convert_to_simple_webdataset, load_simple_webdataset
+
+    # This step converts a Pytorch dataset of the form [{'obs': <image>}...] into a Webdataset
+    # that can stream from disk. This step only needs to be performed once
+    full_wds_url = convert_to_simple_webdataset(dataset=pytorch_dataset,
+                                                file_out_path="temp",
+                                                file_out_name="my_dataset")
+
+    wds = load_simple_webdataset(full_wds_url)
+    algo = algos.VariationalAutoencoder(batch_size=10,
+                                        # For this example, we're imagining a (3, 64, 64) image size
+                                        observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
+                                        action_space=None)
+    # This trains for a single epoch of 10 batches, calculating logging information and logging it every step
+    # This is likely substantially more logging than you'd want for a typical training use case
+    algo.learn(datasets=[wds], batches_per_epoch=10, n_epochs=1,
+               log_dir='temp', log_interval=1, calc_log_interval=1)
 
 
 

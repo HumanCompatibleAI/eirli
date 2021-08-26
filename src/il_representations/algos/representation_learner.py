@@ -64,7 +64,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  preprocess_extra_context=True,
                  preprocess_target=True,
                  target_pair_constructor_kwargs=None,
-                 augmenter_kwargs,
+                 augmenter_kwargs=None,
                  encoder_kwargs=None,
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
@@ -91,7 +91,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # projection head.
             projection_dim = representation_dim
 
-        self.augmenter = augmenter(**augmenter_kwargs)
+        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(
             **to_dict(target_pair_constructor_kwargs))
 

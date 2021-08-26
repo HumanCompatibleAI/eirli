@@ -10,8 +10,9 @@ from il_representations.utils import augmenter_from_spec
 
 
 class Augmenter(ABC):
-    def __init__(self, augmenter_spec, color_space):
-        self.augment_op = augmenter_from_spec(augmenter_spec, color_space)
+    def __init__(self, augmenter_spec=None, color_space=None):
+        if augmenter_spec is not None:
+            self.augment_op = augmenter_from_spec(augmenter_spec, color_space)
 
     @abstractmethod
     def __call__(self, contexts, targets):
