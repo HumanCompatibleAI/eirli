@@ -45,7 +45,8 @@ Sometimes an extra context object is passed in
 Some examples are:
 
 - In **SimCLR**, the context and target are the same image frame, and augmentation and then encoding is
-  applied to both context and target, before pulling the context and target representations together [TODO mention projection decoder]
+  applied to both context and target. That learned representation is sent through a decoder, and then
+  the context and target representations are pulled together with a contrastive loss.
 - In **TemporalCPC**, the context is a frame at time t, and the target a frame at time t+k, and
   then, similarly to SimCLR above, augmentation is applied to the frame before it's put through an
   encoder, and the two resulting representations pulled together
@@ -67,11 +68,13 @@ of the algorithm. By selecting different implementations of these shared
 interfaces, and creating a RepresentationLearner that takes them as
 arguments, and handles the base machinery of performing transformations
 
-[TODO create diagram]
+.. image:: docs/source/_static/ilr_diagram.pdf
+  :width: 800
+  :alt: A diagram showing how these components made up a training pipeline for our benchmark
 
 1) TargetPairConstructer - This component takes in a set of trajectories
-   (assumed to be [CHECK THIS?] ordered lists of observations and
-   actions) and creates a dataset of (context, target, optional extra
+   (assumed to be iterators of dicts containing 'obs' and optional 'acts',
+   and 'dones' keys) and creates a dataset of (context, target, optional extra
    context) pairs that will be shuffled to form the training set.
 2) Augmenter - This component governs whether either or both of the
    context and target objects are augmented before being passed to the
@@ -98,12 +101,12 @@ arguments, and handles the base machinery of performing transformations
    transformed target and handles the loss calculation, along with any
    transformations that need to happen as a part of that calculation.
 
-[TODO walk through examples of combined algorithms from these
-components]
+
 
 Training Scripts
 ================
 
 In addition to machinery for constructing algorithms, the repo contains a set of Sacred-based training scripts for
 testing different Representation Learning algorithms as either pretraining or joint training components within an
-imitation learning pipeline. These are likeliest to be a fit for your use case if you
+imitation learning pipeline. These are likeliest to be a fit for your use case if you want to reproduce our results,
+or train models in similar settings
