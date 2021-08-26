@@ -5,7 +5,7 @@ scikit_video==1.1.11
 matplotlib==3.4.2
 gym==0.18.0
 webdataset==0.1.40
-dmc2gym==1.0.0
+git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
 tqdm==4.48.2
 git+git://github.com/HumanCompatibleAI/stable-baselines3@ad902dd5f9d4afeef347897cb04c48a19a659ca3#egg=stable_baselines3
 git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
