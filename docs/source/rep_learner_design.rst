@@ -27,6 +27,7 @@ Now that you've got some practice deconstructing algorithms this way, it may be 
 At the most general level, we define representation learners as following the pattern of:
 
 ::
+
     L = Loss(Decoder(Encoder(Context), OptionalExtraContext)), Decoder(Encoder(Target))
 
 In our framework, different learners are differentiated from one another by their different implementations of each of

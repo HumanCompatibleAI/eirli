@@ -28,12 +28,16 @@ them available to import and use directly.
                                                 file_out_name="my_dataset")
 
     wds = load_simple_webdataset(full_wds_url)
+
+    # For this example, we're imagining a (3, 64, 64) image size
     algo = algos.VariationalAutoencoder(batch_size=10,
-                                        # For this example, we're imagining a (3, 64, 64) image size
-                                        observation_space=spaces.Box(shape=(3, 64, 64), low=0, high=1),
+                                        observation_space=spaces.Box(shape=(3, 64, 64),
+                                                                     low=0,
+                                                                     high=1),
                                         action_space=None)
-    # This trains for a single epoch of 10 batches, calculating logging information and logging it every step
-    # This is likely substantially more logging than you'd want for a typical training use case
+    # This trains for a single epoch of 10 batches, calculating logging
+    # information and logging it every step. This is likely substantially
+    # more logging than you'd want for a typical training use case
     algo.learn(datasets=[wds], batches_per_epoch=10, n_epochs=1,
                log_dir='temp', log_interval=1, calc_log_interval=1)
 
