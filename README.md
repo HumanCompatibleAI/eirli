@@ -32,7 +32,7 @@ So, you want to...
   simplified use case
 
 
-#Modular Algorithm Design
+# Modular Algorithm Design
 
 This library was designed in a way that breaks down the definition of a
 representation learning algorithm into several key parts. The intention
@@ -72,9 +72,7 @@ of the algorithm. By selecting different implementations of these shared
 interfaces, and creating a RepresentationLearner that takes them as
 arguments, and handles the base machinery of performing transformations
 
-.. image:: docs/source/_static/ilr_diagram.pdf
-  :width: 800
-  :alt: A diagram showing how these components made up a training pipeline for our benchmark
+![A diagram showing how these components made up a training pipeline for our benchmark](docs/source/_static/ilr_diagram.pdf)
 
 1) TargetPairConstructer - This component takes in a set of trajectories
    (assumed to be iterators of dicts containing 'obs' and optional 'acts',
