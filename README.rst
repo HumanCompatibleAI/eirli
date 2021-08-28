@@ -20,11 +20,11 @@ Common Use Cases
 So, you want to...
 
 
-- Reproduce our results? You can find scripts and instructions :ref:`here<reproduction>`_ to help reproduce our benchmark results.
+- Reproduce our results? You can find scripts and instructions :ref:`here<https://il-representations.readthedocs.io/en/latest/reproduction_scripts.html#reproduction>`_ to help reproduce our benchmark results.
 - Design and experiment with a new representation learning algorithm using our modular components?
-  You can find documentation on that :ref:`here<define_new>`_
+  You can find documentation on that :ref:`here<https://il-representations.readthedocs.io/en/latest/representation_learner_usage.html#define-new`_
 - Use our algorithm definitions in a setting other than sequential learning? The base example
-  :ref:`here<pre_defined>`_demonstrates this
+  :ref:`here<https://il-representations.readthedocs.io/en/latest/representation_learner_usage.html#pre-defined>`_ demonstrates this
   simplified use case
 
 
