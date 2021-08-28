@@ -11,6 +11,7 @@ Welcome to Representations for Sequence Learning's documentation!
    :maxdepth: 4
    :caption: Contents:
 
+   reproduction
    data
    representation_learner_usage
    rep_learner_design

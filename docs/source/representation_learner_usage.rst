@@ -10,6 +10,8 @@ general framework by which components of representation learner training happen.
 RepL algorithms are designed by creating a learner which takes in and runs different implementations of those component steps.
 
 
+.. _pre_defined:
+
 Training a Pre-Defined Representation Learner
 ---------------------------------------------
 
@@ -43,7 +45,7 @@ them available to import and use directly.
                log_dir='temp', log_interval=1, calc_log_interval=1)
 
 
-
+.. _define_new:
 
 Defining a New Representation Learner
 -------------------------------------
