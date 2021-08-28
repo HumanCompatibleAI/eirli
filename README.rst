@@ -19,7 +19,7 @@ Common Use Cases
 ================
 So, you want to...
 
-- Reproduce our results. You can find scripts and instructions here [TODO] to help reproduce our benchmark results.
+- Reproduce our results. You can find scripts and instructions :ref:`here<>` to help reproduce our benchmark results.
 - Design and experiment with a new representation learning algorithm using our modular components.
 - Use our algorithm definitions in a setting other than sequential learning
 
