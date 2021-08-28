@@ -17,7 +17,7 @@ from il_representations.algos.utils import set_global_seeds
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
-from il_representations.script_utils import simplify_stacks
+from il_representations.script_utils import simplify_stacks, trajectory_iter
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 render_dataset_ex = Experiment(
@@ -46,17 +46,6 @@ def default_config():
 
     _ = locals()
     del _
-
-
-def trajectory_iter(dataset):
-    """Yields one trajectory at a time from a webdataset."""
-    traj = []
-    for frame in dataset:
-        traj.append(frame)
-        if frame['dones']:
-            yield traj
-            traj = []
-
 
 def sample_points(traj_len: int, n_points: Optional[int]=None) -> np.ndarray:
     """Collect `n_points` indices into array, spaced ~evenly (or just return

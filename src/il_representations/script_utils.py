@@ -108,3 +108,13 @@ def simplify_stacks(obs_vec: np.ndarray, keep_only_latest: bool) -> np.ndarray:
     # now it's actually N*C*H*W', where W' has absorbed all the stacked frames
     # from before
     return final_obs_vec
+
+
+def trajectory_iter(dataset):
+    """Yields one trajectory at a time from a webdataset."""
+    traj = []
+    for frame in dataset:
+        traj.append(frame)
+        if frame['dones']:
+            yield traj
+            traj = []
