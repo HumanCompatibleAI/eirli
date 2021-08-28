@@ -5,7 +5,7 @@
 
 Welcome to Representations for Sequence Learning's documentation!
 =================================================================
-.. include:: ../../README.rst
+.. include:: README_former.rst
 
 .. toctree::
    :maxdepth: 4
