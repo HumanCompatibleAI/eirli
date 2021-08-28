@@ -17,7 +17,7 @@ from il_representations.algos.utils import set_global_seeds
 from il_representations.envs import auto
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient)
-from il_representations.utils import NUM_CHANS
+from il_representations.script_utils import simplify_stacks
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 render_dataset_ex = Experiment(
@@ -83,35 +83,6 @@ def concat_traj(traj: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         stacked = np.stack([f[key] for f in traj], axis=0)
         rv_dict[key] = stacked
     return rv_dict
-
-
-def get_n_chans() -> int:
-    return NUM_CHANS[auto.load_color_space()]
-
-
-def simplify_stacks(obs_vec: np.ndarray, keep_only_latest: bool) -> np.ndarray:
-    # simple sanity checks to make sure frames are N*(C*H)*W
-    assert obs_vec.ndim == 4, f"obs_vec.shape={obs_vec.shape}, so ndim != 4"
-    if obs_vec.shape[-1] != obs_vec.shape[-2]:
-        logging.warn(
-            f"obs_vec.shape={obs_vec.shape} does not look N(C*F)HW, "
-            "since H!=W")
-    n_chans = get_n_chans()
-    stack_len = obs_vec.shape[1] // n_chans
-    assert stack_len * n_chans == obs_vec.shape[1], \
-        f"obs_vec.shape={obs_vec.shape} should be N(C*F)HW, "\
-        f"but first dim is not divisible by n_chans={n_chans}"
-    new_shape = obs_vec.shape[:1] + (stack_len, n_chans) + obs_vec.shape[2:]
-    destacked = np.reshape(obs_vec, new_shape)
-    # put stack dimension first
-    transposed = np.transpose(destacked, (1, 0, 2, 3, 4))
-    if keep_only_latest:
-        final_obs_vec = transposed[-1]
-    else:
-        final_obs_vec = np.concatenate(transposed, axis=3)
-    # now it's actually N*C*H*W', where W' has absorbed all the stacked frames
-    # from before
-    return final_obs_vec
 
 
 def to_film_strip(images: np.ndarray, border_size: int=1) -> np.ndarray:

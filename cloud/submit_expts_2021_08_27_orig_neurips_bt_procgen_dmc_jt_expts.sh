@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Procgen/DMC runs from the NeurIPS benchmarks track submission
+# Joint training Procgen/DMC runs from the NeurIPS benchmarks track submission
 
 set -e
 
