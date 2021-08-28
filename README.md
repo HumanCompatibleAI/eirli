@@ -72,7 +72,7 @@ of the algorithm. By selecting different implementations of these shared
 interfaces, and creating a RepresentationLearner that takes them as
 arguments, and handles the base machinery of performing transformations
 
-![A diagram showing how these components made up a training pipeline for our benchmark](docs/source/_static/ilr_diagram.pdf)
+![A diagram showing how these components made up a training pipeline for our benchmark](docs/source/ilr_diagram.pdf)
 
 1) TargetPairConstructer - This component takes in a set of trajectories
    (assumed to be iterators of dicts containing 'obs' and optional 'acts',
