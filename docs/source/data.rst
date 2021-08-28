@@ -4,11 +4,6 @@
 Dataset Creation & Environment Specification
 ============================================
 
-*This README current as of 2020-11-29. Some aspects of the data-loading
-pipeline will probably change eventually, so expect this doc to be
-slightly out of date if you're reading it 2-3 months (or more) in the
-future. Bug Sam if there are serious problems with it.*
-
 This document explains the abstractions that we are using to load
 demonstration data and create Gym environments. These abstractions are
 intended provide a reasonably uniform internal interface across all of
