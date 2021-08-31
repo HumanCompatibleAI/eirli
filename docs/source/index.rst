@@ -15,6 +15,7 @@ Welcome to Representations for Sequence Learning's documentation!
    data
    representation_learner_usage
    rep_learner_design
+   interpret
    il_representations
 
 

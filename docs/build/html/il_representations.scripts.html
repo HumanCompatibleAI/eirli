@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>il_representations.scripts package &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>il_representations.scripts package &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -92,6 +92,7 @@
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
@@ -102,20 +103,20 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">il_representations.scripts package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.collate_configs">il_representations.scripts.collate_configs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.grab_some_stuff_and_pickle_it">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-collate-configs-module">il_representations.scripts.collate_configs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-grab-some-stuff-and-pickle-it-module">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-il-test-module">il_representations.scripts.il_test module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.il_train">il_representations.scripts.il_train module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.interpret">il_representations.scripts.interpret module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.joint_training">il_representations.scripts.joint_training module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.joint_training_cluster">il_representations.scripts.joint_training_cluster module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.mkdataset_demos">il_representations.scripts.mkdataset_demos module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.mkdataset_random">il_representations.scripts.mkdataset_random module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-il-train-module">il_representations.scripts.il_train module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-interpret-module">il_representations.scripts.interpret module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-joint-training-module">il_representations.scripts.joint_training module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-joint-training-cluster-module">il_representations.scripts.joint_training_cluster module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-mkdataset-demos-module">il_representations.scripts.mkdataset_demos module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-mkdataset-random-module">il_representations.scripts.mkdataset_random module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-pretrain-n-adapt-module">il_representations.scripts.pretrain_n_adapt module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.render_dataset">il_representations.scripts.render_dataset module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.run_rep_learner">il_representations.scripts.run_rep_learner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-render-dataset-module">il_representations.scripts.render_dataset module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-run-rep-learner-module">il_representations.scripts.run_rep_learner module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.save_traced_net">il_representations.scripts.save_traced_net module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts.truncate_datasets_icml">il_representations.scripts.truncate_datasets_icml module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-scripts-truncate-datasets-icml-module">il_representations.scripts.truncate_datasets_icml module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.scripts">Module contents</a></li>
 </ul>
 </li>
@@ -123,10 +124,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>
@@ -145,7 +146,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -215,419 +216,41 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.collate_configs">
-<span id="il-representations-scripts-collate-configs-module"></span><h2>il_representations.scripts.collate_configs module<a class="headerlink" href="#module-il_representations.scripts.collate_configs" title="Permalink to this headline">¶</a></h2>
-<p>Recursively collate repL and IL training configs from some directory.
-Deduplicate the configs (using equivalence modulo seed), group the configs by
-exp_ident and benchmark/task name, and print out to console.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.IndentedStream">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">IndentedStream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">indent:</span> <span class="pre">int</span></em>, <em class="sig-param"><span class="pre">*</span></em>, <em class="sig-param"><span class="pre">inner_stream:</span> <span class="pre">TextIO</span> <span class="pre">=</span> <span class="pre">&lt;_io.TextIOWrapper</span> <span class="pre">name='&lt;stdout&gt;'</span> <span class="pre">mode='w'</span> <span class="pre">encoding='UTF-8'&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.collate_configs.IndentedStream" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IO</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>]</p>
-<p>Text mode pseudo-file that indents text written to it.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.IndentedStream.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.collate_configs.IndentedStream.close" title="Permalink to this definition">¶</a></dt>
-<dd><p>Flush and close the IO object.</p>
-<p>This method has no effect if the file is already closed.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.IndentedStream.flush">
-<span class="sig-name descname"><span class="pre">flush</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.collate_configs.IndentedStream.flush" title="Permalink to this definition">¶</a></dt>
-<dd><p>Flush write buffers, if applicable.</p>
-<p>This is not implemented for read-only and non-blocking streams.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.IndentedStream.write">
-<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.IndentedStream.write" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write string to stream.
-Returns the number of characters written (which is always equal to
-the length of the string).</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.collect_configs">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">collect_configs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subdir_path_iter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.collect_configs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.common_prefix_len">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">common_prefix_len</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.common_prefix_len" title="Permalink to this definition">¶</a></dt>
-<dd><p>Find length of common prefix in a list of strings.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.config_generator">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">config_generator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">search_dir</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'config.json'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.config_generator" title="Permalink to this definition">¶</a></dt>
-<dd><p>Recursively walk a directory looking for config.json files.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.do_final_printing">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">do_final_printing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hash_dict</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.collate_configs.do_final_printing" title="Permalink to this definition">¶</a></dt>
-<dd><p>Print out one of the subdicts returned as values by
-collect_configs().</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.filter_configs">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">filter_configs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_generator</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowed_subdirs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">('repl',</span> <span class="pre">'il_train')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.filter_configs" title="Permalink to this definition">¶</a></dt>
-<dd><p>Filter config.json paths returned by some config generator to include
-only those paths whose grandparent directory is <cite>allowed_subdirs</cite>.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.format_exp_ident">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">format_exp_ident</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_dict</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'exp_ident'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.format_exp_ident" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.format_task_and_benchmark">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">format_task_and_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_dict</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.format_task_and_benchmark" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.hash_config">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">hash_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_dict</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forbidden</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('seed',</span> <span class="pre">'encoder_path')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.hash_config" title="Permalink to this definition">¶</a></dt>
-<dd><p>Hash config dict, modulo seed, encoder path, etc.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.load_config">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">load_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.load_config" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.main">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.collate_configs.main" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.collate_configs.strip_common_prefix">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.collate_configs.</span></span><span class="sig-name descname"><span class="pre">strip_common_prefix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.collate_configs.strip_common_prefix" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-collate-configs-module">
+<h2>il_representations.scripts.collate_configs module<a class="headerlink" href="#il-representations-scripts-collate-configs-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.grab_some_stuff_and_pickle_it">
-<span id="il-representations-scripts-grab-some-stuff-and-pickle-it-module"></span><h2>il_representations.scripts.grab_some_stuff_and_pickle_it module<a class="headerlink" href="#module-il_representations.scripts.grab_some_stuff_and_pickle_it" title="Permalink to this headline">¶</a></h2>
-<p>Grabs some random frames from a webdataset and pickles them. Also writes out
-some metadata like trajectory number (in the webdataset) and also frame
-number.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.grab_some_stuff_and_pickle_it.frame_iter">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.grab_some_stuff_and_pickle_it.</span></span><span class="sig-name descname"><span class="pre">frame_iter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">webdataset.Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.grab_some_stuff_and_pickle_it.frame_iter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Iterate over observations, along with</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.grab_some_stuff_and_pickle_it.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.grab_some_stuff_and_pickle_it.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_frames</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.scripts.grab_some_stuff_and_pickle_it.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.grab_some_stuff_and_pickle_it.sample_rand_frames">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.grab_some_stuff_and_pickle_it.</span></span><span class="sig-name descname"><span class="pre">sample_rand_frames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">webdataset.Dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_frames</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">oversample</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.grab_some_stuff_and_pickle_it.sample_rand_frames" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sample n_frames randomly chosen frames from the first (oversample *
-n_frames) frames in the dataset.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.grab_some_stuff_and_pickle_it.trajectory_iter">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.grab_some_stuff_and_pickle_it.</span></span><span class="sig-name descname"><span class="pre">trajectory_iter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">webdataset.Dataset</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.grab_some_stuff_and_pickle_it.trajectory_iter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Yields one trajectory at a time from a webdataset.</p>
-</dd></dl>
-
+<div class="section" id="il-representations-scripts-grab-some-stuff-and-pickle-it-module">
+<h2>il_representations.scripts.grab_some_stuff_and_pickle_it module<a class="headerlink" href="#il-representations-scripts-grab-some-stuff-and-pickle-it-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="il-representations-scripts-il-test-module">
 <h2>il_representations.scripts.il_test module<a class="headerlink" href="#il-representations-scripts-il-test-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.il_train">
-<span id="il-representations-scripts-il-train-module"></span><h2>il_representations.scripts.il_train module<a class="headerlink" href="#module-il_representations.scripts.il_train" title="Permalink to this headline">¶</a></h2>
-<p>Run an IL algorithm in some selected domain.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.il_train.do_training_bc">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.il_train.</span></span><span class="sig-name descname"><span class="pre">do_training_bc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venv_chans_first</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">demo_webdatasets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_pol_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_start_batch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freeze_encoder</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.il_train.do_training_bc" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.il_train.do_training_gail">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.il_train.</span></span><span class="sig-name descname"><span class="pre">do_training_gail</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">venv_chans_first</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">demo_webdatasets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_pol_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gail</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.il_train.do_training_gail" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.il_train.load_encoder_or_policy">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.il_train.</span></span><span class="sig-name descname"><span class="pre">load_encoder_or_policy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy_continue_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freeze</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation_space</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.il_train.load_encoder_or_policy" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.il_train.make_policy">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.il_train.</span></span><span class="sig-name descname"><span class="pre">make_policy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ortho_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_std_init</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">postproc_arch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freeze_pol_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lr_schedule</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">print_policy_summary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.il_train.make_policy" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.il_train.train">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.il_train.</span></span><span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freeze_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">torch_num_threads</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_configs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.il_train.train" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-il-train-module">
+<h2>il_representations.scripts.il_train module<a class="headerlink" href="#il-representations-scripts-il-train-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.interpret">
-<span id="il-representations-scripts-interpret-module"></span><h2>il_representations.scripts.interpret module<a class="headerlink" href="#module-il_representations.scripts.interpret" title="Permalink to this headline">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.InterpAlgos">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">InterpAlgos</span></span><a class="headerlink" href="#il_representations.scripts.interpret.InterpAlgos" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.InterpAlgos.get">
-<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.InterpAlgos.get" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.InterpAlgos.register">
-<span class="sig-name descname"><span class="pre">register</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.InterpAlgos.register" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.Network">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">Network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.Network" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.Network.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.Network.forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.attribute_image_features">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">attribute_image_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algorithm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.attribute_image_features" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.choose_layer">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">choose_layer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_idx</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.choose_layer" title="Permalink to this definition">¶</a></dt>
-<dd><p>network - The network to be interpreted.
-module_name - The network module being interpreted. It should be either “encoder” or “decoder”.
-layer_idx - The index of the layer to be studied. It belongs to the module specified by module_name.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.figure_2_tensor">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">figure_2_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fig</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.figure_2_tensor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Captum’s visualize_image_attr method returns matplotlib.pyplot.figure object. To process and plot figures,
-we need to convert them to torch tensors first.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.plot_linear_layer_attributions">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">plot_linear_layer_attributions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lc_attr_test</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_imgs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.plot_linear_layer_attributions" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.prepare_network">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">prepare_network</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">combined_meta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.prepare_network" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.process_data">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">process_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.process_data" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chosen_algo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_video</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_configs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.save_img">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">save_img</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.save_img" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.interpret.show_img_grid">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.interpret.</span></span><span class="sig-name descname"><span class="pre">show_img_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">imgs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">img_title</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.interpret.show_img_grid" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-interpret-module">
+<h2>il_representations.scripts.interpret module<a class="headerlink" href="#il-representations-scripts-interpret-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.joint_training">
-<span id="il-representations-scripts-joint-training-module"></span><h2>il_representations.scripts.joint_training module<a class="headerlink" href="#module-il_representations.scripts.joint_training" title="Permalink to this headline">¶</a></h2>
-<p>Jointly do repL and IL training.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.add_fso">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">add_fso</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.add_fso" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.bc_setup">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">bc_setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_batches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_configs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ent_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">augs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">postproc_arch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.bc_setup" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.deduplicate_params">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">deduplicate_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">params_iters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_dedup</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.deduplicate_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combines a series of iterators over model parameters into a single list
-of deduplicated parameters.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.do_short_eval">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">do_short_eval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vec_env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_rollouts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterministic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.do_short_eval" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.init_policy">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">init_policy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">postproc_arch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_std_init</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.init_policy" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.learn_repl_bc">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">learn_repl_bc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">repl_learner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repl_datasets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc_learner</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc_augmentation_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_batches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repl_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_dump_interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_save_interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">venv</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_calc_interval</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.learn_repl_bc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Training loop for repL + BC.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.repl_setup">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">repl_setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_configs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs_encoder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">representation_dim</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.repl_setup" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training.train">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training.</span></span><span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">torch_num_threads</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_batches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs_encoder_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs_encoder_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_save_interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">representation_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_ident</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_eval_n_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training.train" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-joint-training-module">
+<h2>il_representations.scripts.joint_training module<a class="headerlink" href="#il-representations-scripts-joint-training-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.joint_training_cluster">
-<span id="il-representations-scripts-joint-training-cluster-module"></span><h2>il_representations.scripts.joint_training_cluster module<a class="headerlink" href="#module-il_representations.scripts.joint_training_cluster" title="Permalink to this headline">¶</a></h2>
-<p>Thin wrapper to run joint_training.py on a Ray server.</p>
-<dl class="py exception">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training_cluster.ArgumentParseFailed">
-<em class="property"><span class="pre">exception</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training_cluster.</span></span><span class="sig-name descname"><span class="pre">ArgumentParseFailed</span></span><a class="headerlink" href="#il_representations.scripts.joint_training_cluster.ArgumentParseFailed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
-<p>Raised when Sacred fails to parse arguments.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training_cluster.hacky_run_commandline">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training_cluster.</span></span><span class="sig-name descname"><span class="pre">hacky_run_commandline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argv</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training_cluster.hacky_run_commandline" title="Permalink to this definition">¶</a></dt>
-<dd><p>Version of <cite>Experiment.run_commandline</cite> that DOESN’T DO SYS.EXIT(1) WHEN
-IT FAILS TO PARSE ARGS grrrrr.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training_cluster.main">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training_cluster.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sacred_args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training_cluster.main" title="Permalink to this definition">¶</a></dt>
-<dd><p>Main entry point on the Ray client. Essentially just spins up a Ray task
-&amp; then exits once it terminates.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.joint_training_cluster.run_joint_training_remote">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.joint_training_cluster.</span></span><span class="sig-name descname"><span class="pre">run_joint_training_remote</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">extra_args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.joint_training_cluster.run_joint_training_remote" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function executes the experiment. It is intended to be wrapped with
-ray.remote and run as a Ray task.</p>
-</dd></dl>
-
+<div class="section" id="il-representations-scripts-joint-training-cluster-module">
+<h2>il_representations.scripts.joint_training_cluster module<a class="headerlink" href="#il-representations-scripts-joint-training-cluster-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.mkdataset_demos">
-<span id="il-representations-scripts-mkdataset-demos-module"></span><h2>il_representations.scripts.mkdataset_demos module<a class="headerlink" href="#module-il_representations.scripts.mkdataset_demos" title="Permalink to this headline">¶</a></h2>
-<p>Make a repL WebDataset from demonstration data.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.mkdataset_demos.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.mkdataset_demos.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_traj_order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj_total</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.mkdataset_demos.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-mkdataset-demos-module">
+<h2>il_representations.scripts.mkdataset_demos module<a class="headerlink" href="#il-representations-scripts-mkdataset-demos-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.mkdataset_random">
-<span id="il-representations-scripts-mkdataset-random-module"></span><h2>il_representations.scripts.mkdataset_random module<a class="headerlink" href="#module-il_representations.scripts.mkdataset_random" title="Permalink to this headline">¶</a></h2>
-<p>Make a repL WebDataset from random rollouts.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.mkdataset_random.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.mkdataset_random.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_cfg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_timesteps_min</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_max_steps_to_write_at_once</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">16384</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.mkdataset_random.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-mkdataset-random-module">
+<h2>il_representations.scripts.mkdataset_random module<a class="headerlink" href="#il-representations-scripts-mkdataset-random-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="il-representations-scripts-pretrain-n-adapt-module">
 <h2>il_representations.scripts.pretrain_n_adapt module<a class="headerlink" href="#il-representations-scripts-pretrain-n-adapt-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.render_dataset">
-<span id="il-representations-scripts-render-dataset-module"></span><h2>il_representations.scripts.render_dataset module<a class="headerlink" href="#module-il_representations.scripts.render_dataset" title="Permalink to this headline">¶</a></h2>
-<p>Loads a webdataset and renders it into images, while printing out some
-debugging info. Useful for verifying that the file contains what you think it
-contains!</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.concat_traj">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">concat_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.concat_traj" title="Permalink to this definition">¶</a></dt>
-<dd><p>Combine the per-step dictionaries that make up a trajectory into a
-single dictionary that maps keys to concatenated values.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.get_n_chans">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">get_n_chans</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.get_n_chans" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_per_traj</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_only_latest</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.sample_points">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">sample_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">traj_len</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.sample_points" title="Permalink to this definition">¶</a></dt>
-<dd><p>Collect <cite>n_points</cite> indices into array, spaced ~evenly (or just return
-all points, if n_points is None).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.save_obs_as_film">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">save_obs_as_film</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_only_latest</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frames_per_traj</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.save_obs_as_film" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save a list of observations in N*(C*F)*H*W format into a file, after
-converting to a ‘film strip’ (appropriate for representing, e.g., a
-continuous trajectory).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.simplify_stacks">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">simplify_stacks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_vec</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_only_latest</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.simplify_stacks" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.to_film_strip">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">to_film_strip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#il_representations.scripts.render_dataset.to_film_strip" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert an N*C*H*W array of image frames into a horizontal ‘film strip’
-with a black border of <cite>border_size</cite> separating the frames (as will as a
-border on the outsides).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.render_dataset.trajectory_iter">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.render_dataset.</span></span><span class="sig-name descname"><span class="pre">trajectory_iter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.render_dataset.trajectory_iter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Yields one trajectory at a time from a webdataset.</p>
-</dd></dl>
-
+<div class="section" id="il-representations-scripts-render-dataset-module">
+<h2>il_representations.scripts.render_dataset module<a class="headerlink" href="#il-representations-scripts-render-dataset-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.scripts.run_rep_learner">
-<span id="il-representations-scripts-run-rep-learner-module"></span><h2>il_representations.scripts.run_rep_learner module<a class="headerlink" href="#module-il_representations.scripts.run_rep_learner" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.run_rep_learner.config_specifies_task_name">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.run_rep_learner.</span></span><span class="sig-name descname"><span class="pre">config_specifies_task_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_config_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.run_rep_learner.config_specifies_task_name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.run_rep_learner.initialize_non_features_extractor">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.run_rep_learner.</span></span><span class="sig-name descname"><span class="pre">initialize_non_features_extractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sb3_model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.run_rep_learner.initialize_non_features_extractor" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.run_rep_learner.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.run_rep_learner.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset_configs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">algo_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batches_per_epoch</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_epochs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">torch_num_threads</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">repl_batch_save_interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_multitask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug_return_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scheduler_cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scheduler_kwargs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_interval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_trajs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.run_rep_learner.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-run-rep-learner-module">
+<h2>il_representations.scripts.run_rep_learner module<a class="headerlink" href="#il-representations-scripts-run-rep-learner-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.scripts.save_traced_net">
 <span id="il-representations-scripts-save-traced-net-module"></span><h2>il_representations.scripts.save_traced_net module<a class="headerlink" href="#module-il_representations.scripts.save_traced_net" title="Permalink to this headline">¶</a></h2>
@@ -642,7 +265,7 @@ encoder.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="il_representations.scripts.save_traced_net.fetch_encoder">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">fetch_encoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.nn.modules.module.Module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.nn.modules.module.Module</span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.fetch_encoder" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">fetch_encoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.nn.Module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.nn.Module</span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.fetch_encoder" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -653,7 +276,7 @@ encoder.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="il_representations.scripts.save_traced_net.load_eval_net">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">load_eval_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.nn.modules.module.Module</span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.load_eval_net" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">load_eval_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net_path</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.nn.Module</span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.load_eval_net" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a network on disk, making sure it ends up on the CPU &amp; in eval
 mode.</p>
 </dd></dl>
@@ -665,26 +288,20 @@ mode.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="il_representations.scripts.save_traced_net.pre_order_children">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">pre_order_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.nn.modules.module.Module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">torch.nn.modules.module.Module</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.pre_order_children" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">pre_order_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">net</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.nn.Module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterator</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">torch.nn.Module</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.pre_order_children" title="Permalink to this definition">¶</a></dt>
 <dd><p>Traverse module tree in pre-order.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="il_representations.scripts.save_traced_net.trace_encoder">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">trace_encoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encoder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.nn.modules.module.Module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.nn.modules.module.Module</span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.trace_encoder" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.save_traced_net.</span></span><span class="sig-name descname"><span class="pre">trace_encoder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">encoder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">torch.nn.Module</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.nn.Module</span></span></span><a class="headerlink" href="#il_representations.scripts.save_traced_net.trace_encoder" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate a random example of the appropriate size &amp; use it to trace the
 given network.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-il_representations.scripts.truncate_datasets_icml">
-<span id="il-representations-scripts-truncate-datasets-icml-module"></span><h2>il_representations.scripts.truncate_datasets_icml module<a class="headerlink" href="#module-il_representations.scripts.truncate_datasets_icml" title="Permalink to this headline">¶</a></h2>
-<p>Truncate dict-style IL dataset and write it to a new data root</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.scripts.truncate_datasets_icml.run">
-<span class="sig-prename descclassname"><span class="pre">il_representations.scripts.truncate_datasets_icml.</span></span><span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">new_data_root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_cfg</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.scripts.truncate_datasets_icml.run" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-scripts-truncate-datasets-icml-module">
+<h2>il_representations.scripts.truncate_datasets_icml module<a class="headerlink" href="#il-representations-scripts-truncate-datasets-icml-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.scripts">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-il_representations.scripts" title="Permalink to this headline">¶</a></h2>

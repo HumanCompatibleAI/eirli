@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>il_representations package &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>il_representations package &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -42,7 +42,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="il_representations.algos package" href="il_representations.algos.html" />
-    <link rel="prev" title="Design Principles" href="rep_learner_design.html" /> 
+    <link rel="prev" title="Interpreting Results" href="interpret.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -92,6 +92,7 @@
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">il_representations package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#subpackages">Subpackages</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
@@ -104,10 +105,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#module-il_representations">Module contents</a></li>
 </ul>
 </li>
@@ -126,7 +127,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -186,57 +187,57 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.augmenters">il_representations.algos.augmenters module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.base_learner">il_representations.algos.base_learner module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.batch_extenders">il_representations.algos.batch_extenders module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.decoders">il_representations.algos.decoders module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.encoders">il_representations.algos.encoders module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.losses">il_representations.algos.losses module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.optimizers">il_representations.algos.optimizers module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.pair_constructors">il_representations.algos.pair_constructors module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.representation_learner">il_representations.algos.representation_learner module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.utils">il_representations.algos.utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos">Module contents</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-augmenters-module">il_representations.algos.augmenters module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-base-learner-module">il_representations.algos.base_learner module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-batch-extenders-module">il_representations.algos.batch_extenders module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-decoders-module">il_representations.algos.decoders module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-encoders-module">il_representations.algos.encoders module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-losses-module">il_representations.algos.losses module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-optimizers-module">il_representations.algos.optimizers module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-pair-constructors-module">il_representations.algos.pair_constructors module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-representation-learner-module">il_representations.algos.representation_learner module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-utils-module">il_representations.algos.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.algos.html#module-contents">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.configs.html">il_representations.configs package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.chain_configs">il_representations.configs.chain_configs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.experimental_conditions">il_representations.configs.experimental_conditions module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.hp_tuning">il_representations.configs.hp_tuning module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.icml_experiment_configs">il_representations.configs.icml_experiment_configs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.icml_hp_tuning">il_representations.configs.icml_hp_tuning module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.joint_training_configs">il_representations.configs.joint_training_configs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.run_rep_learner_configs">il_representations.configs.run_rep_learner_configs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-experimental-conditions-module">il_representations.configs.experimental_conditions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-hp-tuning-module">il_representations.configs.hp_tuning module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-icml-experiment-configs-module">il_representations.configs.icml_experiment_configs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-icml-hp-tuning-module">il_representations.configs.icml_hp_tuning module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-joint-training-configs-module">il_representations.configs.joint_training_configs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-run-rep-learner-configs-module">il_representations.configs.run_rep_learner_configs module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.data.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.data.html#module-il_representations.data.read_dataset">il_representations.data.read_dataset module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.data.html#module-il_representations.data.write_dataset">il_representations.data.write_dataset module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.data.html#il-representations-data-write-dataset-module">il_representations.data.write_dataset module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.data.html#module-il_representations.data">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.atari_envs">il_representations.envs.atari_envs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.auto">il_representations.envs.auto module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-atari-envs-module">il_representations.envs.atari_envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-auto-module">il_representations.envs.auto module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.baselines_vendored">il_representations.envs.baselines_vendored module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.config">il_representations.envs.config module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.dm_control_envs">il_representations.envs.dm_control_envs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.magical_envs">il_representations.envs.magical_envs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.minecraft_envs">il_representations.envs.minecraft_envs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.procgen_envs">il_representations.envs.procgen_envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-config-module">il_representations.envs.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-dm-control-envs-module">il_representations.envs.dm_control_envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-magical-envs-module">il_representations.envs.magical_envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-minecraft-envs-module">il_representations.envs.minecraft_envs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-procgen-envs-module">il_representations.envs.procgen_envs module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.utils">il_representations.envs.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.il.html">il_representations.il package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.bc">il_representations.il.bc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#il-representations-il-bc-module">il_representations.il.bc module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.bc_support">il_representations.il.bc_support module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.disc_rew_nets">il_representations.il.disc_rew_nets module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#il-representations-il-disc-rew-nets-module">il_representations.il.disc_rew_nets module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.gail_pol_save">il_representations.il.gail_pol_save module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.ppo_gail">il_representations.il.ppo_gail module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.score_logging">il_representations.il.score_logging module</a></li>
@@ -253,27 +254,27 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.collate_configs">il_representations.scripts.collate_configs module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.grab_some_stuff_and_pickle_it">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-collate-configs-module">il_representations.scripts.collate_configs module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-grab-some-stuff-and-pickle-it-module">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-il-test-module">il_representations.scripts.il_test module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.il_train">il_representations.scripts.il_train module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.interpret">il_representations.scripts.interpret module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.joint_training">il_representations.scripts.joint_training module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.joint_training_cluster">il_representations.scripts.joint_training_cluster module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_demos">il_representations.scripts.mkdataset_demos module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_random">il_representations.scripts.mkdataset_random module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-il-train-module">il_representations.scripts.il_train module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-interpret-module">il_representations.scripts.interpret module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-joint-training-module">il_representations.scripts.joint_training module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-joint-training-cluster-module">il_representations.scripts.joint_training_cluster module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-mkdataset-demos-module">il_representations.scripts.mkdataset_demos module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-mkdataset-random-module">il_representations.scripts.mkdataset_random module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-pretrain-n-adapt-module">il_representations.scripts.pretrain_n_adapt module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.render_dataset">il_representations.scripts.render_dataset module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.run_rep_learner">il_representations.scripts.run_rep_learner module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-render-dataset-module">il_representations.scripts.render_dataset module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-run-rep-learner-module">il_representations.scripts.run_rep_learner module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.save_traced_net">il_representations.scripts.save_traced_net module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.truncate_datasets_icml">il_representations.scripts.truncate_datasets_icml module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-truncate-datasets-icml-module">il_representations.scripts.truncate_datasets_icml module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.test_support.html">il_representations.test_support package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.test_support.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.test_support.html#module-il_representations.test_support.configuration">il_representations.test_support.configuration module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.test_support.html#module-il_representations.test_support.utils">il_representations.test_support.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.test_support.html#il-representations-test-support-configuration-module">il_representations.test_support.configuration module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.test_support.html#il-representations-test-support-utils-module">il_representations.test_support.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.test_support.html#module-il_representations.test_support">Module contents</a></li>
 </ul>
 </li>
@@ -283,64 +284,11 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.pol_eval">
-<span id="il-representations-pol-eval-module"></span><h2>il_representations.pol_eval module<a class="headerlink" href="#module-il_representations.pol_eval" title="Permalink to this headline">¶</a></h2>
-<p>Utilities for evaluating policies.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.pol_eval.do_final_eval">
-<span class="sig-prename descclassname"><span class="pre">il_representations.pol_eval.</span></span><span class="sig-name descname"><span class="pre">do_final_eval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_rollouts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deterministic_policy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_video</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eval_file_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'eval.json'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">video_file_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.pol_eval.do_final_eval" title="Permalink to this definition">¶</a></dt>
-<dd><p>Do final evaluation of a policy &amp; write eval.json file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>policy_path</strong> (<em>str</em>) – path to SB3 <cite>BasePolicy</cite> that will be evaluated.</p></li>
-<li><p><strong>n_rollouts</strong> (<em>int</em>) – number of rollouts to perform.</p></li>
-<li><p><strong>out_dir</strong> (<em>str</em>) – output directory to write files to.</p></li>
-<li><p><strong>seed</strong> (<em>int</em>) – random seed for environment.</p></li>
-<li><p><strong>run_id</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – optional extra string to be written to JSON
-file as run identifier.</p></li>
-<li><p><strong>deterministic_policy</strong> (<em>bool</em>) – should actions be chosen
-deterministically?</p></li>
-<li><p><strong>device</strong> (<em>Union</em><em>[</em><em>str</em><em>, </em><em>th.Device</em><em>]</em>) – Torch device or device name to use for
-evaluation.</p></li>
-<li><p><strong>write_video</strong> (<em>bool</em>) – should trajectories be rendered as video?</p></li>
-<li><p><strong>eval_file_name</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – filename for writing evaluation
-results.</p></li>
-<li><p><strong>video_file_name</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – filename for when write_video=True</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
+<div class="section" id="il-representations-pol-eval-module">
+<h2>il_representations.pol_eval module<a class="headerlink" href="#il-representations-pol-eval-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.policy_interfacing">
-<span id="il-representations-policy-interfacing-module"></span><h2>il_representations.policy_interfacing module<a class="headerlink" href="#module-il_representations.policy_interfacing" title="Permalink to this headline">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.policy_interfacing.EncoderFeatureExtractor">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.policy_interfacing.</span></span><span class="sig-name descname"><span class="pre">EncoderFeatureExtractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.policy_interfacing.EncoderFeatureExtractor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">stable_baselines3.common.policies.stable_baselines3.common.policies.BaseFeaturesExtractor._name</span></code></p>
-<p>Wraps a BaseEncoder so that it can be used as a policy feature
-extractor.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.policy_interfacing.EncoderFeatureExtractor.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observations</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.policy_interfacing.EncoderFeatureExtractor.forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.policy_interfacing.ObsEncoderFeatureExtractor">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.policy_interfacing.</span></span><span class="sig-name descname"><span class="pre">ObsEncoderFeatureExtractor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.policy_interfacing.ObsEncoderFeatureExtractor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">stable_baselines3.common.policies.stable_baselines3.common.policies.BaseFeaturesExtractor._name</span></code></p>
-<p>Wraps an observation encoder so that it can be used as a policy feature
-extractor.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.policy_interfacing.ObsEncoderFeatureExtractor.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.policy_interfacing.ObsEncoderFeatureExtractor.forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
+<div class="section" id="il-representations-policy-interfacing-module">
+<h2>il_representations.policy_interfacing module<a class="headerlink" href="#il-representations-policy-interfacing-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.script_utils">
 <span id="il-representations-script-utils-module"></span><h2>il_representations.script_utils module<a class="headerlink" href="#module-il_representations.script_utils" title="Permalink to this headline">¶</a></h2>
@@ -420,314 +368,8 @@ undesirable if e.g. <cite>d</cite> is an OrderedDict.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-il_representations.utils">
-<span id="il-representations-utils-module"></span><h2>il_representations.utils module<a class="headerlink" href="#module-il_representations.utils" title="Permalink to this headline">¶</a></h2>
-<p>Miscellaneous tools that don’t fit elsewhere.</p>
-<dl class="py exception">
-<dt class="sig sig-object py" id="il_representations.utils.EmptyIteratorException">
-<em class="property"><span class="pre">exception</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">EmptyIteratorException</span></span><a class="headerlink" href="#il_representations.utils.EmptyIteratorException" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
-<p>Raised when a function is incorrectly passed an empty iterator.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.ForkedPdb">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">ForkedPdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">completekey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tab'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stdin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stdout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nosigint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">readrc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.ForkedPdb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">pdb.Pdb</span></code></p>
-<p>A Pdb subclass that may be used
-from a forked multiprocessing child</p>
-<p>Instantiate a line-oriented interpreter framework.</p>
-<p>The optional argument ‘completekey’ is the readline name of a
-completion key; it defaults to the Tab key. If completekey is
-not None and the readline module is available, command completion
-is done automatically. The optional arguments stdin and stdout
-specify alternate input and output file objects; if not specified,
-sys.stdin and sys.stdout are used.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.ForkedPdb.interaction">
-<span class="sig-name descname"><span class="pre">interaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.ForkedPdb.interaction" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.RepLSaveExampleBatchesCallback">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">RepLSaveExampleBatchesCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_interval_batches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_video</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.RepLSaveExampleBatchesCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Save (possibly image-based) contexts, targets, and encoded/decoded
-contexts/targets.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.SacredProofTuple">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">SacredProofTuple</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">elems</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SacredProofTuple" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">collections.abc.Sequence</span></code></p>
-<p>Pseudo-tuple that can be passed through Sacred without
-being silently cast to a list.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.SacredUnpickler">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">SacredUnpickler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_imports</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoding</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ASCII'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">errors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'strict'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SacredUnpickler" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_pickle.Unpickler</span></code></p>
-<p>Unpickler that replaces Sacred’s ReadOnlyDict/ReadOnlyList with
-dict/list.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.SacredUnpickler.find_class">
-<span class="sig-name descname"><span class="pre">find_class</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SacredUnpickler.find_class" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return an object from a specified module.</p>
-<p>If necessary, the module will be imported. Subclasses may override
-this method (e.g. to restrict unpickling of arbitrary classes and
-functions).</p>
-<p>This method is called whenever a class or a function object is
-needed.  Both arguments passed are str objects.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="il_representations.utils.SacredUnpickler.overrides">
-<span class="sig-name descname"><span class="pre">overrides</span></span><em class="property"> <span class="pre">=</span> <span class="pre">{('sacred.config.custom_containers',</span> <span class="pre">'ReadOnlyDict'):</span> <span class="pre">&lt;class</span> <span class="pre">'il_representations.utils.SaneDict'&gt;,</span> <span class="pre">('sacred.config.custom_containers',</span> <span class="pre">'ReadOnlyList'):</span> <span class="pre">&lt;class</span> <span class="pre">'il_representations.utils.SaneList'&gt;}</span></em><a class="headerlink" href="#il_representations.utils.SacredUnpickler.overrides" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.SaneDict">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">SaneDict</span></span><a class="headerlink" href="#il_representations.utils.SaneDict" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.SaneList">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">SaneList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">iterable=()</span></em>, <em class="sig-param"><span class="pre">/</span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SaneList" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code></p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.SigmoidRescale">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">SigmoidRescale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SigmoidRescale" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">torch.nn.torch.nn.Module._name</span></code></p>
-<p>Rescales input to be in [min_val, max_val]; useful for pixel decoder.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.SigmoidRescale.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.SigmoidRescale.forward" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.TensorFrameWriter">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">TensorFrameWriter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adjust_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">make_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.TensorFrameWriter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Writes N*(F*C)*H*W tensor frames to a video file.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.TensorFrameWriter.add_tensor">
-<span class="sig-name descname"><span class="pre">add_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.TensorFrameWriter.add_tensor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a tensor of shape […, C, H, W] representing the frame stacks
-for a single time step. Call this repeatedly for each time step you
-want to add.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.TensorFrameWriter.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.TensorFrameWriter.close" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.Timers">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">Timers</span></span><a class="headerlink" href="#il_representations.utils.Timers" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Wrapper for a collection of timers.</p>
-<p>Usage: call <cite>.start(“some_name_for_op”)</cite> before doing the operation you
-want to time, then <cite>.stop(“some_name_for_op”)</cite> immediately afterward. Doing
-<cite>.dump_stats()</cite> will compute statistics for recorded times under all names
-(e.g. “some_name_for_op” and any other names you use).</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.Timers.dump_stats">
-<span class="sig-name descname"><span class="pre">dump_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_running</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.utils.Timers.dump_stats" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clear all timer records and return a nested dictionary of stats.
-Keys at top level of dict are timer names, keys at second level are
-stat names (min/mean/max/std), and values at second level are just
-floats.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.Timers.reset">
-<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.Timers.reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Clear all running timers and all saved times.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.Timers.start">
-<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.utils.Timers.start" title="Permalink to this definition">¶</a></dt>
-<dd><p>Start a timer.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.Timers.stop">
-<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_running</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#il_representations.utils.Timers.stop" title="Permalink to this definition">¶</a></dt>
-<dd><p>Stop a timer.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.utils.Timers.time">
-<span class="sig-name descname"><span class="pre">time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timer_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.Timers.time" title="Permalink to this definition">¶</a></dt>
-<dd><p>Time ‘with’ block body.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.utils.WrappedConfig">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">WrappedConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.WrappedConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Dumb wrapper class used in pretrain_n_adapt to hide things from skopt.
-It’s in a separate module so that we can pickle it when pretrain_n_adapt is
-__main__.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.augmenter_from_spec">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">augmenter_from_spec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_space</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.augmenter_from_spec" title="Permalink to this definition">¶</a></dt>
-<dd><p>Construct an image augmentation module from an augmenter spec, expressed
-as either a string of comma-separated augmenter names, or a dict of kwargs
-for StandardAugmentations.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.freeze_params">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">freeze_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.freeze_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>Modifies Torch module in-place to convert all its parameters to buffers,
-and give them require_grad=False. This is a slightly hacky way of
-“freezing” the module.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.get_policy_update">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">get_policy_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">policy_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.get_policy_update" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.hash_configs">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">hash_configs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">merged_config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.hash_configs" title="Permalink to this definition">¶</a></dt>
-<dd><p>MD5 hash of a dictionary.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.image_tensor_to_rgb_grid">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">image_tensor_to_rgb_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_space</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.image_tensor_to_rgb_grid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts an image tensor to a montage of images.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>image_tensor</strong> (<em>Tensor</em>) – <dl class="simple">
-<dt>tensor containing (possibly stacked) frames.</dt><dd><p>Tensor values should be in [0, 1], and tensor shape should be […,
-n_frames*chans_per_frame, H, W]; the last three dimensions are
-essential, but the trailing dimensions do not matter.</p>
-</dd>
-<dt>color_space (ColorSpace): color space for the images. This is needed</dt><dd><p>to infer how many frames are in each frame stack.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>a [3*H*W] RGB image containing all the stacked frames</dt><dd><p>passed in as input, arranged in a (roughly square) grid.</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>grid (Tensor)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.load_sacred_pickle">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">load_sacred_pickle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.load_sacred_pickle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Unpickle an object that may contain Sacred ReadOnlyDict and ReadOnlyList
-objects. It will convert those objects to plain dicts/lists.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.print_policy_info">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">print_policy_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">policy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">obs_space</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.print_policy_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Print model information of the policy</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.pyhash_mutable_types">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">pyhash_mutable_types</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mutable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.pyhash_mutable_types" title="Permalink to this definition">¶</a></dt>
-<dd><p>A Python hash() implementation for nested mutable types.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.recursively_sort">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">recursively_sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">element</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.recursively_sort" title="Permalink to this definition">¶</a></dt>
-<dd><p>Ensures that any dicts in nested dict/list object
-collection are converted to OrderedDicts</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.repeat_chain_non_empty">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">repeat_chain_non_empty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.repeat_chain_non_empty" title="Permalink to this definition">¶</a></dt>
-<dd><p>Equivalent to itertools.chain.from_iterable(itertools.repeat(iterator)),
-but checks that iterator is non-empty.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.save_repl_batches">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">save_repl_batches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dest_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detached_debug_tensors</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batches_trained</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_video</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.save_repl_batches" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save batches of data produced by the innards of a
-<cite>RepresentationLearner</cite>. Tries to save in the easiest-to-open format (e.g.
-image files for things that look like images, pickles for 1D tensors,
-etc.).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.save_rgb_tensor">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">save_rgb_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rgb_tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.save_rgb_tensor" title="Permalink to this definition">¶</a></dt>
-<dd><p>Save an RGB Torch tensor to a file. It is assumed that rgb_tensor is of
-shape [3,H,W] (channels-first), and that it has values in [0,1].</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.up">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">up</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.up" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the path <em>above</em> whatever object the path <cite>p</cite> points to.
-.. rubric:: Examples</p>
-<p>up(“/foo/bar”) == “/foo”
-up(“/foo/bar/”) == “/foo
-up(up(up(“foo/bar”))) == “..”</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.utils.weight_grad_norms">
-<span class="sig-prename descclassname"><span class="pre">il_representations.utils.</span></span><span class="sig-name descname"><span class="pre">weight_grad_norms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.utils.weight_grad_norms" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate the gradient norm and the weight norm of the policy network.</p>
-<p>Adapted from <cite>BC._calculate_policy_norms</cite> in imitation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>params</strong> – list of Torch parameters to compute norm of</p></li>
-<li><p><strong>norm_type</strong> – order of the norm (1, 2, etc.).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>norm of the gradient of the policy network (stored in</dt><dd><p>each parameter’s .grad attribute)</p>
-</dd>
-</dl>
-<p>weight_norm: norm of the weights of the policy network</p>
-</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>gradient_norm</p>
-</dd>
-</dl>
-</dd></dl>
-
+<div class="section" id="il-representations-utils-module">
+<h2>il_representations.utils module<a class="headerlink" href="#il-representations-utils-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-il_representations" title="Permalink to this headline">¶</a></h2>
@@ -741,7 +383,7 @@ up(up(up(“foo/bar”))) == “..”</p>
           <footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
         <a href="il_representations.algos.html" class="btn btn-neutral float-right" title="il_representations.algos package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-        <a href="rep_learner_design.html" class="btn btn-neutral float-left" title="Design Principles" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="interpret.html" class="btn btn-neutral float-left" title="Interpreting Results" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

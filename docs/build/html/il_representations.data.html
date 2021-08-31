@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>il_representations.data package &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>il_representations.data package &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -91,7 +91,8 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
@@ -99,7 +100,7 @@
 <li class="toctree-l3 current"><a class="current reference internal" href="#">il_representations.data package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.data.read_dataset">il_representations.data.read_dataset module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.data.write_dataset">il_representations.data.write_dataset module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-data-write-dataset-module">il_representations.data.write_dataset module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.data">Module contents</a></li>
 </ul>
 </li>
@@ -110,10 +111,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>
@@ -132,7 +133,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -283,27 +284,8 @@ of file paths representing shards of the dataset.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-il_representations.data.write_dataset">
-<span id="il-representations-data-write-dataset-module"></span><h2>il_representations.data.write_dataset module<a class="headerlink" href="#module-il_representations.data.write_dataset" title="Permalink to this headline">¶</a></h2>
-<p>Utilities for writing datasets in the webdataset format.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.data.write_dataset.get_meta_dict">
-<span class="sig-prename descclassname"><span class="pre">il_representations.data.write_dataset.</span></span><span class="sig-name descname"><span class="pre">get_meta_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_config</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#il_representations.data.write_dataset.get_meta_dict" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate a dictionary with metadata for the current task (as defined by
-<cite>env_cfg</cite>). When generating a webdataset, this dictionary will be written
-to the beginning of each shard. Having this metadata in the file makes it
-possible to determine how big the inputs to CNNs are, what sort of action
-space should be used for each task, etc.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.data.write_dataset.write_frames">
-<span class="sig-prename descclassname"><span class="pre">il_representations.data.write_dataset.</span></span><span class="sig-name descname"><span class="pre">write_frames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out_file_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_dicts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.data.write_dataset.write_frames" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write a series of frames to a webdataset shard. This function also makes
-sure to write the metadata dictionary <cite>meta_dict</cite> at the beginning of the
-shard, as expected by the data-loading utilities in <cite>read_dataset.py</cite>.</p>
-</dd></dl>
-
+<div class="section" id="il-representations-data-write-dataset-module">
+<h2>il_representations.data.write_dataset module<a class="headerlink" href="#il-representations-data-write-dataset-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.data">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-il_representations.data" title="Permalink to this headline">¶</a></h2>

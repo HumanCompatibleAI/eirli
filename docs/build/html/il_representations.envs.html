@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>il_representations.envs package &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>il_representations.envs package &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -91,7 +91,8 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
@@ -99,14 +100,14 @@
 <li class="toctree-l3"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">il_representations.envs package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.atari_envs">il_representations.envs.atari_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.auto">il_representations.envs.auto module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-atari-envs-module">il_representations.envs.atari_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-auto-module">il_representations.envs.auto module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.baselines_vendored">il_representations.envs.baselines_vendored module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.config">il_representations.envs.config module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.dm_control_envs">il_representations.envs.dm_control_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.magical_envs">il_representations.envs.magical_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.minecraft_envs">il_representations.envs.minecraft_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.procgen_envs">il_representations.envs.procgen_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-config-module">il_representations.envs.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-dm-control-envs-module">il_representations.envs.dm_control_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-magical-envs-module">il_representations.envs.magical_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-minecraft-envs-module">il_representations.envs.minecraft_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-envs-procgen-envs-module">il_representations.envs.procgen_envs module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs.utils">il_representations.envs.utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.envs">Module contents</a></li>
 </ul>
@@ -117,10 +118,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>
@@ -139,7 +140,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -198,96 +199,11 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.envs.atari_envs">
-<span id="il-representations-envs-atari-envs-module"></span><h2>il_representations.envs.atari_envs module<a class="headerlink" href="#module-il_representations.envs.atari_envs" title="Permalink to this headline">¶</a></h2>
-<p>Utilities for working with Atari environments and demonstrations.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.atari_envs.load_dataset_atari">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.atari_envs.</span></span><span class="sig-name descname"><span class="pre">load_dataset_atari</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chans_first</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.atari_envs.load_dataset_atari" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-envs-atari-envs-module">
+<h2>il_representations.envs.atari_envs module<a class="headerlink" href="#il-representations-envs-atari-envs-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.envs.auto">
-<span id="il-representations-envs-auto-module"></span><h2>il_representations.envs.auto module<a class="headerlink" href="#module-il_representations.envs.auto" title="Permalink to this headline">¶</a></h2>
-<p>Code for automatically loading data, creating vecenvs, etc. based on
-Sacred configuration.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.benchmark_is_available">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">benchmark_is_available</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.benchmark_is_available" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check whether the selected benchmark is actually available for use on
-this machine. Useful for skipping tests when deps are not installed.</p>
-<p>Returns a tuple of <cite>(benchmark_available, message)</cite>: if
-<cite>benchmark_available</cite> is <cite>False</cite>, then the <cite>message</cite> is a string explaining
-why the benchmark is not available; otherwise, <cite>benchmark_available</cite> is
-<cite>True</cite>, and <cite>message</cite> is <cite>None</cite>.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.get_data_dir">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">get_data_dir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_root</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.get_data_dir" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the data directory for a given benchmark (“magical”, “dm_control”,
-etc.), task (e.g. “MoveToCorner-Demo-v0”, “finger-spin”) and data type
-(e.g. “demos”, “random”).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.get_gym_env_name">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">get_gym_env_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dm_control_full_env_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.get_gym_env_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the name of the Gym environment corresponding to the current
-task.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.load_color_space">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">load_color_space</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.load_color_space" title="Permalink to this definition">¶</a></dt>
-<dd><p>Determine which colour space is used for this benchmark. This is RGB for
-every task except Atari. Knowing the colour space is useful for determining
-dimensions of the frame stacks that get passed to CNNs.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.load_dict_dataset">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">load_dict_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.load_dict_dataset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load a dict-type dataset. Also see load_wds_datasets, which instead
-lods a set of datasets that have been stored in a webdataset-compatible
-format.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.load_vec_env">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">load_vec_env</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dm_control_full_env_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dm_control_frame_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minecraft_max_env_steps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">procgen_frame_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">procgen_start_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.load_vec_env" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a vec env for the selected benchmark task and wrap it with any
-necessary wrappers.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.auto.load_wds_datasets">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.auto.</span></span><span class="sig-name descname"><span class="pre">load_wds_datasets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">configs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.auto.load_wds_datasets" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load datasets in webdataset (wds) format.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>configs</strong> (<em>[</em><em>dict</em><em>]</em>) – <dl>
-<dt>list of dicts with the following keys:</dt><dd><ul class="simple">
-<li><p><cite>type</cite>: “random” or “demos”, as appropriate.</p></li>
-<li><p><cite>env_cfg</cite>: subset of keys from <cite>env_cfg_ingredient</cite> specifying a</p></li>
-</ul>
-<p>particular environment name, etc.</p>
-</dd>
-</dl>
-<p>If any of the above keys are missing, they will be filled in with
-defaults: <cite>type</cite> defaults to “demos”, and <cite>env_cfg</cite> keys are taken
-from <cite>env_cfg_ingredient</cite> by default. Only keys that differ from
-those defaults need to be overridden. For instance, if
-<cite>env_cfg_ingredient</cite> was configured with
-<cite>benchmark_name=”dm_control”</cite>, then you could set <cite>configs =
-[{“type”: “random”, “env_cfg”: {“task_name”: “finger_spin”}}]</cite> to use
-only rollouts from the <cite>finger-spin</cite> dm_control environment.</p>
-</p>
-</dd>
-</dl>
-<p>(all other args are taken from env_data_ingredient)</p>
-</dd></dl>
-
+<div class="section" id="il-representations-envs-auto-module">
+<h2>il_representations.envs.auto module<a class="headerlink" href="#il-representations-envs-auto-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.envs.baselines_vendored">
 <span id="il-representations-envs-baselines-vendored-module"></span><h2>il_representations.envs.baselines_vendored module<a class="headerlink" href="#module-il_representations.envs.baselines_vendored" title="Permalink to this headline">¶</a></h2>
@@ -349,184 +265,20 @@ of the step info, so we add it here.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-il_representations.envs.config">
-<span id="il-representations-envs-config-module"></span><h2>il_representations.envs.config module<a class="headerlink" href="#module-il_representations.envs.config" title="Permalink to this headline">¶</a></h2>
-<p>Common config utilities for all benchmarks, including configuration
-variables for creating environments (<cite>env_cfg_ingredient</cite>), for creating
-vecenvs (<cite>venv_opts_ingredient</cite>), and for loading data
-(<cite>env_data_ingredient</cite>).</p>
+<div class="section" id="il-representations-envs-config-module">
+<h2>il_representations.envs.config module<a class="headerlink" href="#il-representations-envs-config-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.envs.dm_control_envs">
-<span id="il-representations-envs-dm-control-envs-module"></span><h2>il_representations.envs.dm_control_envs module<a class="headerlink" href="#module-il_representations.envs.dm_control_envs" title="Permalink to this headline">¶</a></h2>
-<p>Importing this file will automatically register all relevant DM-Control
-environments with Gym.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.dm_control_envs.load_dataset_dm_control">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.dm_control_envs.</span></span><span class="sig-name descname"><span class="pre">load_dataset_dm_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dm_control_full_env_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dm_control_frame_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.dm_control_envs.load_dataset_dm_control" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.dm_control_envs.register_dmc_envs">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.dm_control_envs.</span></span><span class="sig-name descname"><span class="pre">register_dmc_envs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.dm_control_envs.register_dmc_envs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.dm_control_envs.rewrite_dataset_dm_control">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.dm_control_envs.</span></span><span class="sig-name descname"><span class="pre">rewrite_dataset_dm_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dm_control_full_env_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_data_root</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.dm_control_envs.rewrite_dataset_dm_control" title="Permalink to this definition">¶</a></dt>
-<dd><p>Truncate a dm_control dataset to some new length.</p>
-</dd></dl>
-
+<div class="section" id="il-representations-envs-dm-control-envs-module">
+<h2>il_representations.envs.dm_control_envs module<a class="headerlink" href="#il-representations-envs-dm-control-envs-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.envs.magical_envs">
-<span id="il-representations-envs-magical-envs-module"></span><h2>il_representations.envs.magical_envs module<a class="headerlink" href="#module-il_representations.envs.magical_envs" title="Permalink to this headline">¶</a></h2>
-<p>Importing this file automatically registers all relevant MAGICAL
-environments.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.SB3EvaluationProtocol">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.envs.magical_envs.</span></span><span class="sig-name descname"><span class="pre">SB3EvaluationProtocol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.magical_envs.SB3EvaluationProtocol" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">magical.evaluation.magical.evaluation.EvaluationProtocol._name</span></code></p>
-<p>MAGICAL ‘evaluation protocol’ for Stable Baselines 3 policies.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.SB3EvaluationProtocol.obtain_scores">
-<span class="sig-name descname"><span class="pre">obtain_scores</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">venv_parallel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_envs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.magical_envs.SB3EvaluationProtocol.obtain_scores" title="Permalink to this definition">¶</a></dt>
-<dd><p>Collect <cite>self.n_rollouts</cite> scores on environment <cite>env_name</cite>.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.SB3EvaluationProtocol.run_id">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">run_id</span></span><a class="headerlink" href="#il_representations.envs.magical_envs.SB3EvaluationProtocol.run_id" title="Permalink to this definition">¶</a></dt>
-<dd><p>Identifier for this run in the dataframe produced by
-<cite>.do_eval()</cite>.</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.get_env_name_magical">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.magical_envs.</span></span><span class="sig-name descname"><span class="pre">get_env_name_magical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magical_preproc</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.magical_envs.get_env_name_magical" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.load_data">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.magical_envs.</span></span><span class="sig-name descname"><span class="pre">load_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pickle_paths</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preprocessor_name</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">remove_null_actions</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">,</span> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#il_representations.envs.magical_envs.load_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load MAGICAL data from pickle files.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.load_dataset_magical">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.magical_envs.</span></span><span class="sig-name descname"><span class="pre">load_dataset_magical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magical_preproc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magical_remove_null_actions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.magical_envs.load_dataset_magical" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.magical_envs.rewrite_dataset_magical">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.magical_envs.</span></span><span class="sig-name descname"><span class="pre">rewrite_dataset_magical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_data_root</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.magical_envs.rewrite_dataset_magical" title="Permalink to this definition">¶</a></dt>
-<dd><p>Truncate a MAGICAL dataset to some new length.</p>
-</dd></dl>
-
+<div class="section" id="il-representations-envs-magical-envs-module">
+<h2>il_representations.envs.magical_envs module<a class="headerlink" href="#il-representations-envs-magical-envs-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.envs.minecraft_envs">
-<span id="il-representations-envs-minecraft-envs-module"></span><h2>il_representations.envs.minecraft_envs module<a class="headerlink" href="#module-il_representations.envs.minecraft_envs" title="Permalink to this headline">¶</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.MinecraftVectorWrapper">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.envs.minecraft_envs.</span></span><span class="sig-name descname"><span class="pre">MinecraftVectorWrapper</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.MinecraftVectorWrapper" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">gym.core.Wrapper</span></code></p>
-<p>Currently, RepL code only works with pixel inputs, and imitation can only work with vector (rather than dict)
-action spaces. So, we currently (1) only allow VectorObfuscated environments (where the action dictionary
-has been processed into a vector), and (2) extract the observation space to only save the pixels, before we load
-the data in as a il_representations dataset</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.MinecraftVectorWrapper.dictify_action">
-<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">dictify_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.MinecraftVectorWrapper.dictify_action" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.MinecraftVectorWrapper.extract_action">
-<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">extract_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.MinecraftVectorWrapper.extract_action" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.MinecraftVectorWrapper.reset">
-<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.MinecraftVectorWrapper.reset" title="Permalink to this definition">¶</a></dt>
-<dd><p>Resets the environment to an initial state and returns an initial
-observation.</p>
-<p>Note that this function should not reset the environment’s random
-number generator(s); random variables in the environment’s state should
-be sampled independently between multiple calls to <cite>reset()</cite>. In other
-words, each call of <cite>reset()</cite> should yield an environment suitable for
-a new episode, independent of previous episodes.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p>the initial observation.</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p>observation (object)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.MinecraftVectorWrapper.step">
-<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.MinecraftVectorWrapper.step" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run one timestep of the environment’s dynamics. When end of
-episode is reached, you are responsible for calling <cite>reset()</cite>
-to reset this environment’s state.</p>
-<p>Accepts an action and returns a tuple (observation, reward, done, info).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>action</strong> (<em>object</em>) – an action provided by the agent</p>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>agent’s observation of the current environment
-reward (float) : amount of reward returned after previous action
-done (bool): whether the episode has ended, in which case further step() calls will return undefined results
-info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>observation (object)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.MinecraftVectorWrapper.transform_obs">
-<em class="property"><span class="pre">static</span> </em><span class="sig-name descname"><span class="pre">transform_obs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.MinecraftVectorWrapper.transform_obs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.channels_first">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.minecraft_envs.</span></span><span class="sig-name descname"><span class="pre">channels_first</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.channels_first" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.construct_next_obs">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.minecraft_envs.</span></span><span class="sig-name descname"><span class="pre">construct_next_obs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectories_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.construct_next_obs" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.get_env_name_minecraft">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.minecraft_envs.</span></span><span class="sig-name descname"><span class="pre">get_env_name_minecraft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.get_env_name_minecraft" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.minecraft_envs.load_dataset_minecraft">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.minecraft_envs.</span></span><span class="sig-name descname"><span class="pre">load_dataset_minecraft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.minecraft_envs.load_dataset_minecraft" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-envs-minecraft-envs-module">
+<h2>il_representations.envs.minecraft_envs module<a class="headerlink" href="#il-representations-envs-minecraft-envs-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.envs.procgen_envs">
-<span id="il-representations-envs-procgen-envs-module"></span><h2>il_representations.envs.procgen_envs module<a class="headerlink" href="#module-il_representations.envs.procgen_envs" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.procgen_envs.get_procgen_env_name">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.procgen_envs.</span></span><span class="sig-name descname"><span class="pre">get_procgen_env_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.procgen_envs.get_procgen_env_name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.envs.procgen_envs.load_dataset_procgen">
-<span class="sig-prename descclassname"><span class="pre">il_representations.envs.procgen_envs.</span></span><span class="sig-name descname"><span class="pre">load_dataset_procgen</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">procgen_frame_stack</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chans_first</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_traj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.envs.procgen_envs.load_dataset_procgen" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-envs-procgen-envs-module">
+<h2>il_representations.envs.procgen_envs module<a class="headerlink" href="#il-representations-envs-procgen-envs-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.envs.utils">
 <span id="il-representations-envs-utils-module"></span><h2>il_representations.envs.utils module<a class="headerlink" href="#module-il_representations.envs.utils" title="Permalink to this headline">¶</a></h2>

@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>il_representations.il package &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>il_representations.il package &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -91,7 +91,8 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
@@ -100,9 +101,9 @@
 <li class="toctree-l3"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">il_representations.il package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.bc">il_representations.il.bc module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-il-bc-module">il_representations.il.bc module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.bc_support">il_representations.il.bc_support module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.disc_rew_nets">il_representations.il.disc_rew_nets module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-il-disc-rew-nets-module">il_representations.il.disc_rew_nets module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.gail_pol_save">il_representations.il.gail_pol_save module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.ppo_gail">il_representations.il.ppo_gail module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.il.score_logging">il_representations.il.score_logging module</a></li>
@@ -115,10 +116,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>
@@ -137,7 +138,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -196,35 +197,8 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.il.bc">
-<span id="il-representations-il-bc-module"></span><h2>il_representations.il.bc module<a class="headerlink" href="#module-il_representations.il.bc" title="Permalink to this headline">¶</a></h2>
-<p>BC implementation that makes it easy to use auxiliary losses.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.il.bc.BC">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.bc.</span></span><span class="sig-name descname"><span class="pre">BC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ent_weight</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.bc.BC" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Bare-bones BC implementation without outer loop etc.</p>
-<p>Adapted from imitation’s <cite>bc.py</cite>.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.il.bc.BC.all_trainable_params">
-<span class="sig-name descname"><span class="pre">all_trainable_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.bc.BC.all_trainable_params" title="Permalink to this definition">¶</a></dt>
-<dd><p>Trainable parameters for BC (only includes policy parameters).</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.il.bc.BC.batch_forward">
-<span class="sig-name descname"><span class="pre">batch_forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_acts</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.bc.BC.batch_forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Do a forward pass of the network, given a set of observations and
-actions.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.il.bc.BC.make_data_iter">
-<span class="sig-name descname"><span class="pre">make_data_iter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">il_dataset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">augmentation_fn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_batches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shuffle_buffer_size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.bc.BC.make_data_iter" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
+<div class="section" id="il-representations-il-bc-module">
+<h2>il_representations.il.bc module<a class="headerlink" href="#il-representations-il-bc-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.il.bc_support">
 <span id="il-representations-il-bc-support-module"></span><h2>il_representations.il.bc_support module<a class="headerlink" href="#module-il_representations.il.bc_support" title="Permalink to this headline">¶</a></h2>
@@ -243,56 +217,8 @@ actions.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="module-il_representations.il.disc_rew_nets">
-<span id="il-representations-il-disc-rew-nets-module"></span><h2>il_representations.il.disc_rew_nets module<a class="headerlink" href="#module-il_representations.il.disc_rew_nets" title="Permalink to this headline">¶</a></h2>
-<p>Custom discriminator/reward networks for <cite>imitation</cite>.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.disc_rew_nets.</span></span><span class="sig-name descname"><span class="pre">ImageDiscrimNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_cls</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">encoder_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fc_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">torch.nn.modules.module.Module</span></code></p>
-<p>Image-based discriminator network. This is intended to be passed as a
-<cite>discrim_net</cite> argument to <cite>DiscrimNetGAIL</cite> in
-<cite>imitation.rewards.discrim_net</cite>.</p>
-<p>Initializes internal Module state, shared by both nn.Module and ScriptModule.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">traj_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet.forward" title="Permalink to this definition">¶</a></dt>
-<dd><p>Defines the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageDiscrimNet.training">
-<span class="sig-name descname"><span class="pre">training</span></span><em class="property"><span class="pre">:</span> <span class="pre">bool</span></em><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageDiscrimNet.training" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageRewardNet">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.disc_rew_nets.</span></span><span class="sig-name descname"><span class="pre">ImageRewardNet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageRewardNet" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">imitation.rewards.reward_nets.imitation.rewards.reward_nets.RewardNet._name</span></code></p>
-<p>Reward net for AIRL that wraps ImageDiscrimNet (which basically does the
-thing we want anyway).</p>
-<dl class="py property">
-<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageRewardNet.base_reward_net">
-<em class="property"><span class="pre">property</span> </em><span class="sig-name descname"><span class="pre">base_reward_net</span></span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageRewardNet.base_reward_net" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="il_representations.il.disc_rew_nets.ImageRewardNet.reward_train">
-<span class="sig-name descname"><span class="pre">reward_train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">next_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">done</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.disc_rew_nets.ImageRewardNet.reward_train" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
+<div class="section" id="il-representations-il-disc-rew-nets-module">
+<h2>il_representations.il.disc_rew_nets module<a class="headerlink" href="#il-representations-il-disc-rew-nets-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.il.gail_pol_save">
 <span id="il-representations-il-gail-pol-save-module"></span><h2>il_representations.il.gail_pol_save module<a class="headerlink" href="#module-il_representations.il.gail_pol_save" title="Permalink to this headline">¶</a></h2>
@@ -336,8 +262,8 @@ when using any environment—if the desired <cite>eval_score</cite> key is not i
 then it won’t add any log entries).</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="il_representations.il.score_logging.SB3ScoreLoggingCallback">
-<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.score_logging.</span></span><span class="sig-name descname"><span class="pre">SB3ScoreLoggingCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.score_logging.SB3ScoreLoggingCallback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">stable_baselines3.common.callbacks.BaseCallback</span></code></p>
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">il_representations.il.score_logging.</span></span><span class="sig-name descname"><span class="pre">SB3ScoreLoggingCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.il.score_logging.SB3ScoreLoggingCallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">stable_baselines3.common.callbacks.stable_baselines3.common.callbacks.BaseCallback._name</span></code></p>
 <p>Callback for SB3 RL algorithms which extracts the ‘eval_score’ from the
 step info dict (if it exists) and includes it in the logs. Useful for
 MAGICAL, which reports end-of-trajectory performance using <cite>eval_score</cite>.</p>

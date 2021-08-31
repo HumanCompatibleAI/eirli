@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Representation Learner Usage &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>Representation Learner Usage &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -99,6 +99,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
 </ul>
 
@@ -115,7 +116,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -174,18 +175,37 @@ which is, perhaps not surprisingly, a class called <cite>RepresentationLearner</
 general framework by which components of representation learner training happen. Different variants of
 RepL algorithms are designed by creating a learner which takes in and runs different implementations of those component steps.</p>
 <div class="section" id="training-a-pre-defined-representation-learner">
-<h2>Training a Pre-Defined Representation Learner<a class="headerlink" href="#training-a-pre-defined-representation-learner" title="Permalink to this headline">¶</a></h2>
+<span id="pre-defined"></span><h2>Training a Pre-Defined Representation Learner<a class="headerlink" href="#training-a-pre-defined-representation-learner" title="Permalink to this headline">¶</a></h2>
 <p>For the sake of our experimentation, we have defined a number of existing, commonly used algorithms, and have made
 them available to import and use directly.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">il_representations.algos</span> <span class="kn">import</span> <span class="n">SimCLR</span>
-<span class="n">simclr_model</span> <span class="o">=</span> <span class="n">SimCLR</span><span class="p">()</span>
-<span class="c1"># Note: ds in these examples is a dataset in WebDataset form</span>
-<span class="n">loss_record</span><span class="p">,</span> <span class="n">encoder_path</span> <span class="o">=</span> <span class="n">simclr_model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="n">ds</span><span class="p">,</span> <span class="n">batches_per_epoch</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">il_representations.algos</span> <span class="kn">import</span> <span class="n">SimCLR</span><span class="p">,</span> <span class="n">NoAugmentation</span>
+<span class="kn">from</span> <span class="nn">il_representations.utils</span> <span class="kn">import</span> <span class="n">convert_to_simple_webdataset</span><span class="p">,</span> <span class="n">load_simple_webdataset</span>
+
+<span class="c1"># This step converts a Pytorch dataset of the form [{&#39;obs&#39;: &lt;image&gt;}...] into a Webdataset</span>
+<span class="c1"># that can stream from disk. This step only needs to be performed once</span>
+<span class="n">full_wds_url</span> <span class="o">=</span> <span class="n">convert_to_simple_webdataset</span><span class="p">(</span><span class="n">dataset</span><span class="o">=</span><span class="n">pytorch_dataset</span><span class="p">,</span>
+                                            <span class="n">file_out_path</span><span class="o">=</span><span class="s2">&quot;temp&quot;</span><span class="p">,</span>
+                                            <span class="n">file_out_name</span><span class="o">=</span><span class="s2">&quot;my_dataset&quot;</span><span class="p">)</span>
+
+<span class="n">wds</span> <span class="o">=</span> <span class="n">load_simple_webdataset</span><span class="p">(</span><span class="n">full_wds_url</span><span class="p">)</span>
+
+<span class="c1"># For this example, we&#39;re imagining a (3, 64, 64) image size</span>
+<span class="n">algo</span> <span class="o">=</span> <span class="n">algos</span><span class="o">.</span><span class="n">SimCLR</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                    <span class="n">observation_space</span><span class="o">=</span><span class="n">spaces</span><span class="o">.</span><span class="n">Box</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
+                                                 <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                                 <span class="n">high</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+                    <span class="n">action_space</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">augmenter</span><span class="o">=</span><span class="n">NoAugmentation</span><span class="p">)</span>
+<span class="c1"># This trains for a single epoch of 10 batches, calculating logging</span>
+<span class="c1"># information and logging it every step. This is likely substantially</span>
+<span class="c1"># more logging than you&#39;d want for a typical training use case</span>
+<span class="n">algo</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">datasets</span><span class="o">=</span><span class="p">[</span><span class="n">wds</span><span class="p">],</span> <span class="n">batches_per_epoch</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+           <span class="n">log_dir</span><span class="o">=</span><span class="s1">&#39;temp&#39;</span><span class="p">,</span> <span class="n">log_interval</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">calc_log_interval</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="defining-a-new-representation-learner">
-<h2>Defining a New Representation Learner<a class="headerlink" href="#defining-a-new-representation-learner" title="Permalink to this headline">¶</a></h2>
+<span id="define-new"></span><h2>Defining a New Representation Learner<a class="headerlink" href="#defining-a-new-representation-learner" title="Permalink to this headline">¶</a></h2>
 <p>Let’s use the SimCLR example from above to walk through how you might create an algorithm that differs from it in some way.
 This is the code used in <cite>algos/__init__.py</cite> to define the SimCLR algorithm class, with some additional
 explanatory documentation added in for clarity’s sake. This explanation will assume you have some familiarity with the
@@ -231,7 +251,7 @@ conceptual breakdown used in this codebase; if you’re unsure about that, you c
 </div>
 <div class="section" id="existing-pre-defined-representation-learners">
 <h3>Existing Pre-Defined Representation Learners<a class="headerlink" href="#existing-pre-defined-representation-learners" title="Permalink to this headline">¶</a></h3>
-<p>You can find a list of existing algorithms at: <a class="reference internal" href="il_representations.algos.html#module-il_representations.algos" title="il_representations.algos"><code class="xref py py-mod docutils literal notranslate"><span class="pre">il_representations.algos</span></code></a></p>
+<p>You can find a list of existing algorithms at: <code class="xref py py-mod docutils literal notranslate"><span class="pre">il_representations.algos</span></code></p>
 </div>
 </div>
 </div>

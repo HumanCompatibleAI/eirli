@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Welcome to Representations for Sequence Learning’s documentation! &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>Welcome to Representations for Sequence Learning’s documentation! &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -55,7 +55,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> Representations for Sequence Learning
+            <a href="#" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -91,6 +91,7 @@
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
 </ul>
 
@@ -107,7 +108,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">Representations for Sequence Learning</a>
+          <a href="#">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -181,9 +182,12 @@ reinforcement learning</p></li>
 <h1>Common Use Cases<a class="headerlink" href="#common-use-cases" title="Permalink to this headline">¶</a></h1>
 <p>So, you want to…</p>
 <ul class="simple">
-<li><p>Reproduce our results. You can find scripts and instructions here [TODO] to help reproduce our benchmark results.</p></li>
-<li><p>Design and experiment with a new representation learning algorithm using our modular components.</p></li>
-<li><p>Use our algorithm definitions in a setting other than sequential learning</p></li>
+<li><p>Reproduce our results? You can find scripts and instructions <a class="reference internal" href="reproduction_scripts.html#reproduction"><span class="std std-ref">here</span></a> to help reproduce our benchmark results.</p></li>
+<li><p>Design and experiment with a new representation learning algorithm using our modular components?
+You can find documentation on that <a class="reference internal" href="representation_learner_usage.html#define-new"><span class="std std-ref">here</span></a></p></li>
+<li><p>Use our algorithm definitions in a setting other than sequential learning? The base example
+<a class="reference internal" href="representation_learner_usage.html#pre-defined"><span class="std std-ref">here</span></a> demonstrates this
+simplified use case</p></li>
 </ul>
 </div>
 <div class="section" id="modular-algorithm-design">
@@ -201,7 +205,8 @@ Sometimes an extra context object is passed in</p>
 <p>Some examples are:</p>
 <ul class="simple">
 <li><p>In <strong>SimCLR</strong>, the context and target are the same image frame, and augmentation and then encoding is
-applied to both context and target, before pulling the context and target representations together [TODO mention projection decoder]</p></li>
+applied to both context and target. That learned representation is sent through a decoder, and then
+the context and target representations are pulled together with a contrastive loss.</p></li>
 <li><p>In <strong>TemporalCPC</strong>, the context is a frame at time t, and the target a frame at time t+k, and
 then, similarly to SimCLR above, augmentation is applied to the frame before it’s put through an
 encoder, and the two resulting representations pulled together</p></li>
@@ -221,11 +226,11 @@ number of class interfaces, each of which handles a different component
 of the algorithm. By selecting different implementations of these shared
 interfaces, and creating a RepresentationLearner that takes them as
 arguments, and handles the base machinery of performing transformations</p>
-<p>[TODO create diagram]</p>
+<a class="reference internal image-reference" href="docs/source/_static/ilr_diagram.pdf"><img alt="A diagram showing how these components made up a training pipeline for our benchmark" src="docs/source/_static/ilr_diagram.pdf" style="width: 800px;" /></a>
 <ol class="arabic simple">
 <li><p>TargetPairConstructer - This component takes in a set of trajectories
-(assumed to be [CHECK THIS?] ordered lists of observations and
-actions) and creates a dataset of (context, target, optional extra
+(assumed to be iterators of dicts containing ‘obs’ and optional ‘acts’,
+and ‘dones’ keys) and creates a dataset of (context, target, optional extra
 context) pairs that will be shuffled to form the training set.</p></li>
 <li><p>Augmenter - This component governs whether either or both of the
 context and target objects are augmented before being passed to the
@@ -252,14 +257,13 @@ contrastive loss</p></li>
 transformed target and handles the loss calculation, along with any
 transformations that need to happen as a part of that calculation.</p></li>
 </ol>
-<p>[TODO walk through examples of combined algorithms from these
-components]</p>
 </div>
 <div class="section" id="training-scripts">
 <h1>Training Scripts<a class="headerlink" href="#training-scripts" title="Permalink to this headline">¶</a></h1>
 <p>In addition to machinery for constructing algorithms, the repo contains a set of Sacred-based training scripts for
 testing different Representation Learning algorithms as either pretraining or joint training components within an
-imitation learning pipeline. These are likeliest to be a fit for your use case if you</p>
+imitation learning pipeline. These are likeliest to be a fit for your use case if you want to reproduce our results,
+or train models in similar settings</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
@@ -286,61 +290,66 @@ imitation learning pipeline. These are likeliest to be a fit for your use case i
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="interpret.html#generating-clusters">Generating Clusters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interpret.html#interpreting-policies">Interpreting Policies</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.augmenters">il_representations.algos.augmenters module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.base_learner">il_representations.algos.base_learner module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.batch_extenders">il_representations.algos.batch_extenders module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.decoders">il_representations.algos.decoders module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.encoders">il_representations.algos.encoders module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.losses">il_representations.algos.losses module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.optimizers">il_representations.algos.optimizers module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.pair_constructors">il_representations.algos.pair_constructors module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.representation_learner">il_representations.algos.representation_learner module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos.utils">il_representations.algos.utils module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-il_representations.algos">Module contents</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-augmenters-module">il_representations.algos.augmenters module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-base-learner-module">il_representations.algos.base_learner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-batch-extenders-module">il_representations.algos.batch_extenders module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-decoders-module">il_representations.algos.decoders module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-encoders-module">il_representations.algos.encoders module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-losses-module">il_representations.algos.losses module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-optimizers-module">il_representations.algos.optimizers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-pair-constructors-module">il_representations.algos.pair_constructors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-representation-learner-module">il_representations.algos.representation_learner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#il-representations-algos-utils-module">il_representations.algos.utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.algos.html#module-contents">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.configs.html">il_representations.configs package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.chain_configs">il_representations.configs.chain_configs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.experimental_conditions">il_representations.configs.experimental_conditions module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.hp_tuning">il_representations.configs.hp_tuning module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.icml_experiment_configs">il_representations.configs.icml_experiment_configs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.icml_hp_tuning">il_representations.configs.icml_hp_tuning module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.joint_training_configs">il_representations.configs.joint_training_configs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs.run_rep_learner_configs">il_representations.configs.run_rep_learner_configs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-experimental-conditions-module">il_representations.configs.experimental_conditions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-hp-tuning-module">il_representations.configs.hp_tuning module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-icml-experiment-configs-module">il_representations.configs.icml_experiment_configs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-icml-hp-tuning-module">il_representations.configs.icml_hp_tuning module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-joint-training-configs-module">il_representations.configs.joint_training_configs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#il-representations-configs-run-rep-learner-configs-module">il_representations.configs.run_rep_learner_configs module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.configs.html#module-il_representations.configs">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.data.html">il_representations.data package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.data.html#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.data.html#module-il_representations.data.read_dataset">il_representations.data.read_dataset module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.data.html#module-il_representations.data.write_dataset">il_representations.data.write_dataset module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.data.html#il-representations-data-write-dataset-module">il_representations.data.write_dataset module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.data.html#module-il_representations.data">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.envs.html">il_representations.envs package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.atari_envs">il_representations.envs.atari_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.auto">il_representations.envs.auto module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-atari-envs-module">il_representations.envs.atari_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-auto-module">il_representations.envs.auto module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.baselines_vendored">il_representations.envs.baselines_vendored module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.config">il_representations.envs.config module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.dm_control_envs">il_representations.envs.dm_control_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.magical_envs">il_representations.envs.magical_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.minecraft_envs">il_representations.envs.minecraft_envs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.procgen_envs">il_representations.envs.procgen_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-config-module">il_representations.envs.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-dm-control-envs-module">il_representations.envs.dm_control_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-magical-envs-module">il_representations.envs.magical_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-minecraft-envs-module">il_representations.envs.minecraft_envs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#il-representations-envs-procgen-envs-module">il_representations.envs.procgen_envs module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs.utils">il_representations.envs.utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.envs.html#module-il_representations.envs">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.il.html">il_representations.il package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.bc">il_representations.il.bc module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#il-representations-il-bc-module">il_representations.il.bc module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.bc_support">il_representations.il.bc_support module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.disc_rew_nets">il_representations.il.disc_rew_nets module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#il-representations-il-disc-rew-nets-module">il_representations.il.disc_rew_nets module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.gail_pol_save">il_representations.il.gail_pol_save module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.ppo_gail">il_representations.il.ppo_gail module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.il.html#module-il_representations.il.score_logging">il_representations.il.score_logging module</a></li>
@@ -351,37 +360,37 @@ imitation learning pipeline. These are likeliest to be a fit for your use case i
 <li class="toctree-l3"><a class="reference internal" href="il_representations.scripts.html">il_representations.scripts package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#subpackages">Subpackages</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.collate_configs">il_representations.scripts.collate_configs module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.grab_some_stuff_and_pickle_it">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-collate-configs-module">il_representations.scripts.collate_configs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-grab-some-stuff-and-pickle-it-module">il_representations.scripts.grab_some_stuff_and_pickle_it module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-il-test-module">il_representations.scripts.il_test module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.il_train">il_representations.scripts.il_train module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.interpret">il_representations.scripts.interpret module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.joint_training">il_representations.scripts.joint_training module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.joint_training_cluster">il_representations.scripts.joint_training_cluster module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_demos">il_representations.scripts.mkdataset_demos module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.mkdataset_random">il_representations.scripts.mkdataset_random module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-il-train-module">il_representations.scripts.il_train module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-interpret-module">il_representations.scripts.interpret module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-joint-training-module">il_representations.scripts.joint_training module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-joint-training-cluster-module">il_representations.scripts.joint_training_cluster module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-mkdataset-demos-module">il_representations.scripts.mkdataset_demos module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-mkdataset-random-module">il_representations.scripts.mkdataset_random module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-pretrain-n-adapt-module">il_representations.scripts.pretrain_n_adapt module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.render_dataset">il_representations.scripts.render_dataset module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.run_rep_learner">il_representations.scripts.run_rep_learner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-render-dataset-module">il_representations.scripts.render_dataset module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-run-rep-learner-module">il_representations.scripts.run_rep_learner module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.save_traced_net">il_representations.scripts.save_traced_net module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts.truncate_datasets_icml">il_representations.scripts.truncate_datasets_icml module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#il-representations-scripts-truncate-datasets-icml-module">il_representations.scripts.truncate_datasets_icml module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.scripts.html#module-il_representations.scripts">Module contents</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="il_representations.test_support.html">il_representations.test_support package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html#module-il_representations.test_support.configuration">il_representations.test_support.configuration module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html#module-il_representations.test_support.utils">il_representations.test_support.utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html#il-representations-test-support-configuration-module">il_representations.test_support.configuration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html#il-representations-test-support-utils-module">il_representations.test_support.utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="il_representations.test_support.html#module-il_representations.test_support">Module contents</a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>

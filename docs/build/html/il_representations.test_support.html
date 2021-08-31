@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>il_representations.test_support package &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>il_representations.test_support package &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -55,7 +55,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -90,7 +90,8 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="il_representations.html">il_representations package</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="il_representations.html#subpackages">Subpackages</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="il_representations.algos.html">il_representations.algos package</a></li>
@@ -101,18 +102,18 @@
 <li class="toctree-l3"><a class="reference internal" href="il_representations.scripts.html">il_representations.scripts package</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">il_representations.test_support package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.test_support.configuration">il_representations.test_support.configuration module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#module-il_representations.test_support.utils">il_representations.test_support.utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-test-support-configuration-module">il_representations.test_support.configuration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#il-representations-test-support-utils-module">il_representations.test_support.utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#module-il_representations.test_support">Module contents</a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.pol_eval">il_representations.pol_eval module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.policy_interfacing">il_representations.policy_interfacing module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-pol-eval-module">il_representations.pol_eval module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-policy-interfacing-module">il_representations.policy_interfacing module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.script_utils">il_representations.script_utils module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations.utils">il_representations.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="il_representations.html#il-representations-utils-module">il_representations.utils module</a></li>
 <li class="toctree-l2"><a class="reference internal" href="il_representations.html#module-il_representations">Module contents</a></li>
 </ul>
 </li>
@@ -131,7 +132,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -190,28 +191,11 @@
 <div class="section" id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.test_support.configuration">
-<span id="il-representations-test-support-configuration-module"></span><h2>il_representations.test_support.configuration module<a class="headerlink" href="#module-il_representations.test_support.configuration" title="Permalink to this headline">¶</a></h2>
-<p>Benchmark ingredient configurations for unit testing.</p>
+<div class="section" id="il-representations-test-support-configuration-module">
+<h2>il_representations.test_support.configuration module<a class="headerlink" href="#il-representations-test-support-configuration-module" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="module-il_representations.test_support.utils">
-<span id="il-representations-test-support-utils-module"></span><h2>il_representations.test_support.utils module<a class="headerlink" href="#module-il_representations.test_support.utils" title="Permalink to this headline">¶</a></h2>
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.test_support.utils.files_are_identical">
-<span class="sig-prename descclassname"><span class="pre">il_representations.test_support.utils.</span></span><span class="sig-name descname"><span class="pre">files_are_identical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">65535</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.test_support.utils.files_are_identical" title="Permalink to this definition">¶</a></dt>
-<dd><p>Figure out whether paths p1 and p2 point to an identical file.
-Takes the dumb approach of reading the entire file out, but this make it
-robust to choice of whether file is copied vs. symlinked vs. hardlinked.</p>
-<p>Note that this only works for ordinary files, and not sockets etc.; for
-‘interactive’ files, <cite>BufferedReader.read()</cite> might return a short read
-before EOF, in which case this function will break.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="il_representations.test_support.utils.is_representation_learner">
-<span class="sig-prename descclassname"><span class="pre">il_representations.test_support.utils.</span></span><span class="sig-name descname"><span class="pre">is_representation_learner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#il_representations.test_support.utils.is_representation_learner" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<div class="section" id="il-representations-test-support-utils-module">
+<h2>il_representations.test_support.utils module<a class="headerlink" href="#il-representations-test-support-utils-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-il_representations.test_support">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-il_representations.test_support" title="Permalink to this headline">¶</a></h2>

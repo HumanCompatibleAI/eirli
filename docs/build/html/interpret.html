@@ -1,0 +1,282 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Interpreting Results &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="il_representations package" href="il_representations.html" />
+    <link rel="prev" title="Design Principles" href="rep_learner_design.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="data.html">Dataset Creation &amp; Environment Specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Interpreting Results</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#generating-clusters">Generating Clusters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interpreting-policies">Interpreting Policies</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Representations for Imitation Learning</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Interpreting Results</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/interpret.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="interpreting-results">
+<h1>Interpreting Results<a class="headerlink" href="#interpreting-results" title="Permalink to this headline">¶</a></h1>
+<p>Our current implementation contains some helpful tools for further
+analyzing the learned policies. The first helps to generate clusters of
+encoder outputs, and the second analyzes a policy with interpretability
+algorithms provided in the <a class="reference external" href="https://captum.ai">Captum</a> package.</p>
+<div class="section" id="generating-clusters">
+<h2>Generating Clusters<a class="headerlink" href="#generating-clusters" title="Permalink to this headline">¶</a></h2>
+<p>The code to generate clusters is provided in
+<code class="docutils literal notranslate"><span class="pre">analysis/clusters.ipynb</span></code>. This notebook enables you to get
+representation encodings from saved policies, and visualize the clusters
+using Principal component analysis (PCA) or t-distributed Stochastic
+Neighbor Embedding (t-SNE) in Tensorboard. What it does is to generate
+and save representations into a <code class="docutils literal notranslate"><span class="pre">runs</span></code> directory, and visualizing it
+is as simple as running two lines:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="n">load_ext</span> <span class="n">tensorboard</span>
+<span class="o">%</span><span class="n">tensorboard</span> <span class="o">--</span><span class="n">logdir</span><span class="o">=</span><span class="n">runs</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="interpreting-policies">
+<h2>Interpreting Policies<a class="headerlink" href="#interpreting-policies" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes it can be helpful to visualize to what extent a policy relies
+on certain regions of the state input, and this can be done by
+algorithms provided by <a class="reference external" href="https://captum.ai/">Captum</a>. In
+<code class="docutils literal notranslate"><span class="pre">scripts/interpret.py</span></code> we incorporate three Primary Attribution
+methods: <a class="reference external" href="https://captum.ai/api/saliency.html">Saliency</a>, <a class="reference external" href="https://captum.ai/api/integrated_gradients.html">Integrated
+Gradients</a>, and
+<a class="reference external" href="https://captum.ai/api/deep_lift.html">DeepLift</a>.</p>
+<p>To run the script, you need to specify a few parameters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">encoder_path</span></code>: The path leading to the saved encoder you want to
+interpret.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">chosen_algo</span></code> (Optional): The interpretation algorithm you want to
+run. We currently support one of
+<code class="docutils literal notranslate"><span class="pre">['saliency',</span> <span class="pre">'integrated_gradient',</span> <span class="pre">'deep_lift']</span></code>, with
+<code class="docutils literal notranslate"><span class="pre">'integrated_gradient'</span></code> being the default value.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">length</span></code> (Optional): The number of images you want to interpret.
+This will make the policy interpret the first <code class="docutils literal notranslate"><span class="pre">length</span></code> images from
+the dataset. The default value is <code class="docutils literal notranslate"><span class="pre">2</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">save_video</span></code> (Optional): Whether to save the interpreted <code class="docutils literal notranslate"><span class="pre">length</span></code>
+images as a video. The default value is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">save_image</span></code> (Optional): Whether to save <code class="docutils literal notranslate"><span class="pre">length</span></code> images to a
+local disk. The default value is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">device</span></code> (Optional): Specify the device you want to run. By
+default, it will use CUDA if a GPU is available, and use CPU
+otherwise.</p></li>
+</ul>
+<p>The benchmark and dataset to be tested on by default depends on
+<code class="docutils literal notranslate"><span class="pre">env_cfg_defaults</span></code> in <code class="docutils literal notranslate"><span class="pre">envs/config.py</span></code>. If you want to specify them
+on-the-fly, you can set the values when you call this file. Below is an
+example to run the interpretation on <code class="docutils literal notranslate"><span class="pre">Procgen</span></code>’s <code class="docutils literal notranslate"><span class="pre">Coinrun</span></code>
+environment:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="m">1</span> python ./src/il_representations/scripts/interpret.py with <span class="se">\</span>
+     <span class="nv">encoder_path</span><span class="o">=</span><span class="si">${</span><span class="nv">path_to_encoder</span><span class="si">}</span> <span class="se">\</span>
+     <span class="nv">save_video</span><span class="o">=</span>True <span class="se">\</span>
+     <span class="nv">save_image</span><span class="o">=</span>True <span class="se">\</span>
+     <span class="nv">chosen_algo</span><span class="o">=</span>saliency <span class="se">\</span>
+     <span class="nv">length</span><span class="o">=</span><span class="m">1000</span> <span class="se">\</span>
+     env_cfg.benchmark_name<span class="o">=</span>procgen <span class="se">\</span>
+     env_cfg.task_name<span class="o">=</span>coinrun
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="il_representations.html" class="btn btn-neutral float-right" title="il_representations package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="rep_learner_design.html" class="btn btn-neutral float-left" title="Design Principles" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Center for Human-Compatible AI.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

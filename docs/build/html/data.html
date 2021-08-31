@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>Dataset Creation &amp; Environment Specification &mdash; Representations for Sequence Learning 0.1.0 documentation</title>
+  <title>Dataset Creation &amp; Environment Specification &mdash; Representations for Imitation Learning 0.1.0 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Representations for Sequence Learning
+            <a href="index.html" class="icon icon-home"> Representations for Imitation Learning
           
 
           
@@ -104,7 +104,8 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="representation_learner_usage.html">Representation Learner Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Representation Learner Design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rep_learner_design.html">Design Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="interpret.html">Interpreting Results</a></li>
 <li class="toctree-l1"><a class="reference internal" href="il_representations.html">il_representations package</a></li>
 </ul>
 
@@ -121,7 +122,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Representations for Sequence Learning</a>
+          <a href="index.html">Representations for Imitation Learning</a>
         
       </nav>
 
@@ -175,10 +176,6 @@
             
   <div class="section" id="dataset-creation-environment-specification">
 <span id="dataset-and-environment"></span><h1>Dataset Creation &amp; Environment Specification<a class="headerlink" href="#dataset-creation-environment-specification" title="Permalink to this headline">¶</a></h1>
-<p><em>This README current as of 2020-11-29. Some aspects of the data-loading
-pipeline will probably change eventually, so expect this doc to be
-slightly out of date if you’re reading it 2-3 months (or more) in the
-future. Bug Sam if there are serious problems with it.</em></p>
 <p>This document explains the abstractions that we are using to load
 demonstration data and create Gym environments. These abstractions are
 intended provide a reasonably uniform internal interface across all of
