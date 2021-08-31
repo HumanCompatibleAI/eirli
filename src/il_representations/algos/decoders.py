@@ -65,7 +65,7 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
     for layer_def in architecture:
         layers.append(nn.Linear(input_dim, layer_def['output_dim']))
         layers.append(nn.ReLU())
-        # layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
+        layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
     network = nn.Sequential(*layers)

@@ -259,8 +259,6 @@ class MAGICALCNN(nn.Module):
             in_dim = layer_out_dim*w
         if 'resnet' in arch_str:
             conv_layers.append(nn.Conv2d(in_dim, 32, 1))
-            # conv_layers.append(nn.AdaptiveAvgPool2d((1, 1)))
-
         conv_layers.append(nn.Flatten())
 
         fc_layers = []
