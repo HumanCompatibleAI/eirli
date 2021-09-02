@@ -3,22 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to EIRLI's Documentation!
-=================================
 .. include:: README_former.rst
 
 .. toctree::
    :maxdepth: 4
    :caption: Contents:
 
-   reproduction
+   reproduction_scripts
    data
    representation_learner_usage
    rep_learner_design
    interpret
    il_representations
-
-
 
 Indices and tables
 ==================
