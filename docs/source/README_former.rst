@@ -1,6 +1,14 @@
 Introduction
 ============
 
+.. image:: https://readthedocs.org/projects/il-representations/badge/?version=latest
+   :target: https://il-representations.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation status
+
+.. image:: https://img.shields.io/badge/data-download-blue
+   :target: https://berkeley.app.box.com/s/8yo3yyyh0h2e1ay5iehbnyg4g0cm0lpe
+   :alt: Dataset download link
+
 Over the past handful of years, representation learning has exploded as
 a subfield, and, with it have come a plethora of new methods, each
 slightly different from the other.
@@ -69,7 +77,7 @@ of the algorithm. By selecting different implementations of these shared
 interfaces, and creating a RepresentationLearner that takes them as
 arguments, and handles the base machinery of performing transformations
 
-.. image:: docs/source/_static/ilr_diagram.pdf
+.. image:: ilr_diagram_rendered.png
   :width: 800
   :alt: A diagram showing how these components made up a training pipeline for our benchmark
 

@@ -1,6 +1,6 @@
 # The Empirical Investigation of Representation Learning for Imitation (EIRLI)
 
-[![Documentation Status](https://readthedocs.org/projects/il-representations/badge/?version=latest)](https://il-representations.readthedocs.io/en/latest/?badge=latest)
+[![Documentation status](https://readthedocs.org/projects/il-representations/badge/?version=latest)](https://il-representations.readthedocs.io/en/latest/?badge=latest)
 [![Dataset download link](https://img.shields.io/badge/data-download-blue)](https://berkeley.app.box.com/s/8yo3yyyh0h2e1ay5iehbnyg4g0cm0lpe)
 
 Over the past handful of years, representation learning has exploded as a

@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Representations for Sequence Learning's documentation!
-=================================================================
+Welcome to EIRLI's Documentation!
+=================================
 .. include:: README_former.rst
 
 .. toctree::

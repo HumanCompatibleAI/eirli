@@ -1,5 +1,5 @@
-il\_representations package
-===========================
+il_representations API documentation
+====================================
 
 Subpackages
 -----------
