@@ -6,8 +6,8 @@ set -e
 
 # WARNING: unlimited demos here!
 base_cfgs=("tune_run_kwargs.num_samples=5" "cfg_il_bc_nofreeze")
-dmc_cfgs=("il_train.bc.n_batches=4000000")
-procgen_cfgs=("il_train.bc.n_batches=2000000")
+dmc_cfgs=("il_train.bc.n_batches=1000000")
+procgen_cfgs=("il_train.bc.n_batches=1000000")
 repl_configs=("cfg_repl_inv_dyn" "cfg_repl_dyn" "cfg_repl_simclr"
                          "cfg_repl_temporal_cpc" "cfg_repl_vae")
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
