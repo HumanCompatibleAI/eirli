@@ -26,6 +26,8 @@ What are the differences between different pairs of these?
 Now that you've got some practice deconstructing algorithms this way, it may be easier to follow the deconstruction we chose for this codebase.
 At the most general level, we define representation learners as following the pattern of:
 
+.. highlight:: python
+
 ::
 
     L = Loss(Decoder(Encoder(Context), OptionalExtraContext)), Decoder(Encoder(Target))

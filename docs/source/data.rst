@@ -146,13 +146,15 @@ syntax used for the ``dataset_configs`` configuration option in
 Each element of the list passed to ``auto.load_wds_datasets()`` is a
 dict which may contain the following keys:
 
-..
+.. highlight:: python
+
+::
 
     {
         # the type of data to be loaded
         "type": "demos" | "random" |
         # a dictionary containing some subset of configuration keys from `env_cfg_ingredient`
-        "env_cfg": {…},
+        "env_cfg": {...},
     }
 
 Both the ``"type"`` key and the ``"env_cfg"`` key are optional.
@@ -190,10 +192,10 @@ This configuration syntax might be clearer with a few examples:
 ::
 
     dataset_configs = [
-    {},
-    {"type": "random"},
-    {"env_cfg": {"task_name": "finger-spin"}},
-    {"type": "random", "env_cfg": {"task": "cheetah-run"}},
+      {},
+      {"type": "random"},
+      {"env_cfg": {"task_name": "finger-spin"}},
+      {"type": "random", "env_cfg": {"task": "cheetah-run"}},
     ]
 
 Since ``env_cfg_ingredient`` does not allow for specification of data
@@ -221,7 +223,7 @@ The webdataset-based on-disk format (which I'll just call the
 each of which is a single tar archive. Each tar archive contains a list
 of files like this:
 
-::
+.. code-block:: text
 
     _metadata.meta.pickle
     frame_000.acts.pickle
