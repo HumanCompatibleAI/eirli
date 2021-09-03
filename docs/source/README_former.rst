@@ -51,6 +51,7 @@ The modular design mentioned above is facilitated through the use of a number of
 5. BatchExtender - This component is used for situations where you want to calculate loss on batch elements that are not part of the batch that went through your encoder and decoder on this step. This is centrally used for contrastive methods that use momentum, since in that case, you want to use elements from a cached store of previously-calculated representations as negatives in your contrastive loss
 6. LossCalculator - This component takes in the transformed context and transformed target and handles the loss calculation, along with any transformations that need to happen as a part of that calculation.
 
+
 Training Scripts
 ----------------
 
