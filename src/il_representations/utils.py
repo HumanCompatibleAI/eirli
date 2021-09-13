@@ -42,14 +42,16 @@ class ForkedPdb(pdb.Pdb):
 
 def convert_to_simple_webdataset(dataset, file_out_name, file_out_path):
     full_wds_url = os.path.join(file_out_path, f"{file_out_name}.tar")
-    sink = wds.TarWriter(full_wds_url)
-    for index in range(len(dataset)):
-        print(f"{index:6d}", end="\r", flush=True, file=sys.stderr)
-        sink.write({
-                "__key__": "sample%06d" % index,
-                WEBDATASET_SAVE_KEY: dataset[index]
-            })
-    sink.close()
+    dirname = os.path.dirname(full_wds_url)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+    with wds.TarWriter(full_wds_url) as sink:
+        for index in range(len(dataset)):
+            print(f"{index:6d}", end="\r", flush=True, file=sys.stderr)
+            sink.write({
+                    "__key__": "sample%06d" % index,
+                    WEBDATASET_SAVE_KEY: dataset[index]
+                })
     return full_wds_url
 
 
