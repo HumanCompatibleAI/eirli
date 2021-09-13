@@ -1,6 +1,14 @@
 il\_representations.envs package
 ================================
 
+Module contents
+---------------
+
+.. automodule:: il_representations.envs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -72,14 +80,6 @@ il\_representations.envs.utils module
 -------------------------------------
 
 .. automodule:: il_representations.envs.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: il_representations.envs
    :members:
    :undoc-members:
    :show-inheritance:

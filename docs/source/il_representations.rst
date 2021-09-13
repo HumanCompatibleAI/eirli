@@ -15,6 +15,14 @@ Subpackages
    il_representations.scripts
    il_representations.test_support
 
+Module contents
+---------------
+
+.. automodule:: il_representations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -46,14 +54,6 @@ il\_representations.utils module
 --------------------------------
 
 .. automodule:: il_representations.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: il_representations
    :members:
    :undoc-members:
    :show-inheritance:

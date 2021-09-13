@@ -488,10 +488,10 @@ def weight_grad_norms(params, *, norm_type=2):
         params: list of Torch parameters to compute norm of
         norm_type: order of the norm (1, 2, etc.).
 
-    Returns:
-        gradient_norm: norm of the gradient of the policy network (stored in
-            each parameter's .grad attribute)
-        weight_norm: norm of the weights of the policy network
+    Returns: Tuple of `(gradient_norm, weight_norm)`, where:
+        - gradient_norm is the norm of the gradient of the policy network
+          (stored in each parameter's .grad attribute)
+        - weight_norm is the norm of the weights of the policy network
     """
     norm_type = float(norm_type)
 

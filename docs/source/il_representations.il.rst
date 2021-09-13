@@ -1,6 +1,14 @@
 il\_representations.il package
 ==============================
 
+Module contents
+---------------
+
+.. automodule:: il_representations.il
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -56,14 +64,6 @@ il\_representations.il.utils module
 -----------------------------------
 
 .. automodule:: il_representations.il.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: il_representations.il
    :members:
    :undoc-members:
    :show-inheritance:

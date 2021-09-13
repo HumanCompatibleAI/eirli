@@ -1,6 +1,14 @@
 il\_representations.configs package
 ===================================
 
+Module contents
+---------------
+
+.. automodule:: il_representations.configs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -56,14 +64,6 @@ il\_representations.configs.run\_rep\_learner\_configs module
 -------------------------------------------------------------
 
 .. automodule:: il_representations.configs.run_rep_learner_configs
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: il_representations.configs
    :members:
    :undoc-members:
    :show-inheritance:

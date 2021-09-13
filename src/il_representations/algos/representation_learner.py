@@ -1,3 +1,4 @@
+"""Main entry interface for representation learning in EIRLI."""
 import inspect
 import logging
 import os
@@ -12,9 +13,8 @@ from torch.utils.data import Dataset, DataLoader
 from torch.optim.adam import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, set_global_seeds
 from il_representations.data.read_dataset import (SubdatasetExtractor,
                                                   datasets_to_loader)
 from il_representations.utils import (Timers, repeat_chain_non_empty,
@@ -45,7 +45,7 @@ def to_dict(kwargs_element):
         return kwargs_element
 
 
-class RepresentationLearner(BaseEnvironmentLearner):
+class RepresentationLearner(object):
     def __init__(self, *,
                  observation_space,
                  action_space,
@@ -70,9 +70,10 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
                  dataset_max_workers=0):
+        self.observation_space = observation_space
+        self.observation_shape = observation_space.shape
+        self.action_space = action_space
 
-        super(RepresentationLearner, self).__init__(
-            observation_space=observation_space, action_space=action_space)
         for el in (encoder, decoder, loss_calculator, target_pair_constructor):
             assert el is not None
 
@@ -188,6 +189,12 @@ class RepresentationLearner(BaseEnvironmentLearner):
             return batch['context'], batch['target'], batch['traj_ts_ids'], None
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
+
+    def set_random_seed(self, seed):
+        if seed is None:
+            return
+        # Seed python, numpy and torch random generator
+        set_global_seeds(seed)
 
     def all_trainable_params(self):
         """

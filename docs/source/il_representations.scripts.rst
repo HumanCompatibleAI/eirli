@@ -1,6 +1,14 @@
 il\_representations.scripts package
 ===================================
 
+Module contents
+---------------
+
+.. automodule:: il_representations.scripts
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Subpackages
 -----------
 
@@ -120,14 +128,6 @@ il\_representations.scripts.truncate\_datasets\_icml module
 -----------------------------------------------------------
 
 .. automodule:: il_representations.scripts.truncate_datasets_icml
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: il_representations.scripts
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,6 +1,14 @@
 il\_representations.algos package
 =================================
 
+Module contents
+---------------
+
+.. automodule:: il_representations.algos
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -8,14 +16,6 @@ il\_representations.algos.augmenters module
 -------------------------------------------
 
 .. automodule:: il_representations.algos.augmenters
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-il\_representations.algos.base\_learner module
-----------------------------------------------
-
-.. automodule:: il_representations.algos.base_learner
    :members:
    :undoc-members:
    :show-inheritance:
@@ -80,14 +80,6 @@ il\_representations.algos.utils module
 --------------------------------------
 
 .. automodule:: il_representations.algos.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: il_representations.algos
    :members:
    :undoc-members:
    :show-inheritance:
