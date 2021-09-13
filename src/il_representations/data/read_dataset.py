@@ -119,7 +119,7 @@ class SubdatasetExtractor:
         for step_dict in data_iter:
             yield step_dict
 
-            if step_dict['dones']:
+            if step_dict.get('dones', False):
                 trajectory_ind += 1
 
             if trajectory_ind == self.n_trajs:
@@ -152,19 +152,11 @@ def load_ilr_datasets(file_paths):
         .pipe(strip_extensions)
 
 
-def make_interleaved_dataset(
-        *,
-        datasets,
-        shuffle,
-        max_workers,
-        nominal_length,
-        shuffle_buffer_size=1024,
-        preprocessors=(),
-):
-    """Interleaves a list of webdatasets together by randomly sampling from
-    each. This function is also able to add shuffling, preprocessors, etc. to
-    all datasets simultaneously before interleaving (which is useful when
-    working with many source datasets).
+def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
+                       shuffle=True, shuffle_buffer_size=1024, max_workers=0,
+                       preprocessors=(), drop_last=True, collate_fn=None):
+    """Turn a sequence of webdataset datasets into a single Torch data
+    loader that mixes the datasets equally.
 
     Args:
         datasets ([Dataset]): sequence of datasets to mix.
@@ -184,9 +176,10 @@ def make_interleaved_dataset(
             see samples in the order they were written to disk, which can be
             useful for things like target pair construction.
 
-    Returns:
-        interleaved_dataset (IterableDataset): dataset that randomly
-            interleaves the given input datasets.
+    Returns
+        torch.DataLoader: a Torch DataLoader that returns batches of the
+            required size, with elements drawn with equal probability from all
+            constituent datasets.
     """
 
     # For each single-task dataset in the `datasets` list, we first apply a
@@ -215,52 +208,11 @@ def make_interleaved_dataset(
             "iteration; do not use multi-task training if " \
             f"shuffle_batches=False is required (got {len(datasets)}" \
             "datasets)"
-    interleaved_dataset = InterleavedDataset(datasets,
-                                             nominal_length=nominal_length)
-
-    return interleaved_dataset
-
-
-def datasets_to_loader(datasets,
-                       *,
-                       nominal_length=None,
-                       batch_size,
-                       shuffle=True,
-                       max_workers=0,
-                       drop_last=True,
-                       collate_fn=None,
-                       **mid_kwargs):
-    """Turn a sequence of webdataset `Dataset`s into a single Torch data
-    loader that mixes the datasets equally.
-
-    Args:
-        datasets ([Dataset]): sequence of datasets to mix.
-        max_workers (int): number of workers to use for data loader.
-        batch_size (int): see make_interleaved_dataset.
-        nominal_length (Optional[int]): see make_interleaved_dataset.
-        shuffle (bool): see make_interleaved_dataset.
-        drop_last (bool): should we drop the last batch if it's smaller than
-            batch_size?
-        collate_fn (Callable): data loader uses this to generate batches.
-        mid_kwargs (dict): extra kwargs for make_interleaved_dataset.
-
-    Returns:
-        data_loader (torch.DataLoader): a Torch DataLoader that returns batches
-            of the required size, with elements drawn with equal probability
-            from all constituent datasets.
-    """
-
-    interleaved_dataset = make_interleaved_dataset(
-        datasets=datasets,
-        shuffle=shuffle,
-        max_workers=max_workers,
-        nominal_length=nominal_length,
-        **mid_kwargs)
-
-    if not mid_kwargs.get(shuffle, True):
         assert max_workers <= 1, \
             "Using more than one dataset worker may shuffle the " \
             "dataset; got max_workers={max_workers}"
+    interleaved_dataset = InterleavedDataset(
+        datasets, nominal_length=nominal_length)
 
     assert not (drop_last and nominal_length < batch_size), \
         f"dropping last batch when nominal_length ({nominal_length}) is " \

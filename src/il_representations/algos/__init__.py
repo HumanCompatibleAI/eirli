@@ -1,33 +1,33 @@
+"""This package contains all of our representation learning algorithms, along
+with the support code needed to define new algorithms."""
 import logging
 
 from il_representations.algos.augmenters import (AugmentContextAndExtraContext,
                                                  AugmentContextAndTarget,
-                                                 AugmentContextOnly,
                                                  NoAugmentation)
 from il_representations.algos.batch_extenders import (IdentityBatchExtender,
                                                       QueueBatchExtender)
 from il_representations.algos.decoders import (
     ActionConditionedVectorDecoder, ActionPredictionHead,
     AsymmetricProjectionHead, BYOLProjectionHead,
-    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead,
-    MomentumProjectionHead, NoOp, PixelDecoder, SymmetricProjectionHead)
+    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead, NoOp,
+    PixelDecoder, SymmetricProjectionHead)
 from il_representations.algos.encoders import (
     ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder,
     ActionPredictionEncoder, BaseEncoder, InverseDynamicsEncoder,
     JigsawEncoder, MomentumEncoder, PolicyEncoder, RecurrentEncoder,
     TargetStoringActionEncoder, VAEEncoder, infer_action_shape_info)
-from il_representations.algos.losses import (AELoss, AsymmetricContrastiveLoss,
-                                             BatchAsymmetricContrastiveLoss,
-                                             CEBLoss, GaussianPriorLoss,
-                                             MSELoss, NegativeLogLikelihood,
+from il_representations.algos.losses import (BatchAsymmetricContrastiveLoss,
+                                             CEBLoss, CrossEntropyLoss,
+                                             GaussianPriorLoss, MSELoss,
+                                             NegativeLogLikelihood,
                                              QueueAsymmetricContrastiveLoss,
                                              SymmetricContrastiveLoss, VAELoss)
-from il_representations.algos.optimizers import LARS
 from il_representations.algos.pair_constructors import (
     IdentityPairConstructor, JigsawPairConstructor,
     TemporalOffsetPairConstructor)
 from il_representations.algos.representation_learner import (
-    DEFAULT_HARDCODED_PARAMS, RepresentationLearner, get_default_args)
+    RepresentationLearner, get_default_args)
 
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
@@ -58,13 +58,11 @@ class SimCLR(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
     https://arxiv.org/abs/2002.05709
-
     This method works by using a contrastive loss to push together representations of two differently-augmented
     versions of the same image. In particular, it uses a symmetric contrastive loss, which compares the
     (target, context) similarity against similarity of context with all other targets, and also similarity
-     of target with all other contexts.
+    of target with all other contexts.
     """
-    # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=SymmetricProjectionHead,

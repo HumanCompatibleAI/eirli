@@ -1,3 +1,4 @@
+# TODO Should this be in utils instead?
 """Trace & save a network for a MAGICAL environment. Capable of automatically
 figuring out where the encoder is."""
 

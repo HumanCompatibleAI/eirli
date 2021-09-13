@@ -21,7 +21,7 @@ class StagesToRun(str, enum.Enum):
 
 class ReuseRepl(str, enum.Enum):
     """These enum flags are used to control whether
-     pretrain_n_adapt reuses repl or not """
+    pretrain_n_adapt reuses repl or not """
     YES = "YES"
     NO = "NO"
     IF_AVAILABLE = "IF_AVAILABLE"
@@ -53,8 +53,10 @@ def sacred_copy(o: T) -> T:
     This is useful if e.g. `d` is a Sacred read-only dict. However, it can be
     undesirable if e.g. `d` is an OrderedDict.
 
-    :param o: (object) if dict, copy recursively; otherwise, use `copy.deepcopy`.
-    :return A deep copy of d."""
+    Args:
+        o (object): if dict, copy recursively; otherwise, use `copy.deepcopy`.
+
+    Returns: A deep copy of d."""
     if isinstance(o, dict):
         return {k: sacred_copy(v) for k, v in o.items()}
     elif isinstance(o, list):

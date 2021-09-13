@@ -1,3 +1,4 @@
+"""Losses for representation learning algorithms."""
 from abc import ABC, abstractmethod
 
 import imitation.util.logger as logger
@@ -10,6 +11,7 @@ import torch.nn.modules.loss as torch_losses
 
 
 class RepresentationLoss(ABC):
+    """Abstract base class for representation learning losses."""
     def __init__(self, device, sample=False):
         self.device = device
         self.sample = sample
