@@ -1,14 +1,16 @@
+"""
+BatchExtenders are used in situations where you want to pass a batch forward
+for loss that is different than the batch seen by your encoder. The currently
+implemented situation where this is the case is Momentum, where you want to
+pass forward a bunch of negatives from prior encoding runs to increase the
+difficulty of your prediction task. One might also imagine this being useful
+for doing trajectory-mixing in a RNN case where batches naturally need to be
+all from a small number of trajectories, but this isn't yet implemented.
+"""
 from abc import ABC, abstractmethod
 import torch
 from torch.distributions import Normal
 from il_representations.algos.utils import independent_multivariate_normal
-"""
-BatchExtenders are used in situations where you want to pass a batch forward for loss that is different than the 
-batch seen by your encoder. The currently implemented situation where this is the case is Momentum, where you want 
-to pass forward a bunch of negatives from prior encoding runs to increase the difficulty of your prediction task. 
-One might also imagine this being useful for doing trajectory-mixing in a RNN case where batches naturally need 
-to be all from a small number of trajectories, but this isn't yet implemented. 
-"""
 
 
 class BatchExtender(ABC):

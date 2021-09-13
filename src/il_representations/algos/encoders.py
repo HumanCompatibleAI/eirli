@@ -442,22 +442,23 @@ class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
                  learn_scale=False, latent_dim=None, scale_constant=1, obs_encoder_cls_kwargs=None):
         """
-                :param obs_space: The observation space that this Encoder will be used on
-                :param representation_dim: The number of dimensions of the representation
-                       that will be learned
-                :param obs_encoder_cls: An internal architecture implementing `forward`
-                       to return a single vector representing the mean representation z
-                       of a fixed-variance representation distribution (in the deterministic
-                       case), or a latent dimension, in the stochastic case. This is
-                       expected NOT to end in a ReLU (i.e. final layer should be linear).
-                :param learn_scale: A flag for whether we want to learn a parametrized
-                       standard deviation. If this is set to False, a constant value of
-                       <scale_constant> will be returned as the standard deviation
-                :param latent_dim: Dimension of the latents that feed into mean and std networks
-                       If not set, this defaults to representation_dim * 2.
-                :param scale_constant: The constant value that will be returned if learn_scale is
-                       set to False.
-                :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
+        Args:
+            obs_space: The observation space that this Encoder will be used on
+            representation_dim: The number of dimensions of the representation
+                that will be learned
+            obs_encoder_cls: An internal architecture implementing `forward`
+                to return a single vector representing the mean representation z of a
+                fixed-variance representation distribution (in the deterministic
+                case), or a latent dimension, in the stochastic case. This is
+                expected NOT to end in a ReLU (i.e. final layer should be linear).
+            learn_scale: A flag for whether we want to learn a parametrized
+                standard deviation. If this is set to False, a constant value of
+                <scale_constant> will be returned as the standard deviation
+            latent_dim: Dimension of the latents that feed into mean and std networks
+                If not set, this defaults to representation_dim * 2.
+            scale_constant: The constant value that will be returned if learn_scale is
+                set to False.
+            obs_encoder_cls_kwargs: kwargs the encoder class will take.
          """
         super().__init__()
         if obs_encoder_cls_kwargs is None:
@@ -664,8 +665,6 @@ class MomentumEncoder(Encoder):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
         a backwards hook, but seemed overly complex for an initial proof of concept
-        :param x:
-        :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()

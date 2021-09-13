@@ -1,3 +1,5 @@
+"""This package contains all of our representation learning algorithms, along
+with the support code needed to define new algorithms."""
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, \
@@ -45,13 +47,11 @@ class SimCLR(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
     https://arxiv.org/abs/2002.05709
-
     This method works by using a contrastive loss to push together representations of two differently-augmented
     versions of the same image. In particular, it uses a symmetric contrastive loss, which compares the
     (target, context) similarity against similarity of context with all other targets, and also similarity
-     of target with all other contexts.
+    of target with all other contexts.
     """
-    # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=SymmetricProjectionHead,

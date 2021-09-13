@@ -80,21 +80,22 @@ class LossDecoder(nn.Module):
         can involve projections either into a learned metric space
         (for contrastive losses) or into a pixel space (for reconstruction losses)
 
-        :param representation_dim: The dimension of the representation that the
-        decoder will take as input
+        Args:
+            representation_dim: The dimension of the representation that the
+                decoder will take as input
 
-        :param projection_shape: The dimension of the projection the decoder will
-        produce as output
+            projection_shape: The dimension of the projection the decoder will
+                produce as output
 
-        :param sample: A binary flag indicating whether the decoder should take as
-        input the mean of the encoded representation distribution (sample=False),
-        or a sample from that distribution (sample=True)
+            sample: A binary flag indicating whether the decoder should take as
+                input the mean of the encoded representation distribution (sample=False),
+                or a sample from that distribution (sample=True)
 
-        :param learn_scale: A binary flag indicating whether the decoder should
-        learn a parametric standard deviation for the decoded distribution
-        (learn_scale=True), or whether the standard deviation of the encoded
-        should be used as the standard deviation of the decoded
-        distribution (learn_scale=False)
+            learn_scale: A binary flag indicating whether the decoder should learn
+                a parametric standard deviation for the decoded distribution
+                (learn_scale=True), or whether the standard deviation of the encoded
+                should be used as the standard deviation of the decoded
+                distribution (learn_scale=False)
         """
         super().__init__()
         self.representation_dim = representation_dim
@@ -216,8 +217,6 @@ class MomentumProjectionHead(LossDecoder):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
         a backwards hook, but seemed overly complex for an initial proof of concept
-        :param x:
-        :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()

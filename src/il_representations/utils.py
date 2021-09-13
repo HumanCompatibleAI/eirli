@@ -22,7 +22,9 @@ from skvideo.io import FFmpegWriter
 import torch as th
 from torchsummary import summary
 import torchvision.utils as vutils
+import webdataset as wds
 
+WEBDATASET_SAVE_KEY = "obs.pyd"
 
 class ForkedPdb(pdb.Pdb):
     """A Pdb subclass that may be used
@@ -36,6 +38,30 @@ class ForkedPdb(pdb.Pdb):
             pdb.Pdb.interaction(self, *args, **kwargs)
         finally:
             sys.stdin = _stdin
+
+
+def convert_to_simple_webdataset(dataset, file_out_name, file_out_path):
+    full_wds_url = os.path.join(file_out_path, f"{file_out_name}.tar")
+    dirname = os.path.dirname(full_wds_url)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+    with wds.TarWriter(full_wds_url) as sink:
+        for index in range(len(dataset)):
+            print(f"{index:6d}", end="\r", flush=True, file=sys.stderr)
+            sink.write({
+                    "__key__": "sample%06d" % index,
+                    WEBDATASET_SAVE_KEY: dataset[index]
+                })
+    return full_wds_url
+
+
+def _unpickle_data(sample):
+    result = pickle.loads(sample[WEBDATASET_SAVE_KEY])
+    return result
+
+
+def load_simple_webdataset(wds_url):
+    return wds.Dataset(wds_url).map(_unpickle_data)
 
 
 def recursively_sort(element):
@@ -464,10 +490,10 @@ def weight_grad_norms(params, *, norm_type=2):
         params: list of Torch parameters to compute norm of
         norm_type: order of the norm (1, 2, etc.).
 
-    Returns:
-        gradient_norm: norm of the gradient of the policy network (stored in
-            each parameter's .grad attribute)
-        weight_norm: norm of the weights of the policy network
+    Returns: Tuple of `(gradient_norm, weight_norm)`, where:
+        - gradient_norm is the norm of the gradient of the policy network
+          (stored in each parameter's .grad attribute)
+        - weight_norm is the norm of the weights of the policy network
     """
     norm_type = float(norm_type)
 
