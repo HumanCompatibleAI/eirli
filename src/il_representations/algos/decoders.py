@@ -69,8 +69,6 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
     network = nn.Sequential(*layers)
-    if torch.cuda.is_available():
-        network = network.to(torch.device('cuda'))
     return network
 
 
