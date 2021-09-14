@@ -208,8 +208,7 @@ class JigsawPairConstructor(TargetPairConstructor):
                                                         tile_h,
                                                         tile_w)
                 processed_obs_list.append(processed_obs)
-            target_list.append(permutation_class[permute_idx])
-            permute_idx = (permute_idx + 1) % len(self.permutation)
+            target_list.append(np.random.randint(len(self.permutation)))
 
             processed_obs_list = np.array(processed_obs_list)
             target_list = np.array(target_list)
