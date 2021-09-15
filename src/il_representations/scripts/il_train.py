@@ -190,15 +190,22 @@ def make_policy(observation_space,
             encoder = encoder_or_path
         assert isinstance(encoder, nn.Module)
 
-        # Sometimes we are not using FC layers in encoders, e.g., Jigsaw.
-        # Hence in il training we need to recover this part of the encoder.
         encoder_net = encoder.network if 'network' in dir(encoder) else \
             encoder.query_encoder.network
+
+        # Normally the last layer of an encoder is a linear layer, but in
+        # some special cases like Jigsaw, we only train the convolution
+        # layers (with linearity handled by the decoder). In BC
+        # training we still need the full encoder (linear layers included),
+        # so here we load the weights for conv layers, and leave linear
+        # layers randomly initialized.
         if not isinstance(encoder_net.shared_network[-1], th.nn.Linear):
             full_encoder = BaseEncoder(observation_space, **encoder_kwargs)
 
             partial_encoder_dict = encoder.state_dict()
             full_encoder_dict = full_encoder.state_dict()
+
+            # pretrained_dict contains weights & bias for conv layers only.
             pretrained_dict = {k: v for k, v in partial_encoder_dict.items() if
                                k in full_encoder_dict}
             full_encoder_dict.update(pretrained_dict)
