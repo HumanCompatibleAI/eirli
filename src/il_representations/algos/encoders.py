@@ -568,20 +568,29 @@ class JigsawEncoder(BaseEncoder):
     def img_to_tiles(self, img):
         """
         Input:
-            img (tensor) - image to be processed, with shape [batch_size, C, H, W]
+            img (tensor) - image to be processed, with shape [batch_size, C, H,
+            W].
         Return:
-            img_tiles (tensor) - Processed image tiles with shape [batch_size, 9, C, H/3, W/3]
+            img_tiles (tensor) - Processed image tiles with shape [batch_size, 
+            n_tiles, C, H/sqrt(n_tiles), W/sqrt(n_tiles)].
         """
         _, _, h, w = img.shape
-        unit_size = int(math.sqrt(self.n_tiles))
+        unit_size = math.sqrt(self.n_tiles)
+        assert unit_size.is_integer(), 'self.n_tiles is not a square number.'
 
-        h_unit = int(h/unit_size)
-        w_unit = int(w/unit_size)
+        h_unit = h/unit_size
+        w_unit = w/unit_size
+
+        if not h_unit.is_integer() or not w_unit.is_integer():
+            warnings.warn(f'Input images can not be evenly divided into '+
+                          f'{self.n_tiles} {unit_size}*{unit_size} images.')
+        h_unit, w_unit = int(h_unit), int(w_unit)
         
         tiles = []
         for i in range(unit_size):
             for j in range(unit_size):
-                tile = TF.crop(img, top=i*h_unit, left=j*w_unit, height=h_unit, width=w_unit)
+                tile = TF.crop(img, top=i*h_unit, left=j*w_unit, height=h_unit,
+                               width=w_unit)
                 tiles.append(tile)
 
         return torch.stack(tiles, dim=1) 
