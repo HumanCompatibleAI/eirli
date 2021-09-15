@@ -549,8 +549,9 @@ class JigsawEncoder(BaseEncoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, n_tiles=9,
                  obs_encoder_cls_kwargs=None):
         self.n_tiles = n_tiles
-        if self.n_tiles != 9:
-            raise NotImplementedError('Currently only support n_tiles=9')
+        self.unit_size = math.sqrt(self.n_tiles)
+        assert self.unit_size.is_integer(), 'self.n_tiles is not a square number.'
+        self.unit_size = int(self.unit_size)
 
         # Note that in Jigsaw, representation_dim is not used because it will set 'contain_fc_layer' to False.
         super().__init__(obs_space, representation_dim, obs_encoder_cls=obs_encoder_cls,
@@ -575,21 +576,18 @@ class JigsawEncoder(BaseEncoder):
             n_tiles, C, H/sqrt(n_tiles), W/sqrt(n_tiles)].
         """
         _, _, h, w = img.shape
-        unit_size = math.sqrt(self.n_tiles)
-        assert unit_size.is_integer(), 'self.n_tiles is not a square number.'
-        unit_size = int(unit_size)
 
-        h_unit = h/unit_size
-        w_unit = w/unit_size
+        h_unit = h / self.unit_size
+        w_unit = w / self.unit_size
 
         if not h_unit.is_integer() or not w_unit.is_integer():
             warnings.warn(f'Input images can not be evenly divided into '+
-                          f'{self.n_tiles} {unit_size}*{unit_size} images.')
+                          f'{self.n_tiles} {self.unit_size}*{self.unit_size} images.')
         h_unit, w_unit = int(h_unit), int(w_unit)
         
         tiles = []
-        for i in range(unit_size):
-            for j in range(unit_size):
+        for i in range(self.unit_size):
+            for j in range(self.unit_size):
                 tile = TF.crop(img, top=i*h_unit, left=j*w_unit, height=h_unit,
                                width=w_unit)
                 tiles.append(tile)
