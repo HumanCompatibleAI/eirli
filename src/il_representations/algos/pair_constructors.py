@@ -194,8 +194,7 @@ class JigsawPairConstructor(TargetPairConstructor):
         tile_h, tile_w = int(original_h / math.sqrt(self.n_tiles)) - 2, \
                          int(original_w / math.sqrt(self.n_tiles)) - 2
 
-        permutation_class = [x for x in range(len(self.permutation))]
-        random.shuffle(permutation_class)
+        permutation_class = np.random.permutation(len(self.permutation))
         permute_idx = 0
 
         for step_dict in data_iter:
@@ -209,8 +208,7 @@ class JigsawPairConstructor(TargetPairConstructor):
                                                         tile_h,
                                                         tile_w)
                 processed_obs_list.append(processed_obs)
-            target_list.append(permutation_class[permute_idx])
-            permute_idx = (permute_idx + 1) % len(self.permutation)
+            target_list.append(np.random.randint(len(self.permutation)))
 
             processed_obs_list = np.array(processed_obs_list)
             target_list = np.array(target_list)
