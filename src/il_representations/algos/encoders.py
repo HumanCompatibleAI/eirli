@@ -261,7 +261,8 @@ class MAGICALCNN(nn.Module):
         fc_layers = []
         if contain_fc_layer:
             # another FC layer to make feature maps the right size
-            fc_in_size, = compute_output_shape(observation_space, conv_layers)
+            fc_in_size, = compute_output_shape(observation_space,
+                                               conv_layers)
             fc_layers = [
                 nn.Linear(fc_in_size, 128 * w),
                 ActivationCls(),
@@ -545,7 +546,7 @@ class JigsawEncoder(BaseEncoder):
     """
     A siamese-ennead network as defined in Unsupervised Learning of Visual
     Representations by Solving Jigsaw Puzzles. It takes n_tiles images one
-    by one, then concat their output representations.
+    by one, then concat their output representations as encoder output.
     """
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, n_tiles=9,
                  obs_encoder_cls_kwargs=None):
@@ -556,7 +557,8 @@ class JigsawEncoder(BaseEncoder):
 
         # Note that in Jigsaw, representation_dim is not used because it will set 'contain_fc_layer' to False.
         super().__init__(obs_space, representation_dim, obs_encoder_cls=obs_encoder_cls,
-                         latent_dim=latent_dim, obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
+                         latent_dim=latent_dim,
+                         obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
 
     def encode_context(self, x, traj_info):
         x = self.img_to_tiles(x)

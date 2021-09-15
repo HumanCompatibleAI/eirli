@@ -274,10 +274,12 @@ class JigsawProjectionHead(LossDecoder):
         # For Jigsaw, the z input dimension depends on state observation shape;
         # hence we might need to adjust projection_layers input dimension on the fly.
         z_dim = z.shape[1]
+        device = next(self.projection_layers.parameters()).device
         if z_dim != self.projection_layers[0].in_features:
             self.projection_layers = get_sequential_from_architecture(self.architecture,
                                                                       z_dim,
                                                                       self.projection_shape)
+            self.projection_layers = self.projection_layers.to(device)
         return self.projection_layers(z)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
