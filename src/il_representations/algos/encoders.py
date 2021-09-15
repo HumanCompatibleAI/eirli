@@ -9,6 +9,7 @@ from torch.distributions import MultivariateNormal
 import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
+from torchvision.transforms import functional as TF
 import torch
 from torch import nn
 from pyro.distributions import Delta
@@ -571,13 +572,19 @@ class JigsawEncoder(BaseEncoder):
         Return:
             img_tiles (tensor) - Processed image tiles with shape [batch_size, 9, C, H/3, W/3]
         """
-        batch_size, c, h, w = img.shape
-        unit_size = math.sqrt(self.n_tiles)
+        _, _, h, w = img.shape
+        unit_size = int(math.sqrt(self.n_tiles))
 
         h_unit = int(h/unit_size)
         w_unit = int(w/unit_size)
+        
+        tiles = []
+        for i in range(unit_size):
+            for j in range(unit_size):
+                tile = TF.crop(img, top=i*h_unit, left=j*w_unit, height=h_unit, width=w_unit)
+                tiles.append(tile)
 
-        return img.view(batch_size, self.n_tiles, c, h_unit, w_unit)
+        return torch.stack(tiles, dim=1) 
 
     def encode_target(self, x, traj_info):
         # X here is the correct class number of the jigsaw permutation. We don't
