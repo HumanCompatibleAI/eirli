@@ -36,7 +36,8 @@ import warnings
 
 import torch
 import numpy as np
-from torchvision.transforms import functional as F
+import torchvision.transforms as transforms
+from torchvision.transforms import functional as TF
 
 
 class TargetPairConstructor(ABC):
@@ -229,34 +230,35 @@ class JigsawPairConstructor(TargetPairConstructor):
     def make_jigsaw_puzzle(self, image, permutation_type, tile_h, tile_w):
         permute = self.permutation[permutation_type]
 
-        _, _, h, w = image.shape
+        _, h, w = image.shape
+        image = torch.tensor(image)
         h_unit = h / self.unit_size
         w_unit = w / self.unit_size
 
         if not h_unit.is_integer() or not w_unit.is_integer():
             warnings.warn(f'Input images can not be evenly divided into '+
                           f'{self.n_tiles} {self.unit_size}*{self.unit_size} images.')
-        
+
         h_unit, w_unit = int(h_unit), int(w_unit)
 
-        # Split the image into tiles of [B, C, tile_h, tile_w] in its 
+        # Split the image into tiles of [C, tile_h, tile_w] in its
         # permutation sequence.
         tiles = []
         for pos in permute:
             pos_h = int(pos // self.unit_size) * h_unit
-            pos_w = int(pos % self.unit_size) * w_unit 
+            pos_w = int(pos % self.unit_size) * w_unit
 
-            tile = F.crop(image, top=pos_h, left=pos_w, height=tile_h,
+            tile = TF.crop(image, top=pos_h, left=pos_w, height=tile_h,
                             width=tile_w)
             tiles.append(tile)
-        
+
         # Concat tiles.
         concat_tiles = []
         for i in range(self.unit_size):
-            # Shape: [B, C, tile_h, W]
-            tile_w = torch.cat(tiles[i * self.unit_size : (i+1) * self.unit_size], dim=3)
+            # Shape: [C, tile_h, W]
+            tile_w = torch.cat(tiles[i * self.unit_size : (i+1) * self.unit_size], dim=2)
             concat_tiles.append(tile_w)
-        tiles = torch.cat(concat_tiles, dim=2) # Shape: [B, C, H, W]
-        return tiles 
+        tiles = torch.cat(concat_tiles, dim=1) # Shape: [C, H, W]
+        return tiles
 
 

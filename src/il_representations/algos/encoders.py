@@ -4,19 +4,20 @@ import math
 import traceback
 import warnings
 import inspect
+import torch
+import functools
+import numpy as np
+import torchvision.transforms as transforms
 
 from torch.distributions import MultivariateNormal
-import numpy as np
 from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 from torchvision.transforms import functional as TF
-import torch
 from torch import nn
 from pyro.distributions import Delta
 
 from gym import spaces
 from il_representations.algos.utils import independent_multivariate_normal
-import functools
 
 """
 Encoders conceptually serve as the bit of the representation learning architecture that learns the representation itself
@@ -572,7 +573,7 @@ class JigsawEncoder(BaseEncoder):
             img (tensor) - image to be processed, with shape [batch_size, C, H,
             W].
         Return:
-            img_tiles (tensor) - Processed image tiles with shape [batch_size, 
+            img_tiles (tensor) - Processed image tiles with shape [batch_size,
             n_tiles, C, H/sqrt(n_tiles), W/sqrt(n_tiles)].
         """
         _, _, h, w = img.shape
@@ -584,7 +585,7 @@ class JigsawEncoder(BaseEncoder):
             warnings.warn(f'Input images can not be evenly divided into '+
                           f'{self.n_tiles} {self.unit_size}*{self.unit_size} images.')
         h_unit, w_unit = int(h_unit), int(w_unit)
-        
+
         tiles = []
         for i in range(self.unit_size):
             for j in range(self.unit_size):
@@ -592,7 +593,7 @@ class JigsawEncoder(BaseEncoder):
                                width=w_unit)
                 tiles.append(tile)
 
-        return torch.stack(tiles, dim=1) 
+        return torch.stack(tiles, dim=1)
 
     def encode_target(self, x, traj_info):
         # X here is the correct class number of the jigsaw permutation. We don't
