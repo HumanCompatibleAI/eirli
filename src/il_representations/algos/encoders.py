@@ -577,6 +577,7 @@ class JigsawEncoder(BaseEncoder):
         _, _, h, w = img.shape
         unit_size = math.sqrt(self.n_tiles)
         assert unit_size.is_integer(), 'self.n_tiles is not a square number.'
+        unit_size = int(unit_size)
 
         h_unit = h/unit_size
         w_unit = w/unit_size
