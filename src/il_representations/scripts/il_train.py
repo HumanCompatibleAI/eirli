@@ -295,7 +295,8 @@ def make_policy(*,
         # training we still need the full encoder (linear layers included),
         # so here we load the weights for conv layers, and leave linear
         # layers randomly initialized.
-        if not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
+        if hasattr(encoder.network, 'shared_network') and \
+           not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
             full_encoder = BaseEncoder(observation_space,
                                        **encoder_kwargs)
 
