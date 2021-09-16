@@ -6,42 +6,56 @@ from ray import tune
 from il_representations import algos
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
+
 TEST_DATA_DIR = path.abspath(
     path.join(CURRENT_DIR, '..', '..', '..', 'tests', 'data'))
+
 VENV_OPTS_TEST_CONFIG = {
     'venv_parallel': False,
     'n_envs': 2,
 }
+
 ENV_DATA_TEST_CONFIG = {
     'data_root': path.join(TEST_DATA_DIR, '..'),
 }
+
 ENV_DATA_VENV_OPTS_TEST_CONFIG = {
     'env_data': ENV_DATA_TEST_CONFIG,
     'venv_opts': VENV_OPTS_TEST_CONFIG,
 }
+
 ENV_CFG_TEST_CONFIGS = [
     {
-        'benchmark_name': 'atari',
-        'task_name': 'PongNoFrameskip-v4',
-    },
-    {
         'benchmark_name': 'magical',
-        'task_name': 'MoveToRegion',
+        'task_name': 'MoveToRegion-Demo-v0',
     },
     {
         'benchmark_name': 'dm_control',
         'task_name': 'reacher-easy',
     },
     {
-        'benchmark_name': 'minecraft',
-        'task_name': 'NavigateVectorObf',
-        'minecraft_max_env_steps': 100
-    }
-
+        'benchmark_name': 'procgen',
+        'task_name': 'coinrun',
+    },
+    # TODO(sam): re-enable this once we're using Atari tasks (2021-04-07)
+    # {
+    #     'benchmark_name': 'atari',
+    #     'task_name': 'PongNoFrameskip-v4',
+    # },
+    # TODO(sam): re-enable this once we're using Minecraft tasks (2021-04-07)
+    # {
+    #     'benchmark_name': 'minecraft',
+    #     'task_name': 'NavigateVectorObf',
+    #     'minecraft_max_env_steps': 100
+    # },
 ]
+
 FAST_IL_TRAIN_CONFIG = {
     'bc': {
-        'n_batches': 1,
+        'n_batches': 2,
+        'nominal_num_epochs': 3,
+        'batch_size': 5,
+        'augs': 'translate,rotate,noise',
     },
     'gail': {
         # ppo_n_steps, ppo_batch_size and disc_batch_size are the smallest
@@ -57,18 +71,27 @@ FAST_IL_TRAIN_CONFIG = {
         # ppo_n_epochs and disc_n_updates_per_round are at minimum values
         'ppo_n_epochs': 1,
         'disc_n_updates_per_round': 1,
+        'disc_augs': 'translate,rotate,noise',
     },
     # we don't need a large shuffle buffer for tests
     'shuffle_buffer_size': 3,
 }
+
 REPL_SMOKE_TEST_CONFIG = {
     'batches_per_epoch': 2,
     'n_epochs': 1,
     'algo_params': {
         'representation_dim': 3,
         'batch_size': 7,
+        'augmenter_kwargs': {
+            # note that this will be run against (grayscale) Atari frames, so
+            # we can't add color jitter or other augmentations that require RGB
+            # frames
+            'augmenter_spec': 'translate,rotate,noise',
+        }
     },
 }
+
 CHAIN_CONFIG = {
     'spec': {
         'repl': {
@@ -110,6 +133,7 @@ CHAIN_CONFIG = {
     },
     **ENV_DATA_VENV_OPTS_TEST_CONFIG,
 }
+
 CHAIN_CONFIG_SKOPT = {
     **CHAIN_CONFIG,
     'use_skopt': True,
@@ -122,6 +146,27 @@ CHAIN_CONFIG_SKOPT = {
         'repl:algo_params:augmenter_kwargs:augmenter_spec': [
             "translate", "rotate",
         ],
-        'il_train:bc:lr': (1e-7, 1.0, 'log-uniform'),
+        'il_train:bc:optimizer_kwargs:lr': (1e-7, 1.0, 'log-uniform'),
     }
+}
+
+FAST_JOINT_TRAIN_CONFIG = {
+    'bc': {
+        'batch_size': 5,
+        'augs': 'translate,rotate,noise',
+        'short_eval_n_traj': 2,
+    },
+    'repl': {
+        'algo_params': {
+            'batch_size': 3,
+            'augmenter_kwargs': {
+                'augmenter_spec': 'translate,rotate,noise',
+            }
+        },
+    },
+    'representation_dim': 3,
+    'shuffle_buffer_size': 3,
+    'n_batches': 2,
+    'final_eval_n_traj': 2,
+    **ENV_DATA_VENV_OPTS_TEST_CONFIG,
 }

@@ -1,3 +1,5 @@
+"""This package contains all of our representation learning algorithms, along
+with the support code needed to define new algorithms."""
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info, \
@@ -6,8 +8,8 @@ from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
     ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, AELoss, \
-    CrossEntropyLoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss, AELoss
+
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
     AugmentContextAndExtraContext
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor, \
@@ -48,13 +50,11 @@ class SimCLR(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
     https://arxiv.org/abs/2002.05709
-
     This method works by using a contrastive loss to push together representations of two differently-augmented
     versions of the same image. In particular, it uses a symmetric contrastive loss, which compares the
     (target, context) similarity against similarity of context with all other targets, and also similarity
-     of target with all other contexts.
+    of target with all other contexts.
     """
-    # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=SymmetricProjectionHead,
@@ -143,7 +143,7 @@ class BYOL(RepresentationLearner):
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
 
-    def learn(self, dataset, training_epochs):
+    def learn(self, *args, **kwargs):
         raise NotImplementedError("BYOL decoder currently has an unfixed issue with gradients being None ")
 
 
@@ -229,7 +229,13 @@ class DynamicsPrediction(RepresentationLearner):
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
-        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        # This allows us to pass an `encoder_arch_key` to `decoder`. If we don't
+        # supply it explicitly then the decoder tries to do something clever &
+        # infer the decoder architecture from the encoder architecture, which
+        # breaks in cases when the encoder architecture is an arbitrary lambda.
+        dec_encoder_cls_key = decoder_kwargs.get(
+            'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
         action_representation_dim = get_action_representation_dim(kwargs['action_space'], encoder_kwargs)
 
@@ -242,7 +248,7 @@ class DynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor_kwargs=dict(mode='dynamics'),
                                      encoder_kwargs=dict(action_space=kwargs['action_space'], learn_scale=False),
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
+                                                         encoder_arch_key=dec_encoder_cls_key,
                                                          action_representation_dim=action_representation_dim),
                                      preprocess_extra_context=False)
 
@@ -259,7 +265,10 @@ class VariationalAutoencoder(RepresentationLearner):
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
-        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        # See comment in DynamicsPrediction
+        dec_encoder_cls_key = decoder_kwargs.get(
+            'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
         algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
                                      decoder=PixelDecoder,
@@ -268,7 +277,7 @@ class VariationalAutoencoder(RepresentationLearner):
                                      loss_calculator=VAELoss,
                                      target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
+                                                         encoder_arch_key=dec_encoder_cls_key,
                                                          sample=True))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
@@ -283,7 +292,10 @@ class Autoencoder(RepresentationLearner):
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
-        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        decoder_kwargs = kwargs.get('decoder_kwargs') or {}
+        # See comment in DynamicsPrediction
+        dec_encoder_cls_key = decoder_kwargs.get(
+            'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
         algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
                                      decoder=PixelDecoder,
@@ -292,7 +304,7 @@ class Autoencoder(RepresentationLearner):
                                      loss_calculator=AELoss,
                                      target_pair_constructor=IdentityPairConstructor,
                                      decoder_kwargs=dict(observation_space=kwargs['observation_space'],
-                                                         encoder_arch_key=encoder_cls_key,
+                                                         encoder_arch_key=dec_encoder_cls_key,
                                                          sample=True))
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
@@ -448,6 +460,20 @@ class ActionConditionedTemporalCPC(RepresentationLearner):
 
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 
+        super().__init__(**kwargs)
+
+
+class GaussianPriorControl(RepresentationLearner):
+    def __init__(self, **kwargs):
+
+        algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
+                                     decoder=NoOp,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=GaussianPriorLoss,
+                                     target_pair_constructor=IdentityPairConstructor)
+
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
         super().__init__(**kwargs)
 
 ## Algos that should not be run in all-algo test because they are not yet finished

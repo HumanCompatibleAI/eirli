@@ -1,10 +1,13 @@
 import collections
 import copy
+import faulthandler
 from glob import glob
 import logging
 import os
 import os.path as osp
+import signal
 from time import time
+from pathlib import Path
 import weakref
 
 import numpy as np
@@ -21,17 +24,18 @@ import skopt
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.scripts import experimental_conditions  # noqa: F401
-from il_representations.scripts.chain_configs import make_chain_configs
-from il_representations.scripts.hp_tuning import make_hp_tuning_configs
-from il_representations.scripts.icml_hp_tuning import make_icml_tuning_configs
+from il_representations.configs.chain_configs import make_chain_configs
+from il_representations.configs.hp_tuning import make_hp_tuning_configs
+from il_representations.configs.icml_hp_tuning import make_icml_tuning_configs
+from il_representations.configs.icml_experiment_configs import make_dataset_experiment_configs
 from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
-from il_representations.scripts.utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
-from il_representations.utils import hash_configs, up
+from il_representations.script_utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
+from il_representations.utils import hash_configs, up, WrappedConfig
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 chain_ex = Experiment(
     'chain',
     ingredients=[
@@ -45,7 +49,7 @@ chain_ex = Experiment(
     ])
 cwd = os.getcwd()
 
-
+make_dataset_experiment_configs(chain_ex)
 make_icml_tuning_configs(chain_ex)
 
 # Add configs to experiment for hyperparameter tuning
@@ -63,7 +67,9 @@ def get_stages_to_run(stages_to_run):
     try:
         stage = StagesToRun(upper_str)
     except ValueError as ex:
+        # pytype: disable=missing-parameter
         options = [f"'{s.name}'" for s in StagesToRun]
+        # pytype: enable=missing-parameter
         raise ValueError(
             f"Could not convert '{stages_to_run}' to StagesToRun ({ex}). "
             f"Available options are {', '.join(options)}")
@@ -97,10 +103,14 @@ def expand_dict_keys(config_dict):
     dictionaries for configuration. To emulate nested dictionaries, we use a
     plain dictionary with keys of the form "level1:level2:…". . The colons are
     then separated out by this function into a nested dict (e.g. {'level1':
-    {'level2': …}}). Example:
+    {'level2': …}}).
 
+    Example:
+
+    ```
     >>> expand_dict_keys({'x:y': 42, 'z': 4, 'x:u:v': 5, 'w': {'s:t': 99}})
     {'x': {'y': 42, 'u': {'v': 5}}, 'z': 4, 'w': {'s': {'t': 99}}}
+    ```
     """
     dict_type = type(config_dict)
     new_dict = dict_type()
@@ -125,21 +135,20 @@ def expand_dict_keys(config_dict):
 
 
 def run_single_exp(merged_config, log_dir, exp_name):
-    """
-    Run a specified experiment. We could not pass each Sacred experiment in
+    """Run a specified experiment. We could not pass each Sacred experiment in
     because they are not pickle serializable, which is not supported by Ray
     (when running this as a remote function).
 
-    params:
+    Args:
         merged_config: The config that should be used in the sub-experiment;
                        formed by calling merge_configs()
         log_dir: The log directory of current chain experiment.
-        exp_name: Specify the experiment type in ['repl', 'il_train',
-            'il_test']
+        exp_name: Specify the experiment type in `['repl', 'il_train',
+            'il_test']`.
     """
     # we need to run the workaround in each raylet, so we do it at the start of
     # run_single_exp
-    sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+    sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
     from il_representations.scripts.il_test import il_test_ex
     from il_representations.scripts.il_train import il_train_ex
     from il_representations.scripts.run_rep_learner import represent_ex
@@ -193,17 +202,18 @@ def relative_symlink(src, dst):
 
 def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
                        config_hash, seed, config_path=None):
-    """
-    A utility function for taking a trained repl encoder and symlinking it, with appropriate
-    searchable directory name, to the repl run directory
+    """A utility function for taking a trained repl encoder and symlinking it,
+    with appropriate searchable directory name, to the repl run directory
 
-    :param repl_encoder_path: A path to an encoder checkpoint file. Assumed to be within a /checkpoints dir
-    within a run of the `repl` experiment
-    :param repl_directory_dir: The directory where the symlinked listing of repl encoder should be stored
-    :param config_hash: The hash identifying the config attached to this repl run
-    :param seed: The seed for this repl run
-    :param config_path: The path to the config file for this repl run. If None, will try to search relative to
-                        repl_encoder_path
+    Args:
+        repl_encoder_path: A path to an encoder checkpoint file. Assumed to be
+            within a /checkpoints dir within a run of the `repl` experiment
+        repl_directory_dir: The directory where the symlinked listing of repl
+            encoder should be stored
+        config_hash: The hash identifying the config attached to this repl run
+        seed: The seed for this repl run
+        config_path: The path to the config file for this repl run. If None,
+            will try to search relative to repl_encoder_path
     """
     if config_path is None:
         config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')
@@ -216,12 +226,8 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
 
 
 def get_repl_dir(log_dir):
-    """
-    A utility function for returning a repl directory location relative to logdir,
-    and creating one if it does not exist
-    :param log_dir:
-    :return:
-    """
+    """A utility function for returning a repl directory location relative to
+    logdir, and creating one if it does not exist."""
     repl_dir = os.path.join(up(up(log_dir)), 'all_repl')
     if not os.path.exists(repl_dir):
         os.makedirs(repl_dir)
@@ -246,11 +252,10 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
                     env_cfg_config, env_data_config, venv_opts_config,
                     reuse_repl, repl_encoder_path, full_run_start_time,
                     log_dir):
-    """
-    Run representation learning, imitation learning's training and testing
+    """Run representation learning, imitation learning's training and testing
     sequentially.
 
-    Params:
+    Args:
         rep_ex_config: Config of represent_ex. It's the default config plus any
             modifications we might have made in an macro_experiment config
             update.
@@ -349,13 +354,14 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
         },
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir, 'il_train')
+    il_train_model_path = il_train_rv['result']['model_path']
 
     # Run il test
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_rv['result']['model_path'],
+            'policy_path': il_train_model_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
@@ -417,12 +423,12 @@ def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir,
                                  'il_train')
-
+    il_policy_path = il_train_rv['result']['model_path']
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_rv['result']['model_path'],
+            'policy_path': il_policy_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
@@ -500,11 +506,6 @@ def base_config():
 
     _ = locals()
     del _
-
-
-class WrappedConfig():
-    def __init__(self, config_dict):
-        self.config_dict = config_dict
 
 
 def trainable_function(config):
@@ -593,6 +594,7 @@ def run(exp_name, metric, spec, repl, il_train, il_test, env_cfg, env_data,
         venv_opts, tune_run_kwargs, ray_init_kwargs, stages_to_run, use_skopt,
         skopt_search_mode, skopt_ref_configs, skopt_space, exp_ident,
         reuse_repl, repl_encoder_path, on_cluster):
+    faulthandler.register(signal.SIGUSR1)
 
     print(f"Ray init kwargs: {ray_init_kwargs}")
     rep_ex_config = sacred_copy(repl)

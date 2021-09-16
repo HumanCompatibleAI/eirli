@@ -9,7 +9,7 @@ from il_representations.envs.config import (ALL_BENCHMARK_NAMES,
                                             env_cfg_ingredient,
                                             env_data_ingredient)
 from il_representations.envs.utils import serialize_gym_space
-from il_representations.scripts.utils import sacred_copy
+from il_representations.script_utils import sacred_copy
 
 
 @env_data_ingredient.capture
@@ -19,7 +19,7 @@ def _get_env_data(_config):
 
 
 @env_cfg_ingredient.capture
-def get_meta_dict(benchmark_name, _config):
+def get_meta_dict(benchmark_name: str, _config: dict) -> dict:
     """Generate a dictionary with metadata for the current task (as defined by
     `env_cfg`). When generating a webdataset, this dictionary will be written
     to the beginning of each shard. Having this metadata in the file makes it

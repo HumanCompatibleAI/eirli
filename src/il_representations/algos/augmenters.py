@@ -1,22 +1,17 @@
-import enum
-from torchvision import transforms
-from imitation.augment.color import ColorSpace  # noqa: F401
-from imitation.augment.convenience import StandardAugmentations
-from il_representations.algos.utils import gaussian_blur
-import torch
+"""Augmenters take in a list of augmentations, and either augment just the
+context, or both the context and the target, depending on the algorithm."""
 from abc import ABC, abstractmethod
-import PIL
-"""
-These are pretty basic: when constructed, they take in a list of augmentations, and
-either augment just the context, or both the context and the target, depending on the algorithm.
-"""
+
+from imitation.augment.color import ColorSpace  # noqa: F401
+
+from il_representations.utils import augmenter_from_spec
 
 
 class Augmenter(ABC):
-    def __init__(self, augmenter_spec, color_space):
-        augment_op = StandardAugmentations.from_string_spec(
-            augmenter_spec, color_space)
-        self.augment_op = augment_op
+    """Abstract base class for all augmenters."""
+    def __init__(self, augmenter_spec=None, color_space=None):
+        if augmenter_spec is not None:
+            self.augment_op = augmenter_from_spec(augmenter_spec, color_space)
 
     @abstractmethod
     def __call__(self, contexts, targets):
@@ -27,20 +22,27 @@ class Augmenter(ABC):
 
 
 class NoAugmentation(Augmenter):
+    """Noop augmenter; does not augment anything."""
     def __call__(self, contexts, targets):
         return contexts, targets
 
 
 class AugmentContextAndTarget(Augmenter):
+    """Applies independent augmentations to contexts and targets, but not
+    extra_contexts."""
     def __call__(self, contexts, targets):
         return self.augment_op(contexts), self.augment_op(targets)
 
 
 class AugmentContextOnly(Augmenter):
+    """Applies augmentations to only contexts; targets and extra_contexts are
+    left as-is."""
     def __call__(self, contexts, targets):
         return self.augment_op(contexts), targets
 
 
 class AugmentContextAndExtraContext(AugmentContextOnly):
+    """Independently augments both contexts and extra_contexts, but not
+    targets."""
     def augment_extra_context(self, extra_contexts):
         return self.augment_op(extra_contexts)

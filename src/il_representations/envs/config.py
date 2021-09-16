@@ -6,7 +6,7 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "procgen"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -23,7 +23,8 @@ def env_cfg_defaults():
     # set this to one of the options in ALL_BENCHMARK_NAMES
     benchmark_name = 'dm_control'
     # format for env_name depends in benchmark:
-    # - MAGICAL: use env name prefixes like MoveToRegion, ClusterShape, etc.
+    # - MAGICAL: use env names without preprocessors, like
+    #   MoveToRegion-Demo-v0, ClusterShape-TestAll-v0, etc.
     # - dm_control: in dm_control parlance, use [domain name]-[task name], like
     #  'finger-spin', 'cheetah-run', etc.
     # - Atari: use fully qualified Gym names (e.g. PongNoFrameskip-v4)
@@ -69,6 +70,11 @@ def env_cfg_defaults():
     # Minecraft-specific config variables
     # ###############################
     minecraft_max_env_steps = None
+
+    # ###############################
+    # Procgen-specific config variables
+    # ###############################
+    procgen_frame_stack = 4
 
     _ = locals()
     del _
@@ -135,14 +141,14 @@ def env_data_defaults():
         #     ln -s /scratch/sam/il-demos/magical/${dname}-2020-*/ \
         #         ./data/magical/${dname};
         # done
-        'MoveToCorner': 'data/magical/move-to-corner/',
-        'MoveToRegion': 'data/magical/move-to-region/',
-        'MatchRegions': 'data/magical/match-regions/',
-        'MakeLine': 'data/magical/make-line/',
-        'FixColour': 'data/magical/fix-colour/',
-        'FindDupe': 'data/magical/find-dupe/',
-        'ClusterColour': 'data/magical/cluster-colour/',
-        'ClusterShape': 'data/magical/cluster-shape/',
+        'MoveToCorner-Demo-v0': 'data/magical/move-to-corner/',
+        'MoveToRegion-Demo-v0': 'data/magical/move-to-region/',
+        'MatchRegions-Demo-v0': 'data/magical/match-regions/',
+        'MakeLine-Demo-v0': 'data/magical/make-line/',
+        'FixColour-Demo-v0': 'data/magical/fix-colour/',
+        'FindDupe-Demo-v0': 'data/magical/find-dupe/',
+        'ClusterColour-Demo-v0': 'data/magical/cluster-colour/',
+        'ClusterShape-Demo-v0': 'data/magical/cluster-shape/',
     }
 
     # ###########################
@@ -169,6 +175,15 @@ def env_data_defaults():
         'data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
         'PongNoFrameskip-v4':
         'data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
+    }
+
+    # ###########################
+    # ProcGen config variables
+    # ###########################
+    procgen_demo_paths = {
+        'coinrun': 'procgen/demo_coinrun.pickle',
+        'ninja': 'procgen/demo_ninja.pickle',
+        'jumper': 'procgen/demo_jumper.pickle',
     }
 
     _ = locals()

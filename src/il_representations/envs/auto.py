@@ -6,9 +6,11 @@ import logging
 import os
 
 from imitation.util.util import make_vec_env
+from procgen import ProcgenEnv
 from stable_baselines3.common.atari_wrappers import AtariWrapper
-from stable_baselines3.common.vec_env import VecFrameStack, VecTransposeImage
-
+from stable_baselines3.common.vec_env import (VecFrameStack,
+                                              VecTransposeImage,
+                                              SubprocVecEnv)
 from il_representations.algos.augmenters import ColorSpace
 from il_representations.data.read_dataset import load_ilr_datasets
 from il_representations.envs.atari_envs import load_dataset_atari
@@ -21,7 +23,10 @@ from il_representations.envs.magical_envs import (get_env_name_magical,
 from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
-from il_representations.scripts.utils import update as dict_update
+from il_representations.envs.procgen_envs import load_dataset_procgen
+from il_representations.envs.baselines_vendored import (VecExtractDictObs,
+                                                        VecMonitor)
+from il_representations.script_utils import update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
@@ -49,10 +54,12 @@ def benchmark_is_available(benchmark_name):
         return True, None
     elif benchmark_name == 'atari':
         return True, None
+    elif benchmark_name == 'procgen':
+        return True, None
     elif benchmark_name == 'minecraft':
         # we check whether minecraft is installed by importing minerl
         try:
-            import minerl  # noqa: F401
+            __import__('minerl')  # noqa: F401
             return True, None
         except ImportError as ex:
             return False, "MineRL not installed, cannot use Minecraft " \
@@ -62,18 +69,25 @@ def benchmark_is_available(benchmark_name):
 
 
 @env_cfg_ingredient.capture
-def load_dict_dataset(benchmark_name, n_traj=None):
+def load_dict_dataset(benchmark_name, n_traj=None, **kwargs):
     """Load a dict-type dataset. Also see load_wds_datasets, which instead
     lods a set of datasets that have been stored in a webdataset-compatible
     format."""
+
+    # Check if kwargs has unexpected keys
+    if kwargs is not None:
+        assert set(kwargs.keys()) <= set(['task_name'])
+
     if benchmark_name == 'magical':
-        dataset_dict = load_dataset_magical(n_traj=n_traj)
+        dataset_dict = load_dataset_magical(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'dm_control':
-        dataset_dict = load_dataset_dm_control(n_traj=n_traj)
+        dataset_dict = load_dataset_dm_control(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'atari':
-        dataset_dict = load_dataset_atari(n_traj=n_traj)
+        dataset_dict = load_dataset_atari(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'minecraft':
-        dataset_dict = load_dataset_minecraft(n_traj=n_traj)
+        dataset_dict = load_dataset_minecraft(n_traj=n_traj, **kwargs)
+    elif benchmark_name == 'procgen':
+        dataset_dict = load_dataset_procgen(n_traj=n_traj, **kwargs)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -100,6 +114,8 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
         return task_name
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
+    elif benchmark_name == 'procgen':
+        return task_name
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -112,7 +128,8 @@ def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
 
 @env_cfg_ingredient.capture
 def load_vec_env(benchmark_name, dm_control_full_env_names,
-                 dm_control_frame_stack, minecraft_max_env_steps):
+                 dm_control_frame_stack, minecraft_max_env_steps,
+                 procgen_frame_stack, procgen_start_level=0):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
     n_envs, venv_parallel, parallel_workers = _get_venv_opts()
@@ -163,6 +180,21 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             parallel=venv_parallel,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
+    elif benchmark_name == 'procgen':
+        mode = 'easy' if procgen_start_level == 0 else 'hard'
+        raw_procgen_env = ProcgenEnv(num_envs=1,
+                                     env_name=gym_env_name,
+                                     num_levels=100,
+                                     start_level=procgen_start_level,
+                                     distribution_mode=mode)
+        raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
+        raw_procgen_env = VecMonitor(venv=raw_procgen_env, filename=None,
+                                            keep_buf=100)
+        final_env = VecFrameStack(VecTransposeImage(raw_procgen_env),
+                                  procgen_frame_stack)
+        assert final_env.observation_space.shape == (12, 64, 64), \
+            final_env.observation_space.shape
+        return final_env
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -174,8 +206,8 @@ def _get_default_env_cfg(_config):
 @env_data_ingredient.capture
 def get_data_dir(benchmark_name, task_key, data_type, data_root):
     """Get the data directory for a given benchmark ("magical", "dm_control",
-    etc.), task (e.g. "MoveToCorner", "finger-spin") and data type (e.g.
-    "demos", "random")."""
+    etc.), task (e.g. "MoveToCorner-Demo-v0", "finger-spin") and data type
+    (e.g. "demos", "random")."""
     return os.path.join(data_root, 'data', 'processed',
                         data_type, benchmark_name, task_key)
 
@@ -185,9 +217,11 @@ def load_wds_datasets(configs):
 
     Args:
         configs ([dict]): list of dicts with the following keys:
-            - `type`: "random" or "demos", as appropriate.
-            - `env_cfg`: subset of keys from `env_cfg_ingredient` specifying a
+
+          - `type`: "random" or "demos", as appropriate.
+          - `env_cfg`: subset of keys from `env_cfg_ingredient` specifying a
             particular environment name, etc.
+
           If any of the above keys are missing, they will be filled in with
           defaults: `type` defaults to "demos", and `env_cfg` keys are taken
           from `env_cfg_ingredient` by default. Only keys that differ from
@@ -197,7 +231,7 @@ def load_wds_datasets(configs):
           [{"type": "random", "env_cfg": {"task_name": "finger_spin"}}]` to use
           only rollouts from the `finger-spin` dm_control environment.
 
-    (all other args are taken from env_data_ingredient)"""
+          (all other args are taken from env_data_ingredient)"""
     # by default we load demos for the configured base environment
     defaults = {
         'type': 'demos',
@@ -212,7 +246,7 @@ def load_wds_datasets(configs):
         # generate config dict, including defaults
         assert isinstance(config, dict) and config.keys() <= {
             'type', 'env_cfg'
-        }
+        }, config
         orig_config = config
         config = dict_update(defaults, config)
         data_type = config['type']
@@ -266,7 +300,8 @@ def load_color_space(benchmark_name):
         'magical': ColorSpace.RGB,
         'dm_control': ColorSpace.RGB,
         'atari': ColorSpace.GRAY,
-        'minecraft': ColorSpace.RGB
+        'minecraft': ColorSpace.RGB,
+        'procgen': ColorSpace.RGB
     }
     try:
         return color_spaces[benchmark_name]

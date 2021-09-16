@@ -21,10 +21,13 @@ ray[tune]~=1.0.1
 PyYAML~=5.3.1
 scikit-video~=1.1.11
 Pillow~=7.2.0
-torchsummary~=1.5.1
-#webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
+# webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
 webdataset==0.1.40
 tqdm~=4.48.0
+procgen==0.10.4
+
+# this fork of torchsummary can deal with layers that don't produce tensors
+git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
 
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
@@ -40,7 +43,7 @@ git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257
 
 # imitation needs special branch as of 2021-01-04
 # (also this is only installable with pip~=19.0 and earlier; new resolver breaks it)
-git+git://github.com/HumanCompatibleAI/imitation@077d02cf0768a6ec945aafe13f720ab1165e84a3#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@08585bc90108fbad02359ae2e32c40352c369df8#egg=imitation
 # this branch has fixes to VecEnvTranspose, some new features for SubprocVecEnv, etc.
 git+git://github.com/HumanCompatibleAI/stable-baselines3@ad902dd5f9d4afeef347897cb04c48a19a659ca3#egg=stable_baselines3
 

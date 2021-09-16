@@ -12,9 +12,9 @@ cluster_name: il-rep-XXX-CUSTOMIZE-THIS-XXX
 # The minimum number of workers nodes to run in addition to the head
 min_workers: 1
 # The maximum number of workers nodes to run in addition to the head
-max_workers: 4
+max_workers: 16
 # Number of workers to launch at cluster startup, in addition to the head
-initial_workers: 1
+initial_workers: 16
 # Can be changed to autoscale more aggressively.
 autoscaling_mode: default
 # The autoscaler will scale up the cluster to this target fraction of resource
@@ -32,7 +32,7 @@ docker:
   # the image below is taken from .circleci/config.yml
   # (if you change this file or that file, then remember to change the other
   # too)
-  image: "humancompatibleai/il-representations:2021.02.22"
+  image: "humancompatibleai/il-representations:2021.03.01-r2"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
@@ -40,6 +40,8 @@ docker:
     - "--mount"
     - "type=volume,source=project-data-volume,target=/project-data"
     - "--runtime=nvidia"
+    - "--ulimit"
+    - "core=0"
 
 # Cloud-provider specific configuration.
 provider:
@@ -64,7 +66,7 @@ head_node:
   # you'll probably need something much beefier (possibly something with GPUs)
   # for real experiments.
   # machineType: n1-standard-8
-  machineType: custom-12-49152
+  machineType: custom-24-65536
   disks:
     - boot: true
       autoDelete: true
@@ -165,6 +167,10 @@ initialization_commands:
     nfs_mount_path="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d ' ' -f 3)"
     && nv_driver_major_version="$(nvidia-smi -q | grep 'Driver Version.*:.*' | cut -d : -f 2- | sed 's/\s//g' | cut -d . -f 1)"
     && ( [ "$nv_driver_major_version" -ge 450 ] || sudo sh "${nfs_mount_path}/driver/NVIDIA-Linux-x86_64-450.51.06.run" -s )
+  # disable auto coredumps (these sometimes take more space than there is on local disk)
+  - >-
+    sudo sh -c 'echo "kernel.core_pattern=|/bin/false" > /etc/sysctl.d/50-coredump.conf'
+    && sudo sysctl -p /etc/sysctl.d/50-coredump.conf
 # List of shell commands to run to set up nodes (both head and worker).
 setup_commands:
   # Set up SSH key
@@ -239,7 +245,7 @@ head_start_ray_commands:
   # AUTOSCALER_MAX_NUM_FAILURES line.
   - >-
     ulimit -n 65536;
-    export AUTOSCALER_MAX_NUM_FAILURES=100;
+    export AUTOSCALER_MAX_NUM_FAILURES=1000;
     ray start
     --head
     --port=6379
@@ -250,7 +256,7 @@ worker_start_ray_commands:
   - ray stop
   - >-
     ulimit -n 65536;
-    export AUTOSCALER_MAX_NUM_FAILURES=100;
+    export AUTOSCALER_MAX_NUM_FAILURES=1000;
     ray start
     --address=$RAY_HEAD_IP:6379
     --object-manager-port=8076

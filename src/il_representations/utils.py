@@ -1,5 +1,8 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
+from collections.abc import Iterable, Mapping, Sequence
+import contextlib
+import functools
 import hashlib
 import json
 import math
@@ -8,14 +11,20 @@ import pdb
 import pickle
 import re
 import sys
-from collections.abc import Sequence
+import time
+from typing import Dict, List
 
 from PIL import Image
 from imitation.augment.color import ColorSpace
+from imitation.augment.convenience import StandardAugmentations
+import numpy as np
 from skvideo.io import FFmpegWriter
 import torch as th
+from torchsummary import summary
 import torchvision.utils as vutils
+import webdataset as wds
 
+WEBDATASET_SAVE_KEY = "obs.pyd"
 
 class ForkedPdb(pdb.Pdb):
     """A Pdb subclass that may be used
@@ -29,6 +38,30 @@ class ForkedPdb(pdb.Pdb):
             pdb.Pdb.interaction(self, *args, **kwargs)
         finally:
             sys.stdin = _stdin
+
+
+def convert_to_simple_webdataset(dataset, file_out_name, file_out_path):
+    full_wds_url = os.path.join(file_out_path, f"{file_out_name}.tar")
+    dirname = os.path.dirname(full_wds_url)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+    with wds.TarWriter(full_wds_url) as sink:
+        for index in range(len(dataset)):
+            print(f"{index:6d}", end="\r", flush=True, file=sys.stderr)
+            sink.write({
+                    "__key__": "sample%06d" % index,
+                    WEBDATASET_SAVE_KEY: dataset[index]
+                })
+    return full_wds_url
+
+
+def _unpickle_data(sample):
+    result = pickle.loads(sample[WEBDATASET_SAVE_KEY])
+    return result
+
+
+def load_simple_webdataset(wds_url):
+    return wds.Dataset(wds_url).map(_unpickle_data)
 
 
 def recursively_sort(element):
@@ -50,8 +83,8 @@ def hash_configs(merged_config):
     sorted_dict = recursively_sort(merged_config)
     # Needs to be double-encoded because result of jsonpickle is Unicode
     encoded = json.dumps(sorted_dict).encode('utf-8')
-    hash = hashlib.md5(encoded).hexdigest()
-    return hash
+    digest = hashlib.md5(encoded).hexdigest()
+    return digest
 
 
 def freeze_params(module):
@@ -207,7 +240,8 @@ class TensorFrameWriter:
             "cannot __enter__ this again once it is closed"
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
+        # this fn receives args exc_type, exc_val, exc_tb (but all are unused)
         self.close()
 
     def close(self):
@@ -254,10 +288,63 @@ def load_sacred_pickle(fp, **kwargs):
     return SacredUnpickler(fp, **kwargs).load()
 
 
+def save_repl_batches(*, dest_dir, detached_debug_tensors, batches_trained,
+                      color_space, save_video=False):
+    """Save batches of data produced by the innards of a
+    `RepresentationLearner`. Tries to save in the easiest-to-open format (e.g.
+    image files for things that look like images, pickles for 1D tensors,
+    etc.)."""
+    os.makedirs(dest_dir, exist_ok=True)
+
+    # now loop over items and save using appropriate format
+    for save_name, save_value in (detached_debug_tensors.items()):
+        if isinstance(save_value, th.distributions.Distribution):
+            # take sample instead of mean so that we can see noise
+            save_value = save_value.sample()
+        if th.is_tensor(save_value):
+            save_value = save_value.detach().cpu()
+
+        # heuristic to check if this is an image
+        probably_an_image = th.is_tensor(save_value) \
+            and save_value.ndim == 4 \
+            and save_value.shape[-2] == save_value.shape[-1]
+        clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
+        save_prefix = f'{clean_save_name}_{batches_trained:06d}'
+        save_path_no_suffix = os.path.join(dest_dir, save_prefix)
+
+        if probably_an_image:
+            # probably an image
+            save_path = save_path_no_suffix + '.png'
+            # save as image
+            save_image = save_value.float().clamp(0, 1)
+
+            # Save decoded contexts as videos
+            if save_video:
+                video_out_path = save_path_no_suffix + '.mp4'
+                video_writer = TensorFrameWriter(
+                    video_out_path, color_space=color_space)
+                for image in save_image:
+                    image = image_tensor_to_rgb_grid(image, color_space)
+                    video_writer.add_tensor(image)
+                video_writer.close()
+
+            as_rgb = image_tensor_to_rgb_grid(save_image, color_space)
+            save_rgb_tensor(as_rgb, save_path)
+        else:
+            # probably not an image
+            save_path = save_path_no_suffix + '.pt'
+            # will save with Torch's generic serialisation code
+            th.save(save_value, save_path)
+
+
 class RepLSaveExampleBatchesCallback:
     """Save (possibly image-based) contexts, targets, and encoded/decoded
     contexts/targets."""
-    def __init__(self, save_interval_batches, dest_dir, color_space, save_video=False):
+    def __init__(self,
+                 save_interval_batches,
+                 dest_dir,
+                 color_space,
+                 save_video=False):
         self.save_interval_batches = save_interval_batches
         self.dest_dir = dest_dir
         self.last_save = None
@@ -274,54 +361,12 @@ class RepLSaveExampleBatchesCallback:
             return
         self.last_save = batches_trained
 
-        os.makedirs(self.dest_dir, exist_ok=True)
-
-        # now loop over items and save using appropriate format
-        to_save = [
-            'contexts', 'targets', 'extra_context', 'encoded_contexts',
-            'encoded_targets', 'encoded_extra_context', 'decoded_contexts',
-            'decoded_targets', 'traj_ts_info',
-        ]
-
-        for save_name in to_save:
-            save_value = repl_locals[save_name]
-
-            if isinstance(save_value, th.distributions.Distribution):
-                # take sample instead of mean so that we can see noise
-                save_value = save_value.sample()
-            if th.is_tensor(save_value):
-                save_value = save_value.detach().cpu()
-
-            # heuristic to check if this is an image
-            probably_an_image = th.is_tensor(save_value) \
-                and save_value.ndim == 4 \
-                and save_value.shape[-2] == save_value.shape[-1]
-            clean_save_name = re.sub(r'[^\w_ \-]', '-', save_name)
-            save_prefix = f'{clean_save_name}_{batches_trained:06d}'
-            save_path_no_suffix = os.path.join(self.dest_dir, save_prefix)
-
-            if probably_an_image:
-                # probably an image
-                save_path = save_path_no_suffix + '.png'
-                # save as image
-                save_image = save_value.float().clamp(0, 1)
-
-                # Save decoded contexts as videos
-                if self.save_video:
-                    video_out_path = save_path_no_suffix + '.mp4'
-                    video_writer = TensorFrameWriter(video_out_path, color_space=self.color_space)
-                    for image in save_image:
-                        image = image_tensor_to_rgb_grid(image, self.color_space)
-                        video_writer.add_tensor(image)
-                    video_writer.close()
-
-                as_rgb = image_tensor_to_rgb_grid(save_image, self.color_space)
-                save_rgb_tensor(as_rgb, save_path)
-            else:
-                # probably not an image
-                save_path = save_path_no_suffix + '.pt'
-                # will save with Torch's generic serialisation code
-                th.save(save_value, save_path)
+        save_repl_batches(
+            dest_dir=self.dest_dir,
+            detached_debug_tensors=repl_locals['detached_debug_tensors'],
+            batches_trained=batches_trained,
+            color_space=self.color_space,
+            save_video=self.save_video)
 
 
 class SigmoidRescale(th.nn.Module):
@@ -346,8 +391,218 @@ def up(p):
     return os.path.normpath(os.path.join(p, ".."))
 
 
-def normalize_image(image):
-    """Normalize an image tensor to be in the range of [0,1]."""
-    image -= image.min()
-    image /= image.max()
-    return image
+def augmenter_from_spec(spec, color_space):
+    """Construct an image augmentation module from an augmenter spec, expressed
+    as either a string of comma-separated augmenter names, or a dict of kwargs
+    for StandardAugmentations."""
+    if isinstance(spec, str):
+        return StandardAugmentations.from_string_spec(spec, color_space)
+    elif isinstance(spec, dict):
+        return StandardAugmentations(**spec, stack_color_space=color_space)
+    elif spec is None:
+        return None
+    raise TypeError(
+        f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
+
+
+def pyhash_mutable_types(mutable):
+    """A Python hash() implementation for nested mutable types."""
+    # note that we do hash(tuple(sorted(...))) to deal with nondeterministic
+    # iteration order
+    try:
+        return hash(mutable)
+    except TypeError:
+        if isinstance(mutable, Mapping):
+            return hash(tuple(sorted(
+                pyhash_mutable_types(t) for t in mutable.items())))
+        elif isinstance(mutable, Iterable):
+            return hash(tuple(sorted((pyhash_mutable_types(t) for t in mutable))))
+        raise
+
+
+class WrappedConfig:
+    """Dumb wrapper class used in pretrain_n_adapt to hide things from skopt.
+    It's in a separate module so that we can pickle it when pretrain_n_adapt is
+    __main__."""
+    def __init__(self, config_dict):
+        self.config_dict = config_dict
+
+    def __eq__(self, other):
+        if not isinstance(other, WrappedConfig):
+            return NotImplemented
+        return other.config_dict == self.config_dict
+
+    def __hash__(self):
+        return pyhash_mutable_types(self.config_dict)
+
+    def __repr__(self):
+        """Shorter repr in case this object gets printed."""
+        return f'WrappedConfig@{hex(id(self))}'
+
+
+def print_policy_info(policy, obs_space):
+    """Print model information of the policy"""
+    print(policy)
+    device = th.device("cuda" if th.cuda.is_available() else "cpu")
+    policy = policy.to(device)
+    obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
+    summary(policy, obs_shape)
+
+
+@functools.total_ordering
+class SacredProofTuple(Sequence):
+    """Pseudo-tuple that can be passed through Sacred without
+    being silently cast to a list."""
+    def __init__(self, *elems):
+        self._elems = elems
+
+    def __eq__(self, other):
+        if not isinstance(other, SacredProofTuple):
+            return NotImplemented
+        return other._elems == self._elems
+
+    def __hash__(self, other):
+        return hash(self._elems)
+
+    def __lt__(self, other):
+        if not isinstance(other, SacredProofTuple):
+            return NotImplemented
+        return other._elems < self._elems
+
+    # __len__ and __getitem__ are required by Sequence (__iter__(),
+    # __reversed__(), count(), and index() are provided automatically)
+    def __len__(self):
+        return len(self._elems)
+
+    def __getitem__(self, idx):
+        return self._elems[idx]
+
+    def __repr__(self):
+        return 'NotATuple' + repr(self._elems)
+
+
+def weight_grad_norms(params, *, norm_type=2):
+    """Calculate the gradient norm and the weight norm of the policy network.
+
+    Adapted from `BC._calculate_policy_norms` in imitation.
+
+    Args:
+        params: list of Torch parameters to compute norm of
+        norm_type: order of the norm (1, 2, etc.).
+
+    Returns: Tuple of `(gradient_norm, weight_norm)`, where:
+        - gradient_norm is the norm of the gradient of the policy network
+          (stored in each parameter's .grad attribute)
+        - weight_norm is the norm of the weights of the policy network
+    """
+    norm_type = float(norm_type)
+
+    gradient_parameters = [p for p in params if p.grad is not None]
+    stacked_gradient_norms = th.stack(
+        [th.norm(p.grad.detach(), norm_type) for p in gradient_parameters])
+    stacked_weight_norms = th.stack(
+        [th.norm(p.detach(), norm_type) for p in params])
+
+    gradient_norm = th.norm(stacked_gradient_norms, norm_type).cpu().numpy()
+    weight_norm = th.norm(stacked_weight_norms, norm_type).cpu().numpy()
+
+    return gradient_norm, weight_norm
+
+
+class Timers:
+    """Wrapper for a collection of timers.
+
+    Usage: call `.start("some_name_for_op")` before doing the operation you
+    want to time, then `.stop("some_name_for_op")` immediately afterward. Doing
+    `.dump_stats()` will compute statistics for recorded times under all names
+    (e.g. "some_name_for_op" and any other names you use)."""
+    def __init__(self):
+        self.last_start: Dict[str, float] = {}
+        self.records: Dict[str, List[float]] = {}
+
+    @contextlib.contextmanager
+    def time(self, timer_name):
+        """Time 'with' block body."""
+        try:
+            self.start(timer_name)
+            yield self
+        finally:
+            self.stop(timer_name)
+
+    def start(self, name: str) -> None:
+        """Start a timer."""
+        if name in self.last_start:
+            raise ValueError(
+                f"Tried to do .start({name!r}), but {name!r} is still "
+                "running; should .stop() it first.")
+
+        self.last_start[name] = time.monotonic()
+
+    def stop(self, name: str, *, check_running=True) -> None:
+        """Stop a timer."""
+        if name not in self.last_start:
+            if check_running:
+                raise ValueError(
+                    f"Tried to .stop({name!r}), but {name!r} is not running")
+            else:
+                return
+
+        elapsed = time.monotonic() - self.last_start[name]
+
+        # clear running timer
+        del self.last_start[name]
+
+        self.records.setdefault(name, []).append(elapsed)
+
+    def dump_stats(self, *, check_running=True, reset=True) \
+            -> Dict[str, Dict[str, float]]:
+        """Clear all timer records and return a nested dictionary of stats.
+        Keys at top level of dict are timer names, keys at second level are
+        stat names (min/mean/max/std), and values at second level are just
+        floats."""
+        if len(self.last_start) > 0 and check_running:
+            raise ValueError(
+                "Tried to .dump_stats() with timers still running: "
+                f"{list(self.last_start.keys())}")
+
+        rv = collections.OrderedDict()
+        for name, values in sorted(self.records.items()):
+            rv[name] = collections.OrderedDict()
+            for stat, stat_fn in [('min', np.min), ('max', np.max),
+                                  ('mean', np.mean), ('std', np.std)]:
+                rv[name][stat] = stat_fn(values)
+
+        if reset:
+            # clear saved times, but not running timers
+            self.records = {}
+
+        return rv
+
+    def reset(self):
+        """Clear all running timers and all saved times."""
+        self.records = {}
+        self.last_start = {}
+
+
+class EmptyIteratorException(Exception):
+    """Raised when a function is incorrectly passed an empty iterator."""
+
+
+def repeat_chain_non_empty(iterable):
+    """Equivalent to itertools.chain.from_iterable(itertools.repeat(iterator)),
+    but checks that iterator is non-empty."""
+    while True:
+        yielded_item = False
+        for item in iterable:
+            yield item
+            yielded_item = True
+        if not yielded_item:
+            raise EmptyIteratorException(f"iterable {iterable} was empty")
+
+
+def get_policy_nupdate(policy_path):
+    match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
+                            policy_path)
+    assert match_result is not None, 'policy_path does not fit pattern' \
+                                     '.*policy_(?P<n_update>\d+)_batches.pt'
+    return match_result.group('n_update')

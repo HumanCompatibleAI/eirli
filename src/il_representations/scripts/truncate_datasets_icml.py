@@ -11,7 +11,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
 from il_representations.envs.dm_control_envs import rewrite_dataset_dm_control
 from il_representations.envs.magical_envs import rewrite_dataset_magical
 
-sacred.SETTINGS['CAPTURE_MODE'] = 'sys'  # workaround for sacred issue#740
+sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 truncate_datasets_icml_ex = Experiment(
     'truncate_datasts_icml',
     ingredients=[

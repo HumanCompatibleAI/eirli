@@ -21,13 +21,10 @@ def load_dataset_atari(task_name, n_traj=None, chans_first=True):
     # load trajectories from disk
     full_rollouts_path = os.path.join(data_root, atari_demo_paths[task_name])
     trajs_or_file = np.load(full_rollouts_path, allow_pickle=True)
-    if isinstance(trajs_or_file, np.lib.npyio.NpzFile):
-        # handle .npz files (several arrays, maybe compressed, but we assume
-        # there's only one)
-        trajectories, = trajs_or_file.values()
-    else:
-        # handle .npy files (one array)
-        assert isinstance(trajectories, np.ndarray), type(trajectories)
+    assert isinstance(trajs_or_file, np.lib.npyio.NpzFile)
+    # handle .npz files (several arrays, maybe compressed, but we assume
+    # there's only one)
+    trajectories, = trajs_or_file.values()
 
     trajectories = list(trajectories)
     random.shuffle(trajectories)

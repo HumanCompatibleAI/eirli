@@ -1,3 +1,4 @@
+"""Miscellaneous utilities for our representation learning code."""
 import matplotlib
 matplotlib.use('agg')
 import random

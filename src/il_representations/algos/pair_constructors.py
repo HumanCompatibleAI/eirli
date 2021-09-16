@@ -66,7 +66,7 @@ class IdentityPairConstructor:
                 'extra_context': [],
                 'traj_ts_ids': [traj_ind, timestep],
             }
-            if step_dict['dones']:
+            if step_dict.get('dones', False):
                 traj_ind += 1
                 timestep = 0
             else:
