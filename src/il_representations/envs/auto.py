@@ -190,7 +190,7 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                                      distribution_mode=mode)
         raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
         raw_procgen_env = VecMonitor(venv=raw_procgen_env, filename=None,
-                                            keep_buf=100)
+                                     keep_buf=100)
         final_env = VecFrameStack(VecTransposeImage(raw_procgen_env),
                                   procgen_frame_stack)
         assert final_env.observation_space.shape == (12, 64, 64), \
