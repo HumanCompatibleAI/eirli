@@ -396,6 +396,14 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_jigsaw():
+        repl = {
+            'algo': 'Jigsaw',
+            'algo_params': {'batch_size': 64,
+                           }
+        }
+
+    @experiment_obj.named_config
     def cfg_repl_simclr():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {

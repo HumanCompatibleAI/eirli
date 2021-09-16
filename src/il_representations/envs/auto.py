@@ -218,9 +218,11 @@ def load_wds_datasets(configs):
 
     Args:
         configs ([dict]): list of dicts with the following keys:
-            - `type`: "random" or "demos", as appropriate.
-            - `env_cfg`: subset of keys from `env_cfg_ingredient` specifying a
+
+          - `type`: "random" or "demos", as appropriate.
+          - `env_cfg`: subset of keys from `env_cfg_ingredient` specifying a
             particular environment name, etc.
+
           If any of the above keys are missing, they will be filled in with
           defaults: `type` defaults to "demos", and `env_cfg` keys are taken
           from `env_cfg_ingredient` by default. Only keys that differ from
@@ -230,7 +232,7 @@ def load_wds_datasets(configs):
           [{"type": "random", "env_cfg": {"task_name": "finger_spin"}}]` to use
           only rollouts from the `finger-spin` dm_control environment.
 
-    (all other args are taken from env_data_ingredient)"""
+          (all other args are taken from env_data_ingredient)"""
     # by default we load demos for the configured base environment
     defaults = {
         'type': 'demos',

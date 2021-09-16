@@ -32,9 +32,12 @@ from abc import ABC, abstractmethod
 import itertools
 import math
 import random
+import warnings
 
+import torch
 import numpy as np
-from torchvision.transforms import functional as F
+import torchvision.transforms as transforms
+from torchvision.transforms import functional as TF
 
 
 class TargetPairConstructor(ABC):
@@ -63,7 +66,7 @@ class IdentityPairConstructor:
                 'extra_context': [],
                 'traj_ts_ids': [traj_ind, timestep],
             }
-            if step_dict['dones']:
+            if step_dict.get('dones', False):
                 traj_ind += 1
                 timestep = 0
             else:
@@ -173,12 +176,14 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
 
 
 class JigsawPairConstructor(TargetPairConstructor):
-    def __init__(self, permutation_path='data/jigsaw_permutations_1000.npy', n_tiles=9):
-        # TODO: Find the actual path
+    def __init__(self, permutation_path, n_tiles=9):
         self.permutation_path = permutation_path
         self.permutation = np.load(self.permutation_path)
         self.n_tiles = n_tiles
-        pass
+        unit_size = math.sqrt(self.n_tiles)
+        assert unit_size.is_integer(), 'self.n_tiles is not a square number.'
+        self.unit_size = int(unit_size)
+
 
     def __call__(self, data_iter):
         timestep = 0
@@ -196,28 +201,24 @@ class JigsawPairConstructor(TargetPairConstructor):
         tile_h, tile_w = int(original_h / math.sqrt(self.n_tiles)) - 2, \
                          int(original_w / math.sqrt(self.n_tiles)) - 2
 
-        permutation_class = [x for x in range(len(self.permutation))]
-        random.shuffle(permutation_class)
+        permutation_classes = np.random.permutation(len(self.permutation))
         permute_idx = 0
 
         for step_dict in data_iter:
             # Process images into image tiles
             obs = step_dict['obs']
-            processed_obs_list = []
             target_list = []
-            for o in obs:
-                processed_obs = self.make_jigsaw_puzzle(o,
-                                                        permutation_class[permute_idx],
-                                                        tile_h,
-                                                        tile_w)
-                processed_obs_list.append(processed_obs)
-            target_list.append(permutation_class[permute_idx])
-            permute_idx = (permute_idx + 1) % len(self.permutation)
+            permutation_class = permutation_classes[permute_idx]
+            processed_obs = self.make_jigsaw_puzzle(obs,
+                                                    permutation_class,
+                                                    tile_h,
+                                                    tile_w)
+            target_list.append(permutation_class)
+            permute_idx = (permute_idx + 1) % len(permutation_classes)
 
-            processed_obs_list = np.array(processed_obs_list)
             target_list = np.array(target_list)
             yield {
-                'context': processed_obs_list,
+                'context': processed_obs,
                 'target': target_list,
                 'extra_context': [],
                 'traj_ts_ids': [traj_ind, timestep],
@@ -229,24 +230,37 @@ class JigsawPairConstructor(TargetPairConstructor):
                 timestep += 1
 
     def make_jigsaw_puzzle(self, image, permutation_type, tile_h, tile_w):
-        permute = self.permutation[permutation_type]  # len(permute) = 9
-        n_tiles_sqrt = math.sqrt(self.n_tiles)  # If n_tiles = 9, n_tiles_sqrt = 3
+        permute = self.permutation[permutation_type]
 
-        img_tiles = []
-        unit_h = int(image.shape[0] / n_tiles_sqrt)
-        unit_w = int(image.shape[1] / n_tiles_sqrt)
+        _, h, w = image.shape
+        image = torch.tensor(image)
+        h_unit = h / self.unit_size
+        w_unit = w / self.unit_size
 
+        if not h_unit.is_integer() or not w_unit.is_integer():
+            warnings.warn(f'Input images can not be evenly divided into '+
+                          f'{self.n_tiles} {h_unit}*{w_unit} images.')
+
+        h_unit, w_unit = int(h_unit), int(w_unit)
+
+        # Split the image into tiles of [C, tile_h, tile_w] in its
+        # permutation sequence.
+        tiles = []
         for pos in permute:
-            pos_h = int(pos // n_tiles_sqrt) * unit_h
-            pos_w = int(pos % n_tiles_sqrt) * unit_w
+            pos_h = int(pos // self.unit_size) * h_unit
+            pos_w = int(pos % self.unit_size) * w_unit
 
-            # We +1 after pos_h and pos_w to center crop
-            processed_image = image[pos_h + 1:pos_h + 1 + tile_h, pos_w + 1:pos_w + 1 + tile_w]
-            img_tiles.append(processed_image)
+            tile = TF.crop(image, top=pos_h, left=pos_w, height=tile_h,
+                            width=tile_w)
+            tiles.append(tile)
 
-        new_img_h = int(img_tiles[0].shape[0] * n_tiles_sqrt)
-        new_img_w = int(img_tiles[0].shape[1] * n_tiles_sqrt)
+        # Concat tiles.
+        concat_tiles = []
+        for i in range(self.unit_size):
+            # Shape: [C, tile_h, W]
+            tile_w = torch.cat(tiles[i * self.unit_size : (i+1) * self.unit_size], dim=2)
+            concat_tiles.append(tile_w)
+        tiles = torch.cat(concat_tiles, dim=1) # Shape: [C, H, W]
+        return tiles
 
-        img_tiles = np.array(img_tiles).reshape([new_img_h, new_img_w])
-        return img_tiles
 

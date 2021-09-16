@@ -69,8 +69,6 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
     network = nn.Sequential(*layers)
-    if torch.cuda.is_available():
-        network = network.to(torch.device('cuda'))
     return network
 
 
@@ -83,21 +81,22 @@ class LossDecoder(nn.Module):
         can involve projections either into a learned metric space
         (for contrastive losses) or into a pixel space (for reconstruction losses)
 
-        :param representation_dim: The dimension of the representation that the
-        decoder will take as input
+        Args:
+            representation_dim: The dimension of the representation that the
+                decoder will take as input
 
-        :param projection_shape: The dimension of the projection the decoder will
-        produce as output
+            projection_shape: The dimension of the projection the decoder will
+                produce as output
 
-        :param sample: A binary flag indicating whether the decoder should take as
-        input the mean of the encoded representation distribution (sample=False),
-        or a sample from that distribution (sample=True)
+            sample: A binary flag indicating whether the decoder should take as
+                input the mean of the encoded representation distribution (sample=False),
+                or a sample from that distribution (sample=True)
 
-        :param learn_scale: A binary flag indicating whether the decoder should
-        learn a parametric standard deviation for the decoded distribution
-        (learn_scale=True), or whether the standard deviation of the encoded
-        should be used as the standard deviation of the decoded
-        distribution (learn_scale=False)
+            learn_scale: A binary flag indicating whether the decoder should learn
+                a parametric standard deviation for the decoded distribution
+                (learn_scale=True), or whether the standard deviation of the encoded
+                should be used as the standard deviation of the decoded
+                distribution (learn_scale=False)
         """
         super().__init__()
         self.representation_dim = representation_dim
@@ -219,8 +218,6 @@ class MomentumProjectionHead(LossDecoder):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
         a backwards hook, but seemed overly complex for an initial proof of concept
-        :param x:
-        :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
@@ -268,15 +265,25 @@ class JigsawProjectionHead(LossDecoder):
         self.projection_layers = get_sequential_from_architecture(architecture,
                                                                   representation_dim,
                                                                   projection_shape)
+        self.adjusted_projection_layer = False
 
     def forward(self, z, traj_info, extra_context=None):
         # For Jigsaw, the z input dimension depends on state observation shape;
         # hence we might need to adjust projection_layers input dimension on the fly.
         z_dim = z.shape[1]
+        device = next(self.projection_layers.parameters()).device
         if z_dim != self.projection_layers[0].in_features:
+            assert self.adjusted_projection_layer == False, 'Received \
+                    a different input dimension!'
+            logging.warning(f'{self.__class__.__name__} got input of different shape; '
+                            f'will add a new (randomly initialised) linear layer to '
+                            f'convert to projection_shape={self.projection_shape}. This '
+                           'should only happen once, and should only happen when using '
+                           'the encoder for a downstream task.')
             self.projection_layers = get_sequential_from_architecture(self.architecture,
                                                                       z_dim,
-                                                                      self.projection_shape)
+                                                                      self.projection_shape).to(device)
+            self.adjusted_projection_layer = True
         return self.projection_layers(z)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):
