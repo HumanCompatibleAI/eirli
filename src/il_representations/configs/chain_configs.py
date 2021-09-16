@@ -400,7 +400,6 @@ def make_chain_configs(experiment_obj):
         repl = {
             'algo': 'Jigsaw',
             'algo_params': {'batch_size': 64,
-                            'optimizer_kwargs': {'lr': 1e-5},
                            }
         }
 

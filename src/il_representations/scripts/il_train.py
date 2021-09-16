@@ -274,6 +274,7 @@ def make_policy(*,
                 log_std_init,
                 postproc_arch,
                 freeze_pol_encoder,
+                encoder_kwargs,
                 lr_schedule=None,
                 print_policy_summary=True):
     # TODO(sam): this should be unified with the representation learning code
@@ -294,8 +295,9 @@ def make_policy(*,
         # training we still need the full encoder (linear layers included),
         # so here we load the weights for conv layers, and leave linear
         # layers randomly initialized.
-        if not isinstance(encoder.shared_network[-1], th.nn.Linear):
-            full_encoder = BaseEncoder(observation_space)
+        if not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
+            full_encoder = BaseEncoder(observation_space,
+                                       **encoder_kwargs)
 
             partial_encoder_dict = encoder.state_dict()
             full_encoder_dict = full_encoder.state_dict()
@@ -307,7 +309,7 @@ def make_policy(*,
             full_encoder.load_state_dict(full_encoder_dict)
 
             encoder = full_encoder
-            
+
         policy_kwargs = {
             'features_extractor_class': EncoderFeatureExtractor,
             'features_extractor_kwargs': {
