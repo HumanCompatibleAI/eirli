@@ -278,8 +278,7 @@ class JigsawProjectionHead(LossDecoder):
         if z_dim != self.projection_layers[0].in_features:
             self.projection_layers = get_sequential_from_architecture(self.architecture,
                                                                       z_dim,
-                                                                      self.projection_shape)
-            self.projection_layers = self.projection_layers.to(device)
+                                                                      self.projection_shape).to(device)
         return self.projection_layers(z)
 
     def decode_target(self, z_dist, traj_info, extra_context=None):

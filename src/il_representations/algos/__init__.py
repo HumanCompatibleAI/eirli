@@ -308,6 +308,12 @@ class Jigsaw(RepresentationLearner):
         encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
         _this_file_dir = os.path.dirname(os.path.abspath(__file__))
         data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
+
+        # In the Jigsaw task, the permutations needs to be sufficiently different
+        # from each other by maximizing the hamming distance. Generating these
+        # permutations takes a long time (~40-60min), so we directly load them
+        # from a file. Check il-representations.algos.utils.generate_jigsaw_permutations
+        # for more details.
         permutation_filename = 'jigsaw_permutations_1000.npy'
         permutation_file = \
             glob.glob(f'{data_root}/**/{permutation_filename}', recursive=True)[0]
