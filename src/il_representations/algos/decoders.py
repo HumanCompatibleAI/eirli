@@ -276,7 +276,7 @@ class JigsawProjectionHead(LossDecoder):
             assert self.adjusted_projection_layer == False, 'Received \
                     a different input dimension!'
             logging.warning(f'{self.__class__.__name__} got input of different shape; '
-                            f'will add a new (randomly initialised) linear layer to
+                            f'will add a new (randomly initialised) linear layer to '
                             f'convert to projection_shape={self.projection_shape}. This '
                            'should only happen once, and should only happen when using '
                            'the encoder for a downstream task.')
