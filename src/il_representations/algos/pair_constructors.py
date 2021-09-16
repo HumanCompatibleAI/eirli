@@ -201,18 +201,20 @@ class JigsawPairConstructor(TargetPairConstructor):
         tile_h, tile_w = int(original_h / math.sqrt(self.n_tiles)) - 2, \
                          int(original_w / math.sqrt(self.n_tiles)) - 2
 
-        permutation_class = np.random.permutation(len(self.permutation))
+        permutation_classes = np.random.permutation(len(self.permutation))
         permute_idx = 0
 
         for step_dict in data_iter:
             # Process images into image tiles
             obs = step_dict['obs']
             target_list = []
+            permutation_class = permutation_classes[permute_idx]
             processed_obs = self.make_jigsaw_puzzle(obs,
-                                                    permutation_class[permute_idx],
+                                                    permutation_class,
                                                     tile_h,
                                                     tile_w)
-            target_list.append(np.random.randint(len(self.permutation)))
+            target_list.append(permutation_class)
+            permute_idx = (permute_idx + 1) % len(permutation_classes)
 
             target_list = np.array(target_list)
             yield {
@@ -237,7 +239,7 @@ class JigsawPairConstructor(TargetPairConstructor):
 
         if not h_unit.is_integer() or not w_unit.is_integer():
             warnings.warn(f'Input images can not be evenly divided into '+
-                          f'{self.n_tiles} {self.unit_size}*{self.unit_size} images.')
+                          f'{self.n_tiles} {h_unit}*{w_unit} images.')
 
         h_unit, w_unit = int(h_unit), int(w_unit)
 

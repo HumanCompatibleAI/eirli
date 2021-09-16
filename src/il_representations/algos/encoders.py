@@ -585,7 +585,7 @@ class JigsawEncoder(BaseEncoder):
 
         if not h_unit.is_integer() or not w_unit.is_integer():
             warnings.warn(f'Input images can not be evenly divided into '+
-                          f'{self.n_tiles} {self.unit_size}*{self.unit_size} images.')
+                          f'{self.n_tiles} {h_unit}*{w_unit} images.')
         h_unit, w_unit = int(h_unit), int(w_unit)
 
         tiles = []

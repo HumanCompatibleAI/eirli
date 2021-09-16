@@ -179,7 +179,7 @@ class AverageMeter(object):
 
 def generate_jigsaw_permutations(n_tiles=9, n_perms=1000):
     """Generate n_perms permutations from list(range(n_tiles)), and select
-    permutations with large hamming distance. Modified from 
+    permutations with large hamming distance. Modified from
     bbrattoli/JigsawPuzzlePytorch.
 
     Args:
@@ -199,9 +199,9 @@ def generate_jigsaw_permutations(n_tiles=9, n_perms=1000):
             perms = np.concatenate([perms, all_perms[j].reshape([1,-1])], axis=0)
 
         all_perms = np.delete(all_perms, j, axis=0)
-        
+
         # Calculate selected permutations' distance with all possible
-        # permutations, and select the one that are most different from
+        # permutations, and pick the one that are most different from
         # selected ones. This is to make sure the generated jigsaw puzzles are
         # sufficiently different from each other.
         D = cdist(perms, all_perms, metric='hamming').mean(axis=0).flatten()
