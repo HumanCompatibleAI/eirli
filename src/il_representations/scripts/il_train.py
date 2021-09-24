@@ -280,10 +280,34 @@ def make_policy(*,
     encoder_or_policy = load_encoder_or_policy(
         observation_space=observation_space,
         freeze=freeze_pol_encoder)
+
     if isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy):
         policy = encoder_or_policy
     else:
         encoder = encoder_or_policy
+
+        # Normally the last layer of an encoder is a linear layer, but in
+        # some special cases like Jigsaw, we only train the convolution
+        # layers (with linearity handled by the decoder). In BC
+        # training we still need the full encoder (linear layers included),
+        # so here we load the weights for conv layers, and leave linear
+        # layers randomly initialized.
+        if hasattr(encoder, 'network') and \
+           not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
+            full_encoder = BaseEncoder(observation_space,
+                                       **encoder_kwargs)
+
+            partial_encoder_dict = encoder.state_dict()
+            full_encoder_dict = full_encoder.state_dict()
+
+            # pretrained_dict contains weights & bias for conv layers only.
+            pretrained_dict = {k: v for k, v in partial_encoder_dict.items() if
+                               k in full_encoder_dict}
+            full_encoder_dict.update(pretrained_dict)
+            full_encoder.load_state_dict(full_encoder_dict)
+
+            encoder = full_encoder
+
         policy_kwargs = {
             'features_extractor_class': EncoderFeatureExtractor,
             'features_extractor_kwargs': {
