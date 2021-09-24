@@ -56,7 +56,7 @@ submit jobs to it or shut it down.
 The next config option is the branch that you want to pull:
 
 ```bash
-gcp_cluster_template.yaml-176-    || git -c core.sshCommand="ssh -v -i /root/.ssh/ssh_deploy_key -o StrictHostKeyChecking=no" \
+gcp_cluster_template.yaml-176-    || git -c core.sshCommand="ssh -v" \
 gcp_cluster_template.yaml:177:      clone --depth 1 -b XXX-CUSTOMIZE-THIS-XXX \
 gcp_cluster_template.yaml-178-      git@github.com:HumanCompatibleAI/il-representations.git ~/il-rep
 ```
@@ -114,7 +114,7 @@ This will do a few things:
 Once Ray finishes doing all of that, it will give you a helpful list of commands
 you can run to manage the machine. Of particular interest is the command that tails the logs on the head node, which will look like this:
 
-```
+```bash
 ray exec /path/to/gcp_cluster_mine.yaml 'tail -n 100 -f /tmp/ray/session_*/logs/monitor*'
 ```
 
@@ -324,8 +324,3 @@ scripts can be executed. It contains the following files:
   dealing with a Ray cluster! Note that the `Dockerfile` has `DISPLAY=:0` baked
   into the environment config so that programs know to connect to this specific
   `Xvfb` server.
-- `ssh_deploy_key[.pub]`: a read-only GitHub deploy key for the
-  `il-representations` repo. This is copied over to the Ray cluster so that the
-  autoscaler can pull the code from GitHub. Unfortunately it is hard to make the
-  Ray autoscaler directly copy code from your local machine to the Ray cluster,
-  so using a committed deploy key is the easiest approach for now.

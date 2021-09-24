@@ -173,23 +173,15 @@ initialization_commands:
     && sudo sysctl -p /etc/sysctl.d/50-coredump.conf
 # List of shell commands to run to set up nodes (both head and worker).
 setup_commands:
-  # Set up SSH key
-  - >-
-    ( test -e ~/.ssh || ( mkdir -p ~/.ssh && chmod 0700 ~/.ssh ) )
-    && cp -r /tmp/ray-init-scripts/ssh_deploy_key* ~/.ssh
-    && chmod 0600 ~/.ssh/ssh_deploy_key*
   # Start X server
   - bash /tmp/ray-init-scripts/start_x_server.sh
   # Check out and install source code
   # (remember to insert your desired branch name after the -b!)
-  # (Aside: I (Sam) couldn't find an easy alternative to the
-  # StrictHostKeyChecking=no hack. If it's any consolation, Ray is at least
-  # MITM-vulnerable too, so connection to Github is not our weakest link...)
   - >-
     test -e ~/il-rep
-    || git -c core.sshCommand="ssh -v -i /root/.ssh/ssh_deploy_key -o StrictHostKeyChecking=no" \
+    || git -c core.sshCommand="ssh -v" \
       clone --depth 1 -b XXX-CUSTOMIZE-THIS-XXX \
-      git@github.com:HumanCompatibleAI/il-representations.git ~/il-rep
+      https://github.com/HumanCompatibleAI/il-representations.git ~/il-rep
   # Dependencies are baked into the Docker image, but we pip install
   # requirements.txt just in case there are any new ones pip can easily add.
   - cd ~/il-rep/ && pip install -r requirements.txt

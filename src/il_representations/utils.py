@@ -392,6 +392,7 @@ def up(p):
 
 
 class IdentityModule(th.nn.Module):
+    """Parameter-free Torch module which passes through input unchanged."""
     def forward(self, x):
         return x
 

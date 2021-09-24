@@ -410,6 +410,14 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_jigsaw():
+        repl = {
+            'algo': 'Jigsaw',
+            'algo_params': {'batch_size': 64,
+                           }
+        }
+
+    @experiment_obj.named_config
     def cfg_repl_simclr():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
@@ -1092,6 +1100,39 @@ def make_chain_configs(experiment_obj):
             "venv_parallel": True
         }
 
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def gail_disc_augs():
+        """Turn on discriminator augs for GAIL, using same config as
+        gail_mr_config_2021_03_29."""
+        il_train = {
+            "algo": "gail",
+            "gail": {
+                "disc_augs": {
+                    "color_jitter_mid": True,
+                    "erase": True,
+                    "flip_lr": True,
+                    "gaussian_blur": True,
+                    "noise": True,
+                    "rotate": True,
+                    "translate_ex": False
+                },
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def gail_disc_noaugs():
+        """Turn off discriminator augs for GAIL."""
+        il_train = {
+            "algo": "gail",
+            "gail": {
+                "disc_augs": None,
+            },
+        }
         _ = locals()
         del _
 
