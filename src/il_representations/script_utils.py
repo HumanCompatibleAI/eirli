@@ -7,7 +7,6 @@ import urllib
 
 import numpy as np
 
-from il_representations.envs import auto
 from il_representations.utils import NUM_CHANS
 
 
@@ -80,6 +79,11 @@ def detect_ec2():
 
 
 def get_n_chans() -> int:
+    # FIXME(sam): this is here to avoid a recursive import. The issue is that
+    # il_representations.envs wants to use update() from this file. Ideally we
+    # should move update() into a separate file, or move get_n_chans into
+    # auto.py.
+    from il_representations.envs import auto
     return NUM_CHANS[auto.load_color_space()]
 
 

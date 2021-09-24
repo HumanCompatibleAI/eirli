@@ -16,8 +16,10 @@ set -e
 base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
            "cfg_data_il_5demos")
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
-gpu_default=0.11
+# 6 runs per GPU by default
+gpu_default=0.15
 declare -A gpu_overrides=(
+    # 4 runs per GPU for TCPC8/SimCLR
     ["cfg_repl_tcpc8"]="0.21"
     ["cfg_repl_simclr"]="0.21"
 )
@@ -38,7 +40,7 @@ declare -a mg_dataset_configs=("cfg_data_repl_5demos_random")
 
 # we are evaluating on only a subset of cases for the rebuttal; we can do the
 # rest later (which will require 4x as much compute)
-declare -a repl_configs=("icml_vae" "cfg_repl_tcpc8")
+declare -a repl_configs=("icml_vae")
 declare -a magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0")
 
 submit_expt() {
