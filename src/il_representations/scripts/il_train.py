@@ -277,8 +277,7 @@ def make_policy(*,
                 encoder_kwargs,
                 lr_schedule=None,
                 print_policy_summary=True,
-                modified_encoder_path=None,
-                encoder_kwargs=None):
+                modified_encoder_path=None):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
