@@ -381,94 +381,94 @@ def learn_repl_gail(repl_learner, repl_datasets, bc_learner,
     """Training loop for repL + GAIL (implemented as repL + PPO interleaved
     with repL + discriminator training)."""
 
-    # dataset setup
-    repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
-                                                 batches_per_epoch=n_batches,
-                                                 n_epochs=1)
-    XXX_data_iter = bc_learner.make_data_iter(
-        il_dataset=bc_dataset,
-        augmentation_fn=bc_augmentation_fn,
-        batch_size=bc['batch_size'],
-        n_batches=n_batches,
-        shuffle_buffer_size=shuffle_buffer_size)
+    # # dataset setup
+    # repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
+    #                                              batches_per_epoch=n_batches,
+    #                                              n_epochs=1)
+    # XXX_data_iter = bc_learner.make_data_iter(
+    #     il_dataset=bc_dataset,
+    #     augmentation_fn=bc_augmentation_fn,
+    #     batch_size=bc['batch_size'],
+    #     n_batches=n_batches,
+    #     shuffle_buffer_size=shuffle_buffer_size)
 
-    # optimizer and LR scheduler
-    params_list = list(repl_learner.all_trainable_params()) \
-        + list(bc_learner.all_trainable_params())
-    params_set = set()
-    params_list_dedup = []
-    for param in params_list:
-        if param not in params_set:
-            params_list_dedup.append(param)
-            params_set.add(param)
-    assert len(params_list_dedup) < len(params_list), \
-        "After param deduplication, the number of parameters did not drop. " \
-        "Is the encoder actually shared?"
-    del params_list, params_set
-    optimizer = optimizer_cls(params_list_dedup, **optimizer_kwargs)
+    # # optimizer and LR scheduler
+    # params_list = list(repl_learner.all_trainable_params()) \
+    #     + list(bc_learner.all_trainable_params())
+    # params_set = set()
+    # params_list_dedup = []
+    # for param in params_list:
+    #     if param not in params_set:
+    #         params_list_dedup.append(param)
+    #         params_set.add(param)
+    # assert len(params_list_dedup) < len(params_list), \
+    #     "After param deduplication, the number of parameters did not drop. " \
+    #     "Is the encoder actually shared?"
+    # del params_list, params_set
+    # optimizer = optimizer_cls(params_list_dedup, **optimizer_kwargs)
 
-    timers = Timers()
+    # timers = Timers()
 
-    repl_learner.set_train(True)
+    # repl_learner.set_train(True)
 
-    # some save paths
-    log_dir_path = pathlib.Path(log_dir)
-    save_dir = log_dir_path / "checkpoints"
+    # # some save paths
+    # log_dir_path = pathlib.Path(log_dir)
+    # save_dir = log_dir_path / "checkpoints"
 
-    assert n_batches > 0
+    # assert n_batches > 0
 
-    while elapsed_timesteps < timestep_limit:
-        # sample trajectories
-        new_trajectories = sample_trajectories()
-        disc_buffer.append(new_trajectories)
+    # while elapsed_timesteps < timestep_limit:
+    #     # sample trajectories
+    #     new_trajectories = sample_trajectories()
+    #     disc_buffer.append(new_trajectories)
 
-        # discriminator classifier updates
-        for _ in range(n_disc):
-            disc_batch = next(disc_data_iter)
-            disc_loss, disc_states = disc_learner.batch_forward(disc_batch)
-            disc_repl_batch = next(disc_repl_data_iter)
-            disc_repl_loss, disc_detached_debug_tensors = disc_repl_learner.batch_forward(disc_repl_batch)
-            disc_composite_loss = disc_loss + disc_repl_weight * disc_repl_loss
-            disc_optimizer.zero_grad()
-            disc_composite_loss.backward()
-            disc_optimizer.step()
+    #     # discriminator classifier updates
+    #     for _ in range(n_disc):
+    #         disc_batch = next(disc_data_iter)
+    #         disc_loss, disc_states = disc_learner.batch_forward(disc_batch)
+    #         disc_repl_batch = next(disc_repl_data_iter)
+    #         disc_repl_loss, disc_detached_debug_tensors = disc_repl_learner.batch_forward(disc_repl_batch)
+    #         disc_composite_loss = disc_loss + disc_repl_weight * disc_repl_loss
+    #         disc_optimizer.zero_grad()
+    #         disc_composite_loss.backward()
+    #         disc_optimizer.step()
 
-        # PPO epochs
-        for _ in range(n_ppo_epoch):
-            ppo_data_gen = make_ppo_data_gen()
+    #     # PPO epochs
+    #     for _ in range(n_ppo_epoch):
+    #         ppo_data_gen = make_ppo_data_gen()
 
-            # TODO(sam): handle re-computing rewards & calculating advantages
+    #         # TODO(sam): handle re-computing rewards & calculating advantages
 
-            for ppo_sample in ppo_data_gen:
-                ppo_loss, ppo_stats_dict = ppo_learner.batch_forward(ppo_sample)
-                ppo_repl_batch = next(ppo_repl_data_iter)
-                ppo_repl_loss, ppo_detached_debug_tensors = ppo_repl_learner.batch_forward(ppo_repl_batch)
-                ppo_composite_loss = ppo_loss + ppo_repl_weight * ppo_repl_loss
+    #         for ppo_sample in ppo_data_gen:
+    #             ppo_loss, ppo_stats_dict = ppo_learner.batch_forward(ppo_sample)
+    #             ppo_repl_batch = next(ppo_repl_data_iter)
+    #             ppo_repl_loss, ppo_detached_debug_tensors = ppo_repl_learner.batch_forward(ppo_repl_batch)
+    #             ppo_composite_loss = ppo_loss + ppo_repl_weight * ppo_repl_loss
 
-                # opt step + grad clip
-                pol_optimizer.zero_grad()
-                ppo_composite_loss.backward()
-                torch.nn.utils.clip_grad_norm_(ppo_learner.actor_critic.parameters(),
-                                               ppo_learner.max_grad_norm)
-                pol_optimizer.step()
+    #             # opt step + grad clip
+    #             pol_optimizer.zero_grad()
+    #             ppo_composite_loss.backward()
+    #             torch.nn.utils.clip_grad_norm_(ppo_learner.actor_critic.parameters(),
+    #                                            ppo_learner.max_grad_norm)
+    #             pol_optimizer.step()
 
-        # this block is the actual forward/backward logic (everything else
-        # is logging/checkpointing)
-        bc_batch = next(bc_data_iter)
-        bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
-        repl_batch = next(repl_data_iter)
-        repl_loss, detached_debug_tensors = repl_learner.batch_forward(
-            repl_batch)
-        composite_loss = bc_loss + repl_weight * repl_loss
-        optimizer.zero_grad()
-        composite_loss.backward()
-        optimizer.step()
+    #     # this block is the actual forward/backward logic (everything else
+    #     # is logging/checkpointing)
+    #     bc_batch = next(bc_data_iter)
+    #     bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
+    #     repl_batch = next(repl_data_iter)
+    #     repl_loss, detached_debug_tensors = repl_learner.batch_forward(
+    #         repl_batch)
+    #     composite_loss = bc_loss + repl_weight * repl_loss
+    #     optimizer.zero_grad()
+    #     composite_loss.backward()
+    #     optimizer.step()
 
-    # return final saved policy path
-    pol_path = save_dir / "policy_final.ckpt"
-    os.makedirs(save_dir, exist_ok=True)
-    torch.save(bc_learner.policy, pol_path)
-    return pol_path
+    # # return final saved policy path
+    # pol_path = save_dir / "policy_final.ckpt"
+    # os.makedirs(save_dir, exist_ok=True)
+    # torch.save(bc_learner.policy, pol_path)
+    # return pol_path
 
 
 def init_policy(*,
@@ -651,20 +651,21 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
             # - Doing re-initialisable training (for running on GCP) may be
             #   much more complicated for GAIL due to the nested training
             #   loops. Keep this in mind while writing the training loop.
+            raise NotImplementedError("need to make GAIL run")
 
-            # set up IL
-            gail_oe_params = TODO  # will have to pull from disc & pol
-            # are params actually shared?
-            assert orig_oe_params == gail_oe_params
-            assert orig_oe_params == repl_oe_params
-            final_pol_path = learn_repl_gail(repl_learner=repl_learner,
-                                             repl_datasets=repl_datasets,
-                                             gail_learner=gail_learner,
-                                             gail_augmentation_fn=gail_augmentation_fn,
-                                             gail_dataset=gail_dataset,
-                                             model_save_interval=model_save_interval,
-                                             log_dir=log_dir,
-                                             venv=venv)
+            # # set up IL
+            # gail_oe_params = TODO  # will have to pull from disc & pol
+            # # are params actually shared?
+            # assert orig_oe_params == gail_oe_params
+            # assert orig_oe_params == repl_oe_params
+            # final_pol_path = learn_repl_gail(repl_learner=repl_learner,
+            #                                  repl_datasets=repl_datasets,
+            #                                  gail_learner=gail_learner,
+            #                                  gail_augmentation_fn=gail_augmentation_fn,
+            #                                  gail_dataset=gail_dataset,
+            #                                  model_save_interval=model_save_interval,
+            #                                  log_dir=log_dir,
+            #                                  venv=venv)
         else:
             raise ValueError(f"do not know how to handle il_algo={il_algo!r}")
 

@@ -270,7 +270,7 @@ class MSELoss(RepresentationLoss):
 class CrossEntropyLoss(RepresentationLoss):
     def __init__(self, device, sample=False):
         super().__init__(device, sample)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch_losses.CrossEntropyLoss()
 
     def __call__(self, decoded_contexts, targets, encoded_context_dist=None):
         return self.criterion(decoded_contexts, torch.squeeze(targets))
