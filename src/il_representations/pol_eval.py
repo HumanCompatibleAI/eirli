@@ -94,7 +94,8 @@ def do_final_eval(*,
             'return_mean': eval_data_frame['mean_score'].mean(),
         }
 
-    elif env_cfg['benchmark_name'] in ('dm_control', 'atari', 'minecraft'):
+    elif env_cfg['benchmark_name'] in ('dm_control', 'atari', 'minecraft',
+                                       'carla'):
         # must import this to register envs
         from il_representations.envs import dm_control_envs  # noqa: F401
 

@@ -6,7 +6,8 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "procgen"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "procgen",
+"carla"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -75,6 +76,11 @@ def env_cfg_defaults():
     # Procgen-specific config variables
     # ###############################
     procgen_frame_stack = 4
+
+    # ###############################
+    # Carla-specific config variables
+    # ###############################
+    carla_frame_stack = 4
 
     _ = locals()
     del _
@@ -184,6 +190,14 @@ def env_data_defaults():
         'coinrun': 'procgen/demo_coinrun.pickle',
         'ninja': 'procgen/demo_ninja.pickle',
         'jumper': 'procgen/demo_jumper.pickle',
+    }
+
+    # ###########################
+    # Carla config variables
+    # ###########################
+    carla_demo_paths = {
+        # TODO(Cyn): Move this to a suitable place after I finish verifying it.
+        'carla-lane-v0': '/home/cynthiachen/try-carla/demo_carla-lane-v0.pickle'
     }
 
     _ = locals()

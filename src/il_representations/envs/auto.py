@@ -4,6 +4,8 @@ Sacred configuration."""
 import glob
 import logging
 import os
+import d4rl
+import gym
 
 from imitation.util.util import make_vec_env
 from procgen import ProcgenEnv
@@ -24,6 +26,7 @@ from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
                                                     get_env_name_minecraft,
                                                     load_dataset_minecraft)
 from il_representations.envs.procgen_envs import load_dataset_procgen
+from il_representations.envs.carla_envs import load_dataset_carla, CarlaImageObsEnv
 from il_representations.envs.baselines_vendored import (VecExtractDictObs,
                                                         VecMonitor)
 from il_representations.script_utils import update as dict_update
@@ -200,7 +203,15 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
             final_env.observation_space.shape
         return final_env
     elif benchmark_name == 'carla':
-        pass
+        raw_carla_env = gym.make(gym_env_name)
+        # raw_carla_env = VecExtractDictObs(raw_carla_env, "rgb")
+        raw_carla_env = CarlaImageObsEnv(raw_carla_env)
+        raw_carla_env = VecMonitor(venv=raw_carla_env, filename=None,
+                                            keep_buf=100)
+        final_env = VecFrameStack(raw_carla_env, 4, 'first')
+        assert final_env.observation_space.shape == (12, 48, 48), \
+            final_env.observation_space.shape
+        return final_env
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
@@ -214,7 +225,7 @@ def get_data_dir(benchmark_name, task_key, data_type, data_root):
     """Get the data directory for a given benchmark ("magical", "dm_control",
     etc.), task (e.g. "MoveToCorner-Demo-v0", "finger-spin") and data type
     (e.g. "demos", "random")."""
-    return os.path.join(data_root, 'data', 'processed',
+    return os.path.join(data_root, 'carla', 'data', 'processed',
                         data_type, benchmark_name, task_key)
 
 
@@ -307,7 +318,8 @@ def load_color_space(benchmark_name):
         'dm_control': ColorSpace.RGB,
         'atari': ColorSpace.GRAY,
         'minecraft': ColorSpace.RGB,
-        'procgen': ColorSpace.RGB
+        'procgen': ColorSpace.RGB,
+        'carla': ColorSpace.RGB
     }
     try:
         return color_spaces[benchmark_name]
