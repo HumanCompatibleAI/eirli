@@ -17,6 +17,8 @@ from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
+from il_representations.envs.d4rl_envs import (D4RLVectorWrapper,
+                                               load_dataset_d4rl)
 from il_representations.envs.dm_control_envs import load_dataset_dm_control
 from il_representations.envs.magical_envs import (get_env_name_magical,
                                                   load_dataset_magical)
@@ -64,6 +66,15 @@ def benchmark_is_available(benchmark_name):
         except ImportError as ex:
             return False, "MineRL not installed, cannot use Minecraft " \
                 f"envs (error: {ex})"
+    elif benchmark_name == 'd4rl':
+        try:
+            # we make sure to import CARLA, since that's the main thing we use
+            # D4RL for
+            __import__('d4rl.carla')  # noqa: F401
+            return True, None
+        except ImportError as ex:
+            return False, "D4RL + CARLA not installed; no D4RL support " \
+                f"(error: {ex})"
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -88,6 +99,8 @@ def load_dict_dataset(benchmark_name, n_traj=None, **kwargs):
         dataset_dict = load_dataset_minecraft(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'procgen':
         dataset_dict = load_dataset_procgen(n_traj=n_traj, **kwargs)
+    elif benchmark_name == 'd4rl':
+        dataset_dict = load_dataset_d4rl(n_traj=n_traj, **kwargs)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -110,11 +123,9 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
         return get_env_name_magical()
     elif benchmark_name == 'dm_control':
         return dm_control_full_env_names[task_name]
-    elif benchmark_name == 'atari':
-        return task_name
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
-    elif benchmark_name == 'procgen':
+    elif benchmark_name in ('atari', 'procgen', 'd4rl'):
         return task_name
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -180,6 +191,20 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             parallel=venv_parallel,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
+    elif benchmark_name == 'd4rl':
+        if venv_parallel or n_envs > 1:
+            raise ValueError(
+                "D4RL envs are limited to one synchronous environment to "
+                "support CARLA, which only allows one environment per server.")
+        # we lazy-load D4RL to register environments
+        import d4rl  # noqa: F401
+        # FIXME(sam): this is all CARLA-specific!
+        final_env = make_vec_env(gym_env_name, n_envs=n_envs,
+                                 parallel=venv_parallel,
+                                 wrapper_class=D4RLVectorWrapper)
+        obs_shape = final_env.observation_space.shape
+        assert obs_shape == (3, 48, 48), obs_shape
+        return final_env
     elif benchmark_name == 'procgen':
         # mode = 'easy' if procgen_start_level == 0 else 'hard'
         mode = 'easy'
