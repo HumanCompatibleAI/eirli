@@ -88,6 +88,8 @@ def load_dict_dataset(benchmark_name, n_traj=None, **kwargs):
         dataset_dict = load_dataset_minecraft(n_traj=n_traj, **kwargs)
     elif benchmark_name == 'procgen':
         dataset_dict = load_dataset_procgen(n_traj=n_traj, **kwargs)
+    elif benchmark_name == 'carla':
+        dataset_dict = load_dataset_carla(n_traj=n_traj, **kwargs)
     else:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -115,6 +117,8 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
     elif benchmark_name == 'procgen':
+        return task_name
+    elif benchmark_name == 'carla':
         return task_name
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
@@ -195,6 +199,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         assert final_env.observation_space.shape == (12, 64, 64), \
             final_env.observation_space.shape
         return final_env
+    elif benchmark_name == 'carla':
+        pass
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
