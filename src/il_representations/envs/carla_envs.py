@@ -73,19 +73,37 @@ class CarlaImageObsEnv:
             dtype=np.float
         )
         self.num_envs = 1
+        self.step_buffer = {'obs': [], 'rews': [], 'dones': [], 'infos': [],
+                            'returned': True}
 
     def reset(self):
         obs = self.wrapped_env.reset()
-        obs = obs.reshape([1] + list(self.observation_space.shape))
+        obs = obs.reshape(self.observation_space.shape)
         return obs
 
     def step(self, action):
         next_obs, reward, done, info = self.wrapped_env.step(action)
-        next_obs = next_obs.reshape([1] + list(self.observation_space.shape))
+        next_obs = next_obs.reshape(self.observation_space.shape)
         return next_obs, reward, done, info
 
-    def step_async(self, action):
-        return self.step(action)
+    def step_async(self, actions):
+        assert self.step_buffer['returned'] is True, \
+            'Previously called step_async without obtaining rollouts with step_wait.'
+        self.step_buffer = {'obs': [], 'rews': [], 'dones': [], 'infos': [],
+                            'returned': False}
+        for action in actions:
+            o, r, d, i = self.step(action)
+            self.step_buffer['obs'].append(o)
+            self.step_buffer['rews'].append(r)
+            self.step_buffer['dones'].append(d)
+            self.step_buffer['infos'].append(i)
+
+    def step_wait(self):
+        self.step_buffer['returned'] = True
+        return (np.array(self.step_buffer['obs']),
+                np.array(self.step_buffer['rews']),
+                np.array(self.step_buffer['dones']),
+                np.array(self.step_buffer['infos']))
 
     def close(self):
         self.wrapped_env.terminate()

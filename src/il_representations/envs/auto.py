@@ -204,7 +204,6 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         return final_env
     elif benchmark_name == 'carla':
         raw_carla_env = gym.make(gym_env_name)
-        # raw_carla_env = VecExtractDictObs(raw_carla_env, "rgb")
         raw_carla_env = CarlaImageObsEnv(raw_carla_env)
         raw_carla_env = VecMonitor(venv=raw_carla_env, filename=None,
                                             keep_buf=100)
