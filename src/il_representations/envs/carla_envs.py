@@ -23,11 +23,11 @@ def load_dataset_carla(task_name, carla_frame_stack, chans_first=True,
     full_rollouts_path = os.path.join(data_root, carla_demo_paths[task_name])
     trajectories = np.load(full_rollouts_path, allow_pickle=True)
 
-    obs = trajectories['observations']
-    nobs = trajectories['next_observations']
-    acts = trajectories['actions']
-    rews = trajectories['rewards']
-    dones = trajectories['terminals']
+    obs = trajectories['observations'].astype(np.uint8)
+    nobs = trajectories['next_observations'].astype(np.uint8)
+    acts = trajectories['actions'].astype(np.uint8)
+    rews = trajectories['rewards'].astype(np.uint8)
+    dones = trajectories['terminals'].astype(np.uint8)
 
     if n_traj is not None:
         nth_traj_end_idx = [i for i, n in enumerate(cat_dones) if n][n_traj-1] + 1
@@ -66,7 +66,7 @@ class CarlaImageObsEnv:
                         math.sqrt(wrapped_env.observation_space.shape[0]/3)
         assert width.is_integer() and height.is_integer(), \
             f'{width} and {height} are not valid integers.'
-        low, high = 0, 1
+        low, high = 0, 255
         self.observation_space = spaces.Box(low=low,
             high=high,
             shape=(3, int(width), int(height)),
@@ -78,12 +78,12 @@ class CarlaImageObsEnv:
 
     def reset(self):
         obs = self.wrapped_env.reset()
-        obs = obs.reshape(self.observation_space.shape)
+        obs = obs.reshape([1] + list(self.observation_space.shape))
         return obs
 
     def step(self, action):
         next_obs, reward, done, info = self.wrapped_env.step(action)
-        next_obs = next_obs.reshape(self.observation_space.shape)
+        next_obs = next_obs.reshape([1] + list(self.observation_space.shape))
         return next_obs, reward, done, info
 
     def step_async(self, actions):
@@ -100,7 +100,7 @@ class CarlaImageObsEnv:
 
     def step_wait(self):
         self.step_buffer['returned'] = True
-        return (np.array(self.step_buffer['obs']),
+        return (np.array(self.step_buffer['obs']).squeeze(axis=0),
                 np.array(self.step_buffer['rews']),
                 np.array(self.step_buffer['dones']),
                 np.array(self.step_buffer['infos']))
