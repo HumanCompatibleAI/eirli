@@ -206,13 +206,11 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         assert obs_shape == (3, 48, 48), obs_shape
         return final_env
     elif benchmark_name == 'procgen':
-        # mode = 'easy' if procgen_start_level == 0 else 'hard'
-        mode = 'easy'
-        raw_procgen_env = ProcgenEnv(num_envs=1,
+        raw_procgen_env = ProcgenEnv(num_envs=n_envs,
                                      env_name=gym_env_name,
                                      num_levels=100,
                                      start_level=procgen_start_level,
-                                     distribution_mode=mode)
+                                     distribution_mode='easy')
         raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
         raw_procgen_env = VecMonitor(venv=raw_procgen_env, filename=None,
                                      keep_buf=100)
