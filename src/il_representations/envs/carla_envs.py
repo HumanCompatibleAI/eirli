@@ -70,7 +70,7 @@ class CarlaImageObsEnv:
         self.observation_space = spaces.Box(low=low,
             high=high,
             shape=(3, int(width), int(height)),
-            dtype=np.float
+            dtype=np.uint8
         )
         self.num_envs = 1
         self.step_buffer = {'obs': [], 'rews': [], 'dones': [], 'infos': [],
@@ -79,11 +79,13 @@ class CarlaImageObsEnv:
     def reset(self):
         obs = self.wrapped_env.reset()
         obs = obs.reshape([1] + list(self.observation_space.shape))
+        obs = (obs * 255).astype(np.uint8)
         return obs
 
     def step(self, action):
         next_obs, reward, done, info = self.wrapped_env.step(action)
         next_obs = next_obs.reshape([1] + list(self.observation_space.shape))
+        next_obs = (next_obs * 255).astype(np.uint8)
         return next_obs, reward, done, info
 
     def step_async(self, actions):
@@ -100,6 +102,7 @@ class CarlaImageObsEnv:
 
     def step_wait(self):
         self.step_buffer['returned'] = True
+
         return (np.array(self.step_buffer['obs']).squeeze(axis=0),
                 np.array(self.step_buffer['rews']),
                 np.array(self.step_buffer['dones']),
