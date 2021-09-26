@@ -1,3 +1,5 @@
+"""This package contains all of our representation learning algorithms, along
+with the support code needed to define new algorithms."""
 from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
 from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
     RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info, \
@@ -6,7 +8,9 @@ from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
     BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
     ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
 from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss, AELoss
+    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss, \
+    AELoss, CrossEntropyLoss
+
 from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
     AugmentContextAndExtraContext
 from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor, \
@@ -15,6 +19,8 @@ from il_representations.algos.batch_extenders import QueueBatchExtender, Identit
 from il_representations.algos.optimizers import LARS
 from il_representations.algos.representation_learner import get_default_args
 import logging
+import os
+import glob
 
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
@@ -45,13 +51,11 @@ class SimCLR(RepresentationLearner):
     """
     Implementation of SimCLR: A Simple Framework for Contrastive Learning of Visual Representations
     https://arxiv.org/abs/2002.05709
-
     This method works by using a contrastive loss to push together representations of two differently-augmented
     versions of the same image. In particular, it uses a symmetric contrastive loss, which compares the
     (target, context) similarity against similarity of context with all other targets, and also similarity
-     of target with all other contexts.
+    of target with all other contexts.
     """
-    # TODO note: not made to use momentum because not being used in experiments
     def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=BaseEncoder,
                                      decoder=SymmetricProjectionHead,
@@ -281,9 +285,11 @@ class VariationalAutoencoder(RepresentationLearner):
         super().__init__(**kwargs)
 
 
-class Jigsaw(RepresentationLearner):
+class Autoencoder(RepresentationLearner):
     """
-    A basic Jigsaw task that requires a network to solve Jigsaw puzzles.
+    A basic autoencoder that tries to reconstruct the
+    current frame, and calculates an MSE loss over current frame pixels,
+    using reconstruction loss.
     """
     def __init__(self, **kwargs):
         encoder_kwargs = kwargs.get('encoder_kwargs') or {}
@@ -292,12 +298,47 @@ class Jigsaw(RepresentationLearner):
         dec_encoder_cls_key = decoder_kwargs.get(
             'encoder_arch_key', encoder_kwargs.get('obs_encoder_cls', None))
 
+        algo_hardcoded_kwargs = dict(encoder=VAEEncoder,
+                                     decoder=PixelDecoder,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=AELoss,
+                                     target_pair_constructor=IdentityPairConstructor,
+                                     decoder_kwargs=dict(observation_space=kwargs['observation_space'],
+                                                         encoder_arch_key=dec_encoder_cls_key,
+                                                         sample=True))
+
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+        super().__init__(**kwargs)
+
+
+class Jigsaw(RepresentationLearner):
+    """
+    A basic Jigsaw task that requires a network to solve Jigsaw puzzles.
+    """
+    def __init__(self, **kwargs):
+        encoder_kwargs = kwargs.get('encoder_kwargs') or {}
+        encoder_cls_key = encoder_kwargs.get('obs_encoder_cls', None)
+        _this_file_dir = os.path.dirname(os.path.abspath(__file__))
+        data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
+
+        # In the Jigsaw task, the permutations needs to be sufficiently different
+        # from each other by maximizing the hamming distance. Generating these
+        # permutations takes a long time (~40-60min), so we directly load them
+        # from a file. Check il-representations.algos.utils.generate_jigsaw_permutations
+        # for more details.
+        permutation_filename = 'jigsaw_permutations_1000.npy'
+        permutation_file = \
+            glob.glob(f'{data_root}/**/{permutation_filename}', recursive=True)[0]
+
         algo_hardcoded_kwargs = dict(encoder=JigsawEncoder,
                                      decoder=JigsawProjectionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
                                      loss_calculator=CrossEntropyLoss,
                                      target_pair_constructor=JigsawPairConstructor,
+                                     target_pair_constructor_kwargs=dict(permutation_path=os.path.join(data_root,
+                                                                                                      permutation_file)),
                                      preprocess_target=False,
                                      projection_dim=1000,
                                      encoder_kwargs=dict(obs_encoder_cls_kwargs={'contain_fc_layer': False}),
