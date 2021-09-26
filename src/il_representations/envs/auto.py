@@ -195,7 +195,8 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         if venv_parallel or n_envs > 1:
             raise ValueError(
                 "D4RL envs are limited to one synchronous environment to "
-                "support CARLA, which only allows one environment per server.")
+                "support CARLA, which only allows one environment per server. "
+                f"(got venv_parallel={venv_parallel}, n_envs={n_envs})")
         # we lazy-load D4RL to register environments
         import d4rl  # noqa: F401
         # FIXME(sam): this is all CARLA-specific!
@@ -340,7 +341,8 @@ def load_color_space(benchmark_name):
         'dm_control': ColorSpace.RGB,
         'atari': ColorSpace.GRAY,
         'minecraft': ColorSpace.RGB,
-        'procgen': ColorSpace.RGB
+        'procgen': ColorSpace.RGB,
+        'd4rl': ColorSpace.RGB,
     }
     try:
         return color_spaces[benchmark_name]

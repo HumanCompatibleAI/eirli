@@ -37,8 +37,8 @@ def default_config():
 
 
 @mkdataset_random_ex.main
-def run(seed, env_data, env_cfg, n_timesteps_min, *,
-        _max_steps_to_write_at_once=16384):
+def run(seed, env_data, env_cfg, n_timesteps_min, *, _max_steps_to_write_at_once=16384):
+
     set_global_seeds(seed)
     logging.basicConfig(level=logging.INFO)
 
