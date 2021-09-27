@@ -1,7 +1,6 @@
 import torch
 import sacred
 import math
-import cv2
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -105,12 +104,13 @@ def saliency(net, tensor_image, label):
     saliency = Saliency(net)
     grads = saliency.attribute(tensor_image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    saliency_viz = viz.visualize_image_attr(grads,
+    saliency_viz, ax = viz.visualize_image_attr(grads,
                                             tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
                                             method="blended_heat_map",
                                             sign="absolute_value",
-                                            show_colorbar=True,
-                                            title="Overlayed Gradient Magnitudes")
+                                            show_colorbar=True)
+                                            # title="Overlayed Gradient Magnitudes")
+    ax.axis('off')
     return figure_2_tensor(saliency_viz[0])
 
 
@@ -121,12 +121,12 @@ def integrated_gradient(net, tensor_image, label):
                                               baselines=tensor_image * 0,
                                               return_convergence_delta=True, )
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    ig_viz = viz.visualize_image_attr(attr_ig,
-                                      tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
-                                      method="blended_heat_map",
-                                      sign="all",
-                                      show_colorbar=True,
-                                      title="Overlayed Integrated Gradients")
+    ig_viz, ax = viz.visualize_image_attr(attr_ig,
+                                        tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
+                                        method="blended_heat_map",
+                                        sign="all",
+                                        show_colorbar=True,
+                                        title="Overlayed Integrated Gradients")
     return figure_2_tensor(ig_viz[0])
 
 
@@ -136,40 +136,41 @@ def deep_lift(net, tensor_image, label):
     attr_dl = attribute_image_features(net, dl, tensor_image, label,
                                        baselines=tensor_image * 0,)
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
-    dl_viz = viz.visualize_image_attr(attr_dl,
-                                      tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
-                                      method="blended_heat_map",
-                                      sign="all",
-                                      show_colorbar=True,
-                                      title="Overlayed DeepLift")
+    dl_viz, ax = viz.visualize_image_attr(attr_dl,
+                                        tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
+                                        method="blended_heat_map",
+                                        sign="all",
+                                        show_colorbar=True,
+                                        title="Overlayed DeepLift")
     return figure_2_tensor(dl_viz[0])
 
 
 @interp_ex.capture
-def prepare_network(combined_meta, encoder_path, verbose, device):
-    policy = make_policy(observation_space=combined_meta['observation_space'],
+def prepare_network(combined_meta, encoder_path):
+    policy = make_policy(encoder_path=encoder_path,
+                         policy_continue_path=None,
+                         observation_space=combined_meta['observation_space'],
                          action_space=combined_meta['action_space'],
                          ortho_init=False,
                          log_std_init=0.0,
                          postproc_arch=(),
                          freeze_pol_encoder=True,
-                         modified_encoder_path=encoder_path,
-                         encoder_kwargs={'hi': 1},
+                         encoder_kwargs={},
+                         algo='bc',
                          lr_schedule=None)
-    network = Network(policy).to(device)
-    network.eval()
-    return network
+    policy.eval()
+    return policy
 
 
 @interp_ex.main
-def run(log_dir, chosen_algo, layer_kwargs, save_video, filename,
-        dataset_configs, save_image):
+def run(chosen_algo, save_video, filename, dataset_configs, save_image,
+        save_original_image):
     # setup environment & dataset
     datasets, combined_meta = auto_env.load_wds_datasets(configs=dataset_configs)
     observation_space = combined_meta['observation_space']
 
     network = prepare_network(combined_meta)
-    images, labels = process_data()
+    images, labels = get_data()
 
     log_dir = interp_ex.observers[0].dir
     filename = chosen_algo
@@ -186,7 +187,7 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename,
         tensor_image = tensor_image.contiguous()
         interp_algo_func = interp_algos.get(chosen_algo)
 
-        interpreted_img = interp_algo_func(network, tensor_image, label)  # shape (600, 600, 3)
+        interpreted_img = interp_algo_func(network, tensor_image, label)
 
         if save_video:
             video_writer.add_tensor(preprocess_obs(interpreted_img,
@@ -196,6 +197,10 @@ def run(log_dir, chosen_algo, layer_kwargs, save_video, filename,
             Path(f'{log_dir}/images').mkdir(parents=True, exist_ok=True)
             save_img(save_name=f'{filename}_{itr}',
                      save_dir=f'{log_dir}/images')
+
+            if save_original_image:
+                save_img(save_name=f'{filename}_{itr}_original',
+                        save_dir=f'{log_dir}/images')
         plt.close('all')
 
     if save_video:
