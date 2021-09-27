@@ -1,3 +1,4 @@
+"""Losses for representation learning algorithms."""
 from abc import ABC, abstractmethod
 
 import imitation.util.logger as logger
@@ -10,6 +11,7 @@ import torch.nn.modules.loss as torch_losses
 
 
 class RepresentationLoss(ABC):
+    """Abstract base class for representation learning losses."""
     def __init__(self, device, sample=False):
         self.device = device
         self.sample = sample
@@ -263,6 +265,15 @@ class MSELoss(RepresentationLoss):
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
         return self.criterion(decoded_contexts, targets)
+
+
+class CrossEntropyLoss(RepresentationLoss):
+    def __init__(self, device, sample=False):
+        super().__init__(device, sample)
+        self.criterion = torch.nn.CrossEntropyLoss()
+
+    def __call__(self, decoded_contexts, targets, encoded_context_dist=None):
+        return self.criterion(decoded_contexts, torch.squeeze(targets))
 
 
 class VAELoss(RepresentationLoss):

@@ -182,8 +182,10 @@ def env_data_defaults():
     # ###########################
     procgen_demo_paths = {
         'coinrun': 'procgen/demo_coinrun.pickle',
+        'fruitbot': 'procgen/demo_fruitbot.pickle',
         'ninja': 'procgen/demo_ninja.pickle',
         'jumper': 'procgen/demo_jumper.pickle',
+        'miner': 'procgen/demo_miner.pickle',
     }
 
     _ = locals()

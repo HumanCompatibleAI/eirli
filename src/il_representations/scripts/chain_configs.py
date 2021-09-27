@@ -1,5 +1,6 @@
 from il_representations.scripts.utils import StagesToRun
 from ray import tune
+import os
 # TODO(sam): GAIL configs
 
 
@@ -47,23 +48,6 @@ def make_chain_configs(experiment_obj):
                                resources_per_trial=dict(
                                    cpu=5,
                                    gpu=0.32,
-                               ))
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_base_3seed_1cpu_pt2gpu():
-        """Basic config that does three samples per config, using 1 CPU cores and
-        0.2 of a GPU."""
-        use_skopt = False
-        tune_run_kwargs = dict(num_samples=3,
-                               # retry on (node) failure
-                               max_failures=2,
-                               fail_fast=False,
-                               resources_per_trial=dict(
-                                   cpu=1,
-                                   gpu=0.2,
                                ))
 
         _ = locals()
@@ -224,51 +208,6 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
-    def cfg_bench_micro_sweep_procgen():
-        """Tiny sweep over three procgen configs."""
-        spec = dict(env_cfg=tune.grid_search(
-            [
-                {
-                    'benchmark_name': 'procgen',
-                    'task_name': procgen_env_name
-                } for procgen_env_name in [
-                'coinrun', 'miner', 'fruitbot'
-            ]
-            ]))
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_bench_micro_sweep_procgen_colorful():
-        """Tiny sweep over two colorful procgen configs."""
-        spec = dict(env_cfg=tune.grid_search(
-            [
-                {
-                    'benchmark_name': 'procgen',
-                    'task_name': procgen_env_name
-                } for procgen_env_name in [
-               'jumper', 'ninja'
-            ]
-            ]))
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
-    def cfg_run_few_trajs_2m_updates():
-        """For experiments running very few BC trajs"""
-        spec = dict(il_train={
-            'bc': {
-                'n_batches': 2000000,
-                'n_trajs': tune.grid_search([5, 10]),
-            }
-        })
-
-        _ = locals()
-        del _
-
-    @experiment_obj.named_config
     def cfg_bench_one_task_magical():
         """Just one simple MAGICAL config."""
         env_cfg = {
@@ -364,7 +303,6 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
-            'n_epochs': 100,
         }
 
         _ = locals()
@@ -375,7 +313,6 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'TemporalCPC',
-
         }
 
         _ = locals()
@@ -485,6 +422,17 @@ def make_chain_configs(experiment_obj):
         }
         _ = locals()
         del _
+
+    @experiment_obj.named_config
+    def cfg_repl_jigsaw():
+        repl = {
+            'algo': 'Jigsaw',
+            'algo_params': {'batch_size': 64,
+                            'optimizer_kwargs': {'lr': 1e-5},
+                            'target_pair_constructor_kwargs':
+                                {'permutation_path': os.path.join(os.getcwd(),
+                                                                  'data/jigsaw_permutations_1000.npy')}}
+        }
 
     @experiment_obj.named_config
     def cfg_il_bc_nofreeze():

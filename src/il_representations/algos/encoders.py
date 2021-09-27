@@ -14,18 +14,21 @@ import copy
 import functools
 import inspect
 import os
+import math
 import traceback
 import warnings
-
-from gym import spaces
-import numpy as np
-from pyro.distributions import Delta
-from stable_baselines3.common.preprocessing import preprocess_obs
+import inspect
 import torch
-from torch import nn
+import functools
+import numpy as np
 import torchvision.models as tvm
-from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 
+from torch import nn
+from stable_baselines3.common.preprocessing import preprocess_obs
+from torchvision.models.resnet import BasicBlock as BasicResidualBlock
+from torchvision.transforms import functional as TF
+from gym import spaces
+from pyro.distributions import Delta
 from il_representations.algos.utils import independent_multivariate_normal
 
 
@@ -130,6 +133,15 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
             {'out_dim': 128, 'stride': 2, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
         ],
+
+    # The below network processes image with larger receptive field by having
+    # a smaller stride of the first layer. This might be helpful for very small
+    # image inputs, e.g., Jigsaw.
+    'MAGICALCNN-resnet-128-x2': [
+            {'out_dim': 64, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+            {'out_dim': 128, 'stride': 2, 'residual': True},
+        ],
     'MAGICALCNN-resnet-256': [
             {'out_dim': 64, 'stride': 4, 'residual': True},
             {'out_dim': 128, 'stride': 2, 'residual': True},
@@ -198,6 +210,7 @@ class MAGICALCNN(nn.Module):
                  dropout=None,
                  use_sn=False,
                  arch_str='MAGICALCNN-resnet-128',
+                 contain_fc_layer=True,
                  ActivationCls=torch.nn.ReLU):
         super().__init__()
 
@@ -254,19 +267,22 @@ class MAGICALCNN(nn.Module):
             conv_layers.append(nn.Conv2d(in_dim, 32, 1))
         conv_layers.append(nn.Flatten())
 
-        # another FC layer to make feature maps the right size
-        fc_in_size, = compute_output_shape(observation_space, conv_layers)
-        fc_layers = [
-            nn.Linear(fc_in_size, 128 * w),
-            ActivationCls(),
-            nn.Linear(128 * w, representation_dim),
-        ]
-        if use_sn:
-            # apply SN to linear layers too
+        fc_layers = []
+        if contain_fc_layer:
+            # another FC layer to make feature maps the right size
+            fc_in_size, = compute_output_shape(observation_space,
+                                               conv_layers)
             fc_layers = [
-                nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
-                for layer in fc_layers
+                nn.Linear(fc_in_size, 128 * w),
+                ActivationCls(),
+                nn.Linear(128 * w, representation_dim),
             ]
+            if use_sn:
+                # apply SN to linear layers too
+                fc_layers = [
+                    nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
+                    for layer in fc_layers
+                ]
 
         all_layers = [*conv_layers, *fc_layers]
         self.shared_network = nn.Sequential(*all_layers)
@@ -442,22 +458,23 @@ class BaseEncoder(Encoder):
     def __init__(self, obs_space, representation_dim, obs_encoder_cls=None,
                  learn_scale=False, latent_dim=None, scale_constant=1, obs_encoder_cls_kwargs=None):
         """
-                :param obs_space: The observation space that this Encoder will be used on
-                :param representation_dim: The number of dimensions of the representation
-                       that will be learned
-                :param obs_encoder_cls: An internal architecture implementing `forward`
-                       to return a single vector representing the mean representation z
-                       of a fixed-variance representation distribution (in the deterministic
-                       case), or a latent dimension, in the stochastic case. This is
-                       expected NOT to end in a ReLU (i.e. final layer should be linear).
-                :param learn_scale: A flag for whether we want to learn a parametrized
-                       standard deviation. If this is set to False, a constant value of
-                       <scale_constant> will be returned as the standard deviation
-                :param latent_dim: Dimension of the latents that feed into mean and std networks
-                       If not set, this defaults to representation_dim * 2.
-                :param scale_constant: The constant value that will be returned if learn_scale is
-                       set to False.
-                :param obs_encoder_cls_kwargs: kwargs the encoder class will take.
+        Args:
+            obs_space: The observation space that this Encoder will be used on
+            representation_dim: The number of dimensions of the representation
+                that will be learned
+            obs_encoder_cls: An internal architecture implementing `forward`
+                to return a single vector representing the mean representation z of a
+                fixed-variance representation distribution (in the deterministic
+                case), or a latent dimension, in the stochastic case. This is
+                expected NOT to end in a ReLU (i.e. final layer should be linear).
+            learn_scale: A flag for whether we want to learn a parametrized
+                standard deviation. If this is set to False, a constant value of
+                <scale_constant> will be returned as the standard deviation
+            latent_dim: Dimension of the latents that feed into mean and std networks
+                If not set, this defaults to representation_dim * 2.
+            scale_constant: The constant value that will be returned if learn_scale is
+                set to False.
+            obs_encoder_cls_kwargs: kwargs the encoder class will take.
          """
         super().__init__()
         if obs_encoder_cls_kwargs is None:
@@ -620,6 +637,67 @@ class VAEEncoder(BaseEncoder):
         return Delta(x)
 
 
+class JigsawEncoder(BaseEncoder):
+    """
+    A siamese-ennead network as defined in Unsupervised Learning of Visual
+    Representations by Solving Jigsaw Puzzles. It takes n_tiles images one
+    by one, then concat their output representations as encoder output.
+    """
+    def __init__(self, obs_space, representation_dim, obs_encoder_cls=None, latent_dim=None, n_tiles=9,
+                 obs_encoder_cls_kwargs=None):
+        self.n_tiles = n_tiles
+        self.unit_size = math.sqrt(self.n_tiles)
+        assert self.unit_size.is_integer(), 'self.n_tiles is not a square number.'
+        self.unit_size = int(self.unit_size)
+
+        # Note that in Jigsaw, representation_dim is not used because it will set 'contain_fc_layer' to False.
+        super().__init__(obs_space, representation_dim, obs_encoder_cls=obs_encoder_cls,
+                         latent_dim=latent_dim,
+                         obs_encoder_cls_kwargs=obs_encoder_cls_kwargs)
+
+    def encode_context(self, x, traj_info):
+        x = self.img_to_tiles(x)
+        encoder_output = []
+        for i in range(self.n_tiles):
+            input_i = x[:, i, :, :, :]
+            output_i = self.forward(input_i, traj_info).mean
+            encoder_output.append(output_i)
+        return torch.cat(encoder_output, axis=1)
+
+    def img_to_tiles(self, img):
+        """
+        Input:
+            img (tensor) - image to be processed, with shape [batch_size, C, H,
+            W].
+        Return:
+            img_tiles (tensor) - Processed image tiles with shape [batch_size,
+            n_tiles, C, H/sqrt(n_tiles), W/sqrt(n_tiles)].
+        """
+        _, _, h, w = img.shape
+
+        h_unit = h / self.unit_size
+        w_unit = w / self.unit_size
+
+        if not h_unit.is_integer() or not w_unit.is_integer():
+            warnings.warn(f'Input images can not be evenly divided into '+
+                          f'{self.n_tiles} {h_unit}*{w_unit} images.')
+        h_unit, w_unit = int(h_unit), int(w_unit)
+
+        tiles = []
+        for i in range(self.unit_size):
+            for j in range(self.unit_size):
+                tile = TF.crop(img, top=i*h_unit, left=j*w_unit, height=h_unit,
+                               width=w_unit)
+                tiles.append(tile)
+
+        return torch.stack(tiles, dim=1)
+
+    def encode_target(self, x, traj_info):
+        # X here is the correct class number of the jigsaw permutation. We don't
+        # need any modification / encoding here.
+        return x
+
+
 class TargetStoringActionEncoder(ActionEncodingEncoder):
     """
     Identical to VAE encoder, but inherits from ActionEncodingEncoder,
@@ -664,8 +742,6 @@ class MomentumEncoder(Encoder):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
         a backwards hook, but seemed overly complex for an initial proof of concept
-        :param x:
-        :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()

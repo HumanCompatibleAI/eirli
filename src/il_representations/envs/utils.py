@@ -40,11 +40,15 @@ class _KwargSerialisableObject:
 
 
 def stack_obs_oldest_first(obs_arr, frame_stack, use_zeroed_frames=True):
-    """Takes an array of shape [T, C, H, W] and stacks the entries to produce a
+    """
+    Takes an array of shape [T, C, H, W] and stacks the entries to produce a
     new array of shape [T, C*frame_stack, H, W] with frames stacked along the
-    channels axis. Frames at stacked oldest-first, and the first frame_stack-1
-    frames have zeros instead of older frames (because older frames don't
-    exist). This is meant to be compatible with VecFrameStack in SB3."""
+    channels axis. Frames are stacked oldest-first.
+
+    If use_zeroed_frames=True, the first frame_stack-1 frames have zeros
+    instead of older frames (because older frames don't exist). This is
+    meant to be compatible with VecFrameStack in SB3.
+    """
 
     if use_zeroed_frames:  # Typically for dmc environments.
         frame_accumulator = np.repeat(np.zeros_like(obs_arr[0][None]),

@@ -30,8 +30,14 @@ admittedly a somewhat fuzzy match to the actual variety of techniques.
 
 from abc import ABC, abstractmethod
 import itertools
+import math
+import random
+import warnings
 
+import torch
 import numpy as np
+import torchvision.transforms as transforms
+from torchvision.transforms import functional as TF
 
 
 class TargetPairConstructor(ABC):
@@ -60,7 +66,7 @@ class IdentityPairConstructor:
                 'extra_context': [],
                 'traj_ts_ids': [traj_ind, timestep],
             }
-            if step_dict['dones']:
+            if step_dict.get('dones', False):
                 traj_ind += 1
                 timestep = 0
             else:
@@ -167,3 +173,94 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                 act_queue.reset()
             else:
                 timestep += 1
+
+
+class JigsawPairConstructor(TargetPairConstructor):
+    def __init__(self, permutation_path, n_tiles=9):
+        self.permutation_path = permutation_path
+        self.permutation = np.load(self.permutation_path)
+        self.n_tiles = n_tiles
+        unit_size = math.sqrt(self.n_tiles)
+        assert unit_size.is_integer(), 'self.n_tiles is not a square number.'
+        self.unit_size = int(unit_size)
+
+
+    def __call__(self, data_iter):
+        timestep = 0
+        traj_ind = 0
+
+        # Get tile dim
+        first_dict = next(data_iter)
+        original_h, original_w = first_dict['obs'][0].shape[-2], \
+                                 first_dict['obs'][0].shape[-1]
+
+        # We -2 after division here because, as the original paper indicated,
+        # preserving the whole image tile may let the network exploit edge information
+        # and not really learn useful representations. Therefore, here we are using
+        # the central-cropped version of these image tiles.
+        tile_h, tile_w = int(original_h / math.sqrt(self.n_tiles)) - 2, \
+                         int(original_w / math.sqrt(self.n_tiles)) - 2
+
+        permutation_classes = np.random.permutation(len(self.permutation))
+        permute_idx = 0
+
+        for step_dict in data_iter:
+            # Process images into image tiles
+            obs = step_dict['obs']
+            target_list = []
+            permutation_class = permutation_classes[permute_idx]
+            processed_obs = self.make_jigsaw_puzzle(obs,
+                                                    permutation_class,
+                                                    tile_h,
+                                                    tile_w)
+            target_list.append(permutation_class)
+            permute_idx = (permute_idx + 1) % len(permutation_classes)
+
+            target_list = np.array(target_list)
+            yield {
+                'context': processed_obs,
+                'target': target_list,
+                'extra_context': [],
+                'traj_ts_ids': [traj_ind, timestep],
+            }
+            if step_dict['dones']:
+                traj_ind += 1
+                timestep = 0
+            else:
+                timestep += 1
+
+    def make_jigsaw_puzzle(self, image, permutation_type, tile_h, tile_w):
+        permute = self.permutation[permutation_type]
+
+        _, h, w = image.shape
+        image = torch.tensor(image)
+        h_unit = h / self.unit_size
+        w_unit = w / self.unit_size
+
+        if not h_unit.is_integer() or not w_unit.is_integer():
+            warnings.warn(f'Input images can not be evenly divided into '+
+                          f'{self.n_tiles} {h_unit}*{w_unit} images.')
+
+        h_unit, w_unit = int(h_unit), int(w_unit)
+
+        # Split the image into tiles of [C, tile_h, tile_w] in its
+        # permutation sequence.
+        tiles = []
+        for pos in permute:
+            pos_h = int(pos // self.unit_size) * h_unit
+            pos_w = int(pos % self.unit_size) * w_unit
+
+            tile = TF.crop(image, top=pos_h, left=pos_w, height=tile_h,
+                            width=tile_w)
+            tiles.append(tile)
+
+        # Concat tiles.
+        concat_tiles = []
+        for i in range(self.unit_size):
+            # Shape: [C, tile_h, W]
+            tile_w = torch.cat(tiles[i * self.unit_size : (i+1) * self.unit_size], dim=2)
+            concat_tiles.append(tile_w)
+        tiles = torch.cat(concat_tiles, dim=1) # Shape: [C, H, W]
+        return tiles
+
+
