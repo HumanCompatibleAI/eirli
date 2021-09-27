@@ -18,7 +18,7 @@ base_cfgs=(
     "cfg_il_bc_nofreeze"
 )
 declare -a repl_configs=("cfg_repl_dyn")
-gpu_default=0.11
+gpu_default=0.2
 declare -A gpu_overrides=()
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
@@ -32,7 +32,7 @@ gpu_config() {
 submit_expt() {
     # submit experiment to local Ray server using given args
     python -m il_representations.scripts.pretrain_n_adapt with \
-           "${base_cfgs[@]}" "$@"
+           "${base_cfgs[@]}" "$@" &
 }
 
 for repl_config in "${repl_configs[@]}"; do
@@ -49,3 +49,4 @@ for repl_config in "${repl_configs[@]}"; do
         exp_ident="cyn-${repl_config}" \
         il_train.bc.n_batches=1000000
 done
+wait
