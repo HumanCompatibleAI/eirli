@@ -29,6 +29,7 @@ from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 from torchvision.transforms import functional as TF
 from gym import spaces
 from pyro.distributions import Delta
+from collections import OrderedDict
 from il_representations.algos.utils import independent_multivariate_normal
 
 
@@ -187,8 +188,7 @@ class CarlaMLP(nn.Module):
 
     def forward(self, x):
         if self.flatten_input:
-            breakpoint()
-            x = x[-3:].flatten()
+            x = x[:, -3:, ...].flatten(start_dim=1)
         return self.shared_network(x)
 
 class BasicCNN(nn.Module):

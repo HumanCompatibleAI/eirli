@@ -62,6 +62,9 @@ class CarlaImageObsEnv:
     def __init__(self, wrapped_env):
         self.wrapped_env = wrapped_env
         self.action_space = self.wrapped_env.action_space
+        # The original D4RL's observation shape is 3 * width * height (linear
+        # input). To process images we need to transform this back to an image
+        # shape.
         width, height = math.sqrt(wrapped_env.observation_space.shape[0]/3), \
                         math.sqrt(wrapped_env.observation_space.shape[0]/3)
         assert width.is_integer() and height.is_integer(), \
@@ -69,7 +72,7 @@ class CarlaImageObsEnv:
         low, high = 0, 255
         self.observation_space = spaces.Box(low=low,
             high=high,
-            shape=(3, int(width), int(height)),
+            shape=(3, int(height), int(width)),
             dtype=np.uint8
         )
         self.num_envs = 1
@@ -78,6 +81,7 @@ class CarlaImageObsEnv:
 
     def reset(self):
         obs = self.wrapped_env.reset()
+        # This is BCHW
         obs = obs.reshape([1] + list(self.observation_space.shape))
         obs = (obs * 255).astype(np.uint8)
         return obs
