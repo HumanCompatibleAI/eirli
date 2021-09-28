@@ -96,7 +96,7 @@ def bc_defaults():
     postproc_arch = [128]
     # evaluation interval
     short_eval_interval = 5000
-    # number of trajectories for short intermediate evils
+    # number of trajectories for short intermediate evals
     # (not the final eval)
     short_eval_n_traj = 10
 
