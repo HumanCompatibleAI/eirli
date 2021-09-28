@@ -361,7 +361,7 @@ def make_hp_tuning_configs(experiment_obj):
             ('il_train:gail:ppo_gamma', (0.5, 1.0, 'uniform')),
             ('il_train:gail:ppo_gae_lambda', (0.5, 1.0, 'uniform')),
             ('il_train:gail:ppo_ent', (1e-10, 1e-2, 'log-uniform')),
-            ('il_train:gail:ppo_adv_clip', (0.001, 0.3), 'log-uniform'),
+            ('il_train:gail:ppo_adv_clip', (0.001, 0.3, 'log-uniform')),
             ('il_train:gail:disc_n_updates_per_round', (1, 8)),
             ('il_train:gail:disc_lr', (1e-7, 1e-2, 'log-uniform')),
             # lots of augmentation options
