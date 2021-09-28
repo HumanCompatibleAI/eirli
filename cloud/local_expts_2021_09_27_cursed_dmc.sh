@@ -14,7 +14,7 @@ exp_id="gail_smoke_test_dmc_no_repl_32env_nopw"
 benchmark_name="dm_control"
 
 run_expt() {
-    python -m il_representations.scripts.pretrain_adapt run with \
+    python -m il_representations.scripts.pretrain_n_adapt run with \
         -- "${base_cfgs[@]}" "$@"
 }
 
