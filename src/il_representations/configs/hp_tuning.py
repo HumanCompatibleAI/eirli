@@ -318,6 +318,106 @@ def make_hp_tuning_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def gail_tune_procgen_2021_09_27():
+        use_skopt = True
+        skopt_search_mode = 'max'
+        metric = 'return_mean'
+        stages_to_run = StagesToRun.IL_ONLY
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                # 1e6 timesteps is enough to solve at least half the MAGICAL
+                # tasks, so 500k is enough for the easy ones. For DMC I'm not
+                # sure how many steps we need. CURL and RAD papers
+                # (https://arxiv.org/pdf/2004.04136.pdf,
+                # https://arxiv.org/pdf/2004.14990.pdf) suggest that 500k steps
+                # is only enough to get ~200 reward on half-cheetah and
+                # finger-spin using SAC-from-pixels, but they're using RL
+                # rather than GAIL. Will try 500k first & see where we go from
+                # there.
+                'total_timesteps': 500000,
+                # basically disable intermediate checkpoint saving
+                'save_every_n_steps': int(1e10),
+                # log, but not too often
+                'log_interval_steps': int(1e4),
+                # base type should be dict
+                # (the space will customise this later on)
+                'disc_augs': {},
+                # things that seem reasonable but which I haven't quite decided
+                # on fixing yet
+                'ppo_batch_size': 32,
+                'disc_batch_size': 48,
+            }
+        }
+        venv_opts = {
+            'venv_parallel': True,
+            'n_envs': 64,
+        }
+        skopt_space = collections.OrderedDict([
+            ('il_train:gail:ppo_n_steps', (3, 12)),
+            ('il_train:gail:ppo_n_epochs', (3, 12)),
+            ('il_train:gail:ppo_init_learning_rate',
+             (1e-7, 1e-3, 'log-uniform')),
+            ('il_train:gail:ppo_gamma', (0.5, 1.0, 'uniform')),
+            ('il_train:gail:ppo_gae_lambda', (0.5, 1.0, 'uniform')),
+            ('il_train:gail:ppo_ent', (1e-10, 1e-2, 'log-uniform')),
+            ('il_train:gail:ppo_adv_clip', (0.001, 0.3), 'log-uniform'),
+            ('il_train:gail:disc_n_updates_per_round', (1, 8)),
+            ('il_train:gail:disc_lr', (1e-7, 1e-2, 'log-uniform')),
+            # lots of augmentation options
+            ('il_train:gail:disc_augs:translate', [True, False]),
+            ('il_train:gail:disc_augs:rotate', [True, False]),
+            ('il_train:gail:disc_augs:color_jitter_mid', [True, False]),
+            ('il_train:gail:disc_augs:flip_lr', [True, False]),
+            ('il_train:gail:disc_augs:noise', [True, False]),
+            ('il_train:gail:disc_augs:erase', [True, False]),
+            ('il_train:gail:disc_augs:gaussian_blur', [True, False]),
+        ])
+        skopt_ref_configs = [
+            collections.OrderedDict([
+                ('il_train:gail:ppo_n_steps', 7),
+                ('il_train:gail:ppo_n_epochs', 7),
+                ('il_train:gail:ppo_init_learning_rate', 2e-4),
+                ('il_train:gail:ppo_gamma', 0.985),
+                ('il_train:gail:ppo_gae_lambda', 0.76),
+                ('il_train:gail:ppo_ent', 4.5e-8),
+                ('il_train:gail:ppo_adv_clip', 0.006),
+                ('il_train:gail:disc_n_updates_per_round', 2),
+                ('il_train:gail:disc_lr', 5e-4),
+                ('il_train:gail:disc_augs:translate', True),
+                ('il_train:gail:disc_augs:rotate', True),
+                ('il_train:gail:disc_augs:color_jitter_mid', True),
+                ('il_train:gail:disc_augs:flip_lr', True),
+                ('il_train:gail:disc_augs:noise', True),
+                ('il_train:gail:disc_augs:erase', True),
+                ('il_train:gail:disc_augs:gaussian_blur', True),
+            ]),
+            # similar, but with reference HPs from procgen paper
+            # (excluding entropy bonus, timesteps per rollout, total timesteps)
+            collections.OrderedDict([
+                ('il_train:gail:ppo_n_steps', 4),
+                ('il_train:gail:ppo_n_epochs', 3),
+                ('il_train:gail:ppo_init_learning_rate', 5e-4),
+                ('il_train:gail:ppo_gamma', 0.999),
+                ('il_train:gail:ppo_gae_lambda', 0.95),
+                ('il_train:gail:ppo_ent', 1e-5),
+                ('il_train:gail:ppo_adv_clip', 0.2),
+                ('il_train:gail:disc_n_updates_per_round', 1),
+                ('il_train:gail:disc_lr', 5e-4),
+                ('il_train:gail:disc_augs:translate', True),
+                ('il_train:gail:disc_augs:rotate', True),
+                ('il_train:gail:disc_augs:color_jitter_mid', True),
+                ('il_train:gail:disc_augs:flip_lr', True),
+                ('il_train:gail:disc_augs:noise', True),
+                ('il_train:gail:disc_augs:erase', True),
+                ('il_train:gail:disc_augs:gaussian_blur', True),
+            ]),
+        ]
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def airl_tune():
         use_skopt = True
         skopt_search_mode = 'max'
