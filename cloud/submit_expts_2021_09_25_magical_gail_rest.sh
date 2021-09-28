@@ -17,11 +17,11 @@ base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
            "cfg_data_il_5demos")
 cluster_cfg_path="./gcp_cluster_sam_new_vis.yaml"
 # 6 runs per GPU by default
-gpu_default=0.15
+gpu_default=0.3
 declare -A gpu_overrides=(
     # 4 runs per GPU for TCPC8/SimCLR
-    ["cfg_repl_tcpc8"]="0.21"
-    ["cfg_repl_simclr"]="0.21"
+    ["cfg_repl_tcpc8"]="0.3"
+    ["cfg_repl_simclr"]="0.3"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
