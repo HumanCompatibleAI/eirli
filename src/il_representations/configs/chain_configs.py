@@ -1038,7 +1038,6 @@ def make_chain_configs(experiment_obj):
         venv_opts = {
             'n_envs': 32,
             'venv_parallel': True,
-            'parallel_workers': 8,
         }
 
         _ = locals()
