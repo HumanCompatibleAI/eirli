@@ -35,6 +35,42 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_use_carla():
+        env_cfg = {
+            'benchmark_name': 'carla',
+            # We currently only implemented this lane task
+            'task_name': 'carla-lane-v0',
+        }
+        # Use the default d4rl carla hyperparams (see
+        # https://github.com/rail-berkeley/d4rl_evaluations/blob/master/brac/scripts/train_bc.py)
+        il_train = {
+            'n_batches': 5e5,
+            'optimizer_kwargs': dict(lr=5e-4),
+            'batch_size': 256
+        }
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
+    def cfg_base_5seed_pt1gpu():
+        """Basic config that does five samples per config, using 5 CPU cores and
+        0.1 of a GPU. Reasonable idea for, e.g., BC on svm/perceptron."""
+        use_skopt = False
+        tune_run_kwargs = dict(num_samples=5,
+                            # retry on (node) failure
+                            max_failures=0,
+                            fail_fast=False,
+                            resources_per_trial=dict(
+                                gpu=0.1
+                            ))
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
     def cfg_base_3seed_4cpu_pt3gpu():
         """Basic config that does three samples per config, using 5 CPU cores and
         0.3 of a GPU. Reasonable idea for, e.g., GAIL on svm/perceptron."""
