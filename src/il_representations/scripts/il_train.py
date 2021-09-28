@@ -337,7 +337,6 @@ def make_policy(*,
         # print policy info in case it is useful for the caller
         print("Policy info:")
         print_policy_info(policy, observation_space)
-
     return policy
 
 

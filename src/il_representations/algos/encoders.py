@@ -156,6 +156,40 @@ NETWORK_ARCHITECTURE_DEFINITIONS = {
     ]
 }
 
+class CarlaMLP(nn.Module):
+    """Use MLP for encodder network, with structure defined by model_arch.
+       Its default follows https://github.com/rail-berkeley/d4rl_evaluations/b
+       lob/c93b9d2bf443cd5b8c43542fca9937dc50e630c3/brac/behavior_regularized_
+       offline_rl/brac/networks.py#L39.
+    """
+    def __init__(self, observation_space, representation_dim, model_arch,
+                 flatten_input=False):
+        super().__init__()
+        if flatten_input:
+            # Assuming the input has frame stack. We only use the last RGB frame.
+            c, h, w = observation_space.shape
+            assert c > 3 and c < h and c < w, f'Double check observation shape {c, h, w},'
+            self.input_dim = 3 * h * w
+        else:
+            self.input_dim = observation_space.shape
+        self.flatten_input = flatten_input
+        # The input model_arch is a Sacred ReadOnlyList
+        model_arch = [dim for dim in model_arch] + [representation_dim]
+
+        layer_dict = OrderedDict()
+        in_dim, out_dim = self.input_dim, None
+        for count, dim in enumerate(model_arch):
+            out_dim = dim
+            layer_dict[f'fc{count}'] = nn.Linear(in_dim, out_dim)
+            layer_dict[f'relu{count}'] = nn.ReLU()
+            in_dim = out_dim
+        self.shared_network = nn.Sequential(layer_dict)
+
+    def forward(self, x):
+        if self.flatten_input:
+            breakpoint()
+            x = x[-3:].flatten()
+        return self.shared_network(x)
 
 class BasicCNN(nn.Module):
     """Similar to the CNN from the Nature DQN paper."""
@@ -382,6 +416,7 @@ NETWORK_SHORT_NAMES = {
     'BasicCNN': BasicCNN,
     'MAGICALCNN': MAGICALCNN,
     'Resnet18': Resnet18,
+    'CarlaMLP': CarlaMLP
 }
 
 

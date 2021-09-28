@@ -44,9 +44,11 @@ def make_chain_configs(experiment_obj):
         # Use the default d4rl carla hyperparams (see
         # https://github.com/rail-berkeley/d4rl_evaluations/blob/master/brac/scripts/train_bc.py)
         il_train = {
-            'n_batches': 5e5,
-            'optimizer_kwargs': dict(lr=5e-4),
-            'batch_size': 256
+            'bc': {
+                'n_batches': 5e5,
+                'optimizer_kwargs': dict(lr=5e-4),
+                'batch_size': 256
+            }
         }
 
         _ = locals()
@@ -209,6 +211,22 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
+
+    @experiment_obj.named_config
+    def cfg_use_mlp_bc_200():
+        il_train = {
+            # 'bc': {
+            # }
+            'encoder_kwargs': dict(
+                obs_encoder_cls='CarlaMLP',
+                representation_dim=200,
+                obs_encoder_cls_kwargs={
+                    'model_arch': [200],
+                    'flatten_input': True
+                }
+            )
+        }
+
 
     @experiment_obj.named_config
     def cfg_no_log_to_driver():
