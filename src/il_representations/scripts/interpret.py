@@ -45,7 +45,6 @@ def base_config():
     save_image = True  # If true, {length} number of images will be saved.
     dataset_configs = [{'type': 'demos'}]
 
-
     # interp_algos = [
     #     # Primary Attribution: Evaluates contribution of each input feature to the output of a model.
     #     'saliency',
@@ -70,8 +69,11 @@ interp_algos = InterpAlgos()
 
 
 @interp_ex.capture
-def save_img(save_name, save_dir):
-    plt.savefig(f'{save_dir}/{save_name}.png')
+def save_img(save_name, save_dir, image=None):
+    if image is not None:
+        plt.imshow(image)
+    plt.axis('off')
+    plt.savefig(f'{save_dir}/{save_name}.png', bbox_inches='tight')
     plt.close()
 
 
@@ -104,13 +106,11 @@ def saliency(net, tensor_image, label):
     saliency = Saliency(net)
     grads = saliency.attribute(tensor_image, target=label)
     grads = np.transpose(grads.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    saliency_viz, ax = viz.visualize_image_attr(grads,
+    saliency_viz = viz.visualize_image_attr(grads,
                                             tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
                                             method="blended_heat_map",
                                             sign="absolute_value",
-                                            show_colorbar=True)
-                                            # title="Overlayed Gradient Magnitudes")
-    ax.axis('off')
+                                            show_colorbar=False)
     return figure_2_tensor(saliency_viz[0])
 
 
@@ -146,7 +146,7 @@ def deep_lift(net, tensor_image, label):
 
 
 @interp_ex.capture
-def prepare_network(combined_meta, encoder_path):
+def prepare_network(combined_meta, encoder_path, device):
     policy = make_policy(encoder_path=encoder_path,
                          policy_continue_path=None,
                          observation_space=combined_meta['observation_space'],
@@ -158,13 +158,40 @@ def prepare_network(combined_meta, encoder_path):
                          encoder_kwargs={},
                          algo='bc',
                          lr_schedule=None)
-    policy.eval()
-    return policy
+    # TODO: make this from action space
+    return LoadedPolicy(policy, use_first_action=False).to(device)
 
+
+class LoadedPolicy(nn.Module):
+    """A wrapper class for loaded policy so it has the same interface as required
+    by Captum. Specifically, most of our saved policies are ActorCriticCnnPolicy,
+    and its forward() function outputs a tuple of (actions, values, log_prob).
+    In Captum we only need its actions.
+    """
+    def __init__(self, policy, use_first_action):
+        super().__init__()
+        self.policy = policy
+        self.use_first_action = use_first_action
+
+    def forward(self, x):
+        # TODO: make this compatible with both DMC and procgen.
+        action = self.policy.action_net(self.policy.features_extractor(x/255.))
+        if self.use_first_action:
+            # Sometimes the action has several components, like in DMC tasks.
+            # We use the first component by default.
+            action = action[:, 0].unsqueeze(dim=0)
+        return action
+
+
+@interp_ex.capture
+def get_data(env_cfg):
+    dataset = auto_env.load_dict_dataset(benchmark_name=env_cfg['benchmark_name'],
+                                         task_name=env_cfg['task_name'])
+    return dataset['obs'], dataset['acts']
 
 @interp_ex.main
 def run(chosen_algo, save_video, filename, dataset_configs, save_image,
-        save_original_image):
+        save_original_image, device, length):
     # setup environment & dataset
     datasets, combined_meta = auto_env.load_wds_datasets(configs=dataset_configs)
     observation_space = combined_meta['observation_space']
@@ -182,12 +209,21 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
                                          adjust_axis=False,
                                          make_grid=False)
 
-    for itr, (tensor_image, label) in enumerate(zip(images, labels)):
-        # Get policy prediction
-        tensor_image = tensor_image.contiguous()
+    for itr, (image, label) in enumerate(zip(images, labels)):
+        if itr > length:
+            break
+        tensor_image = torch.Tensor(image).unsqueeze(dim=0).to(device)
+        tensor_label = int(label)
+
+        # For continuous space actions, we don't need to provide a label since
+        # Captum assumes the provided label stands for "class_num" and is an
+        # integer.
+        # TODO: connect this with action space
+        # if len(tensor_label) > 1:
+        #     tensor_label = None
         interp_algo_func = interp_algos.get(chosen_algo)
 
-        interpreted_img = interp_algo_func(network, tensor_image, label)
+        interpreted_img = interp_algo_func(network, tensor_image, tensor_label)
 
         if save_video:
             video_writer.add_tensor(preprocess_obs(interpreted_img,
@@ -199,8 +235,16 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
                      save_dir=f'{log_dir}/images')
 
             if save_original_image:
+                processed_image = []
+                i = 0
+                while i < len(image):
+                    processed_image.append(1.0/3.0 * image[i:i+3].astype(float))
+                    i += 3
+                processed_image = np.sum(processed_image, axis=0).astype(int)
+                processed_image = np.transpose(processed_image, (1, 2, 0))
                 save_img(save_name=f'{filename}_{itr}_original',
-                        save_dir=f'{log_dir}/images')
+                        save_dir=f'{log_dir}/images',
+                        image=processed_image)
         plt.close('all')
 
     if save_video:

@@ -4,7 +4,7 @@
 #     chosen_algo=integrated_gradient \
 #     length=1000
 
-for f in /home/cynthiachen/il-representations/analysis/data/dmc/finger-spin*SimCLR*; do
+for f in /home/cynthiachen/il-representations/analysis/data/procgen/coinrun-aug*; do
     name_clean=$(echo $f| rev | cut -d'/' -f 1 | rev)
     filename=$(echo $name_clean| cut -d'.' -f 1)
     taskname=$(echo $filename| cut -d'-' -f 1)
@@ -18,7 +18,7 @@ for f in /home/cynthiachen/il-representations/analysis/data/dmc/finger-spin*SimC
         save_original_image=True \
         filename=${filename} \
         chosen_algo=saliency \
-        length=10 \
-        env_cfg.benchmark_name=dm_control \
-        env_cfg.task_name=${taskname}-${subtask}
+        length=1000 \
+        env_cfg.benchmark_name=procgen \
+        env_cfg.task_name=${taskname}
 done
