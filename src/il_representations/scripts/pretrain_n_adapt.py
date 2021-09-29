@@ -7,7 +7,6 @@ import os
 import os.path as osp
 import signal
 from time import time
-from pathlib import Path
 import weakref
 
 import numpy as np

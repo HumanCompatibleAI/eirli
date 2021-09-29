@@ -1044,6 +1044,48 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_il_gail_procgen_1m_nofreeze():
+        """GAIL config tailored to procgen tasks. This was specifically
+        tuned for CoinRun at 1m steps, but may work for others too."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                'total_timesteps': int(1e6),
+                'ppo_n_steps': 7,
+                'ppo_n_epochs': 4,
+                'ppo_batch_size': 32,
+                'ppo_init_learning_rate': 5e-5,
+                'ppo_gamma': 0.8,
+                'ppo_gae_lambda': 0.67,
+                'ppo_ent': 0.01,
+                'ppo_adv_clip': 0.01,
+                'disc_n_updates_per_round': 5,
+                'disc_batch_size': 48,
+                'disc_lr': 3e-4,
+                'disc_augs': {
+                    'translate': True,
+                    'rotate': True,
+                    'noise': True,
+                    'erase': True,
+                    'gaussian_blur': True,
+                    'color_jitter_mid': False,
+                    'flip_lr': False,
+                }
+            },
+            'freeze_encoder': False,
+        }
+        il_test = {
+            'deterministic_policy': True,
+        }
+        venv_opts = {
+            'n_envs': 64,
+            'venv_parallel': True,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def gail_mr_config_2021_03_29():
         """500k-step GAIL config tuned (and tested) for MatchRegions. Should get
         between ~0.42 and ~0.49 mean score (averaged across all variants)."""
