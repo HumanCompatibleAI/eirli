@@ -9,13 +9,14 @@ base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
            "cfg_il_gail_dmc_500k_nofreeze"
            "venv_opts.n_envs=32"
            "venv_opts.parallel_workers=None"
-           "venv_opts.venv_parallel=True")
+           "venv_opts.venv_parallel=True"
+	   "ray_init_kwargs.num_cpus=6")
 exp_id="gail_smoke_test_dmc_no_repl_32env_nopw"
 benchmark_name="dm_control"
 
 run_expt() {
-    python -m il_representations.scripts.pretrain_adapt run with \
-        -- "${base_cfgs[@]}" "$@"
+    xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt run with \
+        "${base_cfgs[@]}" "$@"
 }
 
 launch_on_task() {

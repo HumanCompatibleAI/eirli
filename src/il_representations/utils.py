@@ -209,7 +209,7 @@ class TensorFrameWriter:
         self.color_space = color_space
         ffmpeg_out_config = {
             '-r': str(fps),
-            '-vcodec': 'libx264',
+            '-vcodec': 'h264',
             '-pix_fmt': 'yuv420p',
         }
         if config is not None:
