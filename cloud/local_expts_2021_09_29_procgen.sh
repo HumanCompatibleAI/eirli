@@ -6,13 +6,14 @@ set -e
 
 # WARNING: 5 demos here!
 base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
-           "cfg_data_il_5demos" "env_cfg.benchmark_name=procgen")
-# 8 runs per GPU by default
-gpu_default=0.125
+           "cfg_data_il_5demos" "env_cfg.benchmark_name=procgen"
+	   "ray_init_kwargs.num_cpus=10")
+# 2 runs per GPU by default
+gpu_default=0.5
 declare -A gpu_overrides=(
     # 5 runs per GPU for TCPC8/SimCLR
-    ["cfg_repl_tcpc8"]="0.2"
-    ["cfg_repl_simclr"]="0.2"
+    ["cfg_repl_tcpc8"]="0.5"
+    ["cfg_repl_simclr"]="0.5"
 )
 gpu_config() {
     # figures out GPU configuration string based on repL config, if any
@@ -32,8 +33,8 @@ declare -a repl_configs=("cfg_repl_simclr")
 declare -a procgen_envs=("coinrun")
 
 run_expt() {
-    xvfb-run -a python -m il_representations.scripts.pretrain_adapt run with \
-           -- "${base_cfgs[@]}" "$@" &
+    xvfb-run -a python -m il_representations.scripts.pretrain_n_adapt run with \
+           "${base_cfgs[@]}" "$@" &
 }
 
 
