@@ -1,12 +1,14 @@
 #!/bin/bash
 
-# Last minute GAIL experiments on Procgen
+# More GAIL experiments on procgen. This script requires Ray to be running on
+# localhost:42000.
 
 set -e
 
 # WARNING: 5 demos here!
 base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
-           "cfg_data_il_5demos" "env_cfg.benchmark_name=procgen")
+           "cfg_data_il_5demos" "env_cfg.benchmark_name=procgen"
+           "ray_init_kwargs.address=localhost:42000")
 # 8 runs per GPU by default
 gpu_default=0.125
 declare -A gpu_overrides=(
@@ -32,8 +34,8 @@ declare -a repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8" "cfg_re
 declare -a procgen_envs=("coinrun" "miner")
 
 run_expt() {
-    xvfb-run -a python -m il_representations.scripts.pretrain_adapt run with \
-           -- "${base_cfgs[@]}" "$@" &
+    python -m il_representations.scripts.pretrain_n_adapt run with \
+           "${base_cfgs[@]}" "$@" &
 }
 
 
