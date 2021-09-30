@@ -1,3 +1,5 @@
+from il_representations.algos import encoders, decoders, losses, \
+    batch_extenders
 from il_representations.script_utils import StagesToRun, ReuseRepl
 from ray import tune
 
@@ -413,8 +415,7 @@ def make_chain_configs(experiment_obj):
     def cfg_repl_jigsaw():
         repl = {
             'algo': 'Jigsaw',
-            'algo_params': {'batch_size': 64,
-                           }
+            'algo_params': {'batch_size': 64}
         }
 
     @experiment_obj.named_config
@@ -422,6 +423,51 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_asymm_proj():
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {'decoder': decoders.AsymmetricProjectionHead}
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_no_proj():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {'decoder': decoders.NoOp}
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_ceb_loss():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {'loss_calculator': losses.CEBLoss},
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_momentum():
+        # This doesn't even use the SimCLR loss, so it barely counts as
+        # 'SimCLR'. Still, it's the closest thing that uses momentum.
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {
+                'batch_extender': batch_extenders.QueueBatchExtender,
+                'encoder': encoders.MomentumEncoder,
+                'loss_calculator': losses.QueueAsymmetricContrastiveLoss
+            },
         }
         _ = locals()
         del _
