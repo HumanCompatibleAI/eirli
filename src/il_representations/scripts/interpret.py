@@ -1,13 +1,12 @@
 import torch
 import sacred
-import math
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from pathlib import Path
 
+from gym import spaces
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
@@ -15,7 +14,6 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from captum.attr import IntegratedGradients, Saliency, DeepLift
 from captum.attr import visualization as viz
-from stable_baselines3.common.policies import ActorCriticCnnPolicy
 from stable_baselines3.common.preprocessing import preprocess_obs
 
 from il_representations.scripts.il_train import make_policy
@@ -121,12 +119,12 @@ def integrated_gradient(net, tensor_image, label):
                                               baselines=tensor_image * 0,
                                               return_convergence_delta=True, )
     attr_ig = np.transpose(attr_ig.squeeze().cpu().detach().numpy(), (1, 2, 0))
-    ig_viz, ax = viz.visualize_image_attr(attr_ig,
-                                        tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
-                                        method="blended_heat_map",
-                                        sign="all",
-                                        show_colorbar=True,
-                                        title="Overlayed Integrated Gradients")
+    ig_viz = viz.visualize_image_attr(attr_ig,
+                                      tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
+                                      method="blended_heat_map",
+                                      sign="all",
+                                      show_colorbar=True,
+                                      title="Overlayed Integrated Gradients")
     return figure_2_tensor(ig_viz[0])
 
 
@@ -136,12 +134,12 @@ def deep_lift(net, tensor_image, label):
     attr_dl = attribute_image_features(net, dl, tensor_image, label,
                                        baselines=tensor_image * 0,)
     attr_dl = np.transpose(attr_dl.squeeze(0).cpu().detach().numpy(), (1, 2, 0))
-    dl_viz, ax = viz.visualize_image_attr(attr_dl,
-                                        tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
-                                        method="blended_heat_map",
-                                        sign="all",
-                                        show_colorbar=True,
-                                        title="Overlayed DeepLift")
+    dl_viz = viz.visualize_image_attr(attr_dl,
+                                      tensor_image[0].permute(1, 2, 0).detach().cpu().numpy(),
+                                      method="blended_heat_map",
+                                      sign="all",
+                                      show_colorbar=True,
+                                      title="Overlayed DeepLift")
     return figure_2_tensor(dl_viz[0])
 
 
@@ -218,9 +216,9 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
         # For continuous space actions, we don't need to provide a label since
         # Captum assumes the provided label stands for "class_num" and is an
         # integer.
-        # TODO: connect this with action space
-        # if len(tensor_label) > 1:
-        #     tensor_label = None
+        action_space = combined_meta['action_space']
+        if not isinstance(action_space, spaces.Discrete):
+            tensor_label = None
         interp_algo_func = interp_algos.get(chosen_algo)
 
         interpreted_img = interp_algo_func(network, tensor_image, tensor_label)
@@ -235,12 +233,22 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
                      save_dir=f'{log_dir}/images')
 
             if save_original_image:
+                channel_per_frame = 3 if combined_meta['color_space'] == \
+                                    'RGB' else 1
+
+                # Most loaded images are frame stacked by 3 or 4 frames. Here
+                # we are visually "stacking" them by taking 1/3 or 1/4 pixels
+                # from each of them, saving images that are exactly seen
+                # by a network. For example saved images, see Figure 4 of the
+                # EIRLI paper.
                 processed_image = []
                 i = 0
                 while i < len(image):
-                    processed_image.append(1.0/3.0 * image[i:i+3].astype(float))
-                    i += 3
+                    processed_image.append(1.0/float(channel_per_frame) * \
+                        image[i:i+channel_per_frame].astype(float))
+                    i += channel_per_frame
                 processed_image = np.sum(processed_image, axis=0).astype(int)
+                # Move channel to the last axis for saving images.
                 processed_image = np.transpose(processed_image, (1, 2, 0))
                 save_img(save_name=f'{filename}_{itr}_original',
                         save_dir=f'{log_dir}/images',
