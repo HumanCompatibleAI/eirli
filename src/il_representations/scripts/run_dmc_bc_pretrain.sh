@@ -18,7 +18,3 @@ for repl in \
         tune_run_kwargs.resources_per_trial.gpu=0.1
         # il_train.bc.n_batches=$n_batches &
 done
-
-        # cfg_force_use_repl \
-        # cfg_bench_micro_sweep_dm_control \
-        # cfg_run_few_trajs_2m_updates \

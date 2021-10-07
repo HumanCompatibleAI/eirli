@@ -5,8 +5,7 @@ gpu_number=3
 # total_timesteps=10
 benchmark_name="procgen"
 task_name="coinrun"
-# repl_configs=("cfg_repl_inv_dyn" "cfg_repl_temporal_cpc" "cfg_repl_vae" "cfg_repl_simclr")
-repl_configs=("cfg_repl_vae") 
+repl_configs=("cfg_repl_inv_dyn" "cfg_repl_temporal_cpc" "cfg_repl_vae" "cfg_repl_simclr")
 
 for repl in "${repl_configs[@]}"; do
     CUDA_VISIBLE_DEVICES=${gpu_number} python src/il_representations/scripts/pretrain_n_adapt.py with \
@@ -21,15 +20,3 @@ for repl in "${repl_configs[@]}"; do
         tune_run_kwargs.resources_per_trial.gpu=0.9 &
     ((gpu_number++))
 done
-
-        # cfg_bench_full_sweep_procgen \
-        # cfg_force_use_repl \
-
-        # env_cfg.benchmark_name=${benchmark_name} \
-        # env_cfg.task_name=${task_name} \
-        # il_train.gail.disc_augs=None \
-
-	# For debugging
-        # repl.batches_per_epoch=10 \
-        # il_train.gail.total_timesteps=$total_timesteps \
-	# il_test.n_rollouts=1 \
