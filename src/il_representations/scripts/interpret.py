@@ -156,8 +156,9 @@ def prepare_network(combined_meta, encoder_path, device):
                          encoder_kwargs={},
                          algo='bc',
                          lr_schedule=None)
-    # TODO: make this from action space
-    return LoadedPolicy(policy, use_first_action=False).to(device)
+    scalar_output = True if not isinstance(combined_meta['action_space'], \
+                                           spaces.Discrete) else False
+    return LoadedPolicy(policy, scalar_output=scalar_output).to(device)
 
 
 class LoadedPolicy(nn.Module):
@@ -166,16 +167,19 @@ class LoadedPolicy(nn.Module):
     and its forward() function outputs a tuple of (actions, values, log_prob).
     In Captum we only need its actions.
     """
-    def __init__(self, policy, use_first_action):
+    def __init__(self, policy, scalar_output=False):
         super().__init__()
         self.policy = policy
-        self.use_first_action = use_first_action
+        self.scalar_output = scalar_output
 
     def forward(self, x):
-        # TODO: make this compatible with both DMC and procgen.
+        # Since ActorCriticCnnPolicy outputs its actions by sampling, the
+        # gradients cannot be backpropagated by self.policy(x). Here the
+        # action_net either produces (1) logits for a categorical distribution,
+        # or (2) a mean vector for a Gaussian distribution.
         action = self.policy.action_net(self.policy.features_extractor(x/255.))
-        if self.use_first_action:
-            # Sometimes the action has several components, like in DMC tasks.
+        if self.scalar_output:
+            # Sometimes the action is continuous, like in DMC tasks.
             # We use the first component by default.
             action = action[:, 0].unsqueeze(dim=0)
         return action
@@ -192,6 +196,7 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
         save_original_image, device, length):
     # setup environment & dataset
     datasets, combined_meta = auto_env.load_wds_datasets(configs=dataset_configs)
+    action_space = combined_meta['action_space']
     observation_space = combined_meta['observation_space']
 
     network = prepare_network(combined_meta)
@@ -211,14 +216,13 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
         if itr > length:
             break
         tensor_image = torch.Tensor(image).unsqueeze(dim=0).to(device)
-        tensor_label = int(label)
 
         # For continuous space actions, we don't need to provide a label since
         # Captum assumes the provided label stands for "class_num" and is an
         # integer.
-        action_space = combined_meta['action_space']
-        if not isinstance(action_space, spaces.Discrete):
-            tensor_label = None
+        tensor_label = None
+        if isinstance(action_space, spaces.Discrete):
+            tensor_label = int(label)
         interp_algo_func = interp_algos.get(chosen_algo)
 
         interpreted_img = interp_algo_func(network, tensor_image, tensor_label)
