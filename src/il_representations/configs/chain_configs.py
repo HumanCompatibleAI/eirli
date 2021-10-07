@@ -433,7 +433,6 @@ def make_chain_configs(experiment_obj):
                     'temporal_offset': 8
                 }
             }
-
         }
 
         _ = locals()
