@@ -418,7 +418,6 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'TemporalCPC',
-
         }
 
         _ = locals()
