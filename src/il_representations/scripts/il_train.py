@@ -274,6 +274,13 @@ def make_policy(*,
                 print_policy_summary=True,
                 modified_encoder_path=None,
                 encoder_kwargs=None):
+    # This check is to ensure that some old interpret.py code raises an
+    # exception when run (apparently it relied on modified_encoder_path before,
+    # but then support for modified_encoder_path was removed). This should be
+    # fixed in a later PR.
+    if modified_encoder_path is not None:
+        raise TypeError('make_policy no longer takes a modified_encoder_path')
+
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
