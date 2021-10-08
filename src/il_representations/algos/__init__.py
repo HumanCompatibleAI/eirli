@@ -16,9 +16,9 @@ from il_representations.algos.decoders import (
     PixelDecoder, SymmetricProjectionHead)
 from il_representations.algos.encoders import (
     ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder,
-    ActionPredictionEncoder, BaseEncoder, InverseDynamicsEncoder,
-    JigsawEncoder, MomentumEncoder, PolicyEncoder, RecurrentEncoder,
-    TargetStoringActionEncoder, VAEEncoder, infer_action_shape_info)
+    BaseEncoder, InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder,
+    PolicyEncoder, RecurrentEncoder, TargetStoringActionEncoder, VAEEncoder,
+    infer_action_shape_info)
 from il_representations.algos.losses import (AELoss,
                                              BatchAsymmetricContrastiveLoss,
                                              CEBLoss, CrossEntropyLoss,
@@ -384,34 +384,18 @@ class ActionPrediction(RepresentationLearner):
     Predicts action for current state. Essentially just a BC auxiliary loss.
     """
     def __init__(self, **kwargs):
-        algo_hardcoded_kwargs = dict(encoder=ActionPredictionEncoder,
-                                     decoder=ActionPredictionHead,
-                                     batch_extender=IdentityBatchExtender,
-                                     augmenter=NoAugmentation,
-                                     loss_calculator=NegativeLogLikelihood,
-                                     target_pair_constructor=TemporalOffsetPairConstructor,
-                                     target_pair_constructor_kwargs=dict(mode='action_prediction'),
-                                     decoder_kwargs=dict(
-                                         action_space=kwargs['action_space'],
-                                         use_extra_context=False),
-                                     preprocess_target=False)
-        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
-
-        super().__init__(**kwargs)
-
-
-class PolicyPrediction(RepresentationLearner):
-    """
-    BC auxiliary loss.
-    """
-    def __init__(self, **kwargs):
         algo_hardcoded_kwargs = dict(encoder=PolicyEncoder,
                                      decoder=ActionPredictionHead,
                                      batch_extender=IdentityBatchExtender,
                                      augmenter=NoAugmentation,
                                      loss_calculator=NegativeLogLikelihood,
-                                     target_pair_constructor=IdentityPairConstructor,
-                                     decoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(
+                                         mode='action_prediction',
+                                         temporal_offset=1),
+                                     decoder_kwargs=dict(
+                                         action_space=kwargs['action_space'],
+                                         use_extra_context=False),
                                      preprocess_target=False)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 

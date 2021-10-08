@@ -732,12 +732,6 @@ class InverseDynamicsEncoder(PolicyEncoder):
         return self.encode_context(x, traj_info)
 
 
-class ActionPredictionEncoder(PolicyEncoder):
-    def encode_extra_context(self, x, traj_info):
-        # identity; we don't use extra_context
-        return x
-
-
 class MomentumEncoder(Encoder):
     def __init__(self, obs_shape, representation_dim, learn_scale=False,
                  momentum_weight=0.999, obs_encoder_cls=None, obs_encoder_cls_kwargs=None):

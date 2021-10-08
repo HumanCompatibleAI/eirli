@@ -298,8 +298,7 @@ class RepresentationLearner(object):
         self.encoder.train(val)
         self.decoder.train(val)
 
-    def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
-        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+    def make_data_iter(self, datasets, batches_per_epoch, n_epochs):
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=n_epochs * batches_per_epoch * self.batch_size,
@@ -307,7 +306,6 @@ class RepresentationLearner(object):
             shuffle_buffer_size=self.shuffle_buffer_size,
             shuffle=self.shuffle_batches,
             preprocessors=(
-                subdataset_extractor,
                 self.target_pair_constructor, ))
         data_iter = repeat_chain_non_empty(dataloader)
         return data_iter
@@ -316,7 +314,7 @@ class RepresentationLearner(object):
               end_callbacks=(), log_dir, log_interval=100,
               calc_log_interval=10, save_interval=1000, scheduler_cls=None,
               scheduler_kwargs=None, optimizer_cls=Adam,
-              optimizer_kwargs=None, n_trajs=None):
+              optimizer_kwargs=None):
         """Run repL training loop.
 
         Args:
@@ -346,7 +344,6 @@ class RepresentationLearner(object):
             scheduler_kwargs (dict): keyword args to pass to scheduler_cls.
             optimizer_cls (type): optimizer class.
             optimizer_kwargs (dict): kwargs to pass to optimizer_cls.
-            n_trajs (int): limit on the number of trajectories to load.
 
         Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
             `loss_record` is a list of average loss values encountered at each
@@ -357,7 +354,7 @@ class RepresentationLearner(object):
         # dataset setup
         data_iter = self.make_data_iter(
             datasets=datasets, batches_per_epoch=batches_per_epoch,
-            n_epochs=n_epochs, n_trajs=n_trajs)
+            n_epochs=n_epochs)
 
 
         # optimizer and LR scheduler

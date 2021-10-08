@@ -44,14 +44,6 @@ il\_representations.il.gail\_pol\_save module
    :undoc-members:
    :show-inheritance:
 
-il\_representations.il.ppo\_gail module
----------------------------------------
-
-.. automodule:: il_representations.il.ppo_gail
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 il\_representations.il.score\_logging module
 --------------------------------------------
 
