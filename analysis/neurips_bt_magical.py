@@ -16,9 +16,9 @@ from scipy.stats import ttest_ind_from_stats
 
 HIGHLIGHT_COLOR = 'fff7df'
 # hard-coded, bleh
-# CONTROL_NAMES = {'repl_noid_5demos_random', 'neurips_control_bc_augs',
-#                  'neurips_control_gail_augs'}
-CONTROL_NAMES = {'neurips_repl_bc_cfg_repl_simclr_cfg_data_repl_5demos_random'}
+CONTROL_NAMES = {'repl_noid_5demos_random', 'neurips_control_bc_augs',
+                 'neurips_control_gail_augs'}
+# CONTROL_NAMES = {'neurips_repl_bc_cfg_repl_simclr_cfg_data_repl_5demos_random'}
 # Ordering for column names (first 7 are pretrain, second 7 are joint).
 # Order in Overleaf:
 # Dynamics, InvDyn, SimCLR, TemporalCPC, VAE, Augs, No Augs
@@ -59,9 +59,24 @@ COL_ORDER = [
     'neurips_control_gail_augs',
     'neurips_control_gail_noaugs',
 ]
+# Ordering of MAGICAL variants as we go down the rows.
+MAGICAL_VARIANT_ORDER = [
+  '-Demo',
+  '-TestDynamics',
+  '-TestColour',
+  '-TestShape',
+  '-TestJitter',
+  '-TestLayout',
+  '-TestCountPlus',
+  '-TestAll',
+  'Average',
+]
 EXP_IDENT_TO_NUM = {exp_ident: idx for idx, exp_ident in enumerate(COL_ORDER)}
 
 parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+parser.add_argument(
+    '--full', action='store_true', default=False,
+    help='create a table with scores for all variants, not just the average')
 parser.add_argument('csv_files', nargs='*', help='paths to CSV files')
 
 
@@ -89,7 +104,7 @@ def get_p_val_df(mean_df, std_df, n_df, control_idx, alternative="greater"):
     return p_vals
 
 
-def process_df(df):
+def process_df(df, *, full=False):
     # DF columns:
     # train_env, exp_ident, test_env, return_mean, return_std, count
 
@@ -166,8 +181,9 @@ def process_df(df):
         return final_str
     df['contents'] = df.apply(compute_cell_contents, axis=1)
 
-    # now  get just the average test env scores
-    df = df[df['test_env'] == 'Average']
+    if not full:
+        # get just the average test env scores
+        df = df[df['test_env'] == 'Average']
 
     # want a new table like this:
     #      | exp_ident_1 | exp_ident_2 | … | exp_ident_N |
@@ -182,10 +198,34 @@ def process_df(df):
         assert len(values) == 1, values
         val, = values
         return val
+
+    def index_sort_key(index):
+        """Sorts nested index where each index item is a (train env, variant)
+        pair. Aim is to sort train environments alphabetically, then sort
+        variants according to MAGICAL_VARIANT_ORDER."""
+        def mapper(index_item):
+            if '-v0' in index_item:
+                # this is a train env name (first level of the index)
+                return index_item
+            # otherwise assume we get a test variant label (second level of the
+            # index)
+            test_variant = index_item
+            try:
+                test_variant_idx = MAGICAL_VARIANT_ORDER.index(test_variant)
+            except ValueError:
+                test_variant_idx = -1
+            return test_variant_idx
+            # return (train_env, test_variant_idx)
+        return index.map(mapper)
+
+    if full:
+        index = ['train_env', 'test_env']
+    else:
+        index = 'train_env'
     pivoted = pd.pivot_table(
-        df, columns='exp_ident', index='train_env',
+        df, columns='exp_ident', index=index,
         values='contents', aggfunc=unique_agg) \
-        .sort_index()
+        .sort_index(key=index_sort_key if full else None)
 
     def ei_index(exp_ident):
         """Sort key that sorts by index in `EXP_IDENT_TO_NUM`."""
@@ -196,6 +236,15 @@ def process_df(df):
     def format_row(row):
         """Row mapper that joins columns together with ampersand, followed by
         newline at EOL."""
+        if full:
+            train_env, test_variant = row.name
+            if test_variant == '-Demo':
+                row_label = train_env.split('-')[0] + '-Demo-v0'
+            else:
+                row_label = r'\ \ \ \ ' + test_variant
+                if test_variant.startswith('-'):
+                    row_label = row_label + '-v0'
+            return row_label + ' & ' + ' & '.join(row) + r' \\'
         return row.name + ' & ' + ' & '.join(row) + r' \\'
     rows = sorted_pivot.apply(format_row, axis=1)
     return '% ' + ', '.join(sorted_pivot.columns) + '\n' + '\n'.join(rows)
@@ -209,7 +258,7 @@ def main(args):
         first = False
         print(f'Result for {csv_path}')
         df = pd.read_csv(csv_path)
-        print(process_df(df))
+        print(process_df(df, full=args.full))
 
 
 if __name__ == '__main__':
