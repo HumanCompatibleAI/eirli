@@ -31,7 +31,6 @@ submit_expt() {
         ./submit_pretrain_n_adapt.py -- "${base_cfgs[@]}" "$@"
 }
 
-
 for magical_env in "${magical_envs[@]}"; do
     for repl_config in "${repl_configs[@]}"; do
         for mg_dataset_config in "${mg_dataset_configs[@]}"; do

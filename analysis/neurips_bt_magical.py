@@ -14,20 +14,28 @@ import numpy as np
 import pandas as pd
 from scipy.stats import ttest_ind_from_stats
 
-HIGHLIGHT_COLOR = 'fff2cc'
+HIGHLIGHT_COLOR = 'fff7df'
 # hard-coded, bleh
-CONTROL_NAMES = {'repl_noid_5demos_random', 'neurips_control_bc_augs'}
+# CONTROL_NAMES = {'repl_noid_5demos_random', 'neurips_control_bc_augs',
+#                  'neurips_control_gail_augs'}
+CONTROL_NAMES = {'neurips_repl_bc_cfg_repl_simclr_cfg_data_repl_5demos_random'}
 # Ordering for column names (first 7 are pretrain, second 7 are joint).
 # Order in Overleaf:
 # Dynamics, InvDyn, SimCLR, TemporalCPC, VAE, Augs, No Augs
 COL_ORDER = [
+    # for pretraining + BC
     'neurips_repl_bc_icml_dynamics_cfg_data_repl_5demos_random',
     'neurips_repl_bc_icml_inv_dyn_cfg_data_repl_5demos_random',
+    'neurips_repl_bc_cfg_repl_simclr_asymm_proj_cfg_data_repl_5demos_random',
+    'neurips_repl_bc_cfg_repl_simclr_no_proj_cfg_data_repl_5demos_random',
+    'neurips_repl_bc_cfg_repl_simclr_ceb_loss_cfg_data_repl_5demos_random',
+    'neurips_repl_bc_cfg_repl_simclr_momentum_cfg_data_repl_5demos_random',
     'neurips_repl_bc_cfg_repl_simclr_cfg_data_repl_5demos_random',
     'neurips_repl_bc_cfg_repl_tcpc8_cfg_data_repl_5demos_random',
     'neurips_repl_bc_icml_vae_cfg_data_repl_5demos_random',
     'neurips_control_bc_augs',
     'neurips_control_bc_noaugs',
+    # for joint training + BC
     'repl_fd_5demos_random',
     'repl_id_5demos_random',
     'repl_simclr_5demos_random',
@@ -35,6 +43,21 @@ COL_ORDER = [
     'repl_vae_5demos_random',
     'repl_noid_5demos_random',
     'repl_noid_noaugs_5demos_random',
+    # for pretraining + GAIL
+    'neurips_repl_gail_icml_dynamics_cfg_data_repl_5demos_random',
+    'neurips_repl_gail_icml_inv_dyn_cfg_data_repl_5demos_random',
+    'neurips_repl_gail_cfg_repl_simclr_cfg_data_repl_5demos_random',
+    'neurips_repl_gail_cfg_repl_tcpc8_cfg_data_repl_5demos_random',
+    'neurips_repl_gail_icml_vae_cfg_data_repl_5demos_random',
+    # for pretraining + GAIL (procgen)
+    'neurips_repl_gail_icml_dynamics_cfg_data_repl_demos',
+    'neurips_repl_gail_icml_inv_dyn_cfg_data_repl_demos',
+    'neurips_repl_gail_cfg_repl_simclr_cfg_data_repl_demos',
+    'neurips_repl_gail_cfg_repl_tcpc8_cfg_data_repl_demos',
+    'neurips_repl_gail_icml_vae_cfg_data_repl_demos',
+    # controls for pretraining + GAIL
+    'neurips_control_gail_augs',
+    'neurips_control_gail_noaugs',
 ]
 EXP_IDENT_TO_NUM = {exp_ident: idx for idx, exp_ident in enumerate(COL_ORDER)}
 
