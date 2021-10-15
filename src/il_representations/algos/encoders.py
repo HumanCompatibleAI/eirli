@@ -15,20 +15,22 @@ import enum
 import functools
 import inspect
 import itertools as it
-import os
 import math
+import os
 import traceback
+from typing import Callable, List
 import warnings
-import torch
-import numpy as np
-import torchvision.models as tvm
 
-from torch import nn
+from gym import spaces
+import numpy as np
+from pyro.distributions import Delta
 from stable_baselines3.common.preprocessing import preprocess_obs
+import torch
+from torch import nn
+import torchvision.models as tvm
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 from torchvision.transforms import functional as TF
-from gym import spaces
-from pyro.distributions import Delta
+
 from il_representations.algos.utils import independent_multivariate_normal
 
 
@@ -324,18 +326,21 @@ class ActivationTypes(str, enum.Enum):
     TANH = 'Tanh'
 
 
-class FlexibleBasicCNNBlock(nn.Module):
+class _FlexibleBasicCNNBlock(nn.Module):
     """Custom CN block designed for flexibility. Easy to turn on/off skip
-    connections, norm types, change width, change depth, etc."""
+    connections, choose norm types, change width, change depth, etc."""
     def __init__(self,
                  *,
-                 in_chans=64,
-                 out_chans=64,
-                 n_convs=2,
-                 act_cls=nn.ReLU,
-                 norm_type=NormTypes.NO_NORM,
-                 use_skip=False,
-                 stride=1):
+                 in_chans: int = 64,
+                 out_chans: int = 64,
+                 n_convs: int = 2,
+                 act_cls: Callable[[], nn.Module] = nn.ReLU,
+                 norm_type: NormTypes = NormTypes.NO_NORM,
+                 use_skip: bool = False,
+                 stride: int = 1,
+                 use_sn: bool = False,
+                 coord_conv: bool = False,
+                 kernel_size=3):
         super().__init__()
         assert n_convs >= 1
         assert in_chans >= 1
@@ -349,8 +354,16 @@ class FlexibleBasicCNNBlock(nn.Module):
             norm_cls = nn.BatchNorm2d
             bias = False
         elif norm_type == NormTypes.LAYER_NORM:
-            norm_cls = nn.LayerNorm
+            def norm_cls(num_features):
+                return nn.LayerNorm([num_features, 1, 1])
             bias = False
+        else:
+            raise ValueError(f'Unknown normalisation type {norm_type!r}')
+
+        if coord_conv:
+            cc_in_chans = 2
+        else:
+            cc_in_chans = 0
 
         # standard resnet:
         #
@@ -363,120 +376,130 @@ class FlexibleBasicCNNBlock(nn.Module):
             is_last_conv = conv_num == n_convs - 1
             if is_first_conv:
                 this_conv_stride = stride
-                this_conv_in_chans = in_chans
+                this_conv_in_chans = in_chans + cc_in_chans
                 # passing a string for `padding` requires Torch 1.9+
                 padding = 'valid'
             else:
                 this_conv_stride = 1
-                this_conv_in_chans = out_chans
+                this_conv_in_chans = out_chans + cc_in_chans
                 padding = 'same'
-            conv_layers.append(nn.Conv2d(
-                this_conv_in_chans, out_chans, kernel_size=3,
-                stride=this_conv_stride, padding=padding, bias=bias))
+            if coord_conv:
+                conv_layers.append(CoordConv())
+            conv_layer = nn.Conv2d(
+                this_conv_in_chans, out_chans, kernel_size=kernel_size,
+                stride=this_conv_stride, padding=padding, bias=bias)
+            if use_sn:
+                conv_layer = nn.utils.spectral_norm(conv_layer)
+            conv_layers.append(conv_layer)
             if norm_cls is not None:
-                conv_layers.append(norm_cls())
+                conv_layers.append(norm_cls(out_chans))
             if not is_last_conv:
-                # we apply the final activation last, just in case we want to
-                # do skip connections
+                # we apply the final activation outside of this loop so we can
+                # put it after the skip connection (if applicable)
                 conv_layers.append(act_cls())
 
         # these attributes will be used during forward pass
-        self.convs = nn.Sequential(conv_layers)
+        self.convs = nn.Sequential(*conv_layers)
         self.stride = stride
         self.use_skip = use_skip
+        # final activation applied after skip conn
         self.final_activation = act_cls()
 
-    def forward(self, x):
-        x = self.convs(x)
+    def forward(self, in_tensors):
+        latent_repr = self.convs(in_tensors)
         if self.use_skip:
-            # we do not learn the skip connection (I want to keep it simple)
-            x += x[:, :, ::self.stride, ::self.stride]
-        return self.final_activation(x)
+            # non-learned skip connection (KISS)
+            latent_repr += in_tensors[:, :, ::self.stride, ::self.stride]
+        return self.final_activation(latent_repr)
+
+
+def _flex_cnn_linear_layers(*, act_cls: Callable[[], nn.Module],
+                            num_layers: int, in_dim: int, hid_dim: int,
+                            out_dim: int, use_sn: bool,
+                            dropout_rate: float) -> List[nn.Module]:
+    assert num_layers >= 1
+    assert in_dim >= 0 and hid_dim >= 0 and out_dim >= 0
+
+    layers = []
+    prev_out_dim = in_dim
+    for layer_num in range(num_layers):
+        is_last_layer = layer_num == num_layers - 1
+
+        if is_last_layer:
+            this_out_dim = out_dim
+        else:
+            this_out_dim = hid_dim
+
+        if dropout_rate > 0:
+            layers.append(nn.Dropout(p=dropout_rate))
+
+        linear_layer = nn.Linear(prev_out_dim, this_out_dim)
+        if use_sn:
+            linear_layer = nn.utils.spectral_norm(linear_layer)
+        layers.append(linear_layer)
+        prev_out_dim = this_out_dim
+
+        if not is_last_layer:
+            # put activation after all layers except the final one
+            layers.append(act_cls())
+
+    return layers
 
 
 class FlexibleBasicCNN(nn.Module):
-    """The CNN from the MAGICAL paper."""
+    """Flexible CNN class for experiments in neural network expressiveness."""
     def __init__(self,
-                 observation_space,
-                 representation_dim,
-                 act_norm=NormTypes.BATCH_NORM,
-                 dropout_rate=0.0,
-                 spectral_norm=False,
-                 skip_conns=False,
-                 depth_factor=2,
+                 observation_space: spaces.Space,
+                 representation_dim: int,
+                 act_norm: NormTypes = NormTypes.BATCH_NORM,
+                 dropout_rate: float = 0.0,
+                 spectral_norm: bool = False,
+                 skip_conns: bool = False,
+                 coord_conv: bool = False,
+                 # multiplier for number of convolutions per block and number
+                 # of linear layers at the end
+                 depth_factor: int = 2,
                  # multiplier for block width
-                 width_factor=2,
-                 activation=torch.nn.ReLU):
+                 width_factor: int = 2,
+                 activation: ActivationTypes = ActivationTypes.RELU):
         super().__init__()
-
         activation_type = getattr(torch.nn, activation)
-
-        conv_layers = []
         in_dim = observation_space.shape[0]
+        # set up static kwargs for convolution block (we repeat this block
+        # throughout the architecture)
+        block = functools.partial(_FlexibleBasicCNNBlock,
+                                  act_cls=activation_type, norm_type=act_norm,
+                                  use_sn=spectral_norm, coord_conv=coord_conv)
 
-        block = magical_conv_block
-        if 'resnet' in arch_str:
-            block = BasicResidualBlock
-        for layer_definition in self.architecture_definition:
-            layer_stride = layer_definition['stride']
-            layer_out_dim = layer_definition['out_dim']
-            if layer_definition.get('residual', False):
-                block_kwargs = {
-                    'stride': layer_stride,
-                    'downsample': nn.Sequential(nn.Conv2d(in_dim,
-                                                          layer_out_dim,
-                                                          kernel_size=1,
-                                                          stride=layer_stride),
-                                                nn.BatchNorm2d(layer_out_dim))
-                }
-                conv_layers += [block(in_dim,
-                                      layer_out_dim * w,
-                                      **block_kwargs)]
-            else:
-                # these asserts are to satisfy PyType, since not all
-                # NETWORK_ARCHITECTURE_DEFINITIONS have these two keys
-                assert 'padding' in layer_definition
-                assert 'kernel_size' in layer_definition
-                layer_padding = layer_definition['padding']
-                layer_kernel_size = layer_definition['kernel_size']
-                block_kwargs = {
-                    'stride': layer_stride,
-                    'kernel_size': layer_kernel_size,
-                    'padding': layer_padding,
-                    'use_bn': use_bn,
-                    'use_sn': use_sn,
-                    'dropout': dropout,
-                    'activation_cls': ActivationCls
-                }
-                conv_layers += block(in_dim,
-                                     layer_out_dim * w,
-                                     **block_kwargs)
-
-            in_dim = layer_out_dim*w
-        if 'resnet' in arch_str:
-            conv_layers.append(nn.Conv2d(in_dim, 32, 1))
-            # conv_layers.append(nn.AdaptiveAvgPool2d((1, 1)))
-
-        conv_layers.append(nn.Flatten())
-
-        fc_layers = []
-        # another FC layer to make feature maps the right size
-        fc_in_size, = compute_output_shape(observation_space,
-                                            conv_layers)
-        fc_layers = [
-            nn.Linear(fc_in_size, 128 * w),
-            ActivationCls(),
-            nn.Linear(128 * w, representation_dim),
+        # convolutional layers
+        vision_layers = [
+            # separate initial convolution is 5x5, with no skip connections and
+            # /4 stride instead of /2 stride
+            block(in_chans=in_dim, out_chans=32 * width_factor,
+                  n_convs=1, stride=4, kernel_size=5,
+                  use_skip=False),
+            # remaining two blocks are a bit smaller
+            block(in_chans=32 * width_factor,
+                  out_chans=64 * width_factor,
+                  n_convs=1 * depth_factor,
+                  stride=2, use_skip=skip_conns),
+            block(in_chans=64 * width_factor,
+                  out_chans=128 * width_factor,
+                  n_convs=1 * depth_factor,
+                  stride=2, use_skip=skip_conns),
+            nn.Flatten(),
         ]
-        if use_sn:
-            # apply SN to linear layers too
-            fc_layers = [
-                nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
-                for layer in fc_layers
-            ]
 
-        all_layers = [*conv_layers, *fc_layers]
-        self.shared_network = nn.Sequential(*all_layers)
+        # fully connected layers
+        fc_in_size, = compute_output_shape(observation_space, vision_layers)
+        fc_layers = _flex_cnn_linear_layers(
+            in_dim=fc_in_size, hid_dim=128 * width_factor,
+            out_dim=representation_dim, num_layers=1 * depth_factor,
+            act_cls=activation_type, use_sn=spectral_norm,
+            dropout_rate=dropout_rate)
+
+        # output
+        self.shared_network = nn.Sequential(*vision_layers, *fc_layers)
 
     def forward(self, x):
         warn_on_non_image_tensor(x)
