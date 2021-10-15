@@ -100,9 +100,6 @@ def venv_opts_defaults():
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
     n_envs = 2
-    # if venv_parallel is True, then this is used to determine the number of
-    # workers (parallel_workers defaults to n_envs if it is None)
-    parallel_workers = None
 
     _ = locals()
     del _

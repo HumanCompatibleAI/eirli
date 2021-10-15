@@ -131,10 +131,10 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
 
 
 @venv_opts_ingredient.capture
-def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
+def _get_venv_opts(n_envs, venv_parallel):
     # helper to extract options from venv_opts, since we can't have two
     # captures on one function (see Sacred issue #206)
-    return n_envs, venv_parallel, parallel_workers
+    return n_envs, venv_parallel
 
 
 @env_cfg_ingredient.capture
@@ -143,13 +143,12 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                  procgen_frame_stack, procgen_start_level=0):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
-    n_envs, venv_parallel, parallel_workers = _get_venv_opts()
+    n_envs, venv_parallel = _get_venv_opts()
     gym_env_name = get_gym_env_name()
     if benchmark_name == 'magical':
         return make_vec_env(gym_env_name,
                             n_envs=n_envs,
-                            parallel=venv_parallel,
-                            parallel_workers=parallel_workers)
+                            parallel=venv_parallel)
     elif benchmark_name == 'dm_control':
         raw_dmc_env = make_vec_env(gym_env_name,
                                    n_envs=n_envs,
@@ -175,7 +174,6 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         raw_atari_env = make_vec_env(gym_env_name,
                                      n_envs=n_envs,
                                      parallel=venv_parallel,
-                                     parallel_workers=parallel_workers,
                                      wrapper_class=AtariWrapper)
         final_env = VecFrameStack(VecTransposeImage(raw_atari_env), 4)
         assert final_env.observation_space.shape == (4, 84, 84), \

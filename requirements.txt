@@ -10,9 +10,9 @@
 numpy~=1.19.0
 gym[atari]~=0.17
 sacred~=0.8.1
-torch~=1.7.1
+torch~=1.9.1
 opencv-python~=4.3.0.36
-torchvision~=0.9.1
+torchvision~=0.10.1
 pyyaml~=5.3.1
 sacred~=0.8.1
 tensorboard~=2.2.0
@@ -39,7 +39,9 @@ cryptography~=3.1
 # my version of google-api-python-client fixes issue #873 in that repo (which
 # has been known since at least 2017, and seems unlikely to ever get fixed)
 # google-api-python-client~1.11.0
-git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
+# TODO(sam): make sure that newest google-api-python-client works okay
+# git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
+google-api-python-client~=2.26.1
 
 # imitation needs special branch as of 2021-01-04
 # (also this is only installable with pip~=19.0 and earlier; new resolver breaks it)
