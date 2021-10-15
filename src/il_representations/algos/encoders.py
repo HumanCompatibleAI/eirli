@@ -11,6 +11,7 @@ BatchExtender module
 """
 
 import copy
+import enum
 import functools
 import inspect
 import itertools as it
@@ -18,9 +19,7 @@ import os
 import math
 import traceback
 import warnings
-import inspect
 import torch
-import functools
 import numpy as np
 import torchvision.models as tvm
 
@@ -292,6 +291,189 @@ class MAGICALCNN(nn.Module):
                     nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
                     for layer in fc_layers
                 ]
+
+        all_layers = [*conv_layers, *fc_layers]
+        self.shared_network = nn.Sequential(*all_layers)
+
+    def forward(self, x):
+        warn_on_non_image_tensor(x)
+        return self.shared_network(x)
+
+
+class NormTypes(str, enum.Enum):
+    """Activation normalisation types.
+
+    We give these to `FlexibleBasicCNN` as string enums values rather than
+    passing classes because we want to be able to supply them from the command
+    line with Sacred."""
+    NO_NORM = 'NO_NORM'
+    BATCH_NORM = 'BATCH_NORM'
+    LAYER_NORM = 'LAYER_NORM'
+
+
+class ActivationTypes(str, enum.Enum):
+    """Network activation types.
+
+    The enum values refer to attributes of `torch.nn`. We use an string enum
+    instead of a string so that we can validate the attributes, and we use a
+    string enum instead of supplying activation classes directly so that we can
+    supply the enum values on the command line."""
+    RELU = 'ReLU',
+    ELU = 'ELU'
+    GELU = 'GELU'
+    TANH = 'Tanh'
+
+
+class FlexibleBasicCNNBlock(nn.Module):
+    """Custom CN block designed for flexibility. Easy to turn on/off skip
+    connections, norm types, change width, change depth, etc."""
+    def __init__(self,
+                 *,
+                 in_chans=64,
+                 out_chans=64,
+                 n_convs=2,
+                 act_cls=nn.ReLU,
+                 norm_type=NormTypes.NO_NORM,
+                 use_skip=False,
+                 stride=1):
+        super().__init__()
+        assert n_convs >= 1
+        assert in_chans >= 1
+        assert out_chans >= 1
+        assert stride >= 1
+
+        if norm_type == NormTypes.NO_NORM:
+            norm_cls = None
+            bias = True
+        elif norm_type == NormTypes.BATCH_NORM:
+            norm_cls = nn.BatchNorm2d
+            bias = False
+        elif norm_type == NormTypes.LAYER_NORM:
+            norm_cls = nn.LayerNorm
+            bias = False
+
+        # standard resnet:
+        #
+        # 3x3 conv (+stride) -> BN -> reLU -> 3x3 conv -> BN -> skip -> reLU
+        #
+        # this net differs in that we can insert more or fewer convlutions
+        conv_layers = []
+        for conv_num in range(n_convs):
+            is_first_conv = conv_num == 0
+            is_last_conv = conv_num == n_convs - 1
+            if is_first_conv:
+                this_conv_stride = stride
+                this_conv_in_chans = in_chans
+                # passing a string for `padding` requires Torch 1.9+
+                padding = 'valid'
+            else:
+                this_conv_stride = 1
+                this_conv_in_chans = out_chans
+                padding = 'same'
+            conv_layers.append(nn.Conv2d(
+                this_conv_in_chans, out_chans, kernel_size=3,
+                stride=this_conv_stride, padding=padding, bias=bias))
+            if norm_cls is not None:
+                conv_layers.append(norm_cls())
+            if not is_last_conv:
+                # we apply the final activation last, just in case we want to
+                # do skip connections
+                conv_layers.append(act_cls())
+
+        # these attributes will be used during forward pass
+        self.convs = nn.Sequential(conv_layers)
+        self.stride = stride
+        self.use_skip = use_skip
+        self.final_activation = act_cls()
+
+    def forward(self, x):
+        x = self.convs(x)
+        if self.use_skip:
+            # we do not learn the skip connection (I want to keep it simple)
+            x += x[:, :, ::self.stride, ::self.stride]
+        return self.final_activation(x)
+
+
+class FlexibleBasicCNN(nn.Module):
+    """The CNN from the MAGICAL paper."""
+    def __init__(self,
+                 observation_space,
+                 representation_dim,
+                 act_norm=NormTypes.BATCH_NORM,
+                 dropout_rate=0.0,
+                 spectral_norm=False,
+                 skip_conns=False,
+                 depth_factor=2,
+                 # multiplier for block width
+                 width_factor=2,
+                 activation=torch.nn.ReLU):
+        super().__init__()
+
+        activation_type = getattr(torch.nn, activation)
+
+        conv_layers = []
+        in_dim = observation_space.shape[0]
+
+        block = magical_conv_block
+        if 'resnet' in arch_str:
+            block = BasicResidualBlock
+        for layer_definition in self.architecture_definition:
+            layer_stride = layer_definition['stride']
+            layer_out_dim = layer_definition['out_dim']
+            if layer_definition.get('residual', False):
+                block_kwargs = {
+                    'stride': layer_stride,
+                    'downsample': nn.Sequential(nn.Conv2d(in_dim,
+                                                          layer_out_dim,
+                                                          kernel_size=1,
+                                                          stride=layer_stride),
+                                                nn.BatchNorm2d(layer_out_dim))
+                }
+                conv_layers += [block(in_dim,
+                                      layer_out_dim * w,
+                                      **block_kwargs)]
+            else:
+                # these asserts are to satisfy PyType, since not all
+                # NETWORK_ARCHITECTURE_DEFINITIONS have these two keys
+                assert 'padding' in layer_definition
+                assert 'kernel_size' in layer_definition
+                layer_padding = layer_definition['padding']
+                layer_kernel_size = layer_definition['kernel_size']
+                block_kwargs = {
+                    'stride': layer_stride,
+                    'kernel_size': layer_kernel_size,
+                    'padding': layer_padding,
+                    'use_bn': use_bn,
+                    'use_sn': use_sn,
+                    'dropout': dropout,
+                    'activation_cls': ActivationCls
+                }
+                conv_layers += block(in_dim,
+                                     layer_out_dim * w,
+                                     **block_kwargs)
+
+            in_dim = layer_out_dim*w
+        if 'resnet' in arch_str:
+            conv_layers.append(nn.Conv2d(in_dim, 32, 1))
+            # conv_layers.append(nn.AdaptiveAvgPool2d((1, 1)))
+
+        conv_layers.append(nn.Flatten())
+
+        fc_layers = []
+        # another FC layer to make feature maps the right size
+        fc_in_size, = compute_output_shape(observation_space,
+                                            conv_layers)
+        fc_layers = [
+            nn.Linear(fc_in_size, 128 * w),
+            ActivationCls(),
+            nn.Linear(128 * w, representation_dim),
+        ]
+        if use_sn:
+            # apply SN to linear layers too
+            fc_layers = [
+                nn.utils.spectral_norm(layer) if isinstance(layer, nn.Linear) else layer
+                for layer in fc_layers
+            ]
 
         all_layers = [*conv_layers, *fc_layers]
         self.shared_network = nn.Sequential(*all_layers)
