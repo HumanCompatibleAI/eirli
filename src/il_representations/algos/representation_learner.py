@@ -320,6 +320,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 for training. The default 'None' will use the whole dataset.
             n_trans (int): the total number of transitions we want to use
                 for training. The default 'None' will use the whole dataset.
+                Supplying both n_trajs and n_trans will raise an exception.
             callbacks ([dict -> None]): list of functions to call at the
                 end of each batch, after computing the loss and updating the
                 network but before dumping logs. Will be provided with all
