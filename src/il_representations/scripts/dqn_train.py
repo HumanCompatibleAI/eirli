@@ -9,19 +9,15 @@ import os
 import readline  # noqa: F401
 import signal
 import torch as th
-import numpy as np
 import pandas as pd
-from torch import nn
 from torch.optim.adam import Adam
-from sacred import Experiment, Ingredient
+from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3.dqn import CnnPolicy, DQN
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.preprocessing import preprocess_obs
 
-from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -41,12 +37,9 @@ dqn_train_ex = Experiment(
 
 @dqn_train_ex.config
 def default_config():
-    # TODO(Cynthia): Add comments for these variables, so future users know
-    # what they mean.
     exp_ident = None
     device_name = 'auto'
     encoder_path = None
-    final_pol_name = 'dqn_policy_final.pt'
     print_policy_summary = True
     dataset_configs = [{'type': 'demos'}]
     freeze_encoder = False
@@ -76,14 +69,15 @@ def default_config():
     # In SB3's DQNPolicy's implementation, learning rate is not specified as a
     # optimizer_kwarg, but through lr_schedule
     optimizer_kwargs = dict()
+    optimize_memory = True
 
 
 @dqn_train_ex.capture
 def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
-                    device_name, final_pol_name, freeze_encoder, postproc_arch,
-                    encoder_path, encoder_kwargs, nominal_num_epochs,
-                    save_every_n_batches, optimizer_class, optimizer_kwargs,
-                    learning_rate, batch_size, n_trans):
+                    device_name, freeze_encoder, postproc_arch, encoder_path,
+                    encoder_kwargs, nominal_num_epochs, save_every_n_batches,
+                    optimizer_class, optimizer_kwargs, learning_rate,
+                    batch_size, n_trans):
     observation_space = venv_chans_first.observation_space
     lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
@@ -99,7 +93,6 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                          lr_schedule=lr_schedule).to(device)
 
     color_space = auto_env.load_color_space()
-    augmenter = augmenter_from_spec(augs, color_space)
     dataset_length = len(dict_dataset['obs']) if n_trans is None else n_trans
     progress_df = pd.DataFrame()
 
@@ -123,19 +116,23 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                                               dict_dataset['acts'][idx], \
                                               dict_dataset['rews'][idx], \
                                               dict_dataset['dones'][idx]
-        # obs = preprocess_obs(th.tensor(obs),
-        #                      observation_space,
-        #                      normalize_images=True)
-        # next_obs = preprocess_obs(th.tensor(next_obs),
-        #                           observation_space,
-        #                           normalize_images=True)
-        # obs, next_obs = th.unsqueeze(obs, dim=0), th.unsqueeze(next_obs, dim=0)
-        # if augmenter is not None:
+        # Perform image augmentation over images stored into the replay buffer.
+        # Note that this will change the image dtype from int to float (4X GPU
+        # memory).
+        if augs is not None:
+            augmenter = augmenter_from_spec(augs, color_space)
+            obs = preprocess_obs(th.tensor(obs),
+                                observation_space,
+                                normalize_images=True)
+            next_obs = preprocess_obs(th.tensor(next_obs),
+                                    observation_space,
+                                    normalize_images=True)
             # Here we unsqueeze the obs first since the augmenter only takes
             # [N, C, H, W] inputs, so we need to fake a "batch size" here.
-            # obs = augmenter(obs)
-            # next_obs = augmenter(next_obs)
-
+            obs, next_obs = th.unsqueeze(obs, dim=0), th.unsqueeze(next_obs, dim=0)
+            if augmenter is not None:
+                obs = augmenter(obs)
+                next_obs = augmenter(next_obs)
         trainer.replay_buffer.add(obs=obs,
                                   next_obs=next_obs,
                                   action=action,
@@ -147,12 +144,11 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
     model_saver = ModelSaver(trainer.policy,
                              save_dir=os.path.join(out_dir, 'snapshots'),
                              save_interval_batches=save_every_n_batches)
-    # trainer.learn(total_timesteps=1000000,
-    #               eval_log_path=os.path.join(out_dir, 'progress.csv'))
-
 
     for epoch in range(nominal_num_epochs):
         print(f'Training [{epoch}/{nominal_num_epochs}] epochs...')
+        # This line is just performing gradient updates over the policy, and
+        # does not involve collecting new rollouts.
         policy, n_update, loss = trainer.train(n_update_per_epoch,
                                                batch_size=batch_size)
 
