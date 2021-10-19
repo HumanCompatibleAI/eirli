@@ -36,7 +36,6 @@ def load_data(
     # class, except that the observation is a dictionary instead of an ndarray.
     env_name = None
     demo_trajectories = []
-    assert len(demo_trajectories) > 0
     for demo_dict in saved_trajectories.load_demos(pickle_paths):
         new_env_name = demo_dict['env_name']
         if env_name is None:
@@ -48,6 +47,7 @@ def load_data(
                     f"environments: {env_name}, {new_env_name} ")
 
         demo_trajectories.append(demo_dict['trajectory'])
+    assert len(demo_trajectories) > 0
     assert env_name is not None
     del new_env_name  # unused
 
