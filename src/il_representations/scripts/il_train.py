@@ -33,7 +33,9 @@ from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.il.utils import add_infos, streaming_extract_keys
 from il_representations.utils import augmenter_from_spec, freeze_params
-from il_representations.scripts.policy_utils import make_policy, ModelSaver
+from il_representations.scripts.policy_utils import (load_encoder_or_policy,
+                                                     make_policy,
+                                                     ModelSaver)
 
 
 bc_ingredient = Ingredient('bc')

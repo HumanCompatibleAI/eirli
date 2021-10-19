@@ -299,7 +299,7 @@ class RepresentationLearner(object):
         self.decoder.train(val)
 
     def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs,
-                       n_trans):
+                       n_trans=None):
         subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs,
                                                    n_trans=n_trans)
         dataloader = datasets_to_loader(
