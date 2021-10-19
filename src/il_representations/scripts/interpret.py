@@ -175,8 +175,9 @@ class LoadedPolicy(nn.Module):
     def forward(self, x):
         # Since ActorCriticCnnPolicy outputs its actions by sampling, the
         # gradients cannot be backpropagated by self.policy(x). Here the
-        # action_net either produces (1) logits for a categorical distribution,
-        # or (2) a mean vector for a Gaussian distribution.
+        # action_net either produces (1) logits for a categorical distribution
+        # (for discrete action space) or (2) a mean vector for a Gaussian
+        # distribution (for continuous action space).
         action = self.policy.action_net(self.policy.features_extractor(x/255.))
         if self.scalar_output:
             # Sometimes the action is continuous, like in DMC tasks.
@@ -243,8 +244,8 @@ def run(chosen_algo, save_video, filename, dataset_configs, save_image,
                 # Most loaded images are frame stacked by 3 or 4 frames. Here
                 # we are visually "stacking" them by taking 1/3 or 1/4 pixels
                 # from each of them, saving images that are exactly seen
-                # by a network. For example saved images, see Figure 4 of the
-                # EIRLI paper.
+                # by a network. For examples of saved images, see Figure 4 of
+                # the EIRLI paper.
                 processed_image = []
                 i = 0
                 while i < len(image):
