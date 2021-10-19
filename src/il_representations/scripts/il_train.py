@@ -445,6 +445,9 @@ def do_training_gail(
             reward_net_cls=ImageRewardNet,
             reward_net_kwargs=dict(
                 encoder=load_encoder_or_policy(
+                    encoder_path=encoder_path,
+                    algo=algo,
+                    encoder_kwargs=encoder_kwargs,
                     observation_space=venv_chans_first.observation_space,
                     freeze=_gail_should_freeze('disc'))
             )
@@ -454,6 +457,9 @@ def do_training_gail(
             observation_space=venv_chans_first.observation_space,
             action_space=venv_chans_first.action_space,
             encoder=load_encoder_or_policy(
+                encoder_path=encoder_path,
+                algo=algo,
+                encoder_kwargs=encoder_kwargs,
                 observation_space=venv_chans_first.observation_space,
                 freeze=_gail_should_freeze('disc')))
         trainer = GAIL(
