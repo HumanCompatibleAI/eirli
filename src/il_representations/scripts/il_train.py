@@ -268,6 +268,8 @@ def load_encoder_or_policy(*,
 
 @il_train_ex.capture
 def make_policy(*,
+                encoder_path,
+                policy_continue_path,
                 observation_space,
                 action_space,
                 ortho_init,
@@ -275,14 +277,19 @@ def make_policy(*,
                 postproc_arch,
                 freeze_pol_encoder,
                 encoder_kwargs,
+                algo,
                 lr_schedule=None,
                 print_policy_summary=True):
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
     encoder_or_policy = load_encoder_or_policy(
+        encoder_path=encoder_path,
+        policy_continue_path=policy_continue_path,
         observation_space=observation_space,
-        freeze=freeze_pol_encoder)
+        freeze=freeze_pol_encoder,
+        algo=algo,
+        encoder_kwargs=encoder_kwargs)
 
     if isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy):
         policy = encoder_or_policy
