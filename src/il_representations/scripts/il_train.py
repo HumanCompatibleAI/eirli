@@ -240,10 +240,9 @@ def default_config():
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
-                   device_name, final_pol_name, shuffle_buffer_size,
-                   log_start_batch, freeze_encoder, ortho_init,
-                   log_std_init, postproc_arch, encoder_path,
-                   policy_continue_path, algo, encoder_kwargs,
+                   device_name, shuffle_buffer_size, log_start_batch,
+                   freeze_encoder, ortho_init, log_std_init, postproc_arch,
+                   encoder_path, policy_continue_path, algo, encoder_kwargs,
                    print_policy_summary):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,

@@ -3,7 +3,6 @@ import torch as th
 from torch import nn
 
 import stable_baselines3.common.policies as sb3_pols
-from stable_baselines3.dqn import CnnPolicy
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.utils import freeze_params, print_policy_info
