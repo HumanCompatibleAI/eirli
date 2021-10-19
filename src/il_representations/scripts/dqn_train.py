@@ -177,9 +177,7 @@ def train(seed, torch_num_threads, n_trajs, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
-        # Load dataset without frame stacking (to save memory)
-        dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs,
-                                                  frame_stack=0)
+        dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs)
 
         final_path = do_training_dqn(
             dict_dataset=dict_dataset,
