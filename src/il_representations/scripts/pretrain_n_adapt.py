@@ -404,6 +404,9 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
             "all_experiment_rvs": [pretrain_rv, dqn_train_rv, il_test_rv],
             **il_test_rv["result"],
         })
+    else:
+        # this should never happen!
+        raise ValueError("il_train_ex_config and dqn_ex_config were both None")
 
 
 def run_repl_only_exp(*, rep_ex_config, env_cfg_config, env_data_config,
