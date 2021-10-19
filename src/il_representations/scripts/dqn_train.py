@@ -50,7 +50,8 @@ def default_config():
     )
     n_batches = 2000000
     batch_size = 256
-    augs = 'translate,erase,color_jitter_ex'
+    # augs = 'translate,erase,color_jitter_ex'
+    augs = None
     # The number of trajectories to sample.
     n_trajs = None
     # The number of transitions to sample.
@@ -81,6 +82,8 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
     observation_space = venv_chans_first.observation_space
     lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
+    policy_kwargs = {'optimizer_class': optimizer_class,
+                     'optimizer_kwargs': optimizer_kwargs}
     policy = make_policy(observation_space=observation_space,
                          action_space=venv_chans_first.action_space,
                          postproc_arch=postproc_arch,
@@ -88,8 +91,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                          policy_class=CnnPolicy,
                          encoder_path=encoder_path,
                          encoder_kwargs=encoder_kwargs,
-                         optimizer_class=optimizer_class,
-                         optimizer_kwargs=optimizer_kwargs,
+                         extra_policy_kwargs=policy_kwargs,
                          lr_schedule=lr_schedule).to(device)
 
     color_space = auto_env.load_color_space()
@@ -175,6 +177,7 @@ def train(seed, torch_num_threads, n_trajs, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
+        # Load dataset without frame stacking (to save memory)
         dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs,
                                                   frame_stack=0)
 
