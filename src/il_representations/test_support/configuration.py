@@ -77,6 +77,11 @@ FAST_IL_TRAIN_CONFIG = {
     'shuffle_buffer_size': 3,
 }
 
+FAST_DQN_TRAIN_CONFIG = {
+    'n_batches': 2,
+    'optimize_memory': False
+}
+
 REPL_SMOKE_TEST_CONFIG = {
     'batches_per_epoch': 2,
     'n_epochs': 1,
@@ -103,7 +108,7 @@ CHAIN_CONFIG = {
             'algo': tune.grid_search(['bc']),
             'freeze_encoder': tune.grid_search([False])
         },
-        'env_cfg': tune.grid_search([ENV_CFG_TEST_CONFIGS[0]]),
+        'env_cfg': tune.grid_search([ENV_CFG_TEST_CONFIGS[2]]),
     },
     'tune_run_kwargs': {
         'resources_per_trial': {
@@ -122,6 +127,10 @@ CHAIN_CONFIG = {
     'il_train': {
         'device_name': 'cpu',
         **FAST_IL_TRAIN_CONFIG,
+    },
+    'dqn_train': {
+        'device_name': 'cpu',
+        **FAST_DQN_TRAIN_CONFIG
     },
     'il_test': {
         'device_name': 'cpu',

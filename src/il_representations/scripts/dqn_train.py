@@ -98,6 +98,8 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
     dataset_length = len(dict_dataset['obs']) if n_trans is None else n_trans
     progress_df = pd.DataFrame()
 
+    assert venv_chans_first.num_envs == 1, "SB3's DQN implementation does \
+        not support multiple parallel environments."
     trainer = DQN(
         policy='CnnPolicy',
         env=venv_chans_first,
