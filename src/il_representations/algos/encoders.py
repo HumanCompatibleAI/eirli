@@ -405,7 +405,7 @@ class _FlexibleBasicCNNBlock(nn.Module):
         # final activation applied after skip conn
         self.final_activation = act_cls()
 
-    def forward(self, in_tensors):
+    def forward(self, in_tensors: torch.Tensor) -> torch.Tensor:
         latent_repr = self.convs(in_tensors)
         if self.use_skip:
             # non-learned skip connection (KISS)
@@ -446,9 +446,9 @@ def _flex_cnn_linear_layers(*, act_cls: Callable[[], nn.Module],
     return layers
 
 
-class FlexibleBasicCNN(nn.Module):
+class FlexibleCNN(nn.Module):
     """Flexible CNN class for experiments in neural network expressiveness."""
-    def __init__(self,
+    def __init__(self, *,
                  observation_space: spaces.Space,
                  representation_dim: int,
                  act_norm: NormTypes = NormTypes.BATCH_NORM,
@@ -501,7 +501,7 @@ class FlexibleBasicCNN(nn.Module):
         # output
         self.shared_network = nn.Sequential(*vision_layers, *fc_layers)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         warn_on_non_image_tensor(x)
         return self.shared_network(x)
 
@@ -594,6 +594,7 @@ NETWORK_SHORT_NAMES = {
     'BasicCNN': BasicCNN,
     'MAGICALCNN': MAGICALCNN,
     'Resnet18': Resnet18,
+    'FlexibleCNN': FlexibleCNN,
 }
 
 
