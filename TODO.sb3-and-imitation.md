@@ -36,5 +36,11 @@ For ILR:
 - Deal with the fact that [`DiscrimNet` no longer
   exists](https://github.com/HumanCompatibleAI/imitation/pull/354/files).
 
+---------
+
 Revision of SB3 that we used for experiments:
 `ad902dd5f9d4afeef347897cb04c48a19a659ca3`
+
+(A bunch of things have changed since then; I infer from the imitation logs that
+one of the biggest changes was moving to a local logger instead of a global one.
+Probably I will fix the breakage while upgrading imitation.)
