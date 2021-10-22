@@ -448,9 +448,10 @@ def _flex_cnn_linear_layers(*, act_cls: Callable[[], nn.Module],
 
 class FlexibleCNN(nn.Module):
     """Flexible CNN class for experiments in neural network expressiveness."""
-    def __init__(self, *,
+    def __init__(self,
                  observation_space: spaces.Space,
                  representation_dim: int,
+                 *,
                  act_norm: NormTypes = NormTypes.BATCH_NORM,
                  dropout_rate: float = 0.0,
                  spectral_norm: bool = False,

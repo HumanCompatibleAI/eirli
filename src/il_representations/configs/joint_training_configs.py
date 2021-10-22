@@ -1,6 +1,7 @@
 from il_representations.algos import (ActionPrediction, DynamicsPrediction,
                                       InverseDynamicsPrediction, SimCLR,
                                       TemporalCPC, VariationalAutoencoder)
+from il_representations.algos.encoders import FlexibleCNN
 
 
 def make_jt_configs(train_ex):
@@ -231,6 +232,16 @@ def make_jt_configs(train_ex):
         del _
 
     @train_ex.named_config
+    def bc_data_10demos():
+        """Use 10 demos for IL."""
+        bc = {'dataset_configs': [
+            {'type': 'demos', 'env_data': {'wds_n_trajs': 10}},
+        ]}
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
     def bc_data_5demos():
         """Use 5 demos for IL."""
         bc = {'dataset_configs': [
@@ -239,6 +250,32 @@ def make_jt_configs(train_ex):
 
         _ = locals()
         del _
+
+    @train_ex.named_config
+    def bc_data_3demos():
+        """Use 3 demos for IL."""
+        bc = {'dataset_configs': [
+            {'type': 'demos', 'env_data': {'wds_n_trajs': 3}},
+        ]}
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def bc_data_1demos():
+        """Use one demo for IL."""
+        bc = {'dataset_configs': [
+            {'type': 'demos', 'env_data': {'wds_n_trajs': 1}},
+        ]}
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def arch_use_flexcnn():
+        """Use FlexibleCNN instead of the default."""
+        obs_encoder_cls = FlexibleCNN
+        locals()
 
     def inner_scope():
         for task_name in [

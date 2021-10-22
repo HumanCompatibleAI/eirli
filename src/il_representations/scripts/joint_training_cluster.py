@@ -4,8 +4,8 @@
 import argparse
 import faulthandler
 import logging
-import signal
 import os
+import signal
 
 from docopt import docopt
 import ray
