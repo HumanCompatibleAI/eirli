@@ -326,6 +326,24 @@ class ActivationTypes(str, enum.Enum):
     TANH = 'Tanh'
 
 
+class _ClipImageEdges(nn.Module):
+    """Module that removes a total of border_size pixels from the top/bottom of
+    each column, and from the left/right of each row (e.g. border_size=2 means
+    it takes one pixel off around the entire edge of the image)."""
+    def __init__(self, border_size):
+        super().__init__()
+        self.border_size = border_size
+
+    def forward(self, x):
+        start = self.border_size // 2
+        end_off = self.border_size - start
+        h, w = x.shape[2:]
+        rv = x[:, :, start:h - end_off, start:w - end_off]
+        req_shape = x.shape[:2] + (h - self.border_size, w - self.border_size)
+        assert rv.shape == req_shape, (rv.shape, req_shape)
+        return rv
+
+
 class _FlexibleBasicCNNBlock(nn.Module):
     """Custom CN block designed for flexibility. Easy to turn on/off skip
     connections, choose norm types, change width, change depth, etc."""
@@ -398,6 +416,17 @@ class _FlexibleBasicCNNBlock(nn.Module):
                 # put it after the skip connection (if applicable)
                 conv_layers.append(act_cls())
 
+        if use_skip:
+            # learn the skip connection
+            self.skip_conv = nn.Sequential(
+                # clipping the borders of the image by this much ensures that
+                # output of the 1x1 skip convolution is going to be the same as
+                # the output of the first-layer convolution in this network
+                _ClipImageEdges(kernel_size - 1),
+                nn.Conv2d( in_chans, out_chans, kernel_size=1, stride=stride,
+                    padding='valid', bias=False),
+            )
+
         # these attributes will be used during forward pass
         self.convs = nn.Sequential(*conv_layers)
         self.stride = stride
@@ -408,8 +437,13 @@ class _FlexibleBasicCNNBlock(nn.Module):
     def forward(self, in_tensors: torch.Tensor) -> torch.Tensor:
         latent_repr = self.convs(in_tensors)
         if self.use_skip:
-            # non-learned skip connection (KISS)
-            latent_repr += in_tensors[:, :, ::self.stride, ::self.stride]
+            # learned skip connection produced by 1x1 convolution
+            skip_values = self.skip_conv(in_tensors)
+            assert latent_repr.shape == skip_values.shape, \
+                f"latent representation shape {latent_repr.shape} does not " \
+                f"match skip value shape {skip_values.shape}, stride is " \
+                f"{self.stride}"
+            latent_repr += skip_values
         return self.final_activation(latent_repr)
 
 
@@ -611,7 +645,8 @@ def get_obs_encoder_cls(obs_encoder_cls, encoder_kwargs):
 
     # Ensure the specified kwargs are in the encoder's parameters
     for key in encoder_kwargs.keys():
-        assert key in inspect.signature(cls).parameters.keys()
+        assert key in inspect.signature(cls).parameters.keys(), \
+            f"key {key!r} is missing from kwargs of {cls}"
 
     return cls
 

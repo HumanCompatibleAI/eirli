@@ -12,36 +12,37 @@ submit_job() {
     DISPLAY=:420 python src/il_representations/scripts/joint_training_cluster.py \
         --ray-address=localhost:42000 --nseeds=3 --ray-ngpus=0.1 n_batches=1000000 \
         env_use_dm_control env_cfg.task_name=cheetah-run repl_noid arch_use_flexcnn \
-        bc.ent_weight=1e-7 bc.l2_weight=1e-7 bc_data_3demos "$@"
+        bc.ent_weight=1e-7 bc.l2_weight=1e-7 bc_data_3demos "$@" &
 }
-
-# baseline run
-submit_job exp_ident="baseline_run"
 
 # "super" run with wide/deep network, dropout, skip connections, batch norm,
 # spectral norm, GELU activations, batch size 256
 submit_job exp_ident="super_run" bc.batch_size=256 \
     obs_encoder_kwargs.{"depth_factor=4","width_factor=4","activation=GELU"} \
     obs_encoder_kwargs.{"coord_conv=True","skip_conns=True"} \
-    obs_encoder_kwargs.{"spectral_norm=True","dropout=0.1","act_norm=BATCH_NORM"}
+    obs_encoder_kwargs.{"spectral_norm=True","dropout_rate=0.1"} \
+    obs_encoder_kwargs."act_norm=BATCH_NORM"
+
+# baseline run
+submit_job exp_ident="baseline_run"
 
 # modifying width (default is 2)
 for width_factor in 1 3 4; do
-    submit_job exp_ident="width_${width_factor}" \
+    submit_job exp_ident="width_factor_${width_factor}" \
         "obs_encoder_kwargs.width_factor=${width_factor}"
 done
 unset width_factor
 
 # modifying depth (default is 2)
 for depth_factor in 1 3 4; do
-    submit_job exp_ident="depth_${depth_factor}" \
+    submit_job exp_ident="depth_factor_${depth_factor}" \
         "obs_encoder_kwargs.depth_factor=${depth_factor}"
 done
 unset depth_factor
 
 # modifying dropout rate (default is 0)
 for dropout_rate in 0.1 0.5; do
-    submit_job exp_ident="dropout_${dropout_rate}" \
+    submit_job exp_ident="dropout_rate_${dropout_rate}" \
         "obs_encoder_kwargs.dropout_rate=${dropout_rate}"
 done
 unset dropout_rate
@@ -90,3 +91,5 @@ for batch_size in 16 256 1024; do
         "bc.batch_size=$batch_size"
 done
 unset batch_size
+
+wait
