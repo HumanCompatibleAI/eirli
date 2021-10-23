@@ -23,8 +23,11 @@ import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
+from il_representations.data.read_dataset import (SubdatasetExtractor,
+                                                  datasets_to_loader)
 from il_representations.scripts.policy_utils import make_policy, ModelSaver
-from il_representations.utils import augmenter_from_spec
+from il_representations.utils import augmenter_from_spec, repeat_chain_non_empty
+
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 dqn_train_ex = Experiment(
@@ -79,7 +82,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                     device_name, freeze_encoder, postproc_arch, encoder_path,
                     encoder_kwargs, nominal_num_epochs, save_every_n_batches,
                     optimizer_class, optimizer_kwargs, learning_rate,
-                    batch_size, n_trans):
+                    batch_size, n_trajs, n_trans, dataset_configs):
     observation_space = venv_chans_first.observation_space
     lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
@@ -114,14 +117,24 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
 
     # Push data into DQN agent's memory.
     print('Loading data...')
+    datasets, _ = auto_env.load_wds_datasets(configs=dataset_configs)
+    subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs,
+                                               n_trans=n_trans)
+    dataloader = datasets_to_loader(
+                datasets, batch_size=1,
+                nominal_length=n_batches,
+                preprocessors=[subdataset_extractor])
+    data_iter = repeat_chain_non_empty(dataloader)
+
     for idx in range(dataset_length):
         if idx % 1000 == 0:
             print(f'Loading {idx}/{dataset_length}...')
-        obs, next_obs, action, reward, done = dict_dataset['obs'][idx], \
-                                              dict_dataset['next_obs'][idx], \
-                                              dict_dataset['acts'][idx], \
-                                              dict_dataset['rews'][idx], \
-                                              dict_dataset['dones'][idx]
+        batch = next(data_iter)
+        obs, next_obs, action, reward, done = batch['obs'], \
+                                              batch['next_obs'], \
+                                              batch['acts'], \
+                                              batch['rews'], \
+                                              batch['dones']
         # Perform image augmentation over images stored into the replay buffer.
         # Note that this will change the image dtype from int to float (4X GPU
         # memory).
