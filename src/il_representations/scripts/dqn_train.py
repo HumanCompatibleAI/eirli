@@ -9,6 +9,7 @@ import os
 import readline  # noqa: F401
 import signal
 import torch as th
+import numpy as np
 import pandas as pd
 from torch.optim.adam import Adam
 from sacred import Experiment
@@ -106,7 +107,8 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
         device=device_name,
         buffer_size=dataset_length,
         batch_size=batch_size,
-        optimize_memory_usage=True
+        optimize_memory_usage=True,
+        return_train_info=True
     )
     trainer.policy = policy
 
@@ -159,7 +161,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
         model_saver(n_update, policy=policy)
         progress_df = progress_df.append(
             pd.DataFrame({'n_update': n_update,
-                          'loss': loss},
+                          'loss': np.average(loss)},
                          index=[n_update]).set_index('n_update'))
         progress_df.to_csv(os.path.join(out_dir, 'progress.csv'))
 

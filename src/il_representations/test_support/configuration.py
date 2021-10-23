@@ -79,6 +79,7 @@ FAST_IL_TRAIN_CONFIG = {
 
 FAST_DQN_TRAIN_CONFIG = {
     'n_batches': 2,
+    'nominal_num_epochs': 1,
     'optimize_memory': False
 }
 
@@ -116,6 +117,7 @@ CHAIN_CONFIG = {
             'gpu': 0,
         },
         'num_samples': 1,
+        'max_failures': 0
     },
     'ray_init_kwargs': {
         # Ray has been mysteriously complaining about the amount of memory
