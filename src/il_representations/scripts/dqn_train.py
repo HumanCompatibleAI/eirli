@@ -75,14 +75,16 @@ def default_config():
     # optimizer_kwarg, but through lr_schedule
     optimizer_kwargs = dict()
     optimize_memory = True
+    memory_buffer_size = 50000
 
 
 @dqn_train_ex.capture
-def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
+def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
                     device_name, freeze_encoder, postproc_arch, encoder_path,
                     encoder_kwargs, nominal_num_epochs, save_every_n_batches,
                     optimizer_class, optimizer_kwargs, learning_rate,
-                    batch_size, n_trajs, n_trans, dataset_configs):
+                    batch_size, n_trajs, n_trans, dataset_configs,
+                    memory_buffer_size):
     observation_space = venv_chans_first.observation_space
     lr_schedule = lambda _: learning_rate
     device = get_device("auto" if device_name is None else device_name)
@@ -99,7 +101,6 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                          lr_schedule=lr_schedule).to(device)
 
     color_space = auto_env.load_color_space()
-    dataset_length = len(dict_dataset['obs']) if n_trans is None else n_trans
     progress_df = pd.DataFrame()
 
     assert venv_chans_first.num_envs == 1, "SB3's DQN implementation does \
@@ -108,7 +109,7 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
         policy='CnnPolicy',
         env=venv_chans_first,
         device=device_name,
-        buffer_size=dataset_length,
+        buffer_size=memory_buffer_size,
         batch_size=batch_size,
         optimize_memory_usage=True,
         return_train_info=True
@@ -122,13 +123,13 @@ def do_training_dqn(venv_chans_first, dict_dataset, out_dir, augs, n_batches,
                                                n_trans=n_trans)
     dataloader = datasets_to_loader(
                 datasets, batch_size=1,
-                nominal_length=n_batches,
+                nominal_length=memory_buffer_size,
                 preprocessors=[subdataset_extractor])
     data_iter = repeat_chain_non_empty(dataloader)
 
-    for idx in range(dataset_length):
+    for idx in range(memory_buffer_size):
         if idx % 1000 == 0:
-            print(f'Loading {idx}/{dataset_length}...')
+            print(f'Loading {idx}/{memory_buffer_size}...')
         batch = next(data_iter)
         obs, next_obs, action, reward, done = batch['obs'], \
                                               batch['next_obs'], \
@@ -194,10 +195,7 @@ def train(seed, torch_num_threads, n_trajs, _config):
         th.set_num_threads(torch_num_threads)
 
     with contextlib.closing(auto_env.load_vec_env()) as venv:
-        dict_dataset = auto_env.load_dict_dataset(n_traj=n_trajs)
-
         final_path = do_training_dqn(
-            dict_dataset=dict_dataset,
             venv_chans_first=venv,
             out_dir=log_dir)
 
