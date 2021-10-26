@@ -468,7 +468,7 @@ def make_chain_configs(experiment_obj):
         repl = {
             'algo': 'TemporalCPC',
             'algo_params': {
-                'target_pair_constructor_kwargs':{
+                'target_pair_constructor_kwargs': {
                     'temporal_offset': 4
                 }
             }
