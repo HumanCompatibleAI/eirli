@@ -6,19 +6,20 @@ import os
 
 from il_representations.algos.augmenters import (AugmentContextAndExtraContext,
                                                  AugmentContextAndTarget,
+                                                 AugmentContextOnly,
                                                  NoAugmentation)
 from il_representations.algos.batch_extenders import (IdentityBatchExtender,
                                                       QueueBatchExtender)
 from il_representations.algos.decoders import (
     ActionConditionedVectorDecoder, ActionPredictionHead,
     AsymmetricProjectionHead, BYOLProjectionHead,
-    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead, NoOp,
-    PixelDecoder, SymmetricProjectionHead)
+    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead,
+    MomentumProjectionHead, NoOp, PixelDecoder, SymmetricProjectionHead)
 from il_representations.algos.encoders import (
     ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, BaseEncoder,
     InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder, RecurrentEncoder,
     TargetStoringActionEncoder, VAEEncoder, infer_action_shape_info)
-from il_representations.algos.losses import (AELoss,
+from il_representations.algos.losses import (AELoss, AsymmetricContrastiveLoss,
                                              BatchAsymmetricContrastiveLoss,
                                              CEBLoss, CrossEntropyLoss,
                                              GaussianPriorLoss, MSELoss,

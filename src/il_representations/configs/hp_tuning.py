@@ -1,6 +1,6 @@
 import collections
 
-from torch.optim import lr_scheduler, SGD
+from torch.optim import lr_scheduler, SGD, Adam
 
 from il_representations.algos import augmenters, batch_extenders, encoders, losses, pair_constructors
 from il_representations.script_utils import StagesToRun
@@ -509,7 +509,7 @@ def make_hp_tuning_configs(experiment_obj):
         dqn_train = {
             # starting with relatively small n_batches so we get quick
             # iteration
-            'n_batches': 1000000,
+            'n_batches': 50000,
             'batch_size': 256,
             # 5 steps down, multiply by gamma each time
             'optimizer_class': Adam,
@@ -520,25 +520,25 @@ def make_hp_tuning_configs(experiment_obj):
             'n_envs': 10,
         }
         skopt_space = collections.OrderedDict([
-            ('dqn_train:learning_rate', (1e-4, 2e-2, 'log-uniform')),
-            # ('dqn_train:augs:translate', [True, False]),
+            ('dqn_train:learning_rate', (1e-4, 1e-2, 'log-uniform')),
+            ('dqn_train:augs:translate', [True, False]),
             # ('dqn_train:augs:rotate', [True, False]),
-            # ('dqn_train:augs:color_jitter_mid', [True, False]),
-            # ('dqn_train:augs:flip_lr', [True, False]),
-            # ('dqn_train:augs:noise', [True, False]),
-            # ('dqn_train:augs:erase', [True, False]),
-            # ('dqn_train:augs:gaussian_blur', [True, False]),
+            ('dqn_train:augs:color_jitter_mid', [True, False]),
+            ('dqn_train:augs:flip_lr', [True, False]),
+            ('dqn_train:augs:noise', [True, False]),
+            ('dqn_train:augs:erase', [True, False]),
+            ('dqn_train:augs:gaussian_blur', [True, False]),
         ])
         skopt_ref_configs = [
             collections.OrderedDict([
                 ('dqn_train:learning_rate', 3e-4),
-                # ('dqn_train:augs:translate', True),
+                ('dqn_train:augs:translate', True),
                 # ('dqn_train:augs:rotate', True),
-                # ('dqn_train:augs:color_jitter_mid', True),
-                # ('dqn_train:augs:flip_lr', False),
-                # ('dqn_train:augs:noise', True),
-                # ('dqn_train:augs:erase', True),
-                # ('dqn_train:augs:gaussian_blur', False),
+                ('dqn_train:augs:color_jitter_mid', True),
+                ('dqn_train:augs:flip_lr', False),
+                ('dqn_train:augs:noise', True),
+                ('dqn_train:augs:erase', True),
+                ('dqn_train:augs:gaussian_blur', False),
             ]),
         ]
 

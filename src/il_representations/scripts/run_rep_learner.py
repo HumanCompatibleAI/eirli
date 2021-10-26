@@ -76,6 +76,10 @@ def default_config():
 
     # Set number of trajectories needed in the dataset. If None, use the whole dataset.
     n_trajs = None
+    # The number of transitions to sample.
+    n_trans = None
+    assert sum([n_config is None for n_config in [n_trajs, n_trans]]) != 0, \
+    'Specify one or none of n_traj and n_trans, not both.'
 
     # how often should we save repL batch data?
     # (set to None to disable completely)
@@ -118,7 +122,7 @@ make_run_rep_learner_configs(represent_ex)
 def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask,
         debug_return_model, optimizer_cls, optimizer_kwargs, scheduler_cls,
-        scheduler_kwargs, log_interval, save_interval, n_trajs, _config):
+        scheduler_kwargs, log_interval, save_interval, n_trajs, n_trans, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
 
@@ -190,6 +194,7 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         batches_per_epoch=batches_per_epoch,
         n_epochs=n_epochs,
         n_trajs=n_trajs,
+        n_trans=n_trans,
         callbacks=repl_callbacks,
         log_dir=log_dir,
         end_callbacks=repl_end_callbacks,

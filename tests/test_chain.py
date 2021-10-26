@@ -55,6 +55,12 @@ def test_individual_stages(chain_ex, file_observer, stages):
         = tune.grid_search([algos.SimCLR])
     # pytype: enable=unsupported-operands
     chain_config['stages_to_run'] = stages
+    if 'RL' not in chain_config['stages_to_run']:
+        return
+    # MAGICAL demos don't currently have reward information - unsuitable for RL.
+    if 'RL' in chain_config['stages_to_run'] and \
+        chain_config['spec']['env_cfg']['grid_search'][0]['benchmark_name'] == 'magical':
+        return
     try:
         chain_ex.run(config_updates=chain_config)
     finally:

@@ -386,6 +386,20 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_rl_only():
+        stages_to_run = StagesToRun.RL_ONLY
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_rl():
+        stages_to_run = StagesToRun.REPL_AND_RL
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_repl_moco():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
@@ -408,6 +422,16 @@ def make_chain_configs(experiment_obj):
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'SimCLR',
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_dynamics():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'DynamicsPrediction',
         }
 
         _ = locals()
@@ -438,6 +462,20 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
+    @experiment_obj.named_config
+    def cfg_repl_tcpc4():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 4
+                }
+            }
+        }
+
+        _ = locals()
+        del _
 
     @experiment_obj.named_config
     def cfg_data_repl_demos():
@@ -700,6 +738,16 @@ def make_chain_configs(experiment_obj):
             'bc': {
                 'n_batches': 15000,
             },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
+    def cfg_dqn_nofreeze():
+        dqn_train = {
             'freeze_encoder': False,
         }
 

@@ -192,6 +192,10 @@ def do_final_eval(*,
 
                 video_writer.close()
 
+        # Hyperparameter tuning requires a return_mean in final_stats_dict.
+        # Here we use the train_level return as the return_mean.
+        final_stats_dict['return_mean'] = final_stats_dict['train_level']['return_mean']
+
     else:
         raise NotImplementedError("policy evaluation on benchmark_name="
                                   f"{env_cfg['benchmark_name']!r} is not "
