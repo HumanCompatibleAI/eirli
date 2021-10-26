@@ -1,26 +1,36 @@
 """This package contains all of our representation learning algorithms, along
 with the support code needed to define new algorithms."""
-from il_representations.algos.representation_learner import RepresentationLearner, DEFAULT_HARDCODED_PARAMS
-from il_representations.algos.encoders import MomentumEncoder, InverseDynamicsEncoder, TargetStoringActionEncoder, \
-    RecurrentEncoder, BaseEncoder, VAEEncoder, JigsawEncoder, ActionEncodingEncoder, infer_action_shape_info, \
-    ActionEncodingInverseDynamicsEncoder
-from il_representations.algos.decoders import NoOp, MomentumProjectionHead, \
-    BYOLProjectionHead, ActionConditionedVectorDecoder, ContrastiveInverseDynamicsConcatenationHead, \
-    ActionPredictionHead, PixelDecoder, SymmetricProjectionHead, AsymmetricProjectionHead, JigsawProjectionHead
-from il_representations.algos.losses import SymmetricContrastiveLoss, AsymmetricContrastiveLoss, MSELoss, CEBLoss, \
-    QueueAsymmetricContrastiveLoss, BatchAsymmetricContrastiveLoss, NegativeLogLikelihood, VAELoss, GaussianPriorLoss, \
-    AELoss, CrossEntropyLoss
-
-from il_representations.algos.augmenters import AugmentContextAndTarget, AugmentContextOnly, NoAugmentation, \
-    AugmentContextAndExtraContext
-from il_representations.algos.pair_constructors import IdentityPairConstructor, TemporalOffsetPairConstructor, \
-    JigsawPairConstructor
-from il_representations.algos.batch_extenders import QueueBatchExtender, IdentityBatchExtender
-from il_representations.algos.optimizers import LARS
-from il_representations.algos.representation_learner import get_default_args
+import glob
 import logging
 import os
-import glob
+
+from il_representations.algos.augmenters import (AugmentContextAndExtraContext,
+                                                 AugmentContextAndTarget,
+                                                 AugmentContextOnly,
+                                                 NoAugmentation)
+from il_representations.algos.batch_extenders import (IdentityBatchExtender,
+                                                      QueueBatchExtender)
+from il_representations.algos.decoders import (
+    ActionConditionedVectorDecoder, ActionPredictionHead,
+    AsymmetricProjectionHead, BYOLProjectionHead,
+    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead,
+    MomentumProjectionHead, NoOp, PixelDecoder, SymmetricProjectionHead)
+from il_representations.algos.encoders import (
+    ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, BaseEncoder,
+    InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder, RecurrentEncoder,
+    TargetStoringActionEncoder, VAEEncoder, infer_action_shape_info)
+from il_representations.algos.losses import (AELoss, AsymmetricContrastiveLoss,
+                                             BatchAsymmetricContrastiveLoss,
+                                             CEBLoss, CrossEntropyLoss,
+                                             GaussianPriorLoss, MSELoss,
+                                             NegativeLogLikelihood,
+                                             QueueAsymmetricContrastiveLoss,
+                                             SymmetricContrastiveLoss, VAELoss)
+from il_representations.algos.pair_constructors import (
+    IdentityPairConstructor, JigsawPairConstructor,
+    TemporalOffsetPairConstructor)
+from il_representations.algos.representation_learner import (
+    RepresentationLearner, get_default_args)
 
 
 def validate_and_update_kwargs(user_kwargs, algo_hardcoded_kwargs):
