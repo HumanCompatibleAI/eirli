@@ -417,6 +417,7 @@ def make_chain_configs(experiment_obj):
             'algo': 'Jigsaw',
             'algo_params': {'batch_size': 64}
         }
+        locals()
 
     @experiment_obj.named_config
     def cfg_repl_simclr():
