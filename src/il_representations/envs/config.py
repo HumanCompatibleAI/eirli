@@ -7,7 +7,7 @@ import os
 from sacred import Ingredient
 
 ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft",
-                       "procgen", "d4rl"}
+                       "procgen"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
