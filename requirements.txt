@@ -51,5 +51,8 @@ git+git://github.com/HumanCompatibleAI/stable-baselines3@953c1afbf71b505fa6a285c
 
 # environments
 magical-il~=0.0.1a4
-dm_control~=0.0.319497192
+# 0.0.319497192 was the original version of dm_control that we used. New
+# versions require MuJoCo 200 rather than MuJoCo 210 (which probably introduces
+# incompatibilities with our saved demonstration files).
+dm_control==0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
