@@ -22,7 +22,9 @@ from skvideo.io import FFmpegWriter
 import torch as th
 from torchsummary import summary
 import torchvision.utils as vutils
+import webdataset as wds
 
+WEBDATASET_SAVE_KEY = "obs.pyd"
 
 class ForkedPdb(pdb.Pdb):
     """A Pdb subclass that may be used
@@ -36,6 +38,30 @@ class ForkedPdb(pdb.Pdb):
             pdb.Pdb.interaction(self, *args, **kwargs)
         finally:
             sys.stdin = _stdin
+
+
+def convert_to_simple_webdataset(dataset, file_out_name, file_out_path):
+    full_wds_url = os.path.join(file_out_path, f"{file_out_name}.tar")
+    dirname = os.path.dirname(full_wds_url)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+    with wds.TarWriter(full_wds_url) as sink:
+        for index in range(len(dataset)):
+            print(f"{index:6d}", end="\r", flush=True, file=sys.stderr)
+            sink.write({
+                    "__key__": "sample%06d" % index,
+                    WEBDATASET_SAVE_KEY: dataset[index]
+                })
+    return full_wds_url
+
+
+def _unpickle_data(sample):
+    result = pickle.loads(sample[WEBDATASET_SAVE_KEY])
+    return result
+
+
+def load_simple_webdataset(wds_url):
+    return wds.Dataset(wds_url).map(_unpickle_data)
 
 
 def recursively_sort(element):
@@ -183,7 +209,7 @@ class TensorFrameWriter:
         self.color_space = color_space
         ffmpeg_out_config = {
             '-r': str(fps),
-            '-vcodec': 'libx264',
+            '-vcodec': 'h264',
             '-pix_fmt': 'yuv420p',
         }
         if config is not None:
@@ -365,6 +391,12 @@ def up(p):
     return os.path.normpath(os.path.join(p, ".."))
 
 
+class IdentityModule(th.nn.Module):
+    """Parameter-free Torch module which passes through input unchanged."""
+    def forward(self, x):
+        return x
+
+
 def augmenter_from_spec(spec, color_space):
     """Construct an image augmentation module from an augmenter spec, expressed
     as either a string of comma-separated augmenter names, or a dict of kwargs
@@ -373,6 +405,11 @@ def augmenter_from_spec(spec, color_space):
         return StandardAugmentations.from_string_spec(spec, color_space)
     elif isinstance(spec, dict):
         return StandardAugmentations(**spec, stack_color_space=color_space)
+    elif spec is None:
+        # FIXME(sam): really this should return None, and I should fix callers
+        # to reflect that. Right now the repL code does not handle the case
+        # where this returns None.
+        return IdentityModule()
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
@@ -462,10 +499,10 @@ def weight_grad_norms(params, *, norm_type=2):
         params: list of Torch parameters to compute norm of
         norm_type: order of the norm (1, 2, etc.).
 
-    Returns:
-        gradient_norm: norm of the gradient of the policy network (stored in
-            each parameter's .grad attribute)
-        weight_norm: norm of the weights of the policy network
+    Returns: Tuple of `(gradient_norm, weight_norm)`, where:
+        - gradient_norm is the norm of the gradient of the policy network
+          (stored in each parameter's .grad attribute)
+        - weight_norm is the norm of the weights of the policy network
     """
     norm_type = float(norm_type)
 
@@ -570,3 +607,11 @@ def repeat_chain_non_empty(iterable):
             yielded_item = True
         if not yielded_item:
             raise EmptyIteratorException(f"iterable {iterable} was empty")
+
+
+def get_policy_nupdate(policy_path):
+    match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
+                            policy_path)
+    assert match_result is not None, r'policy_path does not fit pattern' \
+                                     r'.*policy_(?P<n_update>\d+)_batches.pt'
+    return match_result.group('n_update')

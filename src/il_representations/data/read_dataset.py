@@ -1,9 +1,9 @@
 """Tools for reading datasets stored in the webdataset format."""
 
+import logging
 import os
 import pickle
 import warnings
-import logging
 
 import numpy as np
 from torch.utils.data import DataLoader, IterableDataset
@@ -119,7 +119,7 @@ class SubdatasetExtractor:
         for step_dict in data_iter:
             yield step_dict
 
-            if step_dict['dones']:
+            if step_dict.get('dones', False):
                 trajectory_ind += 1
 
             if trajectory_ind == self.n_trajs:
@@ -136,9 +136,7 @@ def strip_extensions(dataset):
         # (this is applied by default, but can disappear if you override
         # initial_pipeline)
         assert isinstance(item, dict), type(item)
-        new_item = {
-            k.split('.', 1)[0]: v for k, v in item.items()
-        }
+        new_item = {k.split('.', 1)[0]: v for k, v in item.items()}
         yield new_item
 
 
@@ -157,7 +155,7 @@ def load_ilr_datasets(file_paths):
 def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
                        shuffle=True, shuffle_buffer_size=1024, max_workers=0,
                        preprocessors=(), drop_last=True, collate_fn=None):
-    """Turn a sequence of webdataset `Dataset`s into a single Torch data
+    """Turn a sequence of webdataset datasets into a single Torch data
     loader that mixes the datasets equally.
 
     Args:
@@ -173,16 +171,15 @@ def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
             samples, after applying preprocessors but before forming batches?
         shuffle_buffer_size (int): size of the intermediate buffer to use for
             shuffling.
-        max_workers (int): number of workers to use for data loader.
         preprocessors ([fn]): a list of preprocessors which will be applied to
             each dataset using `.pipe()`. Note that these preprocessors get to
             see samples in the order they were written to disk, which can be
             useful for things like target pair construction.
 
-    Returns:
-        data_loader (torch.DataLoader): a Torch DataLoader that returns batches
-            of the required size, with elements drawn with equal probability
-            from all constituent datasets.
+    Returns
+        torch.DataLoader: a Torch DataLoader that returns batches of the
+            required size, with elements drawn with equal probability from all
+            constituent datasets.
     """
 
     # For each single-task dataset in the `datasets` list, we first apply a

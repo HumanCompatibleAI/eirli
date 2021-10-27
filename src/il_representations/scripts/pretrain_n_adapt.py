@@ -102,10 +102,14 @@ def expand_dict_keys(config_dict):
     dictionaries for configuration. To emulate nested dictionaries, we use a
     plain dictionary with keys of the form "level1:level2:…". . The colons are
     then separated out by this function into a nested dict (e.g. {'level1':
-    {'level2': …}}). Example:
+    {'level2': …}}).
 
+    Example:
+
+    ```
     >>> expand_dict_keys({'x:y': 42, 'z': 4, 'x:u:v': 5, 'w': {'s:t': 99}})
     {'x': {'y': 42, 'u': {'v': 5}}, 'z': 4, 'w': {'s': {'t': 99}}}
+    ```
     """
     dict_type = type(config_dict)
     new_dict = dict_type()
@@ -130,17 +134,16 @@ def expand_dict_keys(config_dict):
 
 
 def run_single_exp(merged_config, log_dir, exp_name):
-    """
-    Run a specified experiment. We could not pass each Sacred experiment in
+    """Run a specified experiment. We could not pass each Sacred experiment in
     because they are not pickle serializable, which is not supported by Ray
     (when running this as a remote function).
 
-    params:
+    Args:
         merged_config: The config that should be used in the sub-experiment;
                        formed by calling merge_configs()
         log_dir: The log directory of current chain experiment.
-        exp_name: Specify the experiment type in ['repl', 'il_train',
-            'il_test']
+        exp_name: Specify the experiment type in `['repl', 'il_train',
+            'il_test']`.
     """
     # we need to run the workaround in each raylet, so we do it at the start of
     # run_single_exp
@@ -198,17 +201,18 @@ def relative_symlink(src, dst):
 
 def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
                        config_hash, seed, config_path=None):
-    """
-    A utility function for taking a trained repl encoder and symlinking it, with appropriate
-    searchable directory name, to the repl run directory
+    """A utility function for taking a trained repl encoder and symlinking it,
+    with appropriate searchable directory name, to the repl run directory
 
-    :param repl_encoder_path: A path to an encoder checkpoint file. Assumed to be within a /checkpoints dir
-    within a run of the `repl` experiment
-    :param repl_directory_dir: The directory where the symlinked listing of repl encoder should be stored
-    :param config_hash: The hash identifying the config attached to this repl run
-    :param seed: The seed for this repl run
-    :param config_path: The path to the config file for this repl run. If None, will try to search relative to
-                        repl_encoder_path
+    Args:
+        repl_encoder_path: A path to an encoder checkpoint file. Assumed to be
+            within a /checkpoints dir within a run of the `repl` experiment
+        repl_directory_dir: The directory where the symlinked listing of repl
+            encoder should be stored
+        config_hash: The hash identifying the config attached to this repl run
+        seed: The seed for this repl run
+        config_path: The path to the config file for this repl run. If None,
+            will try to search relative to repl_encoder_path
     """
     if config_path is None:
         config_path = os.path.join(up(up(up(repl_encoder_path))), 'config.json')
@@ -221,12 +225,8 @@ def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
 
 
 def get_repl_dir(log_dir):
-    """
-    A utility function for returning a repl directory location relative to logdir,
-    and creating one if it does not exist
-    :param log_dir:
-    :return:
-    """
+    """A utility function for returning a repl directory location relative to
+    logdir, and creating one if it does not exist."""
     repl_dir = os.path.join(up(up(log_dir)), 'all_repl')
     if not os.path.exists(repl_dir):
         os.makedirs(repl_dir)
@@ -251,11 +251,10 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
                     env_cfg_config, env_data_config, venv_opts_config,
                     reuse_repl, repl_encoder_path, full_run_start_time,
                     log_dir):
-    """
-    Run representation learning, imitation learning's training and testing
+    """Run representation learning, imitation learning's training and testing
     sequentially.
 
-    Params:
+    Args:
         rep_ex_config: Config of represent_ex. It's the default config plus any
             modifications we might have made in an macro_experiment config
             update.
@@ -354,13 +353,14 @@ def run_end2end_exp(*, rep_ex_config, il_train_ex_config, il_test_ex_config,
         },
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir, 'il_train')
+    il_train_model_path = il_train_rv['result']['model_path']
 
     # Run il test
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_rv['result']['model_path'],
+            'policy_path': il_train_model_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },
@@ -422,12 +422,12 @@ def run_il_only_exp(*, il_train_ex_config, il_test_ex_config, env_cfg_config,
     )
     il_train_rv = run_single_exp(merged_il_train_config, log_dir,
                                  'il_train')
-
+    il_policy_path = il_train_rv['result']['model_path']
     merged_il_test_config = update(
         {'seed': rng.randint(1 << 31)},
         il_test_ex_config,
         {
-            'policy_path': il_train_rv['result']['model_path'],
+            'policy_path': il_policy_path,
             'env_cfg': env_cfg_config,
             'venv_opts': venv_opts_config,
         },

@@ -68,7 +68,8 @@ def get_sequential_from_architecture(architecture, representation_dim, projectio
         layers.append(nn.BatchNorm1d(num_features=layer_def['output_dim']))
         input_dim = layer_def['output_dim']
     layers.append(nn.Linear(input_dim, projection_dim))
-    return nn.Sequential(*layers)
+    network = nn.Sequential(*layers)
+    return network
 
 
 class LossDecoder(nn.Module):
@@ -80,21 +81,22 @@ class LossDecoder(nn.Module):
         can involve projections either into a learned metric space
         (for contrastive losses) or into a pixel space (for reconstruction losses)
 
-        :param representation_dim: The dimension of the representation that the
-        decoder will take as input
+        Args:
+            representation_dim: The dimension of the representation that the
+                decoder will take as input
 
-        :param projection_shape: The dimension of the projection the decoder will
-        produce as output
+            projection_shape: The dimension of the projection the decoder will
+                produce as output
 
-        :param sample: A binary flag indicating whether the decoder should take as
-        input the mean of the encoded representation distribution (sample=False),
-        or a sample from that distribution (sample=True)
+            sample: A binary flag indicating whether the decoder should take as
+                input the mean of the encoded representation distribution (sample=False),
+                or a sample from that distribution (sample=True)
 
-        :param learn_scale: A binary flag indicating whether the decoder should
-        learn a parametric standard deviation for the decoded distribution
-        (learn_scale=True), or whether the standard deviation of the encoded
-        should be used as the standard deviation of the decoded
-        distribution (learn_scale=False)
+            learn_scale: A binary flag indicating whether the decoder should learn
+                a parametric standard deviation for the decoded distribution
+                (learn_scale=True), or whether the standard deviation of the encoded
+                should be used as the standard deviation of the decoded
+                distribution (learn_scale=False)
         """
         super().__init__()
         self.representation_dim = representation_dim
@@ -128,7 +130,7 @@ class LossDecoder(nn.Module):
             # We better not have had a learned standard deviation in
             # the encoder, since there's no clear way on how to pass
             # it forward
-            assert np.all((z_dist.stddev == 1).numpy())
+            assert torch.all(z_dist.stddev == 1.0)
             stddev = self.ones_like_projection_dim(mean)
         else:
             stddev = stdev_layer(z_vector)
@@ -216,8 +218,6 @@ class MomentumProjectionHead(LossDecoder):
         """
         Encoder target/keys using momentum-updated key encoder. Had some thought of making _momentum_update_key_encoder
         a backwards hook, but seemed overly complex for an initial proof of concept
-        :param x:
-        :return:
         """
         with torch.no_grad():
             self._momentum_update_key_encoder()
@@ -249,6 +249,45 @@ class BYOLProjectionHead(MomentumProjectionHead):
             prediction_dist = super().decode_target(z_dist, traj_info, extra_context=extra_context)
             return independent_multivariate_normal(F.normalize(prediction_dist.mean, dim=1),
                                                    prediction_dist.stddev)
+
+
+class JigsawProjectionHead(LossDecoder):
+    def __init__(self, representation_dim, projection_shape, *, sample=False,
+                 learn_scale=False, architecture=None):
+
+        super(JigsawProjectionHead, self).__init__(representation_dim, projection_shape,
+                                                   sample=sample, learn_scale=learn_scale)
+        if architecture is None:
+            architecture = DEFAULT_PROJECTION_ARCHITECTURE
+
+        self.architecture = architecture
+        self.projection_shape = projection_shape
+        self.projection_layers = get_sequential_from_architecture(architecture,
+                                                                  representation_dim,
+                                                                  projection_shape)
+        self.adjusted_projection_layer = False
+
+    def forward(self, z, traj_info, extra_context=None):
+        # For Jigsaw, the z input dimension depends on state observation shape;
+        # hence we might need to adjust projection_layers input dimension on the fly.
+        z_dim = z.shape[1]
+        device = next(self.projection_layers.parameters()).device
+        if z_dim != self.projection_layers[0].in_features:
+            assert self.adjusted_projection_layer == False, 'Received \
+                    a different input dimension!'
+            logging.warning(f'{self.__class__.__name__} got input of different shape; '
+                            f'will add a new (randomly initialised) linear layer to '
+                            f'convert to projection_shape={self.projection_shape}. This '
+                           'should only happen once, and should only happen when using '
+                           'the encoder for a downstream task.')
+            self.projection_layers = get_sequential_from_architecture(self.architecture,
+                                                                      z_dim,
+                                                                      self.projection_shape).to(device)
+            self.adjusted_projection_layer = True
+        return self.projection_layers(z)
+
+    def decode_target(self, z_dist, traj_info, extra_context=None):
+        return z_dist
 
 
 class ActionConditionedVectorDecoder(LossDecoder):

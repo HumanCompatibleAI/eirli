@@ -1,0 +1,3 @@
+# I was pasting results into this directory so I could run the NeurIPS BT
+# scripts on them just before submission. The *.csv rule ignores those results.
+*.csv

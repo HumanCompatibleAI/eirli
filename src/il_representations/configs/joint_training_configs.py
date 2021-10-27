@@ -1,6 +1,6 @@
 from il_representations.algos import (ActionPrediction, DynamicsPrediction,
-                                      InverseDynamicsPrediction, TemporalCPC,
-                                      VariationalAutoencoder)
+                                      InverseDynamicsPrediction, SimCLR,
+                                      TemporalCPC, VariationalAutoencoder)
 
 
 def make_jt_configs(train_ex):
@@ -12,10 +12,28 @@ def make_jt_configs(train_ex):
         repl = {
             'algo': InverseDynamicsPrediction,
             'algo_params': {
-                'batch_size': 2
+                'batch_size': 2,
             },
         }
         repl_weight = 0.0
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_noid_noaugs():
+        # like repl_noid, but disables all augmentations too
+        repl = {
+            'algo': InverseDynamicsPrediction,
+            'algo_params': {
+                'batch_size': 2,
+                'augmenter_kwargs': {
+                    'augmenter_spec': None,
+                },
+            },
+        }
+        repl_weight = 0.0
+        bc = {'augs': None}
 
         _ = locals()
         del _
@@ -29,6 +47,7 @@ def make_jt_configs(train_ex):
                 'decoder_kwargs': {
                     'encoder_arch_key': 'MAGICALCNN',
                 },
+                'batch_size': 64,
             },
         }
         repl_weight = 1.0
@@ -45,6 +64,7 @@ def make_jt_configs(train_ex):
                 'decoder_kwargs': {
                     'encoder_arch_key': 'MAGICALCNN',
                 },
+                'batch_size': 64,
             },
         }
         repl_weight = 1.0
@@ -53,10 +73,39 @@ def make_jt_configs(train_ex):
         del _
 
     @train_ex.named_config
+    def repl_simclr():
+        # simclr
+        repl = {
+            'algo': SimCLR,
+            'algo_params': {
+                'batch_size': 384,
+            },
+        }
+        repl_weight = 1.0
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_simclr_192():
+        # simclr, 192 batch size
+        repl = {
+            'algo': SimCLR,
+            'algo_params': {
+                'batch_size': 192,
+            },
+        }
+        repl_weight = 1.0
+        _ = locals()
+        del _
+
+    @train_ex.named_config
     def repl_id():
         # inverse dynamics
         repl = {
             'algo': InverseDynamicsPrediction,
+            'algo_params': {
+                'batch_size': 64,
+            },
         }
         repl_weight = 1.0
 
@@ -68,6 +117,9 @@ def make_jt_configs(train_ex):
         # action prediction (aka BC)
         repl = {
             'algo': ActionPrediction,
+            'algo_params': {
+                'batch_size': 64,
+            },
         }
         repl_weight = 1.0
 
@@ -83,11 +135,41 @@ def make_jt_configs(train_ex):
                 'target_pair_constructor_kwargs': {
                     'temporal_offset': 8,
                 },
+                'batch_size': 384,
+            },
+        }
+        repl_weight = 1.0
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_tcpc8_192():
+        # temporal cpc (8 steps, batch size 192)
+        repl = {
+            'algo': TemporalCPC,
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 8,
+                },
                 'batch_size': 192,
             },
         }
         repl_weight = 1.0
+        _ = locals()
+        del _
 
+    @train_ex.named_config
+    def augs_neurips_repl_bc():
+        """Default augmentations used for NeurIPS benchmarks track."""
+        repl = {
+            'algo_params': {
+                'augmenter_kwargs': {
+                    'augmenter_spec':
+                    'translate,rotate,gaussian_blur,color_jitter_mid'
+                },
+            },
+        }
+        bc = {'augs': 'translate,rotate,gaussian_blur,color_jitter_mid'}
         _ = locals()
         del _
 
@@ -131,6 +213,29 @@ def make_jt_configs(train_ex):
                 {'type': 'random'},
             ]
         }
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def repl_data_5demos_random():
+        """Use 5 demos + all available random rollout data for repL."""
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos', 'env_data': {'wds_n_trajs': 5}},
+                {'type': 'random'},
+            ]
+        }
+
+        _ = locals()
+        del _
+
+    @train_ex.named_config
+    def bc_data_5demos():
+        """Use 5 demos for IL."""
+        bc = {'dataset_configs': [
+            {'type': 'demos', 'env_data': {'wds_n_trajs': 5}},
+        ]}
 
         _ = locals()
         del _

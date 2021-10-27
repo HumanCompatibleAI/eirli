@@ -58,9 +58,7 @@ class BC:
                        augmentation_fn,
                        batch_size,
                        n_batches,
-                       shuffle_buffer_size,
-                       n_trajs=None):
-        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+                       shuffle_buffer_size):
         expert_data_loader = datasets_to_loader(
             il_dataset,
             batch_size=batch_size,
@@ -68,7 +66,6 @@ class BC:
             shuffle=True,
             shuffle_buffer_size=shuffle_buffer_size,
             preprocessors=[
-                subdataset_extractor,
                 streaming_extract_keys("obs", "acts")
             ])
         data_iter = repeat_chain_non_empty(expert_data_loader)

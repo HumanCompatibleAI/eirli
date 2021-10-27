@@ -3,7 +3,7 @@
 # - Uses Conda Python 3.7 instead of Python 3.6.
 # - Adds nfs
 # The Conda bits are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
-FROM nvidia/cuda:10.1-cudnn8-runtime-ubuntu18.04
+FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04
 
 RUN apt-get update -q \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -76,6 +76,9 @@ RUN bash /root/minecraft_setup.sh
 # Install remaining dependencies
 COPY requirements.txt /root/requirements.txt
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
+# also install CUDA 11.1 & newest Torch, since that seems to work with A100
+RUN conda install pytorch=1.9.0 torchvision cudatoolkit=11.1 -c pytorch -c nvidia -y \
+  && conda clean -ay
 
 # This is useful for making the X server work (but will break unless the X
 # server is on the right port)

@@ -25,7 +25,7 @@ from torch.optim.adam import Adam
 
 from il_representations.algos.encoders import BaseEncoder
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import datasets_to_loader, SubdatasetExtractor
+from il_representations.data.read_dataset import datasets_to_loader
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -49,7 +49,12 @@ def bc_defaults():
     augs = 'translate,rotate,gaussian_blur,color_jitter_ex'
     log_interval = 500
     batch_size = 32
-    save_every_n_batches = None
+    # The interval to save BC policy networks. If it's set to None,
+    # intermediate policies will not be saved.
+    save_every_n_batches = 50000
+    if save_every_n_batches is not None:
+        assert isinstance(save_every_n_batches, int) and \
+                save_every_n_batches > 0
     optimizer_cls = Adam
     optimizer_kwargs = dict(lr=1e-4)
     lr_scheduler_cls = None
@@ -61,7 +66,6 @@ def bc_defaults():
     # regularisation
     ent_weight = 1e-3
     l2_weight = 1e-5
-    n_trajs = None
 
     _ = locals()
     del _
@@ -121,9 +125,6 @@ def gail_defaults():
     # `gail_ingredient` to `adv_il_ingredient` or similar
     use_airl = False
 
-    # trajectory subsampling
-    n_trajs = None
-
     _ = locals()
     del _
 
@@ -182,6 +183,14 @@ def default_config():
     # place to load pretrained encoder from (if not given, it will be
     # re-intialised from scratch)
     encoder_path = None
+    # In case we want to continue training a policy from a previously failed
+    # run, we provide the saved policy path here.
+    policy_continue_path = None
+    num_path_provided = sum(x is not None for x in [encoder_path,
+                                                    policy_continue_path])
+    # Either a pretrained encoder or a trained policy can be provided,
+    # but not both.
+    assert num_path_provided <= 1, 'Detected multiple paths for policy.'
     # file name for final policy
     final_pol_name = 'policy_final.pt'
     # Should we print a summary of the policy on init? This will show the
@@ -208,6 +217,11 @@ def default_config():
         representation_dim=128,
         obs_encoder_cls_kwargs={}
     )
+    # Sometimes we reload trained policies from a previously failed run.
+    # log_start_batch stands for the actual n_update the policy previously gets
+    # trained, so when saving policies we use its actual batch update number as
+    # its identifier.
+    log_start_batch = 0
     ortho_init = False
     log_std_init = 0.0
     # This is the mlp architecture applied _after_ the encoder; after this MLP,
@@ -222,20 +236,30 @@ def default_config():
 
 
 @il_train_ex.capture
-def load_encoder(*,
-                 encoder_path,
-                 freeze,
-                 encoder_kwargs,
-                 observation_space):
-    if encoder_path is not None:
-        encoder = th.load(encoder_path)
-        assert isinstance(encoder, nn.Module)
-    else:
-        encoder = BaseEncoder(observation_space, **encoder_kwargs)
+def load_encoder_or_policy(*,
+                           encoder_path,
+                           policy_continue_path,
+                           algo,
+                           freeze,
+                           encoder_kwargs,
+                           observation_space):
+    encoder_or_policy = None
+    # Load a previously saved policy.
+    if policy_continue_path is not None:
+        assert algo == 'bc', 'Currently only support policy reload for BC.'
+        encoder_or_policy = th.load(policy_continue_path)
+        assert isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy)
+    else:  # Load an existing encoder, or initialize a new one.
+        if encoder_path is not None:
+            encoder_or_policy = th.load(encoder_path)
+            assert isinstance(encoder_or_policy, nn.Module)
+        else:
+            encoder_or_policy = BaseEncoder(observation_space,
+                                            **encoder_kwargs)
     if freeze:
-        freeze_params(encoder)
-        assert len(list(encoder.parameters())) == 0
-    return encoder
+        freeze_params(encoder_or_policy)
+        assert len(list(encoder_or_policy.parameters())) == 0
+    return encoder_or_policy
 
 
 @il_train_ex.capture
@@ -247,32 +271,71 @@ def make_policy(*,
                 postproc_arch,
                 freeze_pol_encoder,
                 lr_schedule=None,
-                print_policy_summary=True):
+                print_policy_summary=True,
+                modified_encoder_path=None,
+                encoder_kwargs=None):
+    # This check is to ensure that some old interpret.py code raises an
+    # exception when run (apparently it relied on modified_encoder_path before,
+    # but then support for modified_encoder_path was removed). This should be
+    # fixed in a later PR.
+    if modified_encoder_path is not None:
+        raise TypeError('make_policy no longer takes a modified_encoder_path')
+
     # TODO(sam): this should be unified with the representation learning code
     # so that it can be configured in the same way, with the same default
     # encoder architecture & kwargs.
-    encoder = load_encoder(observation_space=observation_space,
-                           freeze=freeze_pol_encoder)
-    policy_kwargs = {
-        'features_extractor_class': EncoderFeatureExtractor,
-        'features_extractor_kwargs': {
-            "encoder": encoder,
-        },
-        'net_arch': postproc_arch,
-        'observation_space': observation_space,
-        'action_space': action_space,
-        # SB3 policies require a learning rate for the embedded optimiser. BC
-        # should not use that optimiser, though, so we set the LR to some
-        # insane value that is guaranteed to cause problems if the optimiser
-        # accidentally is used for something (using infinite or non-numeric
-        # values fails initial validation, so we need an insane-but-finite
-        # number).
-        'lr_schedule':
-        (lambda _: 1e100) if lr_schedule is None else lr_schedule,
-        'ortho_init': ortho_init,
-        'log_std_init': log_std_init
-    }
-    policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
+    encoder_or_policy = load_encoder_or_policy(
+        observation_space=observation_space,
+        freeze=freeze_pol_encoder)
+
+    if isinstance(encoder_or_policy, sb3_pols.ActorCriticCnnPolicy):
+        policy = encoder_or_policy
+    else:
+        encoder = encoder_or_policy
+
+        # Normally the last layer of an encoder is a linear layer, but in
+        # some special cases like Jigsaw, we only train the convolution
+        # layers (with linearity handled by the decoder). In BC
+        # training we still need the full encoder (linear layers included),
+        # so here we load the weights for conv layers, and leave linear
+        # layers randomly initialized.
+        if hasattr(encoder, 'network') and \
+           not isinstance(encoder.network.shared_network[-1], th.nn.Linear):
+            full_encoder = BaseEncoder(observation_space,
+                                       **encoder_kwargs)
+
+            partial_encoder_dict = encoder.state_dict()
+            full_encoder_dict = full_encoder.state_dict()
+
+            # pretrained_dict contains weights & bias for conv layers only.
+            pretrained_dict = {k: v for k, v in partial_encoder_dict.items() if
+                               k in full_encoder_dict}
+            full_encoder_dict.update(pretrained_dict)
+            full_encoder.load_state_dict(full_encoder_dict)
+
+            encoder = full_encoder
+
+        policy_kwargs = {
+            'features_extractor_class': EncoderFeatureExtractor,
+            'features_extractor_kwargs': {
+                "encoder": encoder,
+            },
+            'net_arch': postproc_arch,
+            'observation_space': observation_space,
+            'action_space': action_space,
+            # SB3 policies require a learning rate for the embedded optimiser. BC
+            # should not use that optimiser, though, so we set the LR to some
+            # insane value that is guaranteed to cause problems if the optimiser
+            # accidentally is used for something (using infinite or non-numeric
+            # values fails initial validation, so we need an insane-but-finite
+            # number).
+            'lr_schedule':
+            (lambda _: 1e100) if lr_schedule is None else lr_schedule,
+            'ortho_init': ortho_init,
+            'log_std_init': log_std_init
+        }
+
+        policy = sb3_pols.ActorCriticCnnPolicy(**policy_kwargs)
 
     if print_policy_summary:
         # print policy info in case it is useful for the caller
@@ -285,7 +348,7 @@ def make_policy(*,
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                    device_name, final_pol_name, shuffle_buffer_size,
-                   freeze_encoder):
+                   log_start_batch, freeze_encoder):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          freeze_pol_encoder=freeze_encoder)
@@ -295,7 +358,6 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     # build dataset in the format required by imitation
     nom_num_epochs = bc['nominal_num_epochs']
     nom_num_batches = max(1, int(np.ceil(bc['n_batches'] / nom_num_epochs)))
-    subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
@@ -306,10 +368,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         nominal_length=bc['batch_size'] * nom_num_batches,
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[
-            subdataset_extractor,
-            streaming_extract_keys("obs", "acts")
-        ],
+        preprocessors=(streaming_extract_keys("obs", "acts"), ),
         drop_last=True)
 
     trainer = BC(
@@ -329,22 +388,25 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     )
 
     save_interval = bc['save_every_n_batches']
-    if save_interval is not None:
-        epoch_end_callbacks = [BCModelSaver(policy,
-                                            os.path.join(out_dir, 'snapshots'),
-                                            save_interval)]
-    else:
-        epoch_end_callbacks = []
+    model_save_dir = os.path.join(out_dir, 'snapshots')
+    os.makedirs(model_save_dir, exist_ok=True)
+    model_saver = BCModelSaver(policy,
+                               model_save_dir,
+                               save_interval,
+                               start_nupdate=log_start_batch)
+
+    epoch_end_callbacks = [model_saver] if save_interval else []
+
+    bc_batches = bc['n_batches']
 
     logging.info("Beginning BC training")
     trainer.train(n_epochs=None,
-                  n_batches=bc['n_batches'],
+                  n_batches=bc_batches,
                   log_interval=bc['log_interval'],
                   epoch_end_callbacks=epoch_end_callbacks)
 
-    final_path = os.path.join(out_dir, final_pol_name)
-    logging.info(f"Saving final BC policy to {final_path}")
-    trainer.save_policy(final_path)
+    model_saver.save(bc_batches)
+    final_path = model_saver.last_save_path
     return final_path
 
 
@@ -421,7 +483,6 @@ def do_training_gail(
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
 
-    subdataset_extractor = SubdatasetExtractor(n_trajs=gail['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=gail['disc_batch_size'],
@@ -433,8 +494,7 @@ def do_training_gail(
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[subdataset_extractor,
-                       streaming_extract_keys(
+        preprocessors=[streaming_extract_keys(
                            "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
@@ -458,7 +518,7 @@ def do_training_gail(
             **common_adv_il_kwargs,
             reward_net_cls=ImageRewardNet,
             reward_net_kwargs=dict(
-                encoder=load_encoder(
+                encoder=load_encoder_or_policy(
                     observation_space=venv_chans_first.observation_space,
                     freeze=_gail_should_freeze('disc'))
             )
@@ -467,7 +527,7 @@ def do_training_gail(
         discrim_net = ImageDiscrimNet(
             observation_space=venv_chans_first.observation_space,
             action_space=venv_chans_first.action_space,
-            encoder=load_encoder(
+            encoder=load_encoder_or_policy(
                 observation_space=venv_chans_first.observation_space,
                 freeze=_gail_should_freeze('disc')))
         trainer = GAIL(

@@ -1,3 +1,4 @@
+"""Main entry interface for representation learning in EIRLI."""
 import inspect
 import logging
 import os
@@ -8,16 +9,18 @@ import stable_baselines3.common.distributions as sb3_dists
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 import torch
+from torch.utils.data import Dataset, DataLoader
 from torch.optim.adam import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from il_representations.algos.base_learner import BaseEnvironmentLearner
 from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine
+from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, set_global_seeds
 from il_representations.data.read_dataset import (SubdatasetExtractor,
                                                   datasets_to_loader)
 from il_representations.utils import (Timers, repeat_chain_non_empty,
                                       weight_grad_norms)
+import webdataset as wds
+
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -42,7 +45,7 @@ def to_dict(kwargs_element):
         return kwargs_element
 
 
-class RepresentationLearner(BaseEnvironmentLearner):
+class RepresentationLearner(object):
     def __init__(self, *,
                  observation_space,
                  action_space,
@@ -61,15 +64,16 @@ class RepresentationLearner(BaseEnvironmentLearner):
                  preprocess_extra_context=True,
                  preprocess_target=True,
                  target_pair_constructor_kwargs=None,
-                 augmenter_kwargs,
+                 augmenter_kwargs=None,
                  encoder_kwargs=None,
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
                  dataset_max_workers=0):
+        self.observation_space = observation_space
+        self.observation_shape = observation_space.shape
+        self.action_space = action_space
 
-        super(RepresentationLearner, self).__init__(
-            observation_space=observation_space, action_space=action_space)
         for el in (encoder, decoder, loss_calculator, target_pair_constructor):
             assert el is not None
 
@@ -88,7 +92,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
             # projection head.
             projection_dim = representation_dim
 
-        self.augmenter = augmenter(**augmenter_kwargs)
+        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
         self.target_pair_constructor = target_pair_constructor(
             **to_dict(target_pair_constructor_kwargs))
 
@@ -123,9 +127,11 @@ class RepresentationLearner(BaseEnvironmentLearner):
 
     def _prep_tensors(self, tensors_or_arrays):
         """
-        :param tensors_or_arrays: A list of Torch tensors or numpy arrays (or None)
-        :return: A torch tensor moved to the device associated with this
-            learner, and converted to float
+        Args:
+            tensors_or_arrays: A list of Torch tensors or numpy arrays (or None)
+
+        Returns:
+            A torch tensor moved to the device associated with this learner, and converted to float dtype
         """
         if tensors_or_arrays is None:
             # sometimes we get passed optional arguments with default value
@@ -169,22 +175,30 @@ class RepresentationLearner(BaseEnvironmentLearner):
     @staticmethod
     def _unpack_batch(batch):
         """
-        :param batch: A batch that may contain a numpy array of extra context,
-            but may also simply have an empty list as a placeholder value for
-            the `extra_context` key. If the latter, return None for
-            extra_context, rather than an empty list (Torch data loaders can
-            only work with lists and arrays, not None types)
-        :return:
+        Args:
+            batch: A batch that may contain a numpy array of extra context,
+                but may also simply have an empty list as a placeholder value for
+                the `extra_context` key. If the latter, return None for
+                extra_context, rather than an empty list (Torch data loaders can
+                only work with lists and arrays, not None types)
+
+        Returns:
+            A tuple of context, target, traj_ts_ids, and extra context
         """
         if len(batch['extra_context']) == 0:
             return batch['context'], batch['target'], batch['traj_ts_ids'], None
         else:
             return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
 
+    def set_random_seed(self, seed):
+        if seed is None:
+            return
+        # Seed python, numpy and torch random generator
+        set_global_seeds(seed)
+
     def all_trainable_params(self):
         """
-        :return: the trainable encoder parameters and the trainable decoder
-            parameters.
+        Returns the trainable encoder parameters and the trainable decoder parameters.
         """
         trainable_encoder_params = [
             p for p in self.encoder.parameters() if p.requires_grad
@@ -284,15 +298,15 @@ class RepresentationLearner(BaseEnvironmentLearner):
         self.encoder.train(val)
         self.decoder.train(val)
 
-    def make_data_iter(self, datasets, batches_per_epoch, n_epochs, n_trajs):
-        subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs)
+    def make_data_iter(self, datasets, batches_per_epoch, n_epochs):
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=n_epochs * batches_per_epoch * self.batch_size,
             max_workers=self.dataset_max_workers,
             shuffle_buffer_size=self.shuffle_buffer_size,
             shuffle=self.shuffle_batches,
-            preprocessors=(subdataset_extractor, self.target_pair_constructor))
+            preprocessors=(
+                self.target_pair_constructor, ))
         data_iter = repeat_chain_non_empty(dataloader)
         return data_iter
 
@@ -300,7 +314,7 @@ class RepresentationLearner(BaseEnvironmentLearner):
               end_callbacks=(), log_dir, log_interval=100,
               calc_log_interval=10, save_interval=1000, scheduler_cls=None,
               scheduler_kwargs=None, optimizer_cls=Adam,
-              optimizer_kwargs=None, n_trajs=None):
+              optimizer_kwargs=None):
         """Run repL training loop.
 
         Args:
@@ -314,8 +328,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
             n_epochs (int): the total number of 'epochs' of optimisation to
                 perform. Total number of updates will be `batches_per_epoch *
                 n_epochs`.
-            n_trajs (int): the total number of trajectories we want to use
-                for training. The default 'None' will use the whole dataset.
             callbacks ([dict -> None]): list of functions to call at the
                 end of each batch, after computing the loss and updating the
                 network but before dumping logs. Will be provided with all
@@ -342,7 +354,8 @@ class RepresentationLearner(BaseEnvironmentLearner):
         # dataset setup
         data_iter = self.make_data_iter(
             datasets=datasets, batches_per_epoch=batches_per_epoch,
-            n_epochs=n_epochs, n_trajs=n_trajs)
+            n_epochs=n_epochs)
+
 
         # optimizer and LR scheduler
         optimizer = optimizer_cls(self.all_trainable_params(),
@@ -377,7 +390,6 @@ class RepresentationLearner(BaseEnvironmentLearner):
                 # detached_debug_tensors isn't used directly in this function,
                 # but might be used by callbacks that exploit locals()
                 loss, detached_debug_tensors = self.batch_forward(batch)
-
                 if batches_trained % calc_log_interval == 0:
                     # TODO(sam): I suspect we can get the same effect by just
                     # detaching loss & waiting until after optimizer.step()

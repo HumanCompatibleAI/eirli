@@ -1,17 +1,21 @@
+"""Miscellaneous utilities for our representation learning code."""
 import matplotlib
 matplotlib.use('agg')
 import random
 import gym
+import itertools
 import math
-from torch.optim.lr_scheduler import _LRScheduler
 import os
 import struct
 import torch
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+
 from datetime import datetime
 from PIL import Image
-import cv2
+from scipy.spatial.distance import cdist
+from torch.optim.lr_scheduler import _LRScheduler
 
 
 def independent_multivariate_normal(mean, stddev):
@@ -172,3 +176,36 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+def generate_jigsaw_permutations(n_tiles=9, n_perms=1000):
+    """Generate n_perms permutations from list(range(n_tiles)), and select
+    permutations with large hamming distance. Modified from
+    bbrattoli/JigsawPuzzlePytorch.
+
+    Args:
+        n_tiles (int): The number of tiles to split an image into. Default: 9.
+        n_perms (int): The number of permutations needed. Default: 1000.
+    """
+
+    all_perms = np.array(list(itertools.permutations(list(range(n_tiles)),
+                                                     n_tiles)))
+
+    perms = []
+    j = np.random.randint(len(all_perms))
+    for i in range(n_perms):
+        if i == 0:
+            perms = np.array(all_perms[j]).reshape([1, -1])
+        else:
+            perms = np.concatenate([perms, all_perms[j].reshape([1, -1])], axis=0)
+
+        all_perms = np.delete(all_perms, j, axis=0)
+
+        # Calculate selected permutations' distance with all possible
+        # permutations, and pick the one that are most different from
+        # selected ones. This is to make sure the generated jigsaw puzzles are
+        # sufficiently different from each other.
+        D = cdist(perms, all_perms, metric='hamming').mean(axis=0).flatten()
+        j = D.argmax()
+
+    return perms

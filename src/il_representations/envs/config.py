@@ -6,7 +6,8 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft",
+                       "procgen"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -71,6 +72,11 @@ def env_cfg_defaults():
     # ###############################
     minecraft_max_env_steps = None
 
+    # ###############################
+    # Procgen-specific config variables
+    # ###############################
+    procgen_frame_stack = 4
+
     _ = locals()
     del _
 
@@ -94,9 +100,6 @@ def venv_opts_defaults():
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
     n_envs = 2
-    # if venv_parallel is True, then this is used to determine the number of
-    # workers (parallel_workers defaults to n_envs if it is None)
-    parallel_workers = None
 
     _ = locals()
     del _
@@ -118,6 +121,12 @@ def env_data_defaults():
     _this_file_dir = os.path.dirname(os.path.abspath(__file__))
     data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
     del _this_file_dir
+
+    # Maximum number of trajectories to load from webdatasets when using
+    # `auto.load_wds_datasets`. Set to None to have no limit. Code will error
+    # if a numerical limit is supplied but there are fewer trajectories in the
+    # dataset.
+    wds_n_trajs = None
 
     # ########################
     # MAGICAL config variables
@@ -170,6 +179,17 @@ def env_data_defaults():
         'data/atari/BreakoutNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
         'PongNoFrameskip-v4':
         'data/atari/PongNoFrameskip-v4_rollouts_500_ts_100_traj.npz',
+    }
+
+    # ###########################
+    # ProcGen config variables
+    # ###########################
+    procgen_demo_paths = {
+        'coinrun': 'procgen/demo_coinrun.pickle',
+        'fruitbot': 'procgen/demo_fruitbot.pickle',
+        'ninja': 'procgen/demo_ninja.pickle',
+        'jumper': 'procgen/demo_jumper.pickle',
+        'miner': 'procgen/demo_miner.pickle',
     }
 
     _ = locals()

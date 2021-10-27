@@ -19,7 +19,6 @@ from sacred.observers import FileStorageObserver
 import stable_baselines3.common.policies as sb3_pols
 from stable_baselines3.common.utils import get_device
 import torch
-import torch as th
 from torch.optim.adam import Adam
 
 from il_representations import algos
@@ -95,11 +94,9 @@ def bc_defaults():
     postproc_arch = [128]
     # evaluation interval
     short_eval_interval = 5000
-    # number of trajectories for short intermediate evils
+    # number of trajectories for short intermediate evals
     # (not the final eval)
     short_eval_n_traj = 10
-    # set this to a number to limit the number of trajectories BC can use
-    n_trajs = None
 
     _ = locals()
     del _
@@ -152,6 +149,9 @@ def default_config():
 
     # will default to GPU if available, otherwise CPU
     device = "auto"
+
+    # choose 'gail' or 'bc'
+    il_algo = 'bc'
 
     _ = locals()
     del _
@@ -216,16 +216,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
                                                  batches_per_epoch=n_batches,
-                                                 n_epochs=1,
-                                                 n_trajs=None)
+                                                 n_epochs=1)
     latest_eval_stats = None
     bc_data_iter = bc_learner.make_data_iter(
         il_dataset=bc_dataset,
         augmentation_fn=bc_augmentation_fn,
         batch_size=bc['batch_size'],
         n_batches=n_batches,
-        shuffle_buffer_size=shuffle_buffer_size,
-        n_trajs=bc['n_trajs'])
+        shuffle_buffer_size=shuffle_buffer_size)
 
     # optimizer and LR scheduler
     params_list_dedup = deduplicate_params(
@@ -269,9 +267,9 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                 bc_path = save_dir / ("bc" + save_suffix)
                 repl_path = save_dir / ("repl" + save_suffix)
                 opt_path = save_dir / ("opt" + save_suffix)
-                th.save(bc_learner, bc_path)
-                th.save(repl_learner, repl_path)
-                th.save(optimizer, opt_path)
+                torch.save(bc_learner, bc_path)
+                torch.save(repl_learner, repl_path)
+                torch.save(optimizer, opt_path)
 
         # repl batch saving
         should_save_repl_batch = batch_num % repl['batch_save_interval'] == 0
@@ -329,7 +327,7 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
     # return final saved policy path
     pol_path = save_dir / "policy_final.ckpt"
     os.makedirs(save_dir, exist_ok=True)
-    th.save(bc_learner.policy, pol_path)
+    torch.save(bc_learner.policy, pol_path)
     return pol_path
 
 
@@ -425,7 +423,7 @@ def bc_setup(venv, obs_encoder, n_batches, shuffle_buffer_size,
 def train(seed, torch_num_threads, device, repl, bc, n_batches,
           shuffle_buffer_size, obs_encoder_cls, obs_encoder_kwargs,
           model_save_interval, representation_dim, exp_ident,
-          final_eval_n_traj, _config):
+          final_eval_n_traj, il_algo, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
@@ -434,7 +432,7 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     log_dir = os.path.abspath(train_ex.observers[0].dir)
     im_log.configure(log_dir, ["stdout", "csv", "tensorboard"])
     if torch_num_threads is not None:
-        th.set_num_threads(torch_num_threads)
+        torch.set_num_threads(torch_num_threads)
     device = get_device(device)
 
     with ExitStack() as exit_stack:
@@ -450,16 +448,6 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
                                       **obs_encoder_kwargs)
         orig_oe_params = list(obs_encoder.named_parameters())
 
-        # set up IL
-        bc_learner, bc_augmentation_fn, bc_dataset = bc_setup(
-            venv=venv,
-            n_batches=n_batches,
-            shuffle_buffer_size=shuffle_buffer_size,
-            obs_encoder=obs_encoder,
-            device=device)
-        bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
-                            named_parameters())
-
         # setup for repL
         repl_learner, repl_datasets = repl_setup(
             shuffle_buffer_size=shuffle_buffer_size,
@@ -467,19 +455,30 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
             representation_dim=representation_dim)
         repl_oe_params = list(repl_learner.encoder.network.named_parameters())
 
-        # are params actually shared?
-        assert orig_oe_params == bc_oe_params
-        assert orig_oe_params == repl_oe_params
-
         # learning loop
-        final_pol_path = learn_repl_bc(repl_learner=repl_learner,
-                                       repl_datasets=repl_datasets,
-                                       bc_learner=bc_learner,
-                                       bc_augmentation_fn=bc_augmentation_fn,
-                                       bc_dataset=bc_dataset,
-                                       model_save_interval=model_save_interval,
-                                       log_dir=log_dir,
-                                       venv=venv)
+        if il_algo == 'bc':
+            # set up IL
+            bc_learner, bc_augmentation_fn, bc_dataset = bc_setup(
+                venv=venv,
+                n_batches=n_batches,
+                shuffle_buffer_size=shuffle_buffer_size,
+                obs_encoder=obs_encoder,
+                device=device)
+            bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
+                                named_parameters())
+            # are params actually shared?
+            assert orig_oe_params == bc_oe_params
+            assert orig_oe_params == repl_oe_params
+            final_pol_path = learn_repl_bc(repl_learner=repl_learner,
+                                           repl_datasets=repl_datasets,
+                                           bc_learner=bc_learner,
+                                           bc_augmentation_fn=bc_augmentation_fn,
+                                           bc_dataset=bc_dataset,
+                                           model_save_interval=model_save_interval,
+                                           log_dir=log_dir,
+                                           venv=venv)
+        else:
+            raise ValueError(f"do not know how to handle il_algo={il_algo!r}")
 
     # final eval
     # (note that this is pulling in a bunch of params from env_cfg_ingredient
