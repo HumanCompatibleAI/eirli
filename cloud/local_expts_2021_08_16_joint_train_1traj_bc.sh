@@ -12,11 +12,11 @@ base_cfgs=("n_batches=30000" "env_use_magical" "bc.short_eval_interval=2000")
 repl_configs=("repl_noid" "repl_ap")
 env_names=("MatchRegions" "MoveToCorner" "MoveToRegion")
 
-submit_expt_pt2() {
+submit_expt() {
     # submit joint training experiment to local Ray server (0.3 GPUs)
     python -m il_representations.scripts.joint_training_cluster \
         --ray-address="$ray_address" --ray-ncpus "$ray_ncpus" \
-        --ray-ngpus 0.2 "${base_cfgs[@]}" "$@" &
+        --ray-ngpus 0.25 "${base_cfgs[@]}" "$@" &
 }
 
 launch_seed() {
@@ -31,7 +31,7 @@ launch_seed() {
     for env_name in "${env_names[@]}"; do
         for repl_config in "${repl_configs[@]}"; do
             # using train variant demos
-            submit_expt_pt2 \
+            submit_expt \
                 exp_ident="${repl_config}_demos_repl${t_suffix}" \
                 "${repl_config[@]}" "env_cfg.task_name=${env_name}-Demo-v0" \
                 "repl_data_demos" "bc.n_trajs=${n_trajs}"
