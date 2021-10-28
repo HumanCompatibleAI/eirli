@@ -5,6 +5,7 @@ from gym import spaces
 import pytest
 import torch as th
 from torch.utils.data import Dataset
+import imitation.util.logger as im_logger_module
 
 from il_representations import algos
 from il_representations.data import read_dataset
@@ -37,7 +38,8 @@ def test_pytorch_dataset():
                             action_space=None,
                             augmenter=algos.NoAugmentation)
         algo.learn(datasets=[tptd_wds], batches_per_epoch=10, n_epochs=1,
-                   log_dir=tmpdir, log_interval=1, calc_log_interval=1)
+                   log_dir=tmpdir, log_interval=1, calc_log_interval=1,
+                   logger=im_logger_module.configure(tmpdir, ["stdout"]))
 
 
 @pytest.mark.parametrize("algo", [

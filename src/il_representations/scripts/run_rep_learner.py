@@ -1,9 +1,10 @@
+import contextlib
 import faulthandler
 import logging
 import os
 import signal
 
-import imitation.util.logger as imitation_logger
+import imitation.util.logger as im_logger_module
 import numpy as np
 import sacred
 from sacred import Experiment
@@ -117,98 +118,102 @@ def run(dataset_configs, algo, algo_params, seed, batches_per_epoch, n_epochs,
         torch_num_threads, repl_batch_save_interval, is_multitask,
         debug_return_model, optimizer_cls, optimizer_kwargs, scheduler_cls,
         scheduler_kwargs, log_interval, save_interval, _config):
-    faulthandler.register(signal.SIGUSR1)
-    set_global_seeds(seed)
+    with contextlib.ExitStack() as exit_stack:
+        faulthandler.register(signal.SIGUSR1)
+        set_global_seeds(seed)
 
-    # TODO fix to not assume FileStorageObserver always present
-    log_dir = represent_ex.observers[0].dir
-    if torch_num_threads is not None:
-        torch.set_num_threads(torch_num_threads)
+        # TODO fix to not assume FileStorageObserver always present
+        log_dir = represent_ex.observers[0].dir
+        if torch_num_threads is not None:
+            torch.set_num_threads(torch_num_threads)
 
-    logging.basicConfig(level=logging.INFO)
-    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
+        logging.basicConfig(level=logging.INFO)
+        logger = im_logger_module.configure(
+            log_dir, ["stdout", "csv", "tensorboard"])
+        exit_stack.push(contextlib.closing(logger))
 
-    # setup environment & dataset
-    webdatasets, combined_meta = auto.load_wds_datasets(
-        configs=dataset_configs)
-    color_space = combined_meta['color_space']
-    observation_space = combined_meta['observation_space']
-    action_space = combined_meta['action_space']
+        # setup environment & dataset
+        webdatasets, combined_meta = auto.load_wds_datasets(
+            configs=dataset_configs)
+        color_space = combined_meta['color_space']
+        observation_space = combined_meta['observation_space']
+        action_space = combined_meta['action_space']
 
-    # callbacks for saving example batches
-    def make_batch_saver(interval):
-        save_video = algo in ['Autoencoder', 'VariationalAutoencoder']
-        print(f'In run_rep_learner, save_video={save_video}')
-        return RepLSaveExampleBatchesCallback(
-            save_interval_batches=interval,
-            dest_dir=os.path.join(log_dir, 'batch_saves'),
-            color_space=color_space,
-            save_video=save_video)
-    repl_callbacks = []
-    repl_end_callbacks = []
-    if repl_batch_save_interval is not None:
-        # this gets called at every batch, so we need a nonzero interval
-        reg_save_callback = make_batch_saver(repl_batch_save_interval)
-    else:
-        # if there's no specified interval, we set the interval so high that it
-        # will only run once (at the start)
-        reg_save_callback = make_batch_saver(n_epochs * batches_per_epoch + 1)
-    repl_callbacks.append(reg_save_callback)
-    # this callback gets called once at the end to guarantee that we always
-    # save the last batch
-    repl_end_callbacks.append(make_batch_saver(0))
+        # callbacks for saving example batches
+        def make_batch_saver(interval):
+            save_video = algo in ['Autoencoder', 'VariationalAutoencoder']
+            print(f'In run_rep_learner, save_video={save_video}')
+            return RepLSaveExampleBatchesCallback(
+                save_interval_batches=interval,
+                dest_dir=os.path.join(log_dir, 'batch_saves'),
+                color_space=color_space,
+                save_video=save_video)
+        repl_callbacks = []
+        repl_end_callbacks = []
+        if repl_batch_save_interval is not None:
+            # this gets called at every batch, so we need a nonzero interval
+            reg_save_callback = make_batch_saver(repl_batch_save_interval)
+        else:
+            # if there's no specified interval, we set the interval so high that it
+            # will only run once (at the start)
+            reg_save_callback = make_batch_saver(n_epochs * batches_per_epoch + 1)
+        repl_callbacks.append(reg_save_callback)
+        # this callback gets called once at the end to guarantee that we always
+        # save the last batch
+        repl_end_callbacks.append(make_batch_saver(0))
 
-    if isinstance(algo, str):
-        algo = getattr(algos, algo)
+        if isinstance(algo, str):
+            algo = getattr(algos, algo)
 
-    # instantiate algo
-    dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
-                                        for config_dict in dataset_configs])
-    if is_multitask:
-        assert dataset_configs_multitask, "Parameter `is_multitask` is set, but dataset_configs contain configs " \
-                                          "referencing the current task_name"
-    else:
-        assert not dataset_configs_multitask, "dataset_configs implies a multitask training setup, but " \
-                                              "is_multitask is set to False; please fix to make consistent"
-    assert issubclass(algo, RepresentationLearner)
-    algo_params = dict(algo_params)
-    algo_params['augmenter_kwargs'] = {
-        'color_space': color_space,
-        **algo_params['augmenter_kwargs'],
-    }
-    logging.info(f"Running {algo} with parameters: {algo_params}")
-    model = algo(
-        observation_space=observation_space,
-        action_space=action_space,
-        **algo_params)
+        # instantiate algo
+        dataset_configs_multitask = np.all([config_specifies_task_name(config_dict)
+                                            for config_dict in dataset_configs])
+        if is_multitask:
+            assert dataset_configs_multitask, "Parameter `is_multitask` is set, but dataset_configs contain configs " \
+                                            "referencing the current task_name"
+        else:
+            assert not dataset_configs_multitask, "dataset_configs implies a multitask training setup, but " \
+                                                "is_multitask is set to False; please fix to make consistent"
+        assert issubclass(algo, RepresentationLearner)
+        algo_params = dict(algo_params)
+        algo_params['augmenter_kwargs'] = {
+            'color_space': color_space,
+            **algo_params['augmenter_kwargs'],
+        }
+        logging.info(f"Running {algo} with parameters: {algo_params}")
+        model = algo(
+            observation_space=observation_space,
+            action_space=action_space,
+            **algo_params)
 
-    # setup model
-    loss_record, most_recent_encoder_path = model.learn(
-        datasets=webdatasets,
-        batches_per_epoch=batches_per_epoch,
-        n_epochs=n_epochs,
-        callbacks=repl_callbacks,
-        log_dir=log_dir,
-        end_callbacks=repl_end_callbacks,
-        optimizer_cls=optimizer_cls,
-        optimizer_kwargs=optimizer_kwargs,
-        scheduler_cls=scheduler_cls,
-        scheduler_kwargs=scheduler_kwargs,
-        log_interval=log_interval,
-        save_interval=save_interval,
-    )
+        # setup model
+        loss_record, most_recent_encoder_path = model.learn(
+            datasets=webdatasets,
+            batches_per_epoch=batches_per_epoch,
+            n_epochs=n_epochs,
+            callbacks=repl_callbacks,
+            log_dir=log_dir,
+            end_callbacks=repl_end_callbacks,
+            optimizer_cls=optimizer_cls,
+            optimizer_kwargs=optimizer_kwargs,
+            scheduler_cls=scheduler_cls,
+            scheduler_kwargs=scheduler_kwargs,
+            log_interval=log_interval,
+            save_interval=save_interval,
+            logger=logger,
+        )
 
-    result = {
-        'encoder_path': most_recent_encoder_path,
-        # return average loss from final epoch for HP tuning
-        'repl_loss': loss_record[-1],
-    }
+        result = {
+            'encoder_path': most_recent_encoder_path,
+            # return average loss from final epoch for HP tuning
+            'repl_loss': loss_record[-1],
+        }
 
-    if debug_return_model:
-        # Used for serialization validation testing in test_base_algos.py.
-        result['model'] = model
+        if debug_return_model:
+            # Used for serialization validation testing in test_base_algos.py.
+            result['model'] = model
 
-    return result
+        return result
 
 
 if __name__ == '__main__':

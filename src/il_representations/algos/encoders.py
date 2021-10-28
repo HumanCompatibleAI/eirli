@@ -112,7 +112,7 @@ def warn_on_non_image_tensor(x):
             "not expected range [0, 1]")
 
     std = torch.std(x).item()
-    if std < 0.05:
+    if std < 0.005:
         do_warning(
             f"Input image tensor values have low stddev {std} (range "
             f"[{v_min}, {v_max}])")

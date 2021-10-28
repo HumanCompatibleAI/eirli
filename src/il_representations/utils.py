@@ -19,12 +19,15 @@ from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
 import numpy as np
 from skvideo.io import FFmpegWriter
+import stable_baselines3.common.distributions as sb3_dists
+import torch
 import torch as th
 from torchsummary import summary
 import torchvision.utils as vutils
 import webdataset as wds
 
 WEBDATASET_SAVE_KEY = "obs.pyd"
+
 
 class ForkedPdb(pdb.Pdb):
     """A Pdb subclass that may be used
@@ -180,7 +183,7 @@ def image_tensor_to_rgb_grid(image_tensor, color_space):
                             nrow=nrow,
                             normalize=False,
                             scale_each=False,
-                            range=(0, 1))
+                            value_range=(0, 1))
     assert grid.ndim == 3 and grid.shape[0] == 3, grid.shape
 
     return grid
@@ -615,3 +618,29 @@ def get_policy_nupdate(policy_path):
     assert match_result is not None, r'policy_path does not fit pattern' \
                                      r'.*policy_(?P<n_update>\d+)_batches.pt'
     return match_result.group('n_update')
+
+
+def recursive_detach(nest):
+    """Recursively detach a nest of torch.Tensor and
+    torch.distributions.Distribution objects. Useful for saving debugging
+    data."""
+    detached_nest = {}
+    for key, value in nest.items():
+        if value is None:
+            # skip things that we don't have access to
+            continue
+        elif isinstance(value, dict):
+            detached_nest[key] = recursive_detach(value)
+        elif isinstance(value, (torch.distributions.Distribution,
+                                sb3_dists.Distribution)):
+            # TODO(sam): profile this. If it's slow, then make it lazy so
+            # that .sample() is only called when we actually want to save a
+            # sample (I don't know how to make it lazy without keeping the
+            # graph alive though ugh).
+            det_sample = value.sample().detach()
+            detached_nest[key + '_sample'] = det_sample
+        elif torch.is_tensor(value):
+            detached_nest[key] = value.detach()
+        else:
+            raise TypeError(f"Do not know how to detach {key}={value!r}")
+    return detached_nest

@@ -3,24 +3,19 @@ import inspect
 import logging
 import os
 
-import imitation.util.logger as im_log
 import numpy as np
-import stable_baselines3.common.distributions as sb3_dists
 from stable_baselines3.common.preprocessing import preprocess_obs
 from stable_baselines3.common.utils import get_device
 import torch
-from torch.utils.data import Dataset, DataLoader
 from torch.optim.adam import Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from il_representations.algos.batch_extenders import QueueBatchExtender
-from il_representations.algos.utils import AverageMeter, LinearWarmupCosine, set_global_seeds
-from il_representations.data.read_dataset import (SubdatasetExtractor,
-                                                  datasets_to_loader)
+from il_representations.algos.utils import (AverageMeter, LinearWarmupCosine,
+                                            set_global_seeds)
+from il_representations.data.read_dataset import datasets_to_loader
 from il_representations.utils import (Timers, repeat_chain_non_empty,
-                                      weight_grad_norms)
-import webdataset as wds
-
+                                      weight_grad_norms, recursive_detach)
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -253,7 +248,7 @@ class RepresentationLearner(object):
         # Use an algorithm-specific loss function. Typically this only requires
         # decoded_contexts and decoded_targets, but VAE requires
         # encoded_contexts, so we pass it in here
-        loss = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
+        loss, loss_stats = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
 
         # things that get returned to calling function for (optional)
         # saving/analysis (we shouldn't do much to them---this code needs to be
@@ -270,26 +265,10 @@ class RepresentationLearner(object):
             traj_ts_info=traj_ts_info,
             raw_contexts=raw_contexts,
             raw_targets=raw_targets,
+            stats=loss_stats,
         )
         # we go through the debug objects and convert them all to tensors
-        detached_debug_tensors = {}
-        for key, value in debug_objects.items():
-            if value is None:
-                # skip things that we don't have access to
-                continue
-
-            if isinstance(value, (torch.distributions.Distribution,
-                                  sb3_dists.Distribution)):
-                # TODO(sam): profile this. If it's slow, then make it lazy so
-                # that .sample() is only called when we actually want to save a
-                # sample (I don't know how to make it lazy without keeping the
-                # graph alive though ugh).
-                det_sample = value.sample().detach()
-                detached_debug_tensors[key + '_sample'] = det_sample
-            elif torch.is_tensor(value):
-                detached_debug_tensors[key] = value.detach()
-            else:
-                raise TypeError(f"Do not know how to detach {key}={value!r}")
+        detached_debug_tensors = recursive_detach(debug_objects)
 
         return loss, detached_debug_tensors
 
@@ -314,7 +293,7 @@ class RepresentationLearner(object):
               end_callbacks=(), log_dir, log_interval=100,
               calc_log_interval=10, save_interval=1000, scheduler_cls=None,
               scheduler_kwargs=None, optimizer_cls=Adam,
-              optimizer_kwargs=None):
+              optimizer_kwargs=None, logger):
         """Run repL training loop.
 
         Args:
@@ -344,6 +323,8 @@ class RepresentationLearner(object):
             scheduler_kwargs (dict): keyword args to pass to scheduler_cls.
             optimizer_cls (type): optimizer class.
             optimizer_kwargs (dict): kwargs to pass to optimizer_cls.
+            logger (HierarchicalLogger): numerical
+                logger.
 
         Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
             `loss_record` is a list of average loss values encountered at each
@@ -377,6 +358,7 @@ class RepresentationLearner(object):
         logging.debug(
             f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
             f"batches (batch size {self.batch_size})")
+        should_dump = True
 
         for epoch_num in range(1, n_epochs + 1):
             loss_meter = AverageMeter()
@@ -412,23 +394,29 @@ class RepresentationLearner(object):
                     gradient_norm, weight_norm = weight_grad_norms(
                         self.all_trainable_params())
                     loss_meter.update(loss_item)
-                    im_log.sb_logger.record_mean('loss', loss_item)
-                    im_log.sb_logger.record_mean(
+                    logger.record_mean('loss', loss_item)
+                    logger.record_mean(
                         'gradient_norm', gradient_norm.item())
-                    im_log.sb_logger.record_mean(
+                    logger.record_mean(
                         'weight_norm', weight_norm.item())
-                    im_log.record('epoch', epoch_num)
-                    im_log.record('within_epoch_step', step)
-                    im_log.record('batches_trained', batches_trained)
+                    logger.record('epoch', epoch_num)
+                    logger.record('within_epoch_step', step)
+                    logger.record('batches_trained', batches_trained)
                     timer_stats = timers.dump_stats(check_running=False)
                     time_per_batch = timer_stats['batch']['mean']
-                    im_log.record('time_per_batch', time_per_batch)
-                    im_log.record(
+                    logger.record('time_per_batch', time_per_batch)
+                    logger.record(
                         'time_per_ksample',
                         1000 * time_per_batch / self.batch_size)
+                    for k, v in detached_debug_tensors['stats'].items():
+                        # these values have already been detached, but not
+                        # moved to GPU
+                        logger.record_mean(k, v.item())
+                    should_dump = True
 
                 if batches_trained % log_interval == 0:
-                    im_log.dump(step=batches_trained)
+                    logger.dump(step=batches_trained)
+                    should_dump = False
 
                 batches_trained += 1
                 samples_seen += len(batch['context'])
@@ -468,8 +456,8 @@ class RepresentationLearner(object):
 
         # if we were not scheduled to dump on the last batch we trained on,
         # then do one last log dump to make sure everything is there
-        if not (batches_trained % log_interval == 0):
-            im_log.dump(step=batches_trained)
+        if should_dump:
+            logger.dump(step=batches_trained)
 
         assert is_last_epoch, "did not make it to last epoch"
         assert should_save_checkpoint, "did not save checkpoint on last epoch"

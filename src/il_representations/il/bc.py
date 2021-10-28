@@ -4,8 +4,7 @@ import gym
 from stable_baselines3.common import preprocessing
 import torch
 
-from il_representations.data.read_dataset import (SubdatasetExtractor,
-                                                  datasets_to_loader)
+from il_representations.data.read_dataset import datasets_to_loader
 from il_representations.il.utils import streaming_extract_keys
 from il_representations.utils import repeat_chain_non_empty
 

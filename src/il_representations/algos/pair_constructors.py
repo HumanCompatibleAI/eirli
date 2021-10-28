@@ -259,7 +259,7 @@ class JigsawPairConstructor(TargetPairConstructor):
             pos_w = int(pos % self.unit_size) * w_unit
 
             tile = TF.crop(image, top=pos_h, left=pos_w, height=tile_h,
-                            width=tile_w)
+                           width=tile_w)
             tiles.append(tile)
 
         # Concat tiles.
