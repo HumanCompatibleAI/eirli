@@ -33,6 +33,9 @@ git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
+# old version of scikit-learn is needed until scikit-optimize creates a release
+# that fixes MaskedArray bug (see scikit-optimize/scikit-optimize#569)
+scikit-learn~=0.24.2
 seaborn~=0.11.0
 pyro-ppl~=1.4.0
 # deps for Ray + GCP (see Ray issue #10724)

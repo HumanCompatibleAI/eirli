@@ -8,7 +8,8 @@ import os
 import readline  # noqa: F401
 import signal
 
-from imitation.algorithms.adversarial import AIRL, GAIL
+from imitation.algorithms.adversarial.airl import AIRL
+from imitation.algorithms.adversarial.gail import GAIL
 from imitation.algorithms.bc import BC
 import imitation.data.types as il_types
 import imitation.util.logger as imitation_logger
