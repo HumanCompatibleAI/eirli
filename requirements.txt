@@ -13,14 +13,13 @@ sacred~=0.8.1
 torch~=1.9.1
 opencv-python~=4.3.0.36
 torchvision~=0.10.1
-pyyaml~=5.3.1
 sacred~=0.8.1
 tensorboard~=2.2.0
 pytest~=6.2.5
 ray[tune]~=1.0.1
-PyYAML~=5.3.1
+PyYAML~=5.4.1
 scikit-video~=1.1.11
-Pillow~=7.2.0
+Pillow~=8.4.0
 # webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
 webdataset==0.1.40
 tqdm~=4.48.0
