@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
-import faulthandler
 import contextlib
+import faulthandler
 import logging
 import os
 # readline import is black magic to stop PDB from segfaulting; do not remove it
@@ -12,7 +12,7 @@ from imitation.algorithms.adversarial.airl import AIRL
 from imitation.algorithms.adversarial.gail import GAIL
 from imitation.algorithms.bc import BC
 import imitation.data.types as il_types
-import imitation.util.logger as imitation_logger
+import imitation.util.logger as im_logger_module
 import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
@@ -32,7 +32,7 @@ from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
 from il_representations.il.bc_support import BCModelSaver
-from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
+from il_representations.il.disc_rew_nets import ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.il.utils import add_infos, streaming_extract_keys
@@ -349,7 +349,7 @@ def make_policy(*,
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                    device_name, final_pol_name, shuffle_buffer_size,
-                   log_start_batch, freeze_encoder):
+                   log_start_batch, freeze_encoder, logger):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          freeze_pol_encoder=freeze_encoder)
@@ -375,17 +375,16 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
-        policy_class=lambda **kwargs: policy,
-        policy_kwargs=None,
-        expert_data=data_loader,
+        policy=policy,
+        demonstrations=data_loader,
         device=device_name,
         augmentation_fn=augmenter,
         optimizer_cls=bc['optimizer_cls'],
         optimizer_kwargs=bc['optimizer_kwargs'],
-        lr_scheduler_cls=bc['lr_scheduler_cls'],
-        lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
         ent_weight=bc['ent_weight'],
         l2_weight=bc['l2_weight'],
+        custom_logger=logger,
+        batch_size=bc['batch_size'],
     )
 
     save_interval = bc['save_every_n_batches']
@@ -396,7 +395,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                                save_interval,
                                start_nupdate=log_start_batch)
 
-    epoch_end_callbacks = [model_saver] if save_interval else []
+    on_epoch_end = model_saver if save_interval else None
 
     bc_batches = bc['n_batches']
 
@@ -404,7 +403,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     trainer.train(n_epochs=None,
                   n_batches=bc_batches,
                   log_interval=bc['log_interval'],
-                  epoch_end_callbacks=epoch_end_callbacks)
+                  on_epoch_end=on_epoch_end)
 
     model_saver.save(bc_batches)
     final_path = model_saver.last_save_path
@@ -438,6 +437,7 @@ def do_training_gail(
     gail,
     shuffle_buffer_size,
     encoder_path,
+    logger,
 ):
     device = get_device(device_name)
 
@@ -481,6 +481,7 @@ def do_training_gail(
         learning_rate=linear_lr_schedule,
         max_grad_norm=gail['ppo_max_grad_norm'],
     )
+    ppo_algo.set_logger(logger)
     color_space = auto_env.load_color_space()
     augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
 
@@ -500,42 +501,34 @@ def do_training_gail(
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
-    common_adv_il_kwargs = dict(
-            venv=venv_chans_first,
-            expert_data=data_loader,
-            gen_algo=ppo_algo,
-            n_disc_updates_per_round=gail['disc_n_updates_per_round'],
-            expert_batch_size=gail['disc_batch_size'],
-            normalize_obs=False,
-            normalize_reward=gail['ppo_norm_reward'],
-            normalize_reward_std=gail['ppo_reward_std'],
-            clip_reward=gail['ppo_clip_reward'],
-            disc_opt_kwargs=dict(lr=gail['disc_lr']),
-            disc_augmentation_fn=augmenter,
-            gen_callbacks=[SB3ScoreLoggingCallback()],
-    )
-    if gail['use_airl']:
-        trainer = AIRL(
-            **common_adv_il_kwargs,
-            reward_net_cls=ImageRewardNet,
-            reward_net_kwargs=dict(
-                encoder=load_encoder_or_policy(
-                    observation_space=venv_chans_first.observation_space,
-                    freeze=_gail_should_freeze('disc'))
-            )
-        )
-    else:
-        discrim_net = ImageDiscrimNet(
+    reward_net = ImageRewardNet(
             observation_space=venv_chans_first.observation_space,
             action_space=venv_chans_first.action_space,
             encoder=load_encoder_or_policy(
                 observation_space=venv_chans_first.observation_space,
                 freeze=_gail_should_freeze('disc')))
-        trainer = GAIL(
-            discrim_kwargs=dict(discrim_net=discrim_net,
-                                normalize_images=True),
-            **common_adv_il_kwargs,
-        )
+    common_adv_il_kwargs = dict(
+        venv=venv_chans_first,
+        demonstrations=data_loader,
+        gen_algo=ppo_algo,
+        n_disc_updates_per_round=gail['disc_n_updates_per_round'],
+        demo_batch_size=gail['disc_batch_size'],
+        normalize_obs=False,
+        normalize_reward=gail['ppo_norm_reward'],
+        normalize_reward_kwargs=dict(
+            norm_reward_std=gail['ppo_reward_std'],
+            clip_reward=gail['ppo_clip_reward'],
+        ),
+        disc_opt_kwargs=dict(lr=gail['disc_lr']),
+        disc_augmentation_fn=augmenter,
+        gen_callbacks=[SB3ScoreLoggingCallback()],
+        custom_logger=logger,
+        reward_net=reward_net,
+    )
+    if gail['use_airl']:
+        trainer = AIRL(**common_adv_il_kwargs)
+    else:
+        trainer = GAIL(**common_adv_il_kwargs)
     save_callback = GAILSavePolicyCallback(
         ppo_algo=ppo_algo, save_every_n_steps=gail['save_every_n_steps'],
         save_dir=out_dir)
@@ -560,7 +553,7 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
     # actually know the right way to write log files continuously in Sacred.
     log_dir = os.path.abspath(il_train_ex.observers[0].dir)
-    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
+    logger = im_logger_module.configure(log_dir, ["stdout", "csv", "tensorboard"])
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
 
@@ -584,13 +577,15 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
             final_path = do_training_bc(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir)
+                out_dir=log_dir,
+                logger=logger)
 
         elif algo == 'gail':
             final_path = do_training_gail(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir)
+                out_dir=log_dir,
+                logger=logger)
 
         else:
             raise NotImplementedError(f"Can't handle algorithm '{algo}'")

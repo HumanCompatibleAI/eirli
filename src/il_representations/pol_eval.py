@@ -106,7 +106,7 @@ def do_final_eval(*,
         trajectories = il_rollout.generate_trajectories(
             policy,
             vec_env,
-            il_rollout.min_episodes(n_rollouts),
+            il_rollout.make_min_episodes(n_rollouts),
             rng=rng,
             deterministic_policy=deterministic_policy)
         # make sure all the actions are finite
@@ -154,7 +154,8 @@ def do_final_eval(*,
             # sample some trajectories
             rng = np.random.RandomState(seed)
             trajectories = il_rollout.generate_trajectories(
-                policy, vec_env, il_rollout.min_episodes(n_rollouts), rng=rng)
+                policy, vec_env, il_rollout.make_min_episodes(n_rollouts),
+                rng=rng)
             # make sure all the actions are finite
             for traj in trajectories:
                 assert np.all(np.isfinite(traj.acts)), traj.acts
@@ -170,7 +171,8 @@ def do_final_eval(*,
             # print it out
             kv_message = '\n'.join(f"  {key}={value}"
                                    for key, value in stats.items())
-            logging.info(f"Evaluation stats on '{full_env_name}': {kv_message}")
+            logging.info(
+                f"Evaluation stats on '{full_env_name}': {kv_message}")
 
             vec_env.close()
 

@@ -161,7 +161,7 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
     trajectories = il_rollout.generate_trajectories(
         policy,
         vec_env,
-        il_rollout.min_episodes(n_rollouts),
+        il_rollout.make_min_episodes(n_rollouts),
         rng=np.random,
         deterministic_policy=False)
     # make sure all the actions are finite
