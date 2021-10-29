@@ -11,7 +11,7 @@ import readline  # noqa: F401
 import signal
 
 import imitation.data.rollout as il_rollout
-import imitation.util.logger as im_log
+import imitation.util.logger as im_logger_module
 import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
@@ -211,7 +211,8 @@ def deduplicate_params(*params_iters, check_dedup=True):
 def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                   bc_dataset, n_batches, optimizer_cls, optimizer_kwargs,
                   repl_weight, log_dump_interval, model_save_interval, repl,
-                  bc, shuffle_buffer_size, log_dir, venv, log_calc_interval):
+                  bc, shuffle_buffer_size, log_dir, venv, log_calc_interval,
+                  logger):
     """Training loop for repL + BC."""
     # dataset setup
     repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
@@ -300,14 +301,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         should_log_values = batch_num % log_calc_interval == 0
         if should_log_values:
             grad_norm, weight_norm = weight_grad_norms(params_list_dedup)
-            im_log.sb_logger.record_mean('all_loss', composite_loss.item())
-            im_log.sb_logger.record_mean('bc_loss', bc_loss.item())
-            im_log.sb_logger.record_mean('repl_loss', repl_loss.item())
-            im_log.sb_logger.record_mean('grad_norm', grad_norm.item())
-            im_log.sb_logger.record_mean('weight_norm', weight_norm.item())
-            im_log.sb_logger.record_mean('batch_num', batch_num)
+            logger.sb_logger.record_mean('all_loss', composite_loss.item())
+            logger.sb_logger.record_mean('bc_loss', bc_loss.item())
+            logger.sb_logger.record_mean('repl_loss', repl_loss.item())
+            logger.sb_logger.record_mean('grad_norm', grad_norm.item())
+            logger.sb_logger.record_mean('weight_norm', weight_norm.item())
+            logger.sb_logger.record_mean('batch_num', batch_num)
             for k, v in bc_stats.items():
-                im_log.sb_logger.record_mean('bc_' + k, float(v))
+                logger.sb_logger.record_mean('bc_' + k, float(v))
             # code above that computes eval stats should at least run on the
             # first step
             assert latest_eval_stats is not None, \
@@ -315,14 +316,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             for k, v in latest_eval_stats.items():
                 suffix = '_mean'
                 if k.endswith(suffix):
-                    im_log.sb_logger.record_mean('eval_' + k[:-len(suffix)], v)
+                    logger.sb_logger.record_mean('eval_' + k[:-len(suffix)], v)
             for k, v in timers.dump_stats(reset=False).items():
-                im_log.sb_logger.record('t_mean_' + k, v['mean'])
-                im_log.sb_logger.record('t_max_' + k, v['max'])
+                logger.sb_logger.record('t_mean_' + k, v['mean'])
+                logger.sb_logger.record('t_max_' + k, v['max'])
 
         should_dump_logs = batch_num % log_dump_interval == 0
         if should_dump_logs:
-            im_log.dump(step=batch_num)
+            logger.dump(step=batch_num)
 
     # return final saved policy path
     pol_path = save_dir / "policy_final.ckpt"
@@ -430,7 +431,6 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
     logging.basicConfig(level=logging.INFO)
     # `imitation` logging
     log_dir = os.path.abspath(train_ex.observers[0].dir)
-    im_log.configure(log_dir, ["stdout", "csv", "tensorboard"])
     if torch_num_threads is not None:
         torch.set_num_threads(torch_num_threads)
     device = get_device(device)
@@ -439,6 +439,10 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
         # set up env
         venv = auto_env.load_vec_env()
         exit_stack.push(closing(venv))
+
+        logger = im_logger_module.configure(
+            log_dir, ["stdout", "csv", "tensorboard"])
+        exit_stack.push(closing(logger))
 
         # set up obs encoder shared between IL and repL
         obs_encoder_cls = get_obs_encoder_cls(obs_encoder_cls,
@@ -464,19 +468,22 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
                 shuffle_buffer_size=shuffle_buffer_size,
                 obs_encoder=obs_encoder,
                 device=device)
-            bc_oe_params = list(bc_learner.policy.features_extractor.obs_encoder.
-                                named_parameters())
+            bc_oe_params = list(
+                bc_learner.policy.features_extractor.obs_encoder
+                .named_parameters())
             # are params actually shared?
             assert orig_oe_params == bc_oe_params
             assert orig_oe_params == repl_oe_params
-            final_pol_path = learn_repl_bc(repl_learner=repl_learner,
-                                           repl_datasets=repl_datasets,
-                                           bc_learner=bc_learner,
-                                           bc_augmentation_fn=bc_augmentation_fn,
-                                           bc_dataset=bc_dataset,
-                                           model_save_interval=model_save_interval,
-                                           log_dir=log_dir,
-                                           venv=venv)
+            final_pol_path = learn_repl_bc(
+                repl_learner=repl_learner,
+                repl_datasets=repl_datasets,
+                bc_learner=bc_learner,
+                bc_augmentation_fn=bc_augmentation_fn,
+                bc_dataset=bc_dataset,
+                model_save_interval=model_save_interval,
+                log_dir=log_dir,
+                venv=venv,
+                logger=logger)
         else:
             raise ValueError(f"do not know how to handle il_algo={il_algo!r}")
 
