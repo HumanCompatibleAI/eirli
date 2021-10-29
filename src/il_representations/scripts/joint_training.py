@@ -176,6 +176,7 @@ def do_short_eval(*, policy, vec_env, n_rollouts, deterministic=False):
     # also compute min/max/mean/std of eval_score, if present
     extra_stats = collections.OrderedDict()
     for traj in trajectories:
+        assert traj.infos is not None
         last_info = traj.infos[-1]
         if 'eval_score' in last_info:
             stat_list = extra_stats.setdefault('eval_score', [])
@@ -301,14 +302,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
         should_log_values = batch_num % log_calc_interval == 0
         if should_log_values:
             grad_norm, weight_norm = weight_grad_norms(params_list_dedup)
-            logger.sb_logger.record_mean('all_loss', composite_loss.item())
-            logger.sb_logger.record_mean('bc_loss', bc_loss.item())
-            logger.sb_logger.record_mean('repl_loss', repl_loss.item())
-            logger.sb_logger.record_mean('grad_norm', grad_norm.item())
-            logger.sb_logger.record_mean('weight_norm', weight_norm.item())
-            logger.sb_logger.record_mean('batch_num', batch_num)
+            logger.record_mean('all_loss', composite_loss.item())
+            logger.record_mean('bc_loss', bc_loss.item())
+            logger.record_mean('repl_loss', repl_loss.item())
+            logger.record_mean('grad_norm', grad_norm.item())
+            logger.record_mean('weight_norm', weight_norm.item())
+            logger.record_mean('batch_num', batch_num)
             for k, v in bc_stats.items():
-                logger.sb_logger.record_mean('bc_' + k, float(v))
+                logger.record_mean('bc_' + k, float(v))
             # code above that computes eval stats should at least run on the
             # first step
             assert latest_eval_stats is not None, \
@@ -316,10 +317,10 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
             for k, v in latest_eval_stats.items():
                 suffix = '_mean'
                 if k.endswith(suffix):
-                    logger.sb_logger.record_mean('eval_' + k[:-len(suffix)], v)
+                    logger.record_mean('eval_' + k[:-len(suffix)], v)
             for k, v in timers.dump_stats(reset=False).items():
-                logger.sb_logger.record('t_mean_' + k, v['mean'])
-                logger.sb_logger.record('t_max_' + k, v['max'])
+                logger.record('t_mean_' + k, v['mean'])
+                logger.record('t_max_' + k, v['max'])
 
         should_dump_logs = batch_num % log_dump_interval == 0
         if should_dump_logs:
