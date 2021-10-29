@@ -6,7 +6,7 @@ jobs:
     docker:
       # this is also used in gcp_cluster_template.yaml (if you change this file,
       # remember to update all your cluster configs too)
-      - image: "humancompatibleai/il-representations:2021.10.28-r1"
+      - image: "humancompatibleai/il-representations:2021.10.28-r2"
     steps:
       - checkout
       - run:
