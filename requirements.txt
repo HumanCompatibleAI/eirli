@@ -44,7 +44,7 @@ google-api-python-client~=2.26.1
 
 # imitation needs special branch as of 2021-10-26. The custom imitation branch
 # in turn pulls in a custom version of Stable Baselines 3.
-git+git://github.com/HumanCompatibleAI/imitation@386215e129ff42ae6408957b0bb9acc4c657c396#egg=imitation
+git+git://github.com/HumanCompatibleAI/imitation@efa86e508cd1d6cd5fca9fa6f96c5662a1217699
 
 # environments
 magical-il~=0.0.1a4
