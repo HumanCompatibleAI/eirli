@@ -458,7 +458,7 @@ def print_policy_info(policy, obs_space):
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     policy = policy.to(device)
     obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
-    summary(policy, obs_shape)
+    summary(policy, obs_shape, input_range=(0, 255.0))
 
 
 @functools.total_ordering

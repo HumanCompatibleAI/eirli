@@ -28,7 +28,7 @@ procgen==0.10.4
 captum~=0.4.0
 
 # this fork of torchsummary can deal with layers that don't produce tensors
-git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
+git+git://github.com/HumanCompatibleAI/pytorch-summary@777d0bad8b40e5a46308dcd4b5c9196201d01cb7
 
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
