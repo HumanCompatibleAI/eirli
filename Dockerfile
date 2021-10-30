@@ -75,6 +75,7 @@ RUN bash /root/minecraft_setup.sh
 
 # Install remaining dependencies
 COPY requirements.txt /root/requirements.txt
+RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -U "pip>=21.3.1"
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
 # also install CUDA 11.1 & newest Torch, since that seems to work with A100
 RUN conda install pytorch=1.9.0 torchvision cudatoolkit=11.1 -c pytorch -c nvidia -y \
