@@ -418,6 +418,111 @@ def make_hp_tuning_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def gail_tune_hc_2021_10_30():
+        """Config for tuning GAIL on cheetah-run."""
+        use_skopt = True
+        skopt_search_mode = 'max'
+        metric = 'return_mean'
+        stages_to_run = StagesToRun.IL_ONLY
+        env_cfg = {
+            'benchmark_name': 'dm_control',
+            'task_name': 'cheetah-run',
+        }
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                # 1e6 timesteps is enough to solve at least half the MAGICAL
+                # tasks, so 500k is enough for the easy ones. For DMC I'm not
+                # sure how many steps we need. CURL and RAD papers
+                # (https://arxiv.org/pdf/2004.04136.pdf,
+                # https://arxiv.org/pdf/2004.14990.pdf) suggest that 500k steps
+                # is only enough to get ~200 reward on half-cheetah and
+                # finger-spin using SAC-from-pixels, but they're using RL
+                # rather than GAIL.
+                'total_timesteps': 1000000,
+                # basically disable intermediate checkpoint saving
+                'save_every_n_steps': int(1e10),
+                # log, but not too often
+                'log_interval_steps': int(1e4),
+                # base type should be dict
+                # (the space will customise this later on)
+                'disc_augs': {},
+                # things that seem reasonable but which I haven't quite decided
+                # on fixing yet
+                'ppo_batch_size': 48,
+                'disc_batch_size': 48,
+            }
+        }
+        il_test = {
+            'deterministic_policy': True,
+        }
+        venv_opts = {
+            'venv_parallel': True,
+            'n_envs': 32,
+        }
+        skopt_space = collections.OrderedDict([
+            ('il_train:gail:ppo_n_steps', (4, 12)),
+            ('il_train:gail:ppo_n_epochs', (4, 12)),
+            ('il_train:gail:ppo_init_learning_rate',
+             (5e-5, 5e-4, 'log-uniform')),
+            ('il_train:gail:ppo_gamma', (0.98, 1.0, 'uniform')),
+            ('il_train:gail:ppo_gae_lambda', (0.6, 0.9, 'uniform')),
+            ('il_train:gail:ppo_ent', (1e-10, 1e-3, 'log-uniform')),
+            ('il_train:gail:ppo_adv_clip', (0.001, 0.1)),
+            ('il_train:gail:disc_n_updates_per_round', (1, 8)),
+            ('il_train:gail:disc_lr', (5e-4, 5e-3, 'log-uniform')),
+            # lots of augmentation options
+            ('il_train:gail:disc_augs:translate', [True, False]),
+            ('il_train:gail:disc_augs:rotate', [True, False]),
+            ('il_train:gail:disc_augs:color_jitter_mid', [True, False]),
+            ('il_train:gail:disc_augs:flip_lr', [True, False]),
+            ('il_train:gail:disc_augs:noise', [True, False]),
+            ('il_train:gail:disc_augs:erase', [True, False]),
+            ('il_train:gail:disc_augs:gaussian_blur', [True, False]),
+        ])
+        skopt_ref_configs = [
+            collections.OrderedDict([
+                ('il_train:gail:ppo_n_steps', 7),
+                ('il_train:gail:ppo_n_epochs', 7),
+                ('il_train:gail:ppo_init_learning_rate', 2e-4),
+                ('il_train:gail:ppo_gamma', 0.985),
+                ('il_train:gail:ppo_gae_lambda', 0.76),
+                ('il_train:gail:ppo_ent', 4.5e-8),
+                ('il_train:gail:ppo_adv_clip', 0.006),
+                ('il_train:gail:disc_n_updates_per_round', 2),
+                ('il_train:gail:disc_lr', 5e-4),
+                ('il_train:gail:disc_augs:translate', False),
+                ('il_train:gail:disc_augs:rotate', True),
+                ('il_train:gail:disc_augs:color_jitter_mid', True),
+                ('il_train:gail:disc_augs:flip_lr', True),
+                ('il_train:gail:disc_augs:noise', True),
+                ('il_train:gail:disc_augs:erase', True),
+                ('il_train:gail:disc_augs:gaussian_blur', True),
+            ]),
+            collections.OrderedDict([
+                ('il_train:gail:ppo_n_steps', 8),
+                ('il_train:gail:ppo_n_epochs', 12),
+                ('il_train:gail:ppo_init_learning_rate', 1e-4),
+                ('il_train:gail:ppo_gamma', 0.99),
+                ('il_train:gail:ppo_gae_lambda', 0.8),
+                ('il_train:gail:ppo_ent', 1e-8),
+                ('il_train:gail:ppo_adv_clip', 0.02),
+                ('il_train:gail:disc_n_updates_per_round', 6),
+                ('il_train:gail:disc_lr', 1e-3),
+                ('il_train:gail:disc_augs:translate', False),
+                ('il_train:gail:disc_augs:rotate', True),
+                ('il_train:gail:disc_augs:color_jitter_mid', False),
+                ('il_train:gail:disc_augs:flip_lr', False),
+                ('il_train:gail:disc_augs:noise', True),
+                ('il_train:gail:disc_augs:erase', True),
+                ('il_train:gail:disc_augs:gaussian_blur', True),
+            ]),
+        ]
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def airl_tune():
         use_skopt = True
         skopt_search_mode = 'max'
