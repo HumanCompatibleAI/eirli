@@ -48,4 +48,4 @@ git+git://github.com/HumanCompatibleAI/imitation@51d47f106b378981aa1b55ca5016eeb
 # environments
 magical-il~=0.0.1a4
 dm_control==0.0.319497192
-git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
+git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076

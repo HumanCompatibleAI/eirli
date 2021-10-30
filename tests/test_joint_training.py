@@ -2,7 +2,7 @@
 
 import pytest
 
-from il_representations.script_utils import update
+from il_representations.utils import update
 from il_representations.test_support.configuration import (
     ENV_CFG_TEST_CONFIGS, FAST_JOINT_TRAIN_CONFIG)
 

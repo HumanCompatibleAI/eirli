@@ -1,13 +1,15 @@
-import collections
 import copy
 import enum
 import logging
+import os
+import weakref
 from typing import TypeVar
 import urllib
 
 import numpy as np
+from ray.tune.schedulers import FIFOScheduler
 
-from il_representations.utils import NUM_CHANS
+from il_representations.envs.auto import get_n_chans
 
 
 class StagesToRun(str, enum.Enum):
@@ -24,20 +26,6 @@ class ReuseRepl(str, enum.Enum):
     YES = "YES"
     NO = "NO"
     IF_AVAILABLE = "IF_AVAILABLE"
-
-
-def update(d, *updates):
-    """Recursive dictionary update (pure)."""
-    d = copy.copy(d)  # to make this pure
-    for u in updates:
-        for k, v in u.items():
-            if isinstance(d.get(k), collections.Mapping):
-                # recursive insert into a mapping
-                d[k] = update(d[k], v)
-            else:
-                # if the existing value is not a mapping, then overwrite it
-                d[k] = v
-    return d
 
 
 T = TypeVar('T')
@@ -78,15 +66,6 @@ def detect_ec2():
         return False
 
 
-def get_n_chans() -> int:
-    # FIXME(sam): this is here to avoid a recursive import. The issue is that
-    # il_representations.envs wants to use update() from this file. Ideally we
-    # should move update() into a separate file, or move get_n_chans into
-    # auto.py.
-    from il_representations.envs import auto
-    return NUM_CHANS[auto.load_color_space()]
-
-
 def simplify_stacks(obs_vec: np.ndarray, keep_only_latest: bool) -> np.ndarray:
     """Turn an image frame stack into a single image. If
     `keep_only_latest=True`, then it uses only the most recent image in each
@@ -124,3 +103,43 @@ def trajectory_iter(dataset):
         if frame['dones']:
             yield traj
             traj = []
+
+
+class CheckpointFIFOScheduler(FIFOScheduler):
+    """Variant of FIFOScheduler that periodically saves the given search
+    algorithm. Useful for, e.g., SkOptSearch, where it is helpful to be able to
+    re-instantiate the search object later on."""
+
+    # FIXME: this is a stupid hack, inherited from another project. There
+    # should be a better way of saving skopt internals as part of Ray Tune.
+    # Perhaps defining a custom trainable would do the trick?
+    def __init__(self, search_alg):
+        self.search_alg = weakref.proxy(search_alg)
+
+    def on_trial_complete(self, trial_runner, trial, result):
+        rv = super().on_trial_complete(trial_runner, trial, result)
+        # references to _local_checkpoint_dir and _session_dir are a bit hacky
+        checkpoint_path = os.path.join(
+            trial_runner._local_checkpoint_dir,
+            f'search-alg-{trial_runner._session_str}.pkl')
+        self.search_alg.save(checkpoint_path + '.tmp')
+        os.rename(checkpoint_path + '.tmp', checkpoint_path)
+        return rv
+
+
+def relative_symlink(src, dst):
+    link_dir_abs, link_fn = os.path.split(os.path.abspath(dst))
+    if not link_fn:
+        raise ValueError(f"path dst='{dst}' has empty basename")
+    # absolute path to src, and path relative to link_dir
+    src_abspath = os.path.abspath(src)
+    src_relpath = os.path.relpath(src_abspath, start=link_dir_abs)
+
+    os.makedirs(link_dir_abs, exist_ok=True)
+    link_dir_fd = os.open(link_dir_abs, os.O_RDONLY)
+    try:
+        # both src_relpath and link_fn are relative to link_dir, which is
+        # represented by the file descriptor link_dir_fd
+        os.symlink(src_relpath, link_fn, dir_fd=link_dir_fd)
+    finally:
+        os.close(link_dir_fd)

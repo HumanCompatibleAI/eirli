@@ -1,5 +1,6 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
+import copy
 from collections.abc import Iterable, Mapping, Sequence
 import contextlib
 import functools
@@ -644,3 +645,53 @@ def recursive_detach(nest):
         else:
             raise TypeError(f"Do not know how to detach {key}={value!r}")
     return detached_nest
+
+
+def update(d, *updates):
+    """Recursive dictionary update (pure)."""
+    d = copy.copy(d)  # to make this pure
+    for u in updates:
+        for k, v in u.items():
+            if isinstance(d.get(k), collections.Mapping):
+                # recursive insert into a mapping
+                d[k] = update(d[k], v)
+            else:
+                # if the existing value is not a mapping, then overwrite it
+                d[k] = v
+    return d
+
+
+def expand_dict_keys(config_dict):
+    """Some Ray Tune hyperparameter search options do not supported nested
+    dictionaries for configuration. To emulate nested dictionaries, we use a
+    plain dictionary with keys of the form "level1:level2:…". . The colons are
+    then separated out by this function into a nested dict (e.g. {'level1':
+    {'level2': …}}).
+
+    Example:
+
+    ```
+    >>> expand_dict_keys({'x:y': 42, 'z': 4, 'x:u:v': 5, 'w': {'s:t': 99}})
+    {'x': {'y': 42, 'u': {'v': 5}}, 'z': 4, 'w': {'s': {'t': 99}}}
+    ```
+    """
+    dict_type = type(config_dict)
+    new_dict = dict_type()
+
+    for key, value in config_dict.items():
+        dest_dict = new_dict
+
+        parts = key.split(':')
+        for part in parts[:-1]:
+            if part not in dest_dict:
+                # create a new sub-dict if necessary
+                dest_dict[part] = dict_type()
+            else:
+                assert isinstance(dest_dict[part], dict)
+            dest_dict = dest_dict[part]
+        if isinstance(value, dict):
+            # recursively expand nested dicts
+            value = expand_dict_keys(value)
+        dest_dict[parts[-1]] = value
+
+    return new_dict

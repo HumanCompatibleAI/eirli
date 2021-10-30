@@ -26,7 +26,7 @@ from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
 from il_representations.envs.procgen_envs import load_dataset_procgen
 from il_representations.envs.baselines_vendored import (VecExtractDictObs,
                                                         VecMonitor)
-from il_representations.script_utils import update as dict_update
+from il_representations.utils import NUM_CHANS, update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
@@ -317,3 +317,7 @@ def load_color_space(benchmark_name):
         return color_spaces[benchmark_name]
     except KeyError:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
+
+
+def get_n_chans() -> int:
+    return NUM_CHANS[load_color_space()]
