@@ -48,7 +48,7 @@ gpu_config() {
 submit_expt() {
     # submit joint training experiment to local Ray server
     n_gpus="$(gpu_config "$@")"
-    python -m il_representations.scripts.joint_training_cluster.py \
+    python -m il_representations.scripts.joint_training_cluster \
         --ray-address="$ray_address" --ray-ncpus "$ray_ncpus" \
         --ray-ngpus "$n_gpus" --nseeds "$nseeds" "$@" &
 }
