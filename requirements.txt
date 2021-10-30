@@ -13,7 +13,6 @@ sacred~=0.8.2
 torch~=1.10.0
 torchvision~=0.11.1
 opencv-python~=4.3.0.36
-sacred~=0.8.1
 tensorboard~=2.2.0
 pytest~=6.2.5
 ray[tune]~=1.7.0
