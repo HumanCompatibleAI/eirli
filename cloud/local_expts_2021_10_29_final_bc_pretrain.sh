@@ -67,6 +67,7 @@ for env_config in "${dmc_procgen_env_configs[@]}"; do
             exp_ident="neurips_control_bc_${use_augs}" "$env_config" \
             "il_train.bc.n_batches=$dmc_procgen_n_batches"
     done
+    wait
 done
 
 for magical_env in "${magical_envs[@]}"; do
@@ -88,5 +89,4 @@ for magical_env in "${magical_envs[@]}"; do
             "env_cfg.task_name=$magical_env"
     done
 done
-
 wait

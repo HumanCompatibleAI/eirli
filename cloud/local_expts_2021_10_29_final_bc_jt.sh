@@ -65,9 +65,12 @@ dmc_procgen_launch_one() {
 for procgen_task in jumper coinrun fruitbot miner; do
     dmc_procgen_launch_one "env_cfg.benchmark_name=procgen" "env_cfg.task_name=$procgen_task"
 done
+wait
+
 for dmc_task in finger-spin cheetah-run reacher-easy; do
     dmc_procgen_launch_one "env_cfg.benchmark_name=dm_control" "env_cfg.task_name=$dmc_task"
 done
+wait
 
 magical_launch_all() {
     for env_name in "${magical_env_names[@]}"; do
@@ -82,5 +85,4 @@ magical_launch_all() {
 }
 
 magical_launch_all
-
 wait
