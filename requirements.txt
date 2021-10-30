@@ -16,7 +16,7 @@ torchvision~=0.10.1
 sacred~=0.8.1
 tensorboard~=2.2.0
 pytest~=6.2.5
-ray[tune]~=1.0.1
+ray[tune]~=1.7.0
 PyYAML~=5.4.1
 scikit-video~=1.1.11
 Pillow~=8.4.0
@@ -41,9 +41,9 @@ pyro-ppl~=1.4.0
 cryptography~=3.1
 google-api-python-client~=2.26.1
 
-# imitation needs special branch as of 2021-10-26. The custom imitation branch
+# imitation needs special branch as of 2021-10-29. The custom imitation branch
 # in turn pulls in a custom version of Stable Baselines 3.
-git+git://github.com/HumanCompatibleAI/imitation@efa86e508cd1d6cd5fca9fa6f96c5662a1217699
+git+git://github.com/HumanCompatibleAI/imitation@51d47f106b378981aa1b55ca5016eebc543a601d
 
 # environments
 magical-il~=0.0.1a4
