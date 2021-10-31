@@ -190,6 +190,7 @@ def env_data_defaults():
         'ninja': 'procgen/demo_ninja.pickle',
         'jumper': 'procgen/demo_jumper.pickle',
         'miner': 'procgen/demo_miner.pickle',
+        'fruitbot': 'procgen/demo_fruitbot.pickle',
     }
 
     _ = locals()

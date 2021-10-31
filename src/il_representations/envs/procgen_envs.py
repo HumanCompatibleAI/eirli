@@ -45,12 +45,14 @@ def load_dataset_procgen(task_name, procgen_frame_stack, chans_first=True,
     if chans_first:
         for key in ('obs', 'next_obs'):
             dataset_dict[key] = np.transpose(dataset_dict[key], (0, 3, 1, 2))
-    dataset_dict['obs'] = stack_obs_oldest_first(dataset_dict['obs'],
-                                                 procgen_frame_stack,
-                                                 use_zeroed_frames=True)
-    dataset_dict['next_obs'] = stack_obs_oldest_first(dataset_dict['next_obs'],
-                                                 procgen_frame_stack,
-                                                 use_zeroed_frames=True)
+
+    if procgen_frame_stack > 0:
+        dataset_dict['obs'] = stack_obs_oldest_first(dataset_dict['obs'],
+                                                     procgen_frame_stack,
+                                                     use_zeroed_frames=True)
+        dataset_dict['next_obs'] = stack_obs_oldest_first(dataset_dict['next_obs'],
+                                                     procgen_frame_stack,
+                                                     use_zeroed_frames=True)
 
     return dataset_dict
 

@@ -31,8 +31,7 @@ git+git://github.com/HumanCompatibleAI/pytorch-summary@777d0bad8b40e5a46308dcd4b
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
 scikit-optimize~=0.8.1
-# old version of scikit-learn is needed until scikit-optimize creates a release
-# that fixes MaskedArray bug (see scikit-optimize/scikit-optimize#569)
+# sklearn<1.0 needed to avoid scikit-optimize/scikit-optimize#569
 scikit-learn~=0.24.2
 seaborn~=0.11.0
 pyro-ppl~=1.4.0
@@ -46,5 +45,8 @@ git+git://github.com/HumanCompatibleAI/imitation@51d47f106b378981aa1b55ca5016eeb
 
 # environments
 magical-il~=0.0.1a4
+# DMC 0.0.319497192 was the original version of dm_control that we used. New
+# versions require MuJoCo 210 rather than MuJoCo 200 (which probably introduces
+# incompatibilities with our saved demonstration files).
 dm_control==0.0.319497192
 git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076

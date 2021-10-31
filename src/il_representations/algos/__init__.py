@@ -15,9 +15,9 @@ from il_representations.algos.decoders import (
     ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead, NoOp,
     PixelDecoder, SymmetricProjectionHead)
 from il_representations.algos.encoders import (
-    ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder,
-    BaseEncoder, InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder,
-    PolicyEncoder, RecurrentEncoder, TargetStoringActionEncoder, VAEEncoder,
+    ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, BaseEncoder,
+    InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder, PolicyEncoder,
+    RecurrentEncoder, TargetStoringActionEncoder, VAEEncoder,
     infer_action_shape_info)
 from il_representations.algos.losses import (AELoss,
                                              BatchAsymmetricContrastiveLoss,

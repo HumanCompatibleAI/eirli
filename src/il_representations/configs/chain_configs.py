@@ -402,6 +402,20 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_rl_only():
+        stages_to_run = StagesToRun.RL_ONLY
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_rl():
+        stages_to_run = StagesToRun.REPL_AND_RL
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_repl_moco():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
@@ -486,11 +500,20 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_dynamics():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'DynamicsPrediction',
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_repl_temporal_cpc():
         stages_to_run = StagesToRun.REPL_AND_IL
         repl = {
             'algo': 'TemporalCPC',
-
         }
         _ = locals()
         del _
@@ -521,6 +544,21 @@ def make_chain_configs(experiment_obj):
                 'batch_size': 192,
             }
         }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_tcpc4():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 4
+                }
+            }
+        }
+
         _ = locals()
         del _
 
@@ -861,6 +899,16 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_dqn_nofreeze():
+        dqn_train = {
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+
+    @experiment_obj.named_config
     def cfg_il_bc_500k_nofreeze():
         il_train = {
             'algo': 'bc',
@@ -1049,9 +1097,6 @@ def make_chain_configs(experiment_obj):
         il_train = {
             'algo': 'gail',
             'gail': {
-                # Tuning guide for HalfCheetah is at
-                # https://docs.google.com/document/d/1k6cEgszHWEmYZG7X8R3m6XySHqr_inoFTuNLbRnSZ8M/edit#bookmark=id.n3ge30xuplwx
-                # (in Jan/Feb shared notebook)
                 'total_timesteps': 500000,
                 'ppo_n_steps': 8,
                 'ppo_n_epochs': 12,
@@ -1128,6 +1173,51 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
+
+    @experiment_obj.named_config
+    def cfg_il_gail_dmc_1m_nofreeze():
+        """GAIL config tailored to dm_control tasks. This was specifically
+        tuned for HalfCheetah at 500k steps, but should work for other tasks
+        too (HalfCheetah is just the hardest one)."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                'total_timesteps': 1000000,
+                'ppo_n_steps': 8,
+                'ppo_n_epochs': 12,
+                'ppo_batch_size': 64,
+                'ppo_init_learning_rate': 1e-4,
+                'ppo_gamma': 0.99,
+                'ppo_gae_lambda': 0.8,
+                'ppo_ent': 1e-8,
+                'ppo_adv_clip': 0.02,
+                'disc_n_updates_per_round': 6,
+                'disc_batch_size': 48,
+                'disc_lr': 1e-3,
+                'disc_augs': {
+                    'rotate': True,
+                    'noise': True,
+                    'erase': True,
+                    'gaussian_blur': True,
+                    # note lack of color_jitter_mid, flip_lr, translate_ex; I
+                    # put those into HP optimiser, but didn't find that they
+                    # worked well
+                }
+            },
+            'freeze_encoder': False,
+        }
+        il_test = {
+            'deterministic_policy': True,
+        }
+        venv_opts = {
+            'n_envs': 32,
+            'venv_parallel': True,
+            'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
 
     @experiment_obj.named_config
     def gail_mr_config_2021_03_29():

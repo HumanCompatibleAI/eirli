@@ -323,8 +323,7 @@ class RepresentationLearner(object):
             scheduler_kwargs (dict): keyword args to pass to scheduler_cls.
             optimizer_cls (type): optimizer class.
             optimizer_kwargs (dict): kwargs to pass to optimizer_cls.
-            logger (HierarchicalLogger): numerical
-                logger.
+            logger (HierarchicalLogger): numerical logger.
 
         Returns: tuple of `(loss_record, most_recent_encoder_checkpoint_path)`.
             `loss_record` is a list of average loss values encountered at each
@@ -336,7 +335,6 @@ class RepresentationLearner(object):
         data_iter = self.make_data_iter(
             datasets=datasets, batches_per_epoch=batches_per_epoch,
             n_epochs=n_epochs)
-
 
         # optimizer and LR scheduler
         optimizer = optimizer_cls(self.all_trainable_params(),

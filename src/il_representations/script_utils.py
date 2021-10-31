@@ -19,6 +19,9 @@ class StagesToRun(str, enum.Enum):
     REPL_ONLY = "REPL_ONLY"
     IL_ONLY = "IL_ONLY"
 
+    REPL_AND_RL = "REPL_AND_RL"
+    RL_ONLY = "RL_ONLY"
+
 
 class ReuseRepl(str, enum.Enum):
     """These enum flags are used to control whether
