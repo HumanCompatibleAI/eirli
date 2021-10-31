@@ -9,6 +9,7 @@ import os
 import readline  # noqa: F401
 import signal
 import torch as th
+import imitation.util.logger as im_logger_module
 import numpy as np
 import pandas as pd
 from torch.optim.adam import Adam
@@ -75,12 +76,12 @@ def default_config():
 
 
 @dqn_train_ex.capture
-def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
+def do_training_dqn(*, venv_chans_first, out_dir, augs, n_batches,
                     device_name, freeze_encoder, postproc_arch, encoder_path,
                     encoder_kwargs, nominal_num_epochs, save_every_n_batches,
                     optimizer_class, optimizer_kwargs, learning_rate,
                     batch_size, dataset_configs,
-                    memory_buffer_size):
+                    memory_buffer_size, logger):
     observation_space = venv_chans_first.observation_space
 
     def lr_schedule(_):
@@ -112,6 +113,7 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
         optimize_memory_usage=True,
         return_train_info=True
     )
+    trainer.set_logger(logger)
     trainer.policy = policy
 
     # Push data into DQN agent's memory.
@@ -152,7 +154,8 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
                                   next_obs=next_obs,
                                   action=action,
                                   reward=reward,
-                                  done=done)
+                                  done=done,
+                                  infos=[{}] * len(obs))
 
     # Call DQN training.
     n_update_per_epoch = int(n_batches / nominal_num_epochs)
@@ -185,6 +188,8 @@ def train(seed, torch_num_threads, _config):
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     log_dir = os.path.abspath(dqn_train_ex.observers[0].dir)
+    logger = im_logger_module.configure(
+        log_dir, ["stdout", "csv", "tensorboard"])
 
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
@@ -192,7 +197,8 @@ def train(seed, torch_num_threads, _config):
     with contextlib.closing(auto_env.load_vec_env()) as venv:
         final_path = do_training_dqn(
             venv_chans_first=venv,
-            out_dir=log_dir)
+            out_dir=log_dir,
+            logger=logger)
 
     return {'model_path': os.path.abspath(final_path)}
 
