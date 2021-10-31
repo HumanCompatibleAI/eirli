@@ -48,7 +48,7 @@ def test_all_benchmarks(chain_ex, file_observer, env_cfg):
 @pytest.mark.parametrize("stages", list(StagesToRun))
 def test_individual_stages(chain_ex, file_observer, stages):
     # test just doing IL, just doing REPL, etc.
-    chain_config = copy.deepcopy(CHAIN_CONFIG)
+    chain_config: dict = copy.deepcopy(CHAIN_CONFIG)
     # again, don't search over representation learner
     # pytype: disable=unsupported-operands
     chain_config['spec']['repl']['algo'] \
@@ -57,9 +57,10 @@ def test_individual_stages(chain_ex, file_observer, stages):
     chain_config['stages_to_run'] = stages
     if 'RL' not in chain_config['stages_to_run']:
         return
-    # MAGICAL demos don't currently have reward information - unsuitable for RL.
-    if 'RL' in chain_config['stages_to_run'] and \
-        chain_config['spec']['env_cfg']['grid_search'][0]['benchmark_name'] == 'magical':
+    # MAGICAL demos don't currently have reward information - unsuitable for RL
+    grid_search_spec = chain_config['spec']['env_cfg']['grid_search']
+    bench_name = grid_search_spec[0]['benchmark_name']
+    if 'RL' in chain_config['stages_to_run'] and bench_name == 'magical':
         return
     try:
         chain_ex.run(config_updates=chain_config)
