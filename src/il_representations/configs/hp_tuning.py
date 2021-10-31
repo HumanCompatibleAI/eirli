@@ -439,7 +439,7 @@ def make_hp_tuning_configs(experiment_obj):
                 # is only enough to get ~200 reward on half-cheetah and
                 # finger-spin using SAC-from-pixels, but they're using RL
                 # rather than GAIL.
-                'total_timesteps': 1000000,
+                'total_timesteps': 1_000_000,
                 # basically disable intermediate checkpoint saving
                 'save_every_n_steps': int(1e10),
                 # log, but not too often
