@@ -71,6 +71,8 @@ def default_config():
     optimize_memory = True
     memory_buffer_size = 50000
 
+    locals()
+
 
 @dqn_train_ex.capture
 def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
@@ -80,7 +82,9 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
                     batch_size, dataset_configs,
                     memory_buffer_size):
     observation_space = venv_chans_first.observation_space
-    lr_schedule = lambda _: learning_rate
+
+    def lr_schedule(_):
+        return learning_rate
     device = get_device("auto" if device_name is None else device_name)
     policy_kwargs = {'optimizer_class': optimizer_class,
                      'optimizer_kwargs': optimizer_kwargs}
@@ -97,8 +101,8 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
     color_space = auto_env.load_color_space()
     progress_df = pd.DataFrame()
 
-    assert venv_chans_first.num_envs == 1, "SB3's DQN implementation does \
-        not support multiple parallel environments."
+    assert venv_chans_first.num_envs == 1, "SB3's DQN implementation does " \
+        "not support multiple parallel environments."
     trainer = DQN(
         policy='CnnPolicy',
         env=venv_chans_first,

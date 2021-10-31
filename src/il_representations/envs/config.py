@@ -77,8 +77,7 @@ def env_cfg_defaults():
     # ###############################
     procgen_frame_stack = 4
 
-    _ = locals()
-    del _
+    locals()
 
 
 # see venv_opts_defaults docstring for description of this ingredient
@@ -101,8 +100,7 @@ def venv_opts_defaults():
     # how many envs constitute a batch step (regardless of parallelisation)
     n_envs = 2
 
-    _ = locals()
-    del _
+    locals()
 
 
 # see env_data_ingredient docstring for description of this ingredient
