@@ -275,9 +275,11 @@ def load_wds_datasets(configs):
                 f"dataset config '{orig_config}')")
         loaded_ds = load_ilr_datasets(tar_files)
         n_trajs = env_data['wds_n_trajs']
-        if n_trajs is not None:
+        n_trans = env_data['wds_n_trans']
+        if n_trajs is not None or n_trans is not None:
             subds_extractor = SubdatasetExtractor(
-                n_trajs=env_data['wds_n_trajs'])
+                n_trajs=env_data['wds_n_trajs'],
+                n_trans=env_data['wds_n_trans'])
             loaded_ds = loaded_ds.pipe(subds_extractor)
         all_datasets.append(loaded_ds)
 

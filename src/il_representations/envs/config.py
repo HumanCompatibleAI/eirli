@@ -127,6 +127,9 @@ def env_data_defaults():
     # if a numerical limit is supplied but there are fewer trajectories in the
     # dataset.
     wds_n_trajs = None
+    # Similar, but limits maximum number of transitions. User should not supply
+    # both wds_n_trajs and wds_n_trans.
+    wds_n_trans = None
 
     # ########################
     # MAGICAL config variables

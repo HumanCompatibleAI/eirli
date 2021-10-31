@@ -175,7 +175,7 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
 
 
 @dqn_train_ex.main
-def train(seed, torch_num_threads, n_trajs, _config):
+def train(seed, torch_num_threads, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
