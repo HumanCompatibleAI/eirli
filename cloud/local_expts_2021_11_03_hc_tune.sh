@@ -9,4 +9,4 @@ set -euo pipefail
 DISPLAY=:420 exec python -m il_representations.scripts.pretrain_n_adapt with \
     ray_init_kwargs.address="localhost:42000" tune_run_kwargs.num_samples=1000 \
     tune_run_kwargs.resources_per_trial.{gpu=0.33,cpu=5} \
-    gail_tune_hc_2021_10_30 $@
+    gail_tune_hc_2021_11_03 $@
