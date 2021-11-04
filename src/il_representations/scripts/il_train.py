@@ -19,6 +19,7 @@ from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
+from stable_baselines3.common.vec_env import VecEnvWrapper
 import torch as th
 from torch.optim.adam import Adam
 
@@ -324,6 +325,43 @@ def _gail_should_freeze(pol_or_disc, *, freeze_encoder, gail):
     return freeze_encoder
 
 
+class KludgyResetVecEnv(VecEnvWrapper):
+    """Kludgy vecenv that takes a random number of steps in each
+    sub-environment when reset() is called. This desynchronises the
+    environments. This is a good idea to do at the beginning of RL training
+    with actor-critic methods."""
+    def __init__(self, *args, max_steps, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_steps = max_steps
+        self.has_reset = False
+
+    def reset(self):
+        self.has_reset = True
+        for i in range(self.num_envs):
+            num_steps = np.random.randint(self.max_steps)
+            for _ in range(num_steps):
+                action = self.action_space.sample()
+                (_, _, d, _),  = self.env_method(
+                    'step', action, indices=[i])
+                if d:
+                    self.env_method('reset', indices=[i])
+        final_actions = [
+            self.action_space.sample() for _ in range(self.num_envs)
+        ]
+        # Here we take one final step to get observations for all environments.
+        # We cannot store observations using the env_method('step') calls
+        # above, since they do not pass through any of the veceenv's wrappers
+        # (e.g. for stacking).
+        obses, _, _, _ = self.venv.step(final_actions)
+        return obses
+
+    def step_wait(self):
+        assert self.has_reset, \
+            ".reset() was never called on this function, so sub-envs have " \
+            "not been randomly advanced"
+        return self.venv.step_wait()
+
+
 @il_train_ex.capture
 def do_training_gail(
     *,
@@ -441,14 +479,27 @@ def do_training_gail(
         gen_callbacks=[SB3ScoreLoggingCallback()],
         custom_logger=logger,
         reward_net=reward_net,
+        # The heuristics in imitation yield a false positive for variable
+        # horizons if we do the reset hack below. This setting prevents that
+        # from happening.
+        allow_variable_horizon=True,
     )
     if gail['use_airl']:
         trainer = AIRL(**common_adv_il_kwargs)
     else:
         trainer = GAIL(**common_adv_il_kwargs)
+
     save_callback = GAILSavePolicyCallback(
         ppo_algo=ppo_algo, save_every_n_steps=gail['save_every_n_steps'],
         save_dir=out_dir)
+
+    # apply a wrapper which advances each sub-environment by some random number
+    # of steps on reset in order to decorrelate them (we cannot do this
+    # beforehand; SB3 internals call reset() at the beginning of training, and
+    # it is impossible to turn that off without changing
+    # algorithm._setup_learn() somehow)
+    trainer.venv_train = KludgyResetVecEnv(trainer.venv_train, max_steps=500)
+    trainer.gen_algo.set_env(trainer.venv_train)
     trainer.train(
         total_timesteps=gail['total_timesteps'], callback=save_callback,
         log_interval_timesteps=gail['log_interval_steps'])
