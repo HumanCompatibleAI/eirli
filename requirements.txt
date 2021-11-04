@@ -39,9 +39,9 @@ pyro-ppl~=1.4.0
 cryptography~=3.1
 google-api-python-client~=2.26.1
 
-# imitation needs special branch as of 2021-10-29. The custom imitation branch
+# imitation needs special branch as of 2021-11-03. The custom imitation branch
 # in turn pulls in a custom version of Stable Baselines 3.
-git+git://github.com/HumanCompatibleAI/imitation@ed1ce69b6a21d9a08331a82dde091dc28c6b6ce5
+git+git://github.com/HumanCompatibleAI/imitation@fe534e2834dfe6275dd59248b31625ed73c84db5
 
 # environments
 magical-il~=0.0.1a4
@@ -49,4 +49,7 @@ magical-il~=0.0.1a4
 # versions require MuJoCo 210 rather than MuJoCo 200 (which probably introduces
 # incompatibilities with our saved demonstration files).
 dm_control==0.0.319497192
-git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076
+# our fork of dmc2gym fixes env.seed() so that it actually seeds the underlying
+# DMC environment (previously the only way to correctly seed in dmc2gym was to
+# pass a seed to the constructor)
+git+git://github.com/HumanCompatibleAI/dmc2gym@a8b239cbd7c9ee82c542f841a90c7be4d0ef3b88
