@@ -32,7 +32,7 @@ docker:
   # the image below is taken from .circleci/config.yml
   # (if you change this file or that file, then remember to change the other
   # too)
-  image: "humancompatibleai/il-representations:2021.10.30-r1"
+  image: "humancompatibleai/il-representations:2021.11.04-r1"
   container_name: "il-rep-ray-tune"
   # Set to true if to always force-pull the latest image version (no cache).
   pull_before_run: False
@@ -62,11 +62,12 @@ auth:
 # Provider-specific config for the head node, e.g. instance type. By default
 # Ray will auto-configure unspecified fields such as subnets and ssh-keys.
 head_node:
-  # n1-standard-2 is a cheap default machine for testing the cluster, but
-  # you'll probably need something much beefier (possibly something with GPUs)
-  # for real experiments.
-  # machineType: n1-standard-8
-  machineType: custom-24-65536
+  # This head node is huge, of the same class as rnn. Having a huge head node
+  # like this is dumb; you'll be burning money even when the cluster has spun
+  # down. I'm doing it because I don't want to deal with so much preemption on
+  # workers (head node is started as non-preemptible), and also don't want to
+  # deal with Ray autoscaler bugs.
+  machineType: a2-highgpu-8g
   disks:
     - boot: true
       autoDelete: true
@@ -74,8 +75,9 @@ head_node:
       initializeParams:
         diskSizeGb: 50
         # See https://cloud.google.com/compute/docs/images for more images
-        sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu101
+        # sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu110
         # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
+        sourceImage: projects/methodical-tea-257021/global/images/ilr-ray-image-2021-08-23-v0
 
   # This is not strictly needed (it just means that we kill the head node
   # permanently if the underlying machine needs to be turned off for
@@ -85,8 +87,8 @@ head_node:
     - onHostMaintenance: TERMINATE
 
   guestAccelerators:
-    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-v100
-      acceleratorCount: 1
+    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-a100
+      acceleratorCount: 8
   metadata:
     items:
       - key: install-nvidia-driver
@@ -99,7 +101,7 @@ worker_nodes:
   # As above: you'll want to change the machine type on the workers to be
   # something more useful (possibly the same type as the head node).
   # machineType: n1-standard-32
-  machineType: custom-48-167936
+  machineType: a2-highgpu-4g
   disks:
     - boot: true
       autoDelete: true
@@ -107,8 +109,9 @@ worker_nodes:
       initializeParams:
         diskSizeGb: 50
         # See https://cloud.google.com/compute/docs/images for more images
-        sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu101
+        # sourceImage: projects/deeplearning-platform-release/global/images/family/common-cu101
         # sourceImage: projects/methodical-tea-257021/global/images/minecraft-gpu-image-v4
+        sourceImage: projects/methodical-tea-257021/global/images/ilr-ray-image-2021-08-23-v0
   # Run workers on preemtible instance by default.
   # Comment this out to use on-demand.
   scheduling:
@@ -116,7 +119,7 @@ worker_nodes:
     - onHostMaintenance: TERMINATE
 
   guestAccelerators:
-    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-v100
+    - acceleratorType: projects/methodical-tea-257021/zones/us-west1-b/acceleratorTypes/nvidia-tesla-a100
       acceleratorCount: 4
   metadata:
     items:
@@ -166,7 +169,7 @@ initialization_commands:
   - >-
     nfs_mount_path="$(mount | grep nfs | grep -v docker | head -n 1 | cut -d ' ' -f 3)"
     && nv_driver_major_version="$(nvidia-smi -q | grep 'Driver Version.*:.*' | cut -d : -f 2- | sed 's/\s//g' | cut -d . -f 1)"
-    && ( [ "$nv_driver_major_version" -ge 450 ] || sudo sh "${nfs_mount_path}/driver/NVIDIA-Linux-x86_64-450.51.06.run" -s )
+    && ( [ "$nv_driver_major_version" -ge 450 ] || sudo sh "${nfs_mount_path}/driver/NVIDIA-Linux-x86_64-450.142.00.run" -s )
   # disable auto coredumps (these sometimes take more space than there is on local disk)
   - >-
     sudo sh -c 'echo "kernel.core_pattern=|/bin/false" > /etc/sysctl.d/50-coredump.conf'
@@ -186,6 +189,15 @@ setup_commands:
   # requirements.txt just in case there are any new ones pip can easily add.
   - cd ~/il-rep/ && pip install -r requirements.txt
   - cd ~/il-rep/ && pip install -e .
+  # Separately install Torch, which is necessary for running on A100 VMs (as of
+  # 2021-08-23; I am guessing that newer versions of Torch will not have this
+  # problem)
+  # 2021-09-24: for some reason Conda was claiming that 'all requested packages
+  # are installed' when I tried to upgrade from Torch 1.7.1 (in
+  # requirements.txt) to 1.9.0. When I was manually poking this, I found that
+  # running 'conda list' first would convince it to install Torch 1.9.0. I'm
+  # hoping the same thing will work here.
+  - conda list && yes | conda install pytorch=1.9.0 torchvision cudatoolkit=11.1 -c pytorch -c nvidia -y
   # Finally, we set up the 'data' and 'runs' directories to point to places on
   # the project NFS volume. Some things to note:
   #
