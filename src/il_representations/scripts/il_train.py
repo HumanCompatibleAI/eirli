@@ -109,6 +109,8 @@ def gail_defaults():
     disc_batch_size = 48
     disc_lr = 0.0006
     disc_augs = "color_jitter_mid,erase,flip_lr,gaussian_blur,noise,rotate"
+    # should discriminator augs be temporally consistent?
+    disc_augs_consistent = False
 
     # number of env time steps to perform during reinforcement learning
     total_timesteps = 500000
@@ -435,7 +437,10 @@ def do_training_gail(
     )
     ppo_algo.set_logger(logger)
     color_space = auto_env.load_color_space()
-    augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
+    augmenter = augmenter_from_spec(
+        gail['disc_augs'],
+        color_space,
+        temporally_consistent=gail['disc_augs_consistent'])
 
     data_loader = datasets_to_loader(
         demo_webdatasets,
