@@ -231,6 +231,19 @@ def make_jt_configs(train_ex):
         del _
 
     @train_ex.named_config
+    def disable_extra_saves_and_eval():
+        """Effectively disable batch saves, intermediate model saves, and
+        regular evaluation by setting the interval really high."""
+        model_save_interval = int(1e12)
+        bc = {
+            'short_eval_interval': int(1e12),
+        }
+        repl = {
+            'batch_save_interval': int(1e12),
+        }
+        locals()
+
+    @train_ex.named_config
     def bc_data_5demos():
         """Use 5 demos for IL."""
         bc = {'dataset_configs': [
