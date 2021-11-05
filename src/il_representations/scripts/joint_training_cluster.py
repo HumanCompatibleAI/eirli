@@ -4,13 +4,19 @@
 import argparse
 import faulthandler
 import logging
-import signal
 import os
+import random
+import signal
+import time
 
 from docopt import docopt
 import ray
 from sacred.arg_parser import get_config_updates
 from sacred.utils import ensure_wellformed_argv
+
+# Maximum amount of (randomly sampled) time to sleep for when launching an
+# experiment in order to decorrelate start times. Specified in seconds.
+MAX_SLEEP_DECORRELATE = 30
 
 
 class ArgumentParseFailed(Exception):
@@ -56,6 +62,10 @@ def run_joint_training_remote(this_dir, extra_args):
     if extra_args:
         argv.append('with')
         argv.extend(extra_args)
+    # we try to decorrelate start times for parallel runs because Sacred's
+    # FileStorageObserver has a directory creation race that sometimes causes
+    # it to fail
+    time.sleep(random.random() * MAX_SLEEP_DECORRELATE)
     hacky_run_commandline(train_ex, argv)
 
 
