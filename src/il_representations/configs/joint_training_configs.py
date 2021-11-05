@@ -232,14 +232,14 @@ def make_jt_configs(train_ex):
 
     @train_ex.named_config
     def disable_extra_saves_and_eval():
-        """Effectively disable batch saves, intermediate model saves, and
-        regular evaluation by setting the interval really high."""
-        model_save_interval = int(1e12)
+        """Disable regular batch saves, model saves, and evaluation. Model
+        saving and evaluation will only run at the end."""
+        model_save_interval = None
         bc = {
-            'short_eval_interval': int(1e12),
+            'short_eval_interval': None,
         }
         repl = {
-            'batch_save_interval': int(1e12),
+            'batch_save_interval': None,
         }
         locals()
 

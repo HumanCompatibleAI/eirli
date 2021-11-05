@@ -259,7 +259,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
 
         # model saving
         is_last_batch = batch_num == n_batches - 1
-        should_save_model = batch_num % model_save_interval == 0
+        should_save_model = model_save_interval \
+            and (batch_num % model_save_interval == 0)
         if should_save_model or is_last_batch:
             with timers.time('model_save'):
                 logging.info(
@@ -274,7 +275,9 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                 torch.save(optimizer, opt_path)
 
         # repl batch saving
-        should_save_repl_batch = batch_num % repl['batch_save_interval'] == 0
+        batch_save_interval = repl['batch_save_interval']
+        should_save_repl_batch = batch_save_interval \
+            and batch_num % batch_save_interval == 0
         if should_save_repl_batch or is_last_batch:
             with timers.time('repl_batch_save'):
                 repl_batch_save_dir = log_dir_path / 'repl_batch_saves'
@@ -288,7 +291,9 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                     save_video=False)
 
         # occasional eval
-        should_do_short_eval = batch_num % bc['short_eval_interval'] == 0
+        short_eval_interval = bc['short_eval_interval']
+        should_do_short_eval = short_eval_interval \
+            and batch_num % short_eval_interval == 0
         if should_do_short_eval:
             with timers.time('short_eval'):
                 short_eval_n_traj = bc['short_eval_n_traj']
@@ -299,7 +304,8 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                                                   n_rollouts=short_eval_n_traj)
 
         # logging
-        should_log_values = batch_num % log_calc_interval == 0
+        should_log_values = log_calc_interval \
+            and (batch_num % log_calc_interval == 0)
         if should_log_values:
             grad_norm, weight_norm = weight_grad_norms(params_list_dedup)
             logger.record_mean('all_loss', composite_loss.item())
