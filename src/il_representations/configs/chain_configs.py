@@ -1218,7 +1218,6 @@ def make_chain_configs(experiment_obj):
         _ = locals()
         del _
 
-
     @experiment_obj.named_config
     def gail_mr_config_2021_03_29():
         """500k-step GAIL config tuned (and tested) for MatchRegions. Should get
@@ -1269,14 +1268,72 @@ def make_chain_configs(experiment_obj):
             "task_name": "MatchRegions-Demo-v0"
         }
         venv_opts = {
-            # FIXME(sam): figure out whether having only 8 procs (instead of
-            # 32) crashes perf---might be a bug in my env stuff
             "n_envs": 32,
             "venv_parallel": True
         }
+        locals()
 
-        _ = locals()
-        del _
+    @experiment_obj.named_config
+    def gail_procgen_500k_config_2021_11_05():
+        """500k-step GAIL config tuned (and tested) for Fruitbot, although most
+        of the config values work okay for CoinRun/Jumper. Should get 4-5
+        return on Fruibot (which is not good, but GAIL shouldn't be able to
+        solve tasks like this with early termination anyway).
+
+        Refer to this doc for details on tuning:
+
+        https://docs.google.com/document/d/1dUptmsFoJ_Y8hE6uKpBHXZBPVdRxq2UBFY47qf0K74c/edit#bookmark=id.at1dh4hz8dc1
+        """
+        il_train = {
+            "algo": "gail",
+            "dataset_configs": [{"type": "demos"}],
+            "freeze_encoder": False,
+            "gail": {
+                "disc_augs": {
+                    "color_jitter_mid": True,
+                    "erase": False,
+                    "flip_lr": True,
+                    "gaussian_blur": True,
+                    "noise": True,
+                    "rotate": True,
+                    "translate": True
+                },
+                "disc_batch_size": 48,
+                "disc_lr": 2.5e-3,
+                "disc_n_updates_per_round": 2,
+                "log_interval_steps": 10000,
+                "ppo_adv_clip": 0.01,
+                "ppo_batch_size": 48,
+                "ppo_clip_reward": float('inf'),
+                "ppo_ent": 5e-6,
+                "ppo_final_learning_rate": 0.0,
+                "ppo_gae_lambda": 0.6,
+                "ppo_gamma": 0.6,
+                "ppo_init_learning_rate": 1e-4,
+                "ppo_max_grad_norm": 1.0,
+                "ppo_n_epochs": 9,
+                "ppo_n_steps": 10,
+                "ppo_norm_reward": True,
+                "ppo_reward_std": 0.01,
+                "save_every_n_steps": 10000000000,
+                "total_timesteps": 500000
+            },
+            "log_std_init": 0.0,
+            "ortho_init": False,
+            "postproc_arch": [],
+            "print_policy_summary": True,
+            "shuffle_buffer_size": 1024,
+            "torch_num_threads": 1
+        }
+        env_cfg = {
+            "benchmark_name": "procgen",
+            "task_name": "fruitbot"
+        }
+        venv_opts = {
+            "n_envs": 32,
+            "venv_parallel": True
+        }
+        locals()
 
     @experiment_obj.named_config
     def gail_disc_augs():
