@@ -318,12 +318,15 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                 logger.record_mean('bc_' + k, float(v))
             # code above that computes eval stats should at least run on the
             # first step
-            assert latest_eval_stats is not None, \
-                "logging code rand before eval code for some reason"
-            for k, v in latest_eval_stats.items():
-                suffix = '_mean'
-                if k.endswith(suffix):
-                    logger.record_mean('eval_' + k[:-len(suffix)], v)
+            if latest_eval_stats is not None:
+                for k, v in latest_eval_stats.items():
+                    suffix = '_mean'
+                    if k.endswith(suffix):
+                        logger.record_mean('eval_' + k[:-len(suffix)], v)
+            else:
+                assert not short_eval_interval, \
+                    "logging code ran before eval code, even though short " \
+                    "eval is enabled"
             for k, v in timers.dump_stats(reset=False).items():
                 logger.record('t_mean_' + k, v['mean'])
                 logger.record('t_max_' + k, v['max'])
