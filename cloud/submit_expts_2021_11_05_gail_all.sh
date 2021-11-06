@@ -26,9 +26,9 @@ dmc_envs=("finger-spin" "cheetah-run" "reacher-easy")
 
 procgen_base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
                    "env_cfg.benchmark_name=procgen"
-		   "il_train.gail.decorrelate_envs=False"
+                   "il_train.gail.decorrelate_envs=False"
                    "gail_procgen_500k_config_2021_11_05")
-procgen_envs=("coinrun" "ninja" "fruitbot" "jumper")
+procgen_envs=("coinrun" "miner" "fruitbot" "jumper")
 
 repl_configs=("icml_inv_dyn" "icml_dynamics" "cfg_repl_tcpc8_192"
               "cfg_repl_simclr_192" "icml_vae")
