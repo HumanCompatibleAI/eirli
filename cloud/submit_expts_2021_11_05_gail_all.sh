@@ -26,6 +26,7 @@ dmc_envs=("finger-spin" "cheetah-run" "reacher-easy")
 
 procgen_base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
                    "env_cfg.benchmark_name=procgen"
+		   "il_train.gail.decorrelate_envs=False"
                    "gail_procgen_500k_config_2021_11_05")
 procgen_envs=("coinrun" "ninja" "fruitbot" "jumper")
 
@@ -117,3 +118,5 @@ for dmc_env in "${dmc_envs[@]}"; do
                     exp_ident="neurips_control_gail_${use_augs}"
     done
 done
+
+wait
