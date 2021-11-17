@@ -2,7 +2,6 @@
 when using any environment---if the desired `eval_score` key is not in `infos`,
 then it won't add any log entries)."""
 
-from imitation.util import logger
 from stable_baselines3.common.callbacks import BaseCallback
 
 
@@ -50,6 +49,7 @@ class SB3ScoreLoggingCallback(BaseCallback):
     def _on_rollout_end(self):
         if self._has_score_key:
             for s in self._scores:
+                logger = self.locals.get('self').logger
                 logger.record_mean("eval_score", s)
         else:
             # this indicates a bug: we should not be adding scores if we can't
