@@ -126,6 +126,11 @@ def gail_defaults():
     # `gail_ingredient` to `adv_il_ingredient` or similar
     use_airl = False
 
+    # if true, this takes a random number of actions in each environment at the
+    # beginning of GAIL training to decorrelate episode completion times (not
+    # supported by procgen)
+    decorrelate_envs = True
+
     _ = locals()
     del _
 
@@ -503,7 +508,8 @@ def do_training_gail(
     # beforehand; SB3 internals call reset() at the beginning of training, and
     # it is impossible to turn that off without changing
     # algorithm._setup_learn() somehow)
-    trainer.venv_train = KludgyResetVecEnv(trainer.venv_train, max_steps=500)
+    if gail['decorrelate_envs']:
+        trainer.venv_train = KludgyResetVecEnv(trainer.venv_train, max_steps=500)
     trainer.gen_algo.set_env(trainer.venv_train)
     trainer.train(
         total_timesteps=gail['total_timesteps'], callback=save_callback,
