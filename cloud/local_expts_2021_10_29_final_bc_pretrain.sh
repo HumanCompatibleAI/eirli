@@ -49,6 +49,27 @@ submit_expt() {
         "ray_init_kwargs.address=localhost:42000" "$@" &
 }
 
+for magical_env in "${magical_envs[@]}"; do
+    for repl_config in "${repl_configs[@]}"; do
+        for mg_dataset_config in "${mg_dataset_configs[@]}"; do
+            echo -e "\n *** TRAINING $repl_config ON $magical_env WITH DATASET $mg_dataset_config *** \n "
+            submit_expt "${magical_base_cfgs[@]}" cfg_repl_5k_il cfg_repl_augs \
+                        cfg_use_magical "$repl_config" "$(gpu_config "$repl_config")" \
+                        "$mg_dataset_config" cfg_il_bc_20k_nofreeze \
+                        exp_ident="neurips_repl_bc_${repl_config}_${mg_dataset_config}" \
+                        "env_cfg.task_name=$magical_env"
+        done
+    done
+    for use_augs in augs noaugs; do
+        submit_expt "${magical_base_cfgs[@]}" cfg_repl_none cfg_use_magical \
+                    cfg_il_bc_20k_nofreeze "$(gpu_config "no_repl")" \
+                    "cfg_il_bc_${use_augs}" \
+                    exp_ident="neurips_control_bc_${use_augs}" \
+                    "env_cfg.task_name=$magical_env"
+    done
+done
+wait
+
 for env_config in "${dmc_procgen_env_configs[@]}"; do
     for repl_config in "${repl_configs[@]}"; do
         for dataset_config in "${dataset_configs[@]}"; do
@@ -69,24 +90,3 @@ for env_config in "${dmc_procgen_env_configs[@]}"; do
     done
     wait
 done
-
-for magical_env in "${magical_envs[@]}"; do
-    for repl_config in "${repl_configs[@]}"; do
-        for mg_dataset_config in "${mg_dataset_configs[@]}"; do
-            echo -e "\n *** TRAINING $repl_config ON $magical_env WITH DATASET $mg_dataset_config *** \n "
-            submit_expt "${magical_base_cfgs[@]}" cfg_repl_5k_il cfg_repl_augs \
-                cfg_use_magical "$repl_config" "$(gpu_config "$repl_config")" \
-                "$mg_dataset_config" cfg_il_bc_20k_nofreeze \
-                exp_ident="neurips_repl_bc_${repl_config}_${mg_dataset_config}" \
-                "env_cfg.task_name=$magical_env"
-        done
-    done
-    for use_augs in augs noaugs; do
-        submit_expt "${magical_base_cfgs[@]}" cfg_repl_none cfg_use_magical \
-            cfg_il_bc_20k_nofreeze "$(gpu_config "no_repl")" \
-            "cfg_il_bc_${use_augs}" \
-            exp_ident="neurips_control_bc_${use_augs}" \
-            "env_cfg.task_name=$magical_env"
-    done
-done
-wait
