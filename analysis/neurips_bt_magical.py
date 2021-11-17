@@ -239,8 +239,18 @@ def process_df(df, *, full=False):
         if full:
             train_env, test_variant = row.name
             if test_variant == '-Demo':
+                # MAGICAL train levels
                 row_label = train_env.split('-')[0] + '-Demo-v0'
+            elif test_variant == 'train_level':
+                # procgen train levels
+                row_label = train_env + '-train'
+            elif test_variant == 'test_level':
+                # procgen test levels
+                row_label = train_env + '-test'
             else:
+                # other levels get indented and have the env name removed,
+                # under the assumption that it will be present above for the
+                # train level (this isn't always a good assumption)
                 row_label = r'\ \ \ \ ' + test_variant
                 if test_variant.startswith('-'):
                     row_label = row_label + '-v0'

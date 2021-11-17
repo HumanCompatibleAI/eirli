@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -euo pipefail
+
+WAIT=15
+MAX_WAITS=1000
+
+# Wait for dpkg to exit, if it is running.
+# Scripts from https://askubuntu.com/a/373478
+waits=0
+while sudo fuser /var/{{lib/{dpkg,apt/lists},cache/apt/archives}/lock,dpkg/lock-frontend} >/dev/null 2>&1; do
+   echo "dpkg busy, waiting ${WAIT}s"
+   sleep "$WAIT"
+   (( waits++ ))
+   if [ "$waits" -ge "$MAX_WAITS" ]; then
+       echo "Exceeded $MAX_WAITS waits, something is probably wrong. Exiting with failure."
+       exit 1
+   fi
+done
+echo "dpkg ready, good to go!"
+exit 0  # make it explicit

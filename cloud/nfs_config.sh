@@ -4,7 +4,7 @@
 # should be able to make do with just one shared client machine.)
 
 NFS_CAP="1TB"
-ZONE="us-west1-b"
+ZONE="us-central1-c"
 SERVER_NAME="repl-nfs-server"
 CLIENT_NAME="repl-nfs-client"
 CLIENT_MOUNT_POINT="/data/il-representations/"

@@ -42,8 +42,8 @@ gcloud compute instances create "${CLIENT_NAME}" --zone "$ZONE" \
 echo "Waiting for client to come up"
 for i in $(seq 1 $BRINGUP_MAX_RETRIES); do
     echo "Retry $i/${BRINGUP_MAX_RETRIES}"
-    echo "echo test" | gcloud compute ssh "${CLIENT_NAME}" --zone "$ZONE"
-    if [ "$?" = 0 ]; then
+    if echo "echo test" | gcloud compute ssh "${CLIENT_NAME}" --zone "$ZONE"
+    then
         success=1
         break
     fi

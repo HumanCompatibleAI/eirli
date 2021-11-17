@@ -30,15 +30,53 @@ tee "${THIS_DIR}/../ray-init-scripts/nfs_mount.sh" <<EOF
 
 set -e
 
-if mountpoint '${CLIENT_MOUNT_POINT}'; then
+if mountpoint -q '${CLIENT_MOUNT_POINT}'; then
     echo "'${CLIENT_MOUNT_POINT}' is already a mountpoint; skipping remount"
     exit 0
 fi
 
+# Retries a command a configurable number of times with backoff.
+#
+# The retry count is given by ATTEMPTS (default 10), the initial backoff
+# timeout is given by TIMEOUT in seconds (default 4.)
+#
+# Backoffs multiply the timeout by 2-3 (extra jitter is chosen randomly)
+#
+# Script from https://stackoverflow.com/a/8351489, modified for random backoff
+# and to change defaults.
+function with_backoff {
+  local max_attempts=\${ATTEMPTS-12}
+  local timeout=\${TIMEOUT-4}
+  local attempt=1
+  local exitCode=0
+
+  while (( attempt < max_attempts ))
+  do
+    if "\$@"
+    then
+      return 0
+    else
+      exitCode="\$?"
+    fi
+
+    echo "Failure! Retrying in \$timeout.." 1>&2
+    sleep "\$timeout"
+    attempt="\$(( attempt + 1 ))"
+    timeout="\$(( 2 * timeout + timeout * RANDOM / 32767 ))"
+  done
+
+  if [[ "\$exitCode" != 0 ]]
+  then
+    echo "Command failed after \$attempt attempts (\$*)" 1>&2
+  fi
+
+  return "\$exitCode"
+}
+
 if [ -z "\$(cat /proc/filesystems | grep 'nfsd\$')" ]; then
     echo "This machine does not seem to have NFS support. Will attempt to"\\
         "install NFS packages."
-    apt-get update -y && apt-get install -y nfs-common
+    with_backoff apt-get update -y && with_backoff apt-get install -y nfs-common
 fi
 
 mkdir -p '$CLIENT_MOUNT_POINT' \\
