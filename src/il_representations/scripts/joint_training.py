@@ -244,12 +244,14 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
     assert n_batches > 0
 
     for batch_num in range(n_batches):
+        with timers.time('next_batch'):
+            bc_batch = next(bc_data_iter)
+            repl_batch = next(repl_data_iter)
+
         with timers.time('forward_back'):
             # this block is the actual forward/backward logic (everything else
             # is logging/checkpointing)
-            bc_batch = next(bc_data_iter)
             bc_loss, bc_stats = bc_learner.batch_forward(bc_batch)
-            repl_batch = next(repl_data_iter)
             repl_loss, repl_debug_tensors = repl_learner.batch_forward(
                 repl_batch)
             composite_loss = bc_loss + repl_weight * repl_loss
