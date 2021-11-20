@@ -64,7 +64,7 @@ class RepresentationLearner(object):
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
                  loss_calculator_kwargs=None,
-                 dataset_max_workers=0):
+                 dataset_max_workers=1):
         self.observation_space = observation_space
         self.observation_shape = observation_space.shape
         self.action_space = action_space
