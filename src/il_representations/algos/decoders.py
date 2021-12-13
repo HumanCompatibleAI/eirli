@@ -31,13 +31,13 @@ import logging
 DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
 
-class ExpSequential(nn.Module):
+class SoftPlusSequential(nn.Module):
     def __init__(self, sequential):
         super().__init__()
         self.sequential = sequential
 
     def forward(self, x):
-        return torch.exp(self.sequential(x))
+        return nn.softplus(self.sequential(x))
 
 
 def get_projection_modules(representation_dim, projection_dim, architecture=None, learn_scale=False):
@@ -52,7 +52,7 @@ def get_projection_modules(representation_dim, projection_dim, architecture=None
         stddev_net = get_sequential_from_architecture(architecture,
                                                       representation_dim,
                                                       projection_dim)
-        stddev_func = ExpSequential(stddev_net)
+        stddev_func = SoftPlusSequential(stddev_net)
     else:
         stddev_func = None
 
@@ -524,7 +524,7 @@ class PixelDecoder(LossDecoder):
         # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
-            std_pixels = torch.exp(self.std_layer(decoded_latents))
+            std_pixels = nn.softplus(self.std_layer(decoded_latents))
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
             if torch.cuda.is_available():

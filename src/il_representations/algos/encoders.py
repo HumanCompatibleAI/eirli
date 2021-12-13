@@ -511,7 +511,7 @@ class BaseEncoder(Encoder):
     def forward_with_stddev(self, x, traj_info):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
-        scale = torch.exp(self.scale_layer(shared_repr))
+        scale = nn.softplus(self.scale_layer(shared_repr))
         if not torch.all(torch.isfinite(scale)):
             raise ValueError("Standard deviation has exploded to np.inf")
         return independent_multivariate_normal(mean=mean,
