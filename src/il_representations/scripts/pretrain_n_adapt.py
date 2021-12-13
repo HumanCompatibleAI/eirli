@@ -779,10 +779,16 @@ def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
     return rep_run.results
 
 
+_has_fso = False  # have we added FileStorageObserver yet?
+
+
 def main(argv=None):
     # This function is here because it gets called from other scripts. Please
     # don't delete!
-    chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
+    global _has_fso
+    if not _has_fso:
+        chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
+        _has_fso = True
     chain_ex.run_commandline(argv)
 
 
