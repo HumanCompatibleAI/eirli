@@ -517,8 +517,18 @@ def train(seed, torch_num_threads, device, repl, bc, n_batches,
         run_id=exp_ident)
 
 
+_has_fso = False
+
+
 def add_fso():
-    train_ex.observers.append(FileStorageObserver('runs/joint_train_runs'))
+    # joint_training_cluster.py will sometimes (accidentally) call this twice
+    # when running on Ray. I suspect that's because Ray is not properly
+    # resetting the global Python namespace between runs, or something of that
+    # nature.
+    global _has_fso
+    if not _has_fso:
+        train_ex.observers.append(FileStorageObserver('runs/joint_train_runs'))
+        _has_fso = True
 
 
 if __name__ == '__main__':
