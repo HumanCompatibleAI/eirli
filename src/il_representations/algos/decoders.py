@@ -37,7 +37,7 @@ class SoftPlusSequential(nn.Module):
         self.sequential = sequential
 
     def forward(self, x):
-        return nn.softplus(self.sequential(x))
+        return F.softplus(self.sequential(x))
 
 
 def get_projection_modules(representation_dim, projection_dim, architecture=None, learn_scale=False):
@@ -524,7 +524,7 @@ class PixelDecoder(LossDecoder):
         # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
-            std_pixels = nn.softplus(self.std_layer(decoded_latents))
+            std_pixels = F.softplus(self.std_layer(decoded_latents))
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
             if torch.cuda.is_available():

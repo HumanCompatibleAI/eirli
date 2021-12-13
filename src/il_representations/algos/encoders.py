@@ -18,9 +18,7 @@ import os
 import math
 import traceback
 import warnings
-import inspect
 import torch
-import functools
 import numpy as np
 import torchvision.models as tvm
 
@@ -511,7 +509,7 @@ class BaseEncoder(Encoder):
     def forward_with_stddev(self, x, traj_info):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
-        scale = nn.softplus(self.scale_layer(shared_repr))
+        scale = F.softplus(self.scale_layer(shared_repr))
         if not torch.all(torch.isfinite(scale)):
             raise ValueError("Standard deviation has exploded to np.inf")
         return independent_multivariate_normal(mean=mean,
