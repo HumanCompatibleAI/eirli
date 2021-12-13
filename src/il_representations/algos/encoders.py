@@ -23,6 +23,7 @@ import numpy as np
 import torchvision.models as tvm
 
 from torch import nn
+import torch.nn.functional as F
 from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 from torchvision.transforms import functional as TF
