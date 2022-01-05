@@ -87,7 +87,8 @@ class RepresentationLearner(object):
             # projection head.
             projection_dim = representation_dim
 
-        self.augmenter = augmenter(**to_dict(augmenter_kwargs))
+        self.augmenter = augmenter(**to_dict(augmenter_kwargs),
+                                   device=self.device)
         self.target_pair_constructor = target_pair_constructor(
             **to_dict(target_pair_constructor_kwargs))
 

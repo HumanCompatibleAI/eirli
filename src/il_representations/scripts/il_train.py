@@ -259,7 +259,8 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                          encoder_kwargs=encoder_kwargs,
                          print_policy_summary=print_policy_summary)
     color_space = auto_env.load_color_space()
-    augmenter = augmenter_from_spec(bc['augs'], color_space)
+    device = get_device(device_name)
+    augmenter = augmenter_from_spec(bc['augs'], color_space, device)
 
     # build dataset in the format required by imitation
     nom_num_epochs = bc['nominal_num_epochs']
@@ -282,7 +283,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         action_space=venv_chans_first.action_space,
         policy=policy,
         demonstrations=data_loader,
-        device=device_name,
+        device=device,
         augmentation_fn=augmenter,
         optimizer_cls=bc['optimizer_cls'],
         optimizer_kwargs=bc['optimizer_kwargs'],
@@ -445,6 +446,7 @@ def do_training_gail(
     augmenter = augmenter_from_spec(
         gail['disc_augs'],
         color_space,
+        device,
         temporally_consistent=gail['disc_augs_consistent'])
 
     data_loader = datasets_to_loader(

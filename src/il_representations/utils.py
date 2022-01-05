@@ -401,23 +401,24 @@ class IdentityModule(th.nn.Module):
         return x
 
 
-def augmenter_from_spec(spec, color_space, temporally_consistent=False):
+def augmenter_from_spec(spec, color_space, device, *,
+                        temporally_consistent=False):
     """Construct an image augmentation module from an augmenter spec, expressed
     as either a string of comma-separated augmenter names, or a dict of kwargs
     for StandardAugmentations."""
     if isinstance(spec, str):
         return StandardAugmentations.from_string_spec(
                 spec, color_space,
-                temporally_consistent=temporally_consistent)
+                temporally_consistent=temporally_consistent).to(device)
     elif isinstance(spec, dict):
         return StandardAugmentations(
                 **spec, stack_color_space=color_space,
-                temporally_consistent=temporally_consistent)
+                temporally_consistent=temporally_consistent).to(device)
     elif spec is None:
         # FIXME(sam): really this should return None, and I should fix callers
         # to reflect that. Right now the repL code does not handle the case
         # where this returns None.
-        return IdentityModule()
+        return IdentityModule().to(device)
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 

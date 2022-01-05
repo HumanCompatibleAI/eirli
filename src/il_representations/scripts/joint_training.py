@@ -427,7 +427,7 @@ def bc_setup(venv, obs_encoder, n_batches, shuffle_buffer_size,
                          postproc_arch=postproc_arch)
     policy = policy.to(device)
     color_space = il_combined_meta['color_space']
-    bc_aug_fn = augmenter_from_spec(augs, color_space)
+    bc_aug_fn = augmenter_from_spec(augs, color_space, device)
     bc_learner = BC(policy=policy, l2_weight=l2_weight, ent_weight=ent_weight)
     return bc_learner, bc_aug_fn, il_demo_webdatasets
 

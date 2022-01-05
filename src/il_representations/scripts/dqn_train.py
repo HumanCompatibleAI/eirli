@@ -137,7 +137,7 @@ def do_training_dqn(*, venv_chans_first, out_dir, augs, n_batches,
         # Note that this will change the image dtype from int to float (4X GPU
         # memory).
         if augs is not None:
-            augmenter = augmenter_from_spec(augs, color_space)
+            augmenter = augmenter_from_spec(augs, color_space, device)
             obs = preprocess_obs(th.tensor(obs),
                                 observation_space,
                                 normalize_images=True)

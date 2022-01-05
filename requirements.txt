@@ -39,9 +39,9 @@ pyro-ppl~=1.4.0
 cryptography~=3.1
 google-api-python-client~=2.26.1
 
-# imitation needs special branch as of 2021-11-03. The custom imitation branch
+# imitation needs special branch as of 2022-01-05. The custom imitation branch
 # in turn pulls in a custom version of Stable Baselines 3.
-git+git://github.com/HumanCompatibleAI/imitation@66c0d27372ab5aef15cc71060319f3ab52b8b899
+git+git://github.com/HumanCompatibleAI/imitation@38a61ab1bff38020f9cf38cf252fc5f20ebfc947
 
 # environments
 magical-il~=0.0.1a4
