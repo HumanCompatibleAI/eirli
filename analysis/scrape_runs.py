@@ -16,6 +16,14 @@ from sacred import Experiment
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 collate_ex = Experiment('collate', ingredients=[])
+PATH_TRANSLATIONS = {
+    # Translate the 'runs' symlink to something relative to the eval.json file
+    # (not relative to cwd for this script; refer to the translation in
+    # do_config_path_translations()). This ensures that the script keeps
+    # working even once we clear the symlink at
+    # /home/sam/repos/il-representations/runs.
+    '/home/sam/repos/il-representations/runs/': '../../../../',
+}
 
 
 @collate_ex.config
@@ -28,6 +36,15 @@ def base_config():
 
     _ = locals()
     del _
+
+
+def do_config_path_translations(config_path, lookup_path):
+    for k, v in PATH_TRANSLATIONS.items():
+        if lookup_path.startswith(k):
+            lookup_path = v + lookup_path[len(k):]
+    config_dir = os.path.dirname(config_path)
+    lookup_path = os.path.abspath(os.path.join(config_dir, lookup_path))
+    return lookup_path
 
 
 def flatten_dict(d):
@@ -100,7 +117,8 @@ def run(search_dir, n_best):
         train_return = eval_contents['train_level']['return_mean']
         test_return = eval_contents['test_level']['return_mean']
         # usually the policy is in the same directory as the config.json file
-        pol_path = pathlib.Path(eval_contents['policy_path'])
+        pol_path = eval_contents['policy_path']
+        pol_path = pathlib.Path(do_config_path_translations(eval_path, pol_path))
         config_path = pol_path.parent / 'config.json'
         with open(config_path, 'r') as fp:
             config_json_str = fp.read()
