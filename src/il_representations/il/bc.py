@@ -57,7 +57,8 @@ class BC:
                        augmentation_fn,
                        batch_size,
                        n_batches,
-                       shuffle_buffer_size):
+                       shuffle_buffer_size,
+                       **ds_to_loader_kwargs):
         expert_data_loader = datasets_to_loader(
             il_dataset,
             batch_size=batch_size,
@@ -66,7 +67,8 @@ class BC:
             shuffle_buffer_size=shuffle_buffer_size,
             preprocessors=[
                 streaming_extract_keys("obs", "acts")
-            ])
+            ],
+            **ds_to_loader_kwargs)
         data_iter = repeat_chain_non_empty(expert_data_loader)
         for batch in data_iter:
             yield _prep_batch_bc(batch=batch,

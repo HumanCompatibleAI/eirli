@@ -146,6 +146,8 @@ def default_config():
 
     # stop Torch taking up all cores needlessly
     torch_num_threads = 1
+    # max number of workers for Torch data loader to spool up
+    dataset_max_workers = 1
 
     # will default to GPU if available, otherwise CPU
     device = "auto"
@@ -213,19 +215,20 @@ def learn_repl_bc(repl_learner, repl_datasets, bc_learner, bc_augmentation_fn,
                   bc_dataset, n_batches, optimizer_cls, optimizer_kwargs,
                   repl_weight, log_dump_interval, model_save_interval, repl,
                   bc, shuffle_buffer_size, log_dir, venv, log_calc_interval,
-                  logger):
+                  logger, dataset_max_workers):
     """Training loop for repL + BC."""
     # dataset setup
-    repl_data_iter = repl_learner.make_data_iter(datasets=repl_datasets,
-                                                 batches_per_epoch=n_batches,
-                                                 n_epochs=1)
+    repl_data_iter = repl_learner.make_data_iter(
+        datasets=repl_datasets, batches_per_epoch=n_batches, n_epochs=1,
+        max_workers=dataset_max_workers)
     latest_eval_stats = None
     bc_data_iter = bc_learner.make_data_iter(
         il_dataset=bc_dataset,
         augmentation_fn=bc_augmentation_fn,
         batch_size=bc['batch_size'],
         n_batches=n_batches,
-        shuffle_buffer_size=shuffle_buffer_size)
+        shuffle_buffer_size=shuffle_buffer_size,
+        max_workers=dataset_max_workers)
 
     # optimizer and LR scheduler
     params_list_dedup = deduplicate_params(
