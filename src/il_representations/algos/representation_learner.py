@@ -63,8 +63,7 @@ class RepresentationLearner(object):
                  encoder_kwargs=None,
                  decoder_kwargs=None,
                  batch_extender_kwargs=None,
-                 loss_calculator_kwargs=None,
-                 dataset_max_workers=1):
+                 loss_calculator_kwargs=None):
         self.observation_space = observation_space
         self.observation_shape = observation_space.shape
         self.action_space = action_space
@@ -78,7 +77,6 @@ class RepresentationLearner(object):
         self.batch_size = batch_size
         self.preprocess_extra_context = preprocess_extra_context
         self.preprocess_target = preprocess_target
-        self.dataset_max_workers = dataset_max_workers
 
         if projection_dim is None:
             # If no projection_dim is specified, it will be assumed to be the
@@ -278,15 +276,15 @@ class RepresentationLearner(object):
         self.encoder.train(val)
         self.decoder.train(val)
 
-    def make_data_iter(self, datasets, batches_per_epoch, n_epochs):
+    def make_data_iter(self, datasets, batches_per_epoch, n_epochs,
+                       **ds_to_loader_kwargs):
         dataloader = datasets_to_loader(
             datasets, batch_size=self.batch_size,
             nominal_length=n_epochs * batches_per_epoch * self.batch_size,
-            max_workers=self.dataset_max_workers,
             shuffle_buffer_size=self.shuffle_buffer_size,
             shuffle=self.shuffle_batches,
-            preprocessors=(
-                self.target_pair_constructor, ))
+            preprocessors=(self.target_pair_constructor, ),
+            **ds_to_loader_kwargs)
         data_iter = repeat_chain_non_empty(dataloader)
         return data_iter
 

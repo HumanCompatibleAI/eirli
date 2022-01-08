@@ -78,7 +78,7 @@ def test_algo(algo, env_cfg, represent_ex):
         # observations. We can then optionally apply a shuffler that retains a
         nominal_length=2 * model.batch_size,
         # small pool of constructed targets in memory and yields
-        max_workers=model.dataset_max_workers,
+        max_workers=1,
         # randomly-selected items from that pool (this approximates
         shuffle_buffer_size=model.shuffle_buffer_size,
         preprocessors=(model.target_pair_constructor,),
@@ -86,8 +86,8 @@ def test_algo(algo, env_cfg, represent_ex):
     batch = next(iter(data_loader))
     # TODO(shwang): I had to copy over some preprocessing calls to get the data
     # into the right format for passing into the model.
-    # Maybe it would be worth doing some more refactoring to `_make_data_loader` so that
-    # the preprocessing calls are unnecessary.
+    # Maybe it would be worth doing some more refactoring to
+    # `_make_data_loader` so that the preprocessing calls are unnecessary.
     obs = model._prep_tensors(batch["context"])
     obs = model._preprocess(obs)
     traj_info = model._prep_tensors(batch["traj_ts_ids"])
