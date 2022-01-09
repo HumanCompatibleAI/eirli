@@ -32,6 +32,34 @@ def _prep_batch_bc(batch, observation_space, augmentation_fn, device):
     return obs_tensor, acts_tensor
 
 
+def _prep_batch_bc_preproc(observation_space, augmentation_fn):
+    """Take a single sample from the webdataset pipeline and prepare it for BC
+    (everything except batching and moving to GPU)."""
+    def inner_preproc(sample):
+        act_tensor = torch.as_tensor(sample["acts"]).contiguous()
+        obs_tensor = torch.as_tensor(sample["obs"]).contiguous()
+        assert obs_tensor.ndim == 3  # CHW, no batch dim
+        obs_tensor_4d = preprocessing.preprocess_obs(
+            obs_tensor[None],
+            observation_space,
+            normalize_images=True,
+        )
+        # we always apply augmentations to observations
+        if augmentation_fn is not None:
+            obs_tensor_4d = augmentation_fn(obs_tensor_4d)
+        # FIXME(sam): SB policies *always* apply preprocessing, so we need to
+        # undo the preprocessing we did before applying augmentations. The code
+        # below is the inverse of SB's preprocessing.preprocess_obs, but only
+        # for Box spaces. Should make sure this doesn't break silently
+        # elsewhere.
+        if isinstance(observation_space, gym.spaces.Box):
+            if preprocessing.is_image_space(observation_space):
+                obs_tensor_4d = obs_tensor_4d * 255.0
+        final_obs_tensor = obs_tensor_4d.squeeze(0)
+        return final_obs_tensor, act_tensor
+    return inner_preproc
+
+
 class BC:
     """Bare-bones BC implementation without outer loop etc.
 
@@ -66,15 +94,25 @@ class BC:
             shuffle=True,
             shuffle_buffer_size=shuffle_buffer_size,
             preprocessors=[
-                streaming_extract_keys("obs", "acts")
+                streaming_extract_keys("obs", "acts"),
+                # CHANGED 2022-01-08: moved augmentations to subprocess
+                # FIXME(sam): make the '.to("cpu")' call unnecessary
+                _prep_batch_bc_preproc(
+                    observation_space=self.observation_space,
+                    augmentation_fn=augmentation_fn.to('cpu')),
             ],
             **ds_to_loader_kwargs)
         data_iter = repeat_chain_non_empty(expert_data_loader)
         for batch in data_iter:
-            yield _prep_batch_bc(batch=batch,
-                                 observation_space=self.observation_space,
-                                 augmentation_fn=augmentation_fn,
-                                 device=self.policy.device)
+            # CHANGED 2022-01-08: _prep_batch_bc is no longer necessary now
+            # that _prep_batch_bc_preproc is part of webdataset preprocessing
+            # pipeline.
+            # yield _prep_batch_bc(batch=batch,
+            #                      observation_space=self.observation_space,
+            #                      augmentation_fn=augmentation_fn,
+            #                      device=self.policy.device)
+            dev = self.policy.device
+            yield batch['obs'].to(dev), batch['acts'].to(dev)
 
     def batch_forward(self, obs_acts):
         """Do a forward pass of the network, given a set of observations and
