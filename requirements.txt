@@ -20,7 +20,7 @@ pytest~=5.4.3
 ray[tune]~=1.0.1
 PyYAML~=5.3.1
 scikit-video~=1.1.11
-Pillow~=7.2.0
+Pillow~=9.0.1
 # webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
 webdataset==0.1.40
 tqdm~=4.48.0
