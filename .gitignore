@@ -27,3 +27,4 @@ params.json
 .ipynb_checkpoints
 .DS_Store
 venv
+results*.png

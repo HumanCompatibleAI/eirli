@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """BC implementation that makes it easy to use auxiliary losses."""
+import weakref
+
 import gym
 from stable_baselines3.common import preprocessing
 import torch
 
 from il_representations.data.read_dataset import datasets_to_loader
 from il_representations.il.utils import streaming_extract_keys
-from il_representations.utils import repeat_chain_non_empty
 
 
 def _prep_batch_bc(batch, observation_space, augmentation_fn, device):
@@ -35,28 +36,29 @@ def _prep_batch_bc(batch, observation_space, augmentation_fn, device):
 def _prep_batch_bc_preproc(observation_space, augmentation_fn):
     """Take a single sample from the webdataset pipeline and prepare it for BC
     (everything except batching and moving to GPU)."""
-    def inner_preproc(sample):
-        act_tensor = torch.as_tensor(sample["acts"]).contiguous()
-        obs_tensor = torch.as_tensor(sample["obs"]).contiguous()
-        assert obs_tensor.ndim == 3  # CHW, no batch dim
-        obs_tensor_4d = preprocessing.preprocess_obs(
-            obs_tensor[None],
-            observation_space,
-            normalize_images=True,
-        )
-        # we always apply augmentations to observations
-        if augmentation_fn is not None:
-            obs_tensor_4d = augmentation_fn(obs_tensor_4d)
-        # FIXME(sam): SB policies *always* apply preprocessing, so we need to
-        # undo the preprocessing we did before applying augmentations. The code
-        # below is the inverse of SB's preprocessing.preprocess_obs, but only
-        # for Box spaces. Should make sure this doesn't break silently
-        # elsewhere.
-        if isinstance(observation_space, gym.spaces.Box):
-            if preprocessing.is_image_space(observation_space):
-                obs_tensor_4d = obs_tensor_4d * 255.0
-        final_obs_tensor = obs_tensor_4d.squeeze(0)
-        return final_obs_tensor, act_tensor
+    def inner_preproc(samples):
+        for sample in samples:
+            act_tensor = torch.as_tensor(sample["acts"]).contiguous()
+            obs_tensor_4d = torch.as_tensor(sample["obs"])[None].contiguous()
+            assert obs_tensor_4d.ndim == 4  # NCHW, N=1 due to [None] above
+            obs_tensor_4d = preprocessing.preprocess_obs(
+                obs_tensor_4d,
+                observation_space,
+                normalize_images=True,
+            )
+            # we always apply augmentations to observations
+            if augmentation_fn is not None:
+                obs_tensor_4d = augmentation_fn(obs_tensor_4d)
+            # FIXME(sam): SB policies *always* apply preprocessing, so we need
+            # to undo the preprocessing we did before applying augmentations.
+            # The code below is the inverse of SB's
+            # preprocessing.preprocess_obs, but only for Box spaces. Should
+            # make sure this doesn't break silently elsewhere.
+            if isinstance(observation_space, gym.spaces.Box):
+                if preprocessing.is_image_space(observation_space):
+                    obs_tensor_4d = obs_tensor_4d * 255.0
+            final_obs_tensor = obs_tensor_4d.squeeze(0)
+            yield {'obs': final_obs_tensor, 'acts': act_tensor}
     return inner_preproc
 
 
@@ -102,17 +104,31 @@ class BC:
                     augmentation_fn=augmentation_fn.to('cpu')),
             ],
             **ds_to_loader_kwargs)
-        data_iter = repeat_chain_non_empty(expert_data_loader)
-        for batch in data_iter:
-            # CHANGED 2022-01-08: _prep_batch_bc is no longer necessary now
-            # that _prep_batch_bc_preproc is part of webdataset preprocessing
-            # pipeline.
-            # yield _prep_batch_bc(batch=batch,
-            #                      observation_space=self.observation_space,
-            #                      augmentation_fn=augmentation_fn,
-            #                      device=self.policy.device)
-            dev = self.policy.device
-            yield batch['obs'].to(dev), batch['acts'].to(dev)
+        data_iter = None
+        try:
+            while True:
+                data_iter = iter(expert_data_loader)
+                for batch in data_iter:
+                    # CHANGED 2022-01-08: _prep_batch_bc is no longer necessary
+                    # now that _prep_batch_bc_preproc is part of webdataset
+                    # preprocessing pipeline.
+                    # yield _prep_batch_bc(batch=batch,
+                    #                      observation_space=self.observation_space,
+                    #                      augmentation_fn=augmentation_fn,
+                    #                      device=self.policy.device)
+                    dev = self.policy.device
+                    yield batch['obs'].to(dev), batch['acts'].to(dev)
+        finally:
+            if data_iter is not None:
+                # Explicit __del__ call is a hack to ensure that data_iter's
+                # worker pool gets shut down.
+
+                # (Sometimes the shutdown does not happen in the course of
+                # normal garbage collection; possibly there is a reference
+                # cycle in multiprocess iterator code for Torch's data loader.
+                # Torch does not provide us with an _explicit_ mechanism to
+                # close the process pool, so we are stuck doing this.)
+                data_iter.__del__()
 
     def batch_forward(self, obs_acts):
         """Do a forward pass of the network, given a set of observations and
