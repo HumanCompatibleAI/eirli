@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """BC implementation that makes it easy to use auxiliary losses."""
-import weakref
-
 import gym
 from stable_baselines3.common import preprocessing
 import torch

@@ -1,4 +1,5 @@
 """Main entry interface for representation learning in EIRLI."""
+import contextlib
 import inspect
 import logging
 import os
@@ -14,8 +15,8 @@ from il_representations.algos.batch_extenders import QueueBatchExtender
 from il_representations.algos.utils import (AverageMeter, LinearWarmupCosine,
                                             set_global_seeds)
 from il_representations.data.read_dataset import datasets_to_loader
-from il_representations.utils import (Timers, repeat_chain_non_empty,
-                                      weight_grad_norms, recursive_detach)
+from il_representations.utils import (Timers, weight_grad_norms,
+                                      recursive_detach)
 
 DEFAULT_HARDCODED_PARAMS = [
     'encoder', 'decoder', 'loss_calculator', 'augmenter',
@@ -112,20 +113,24 @@ class RepresentationLearner(object):
             batch_extender_kwargs['device'] = self.device
 
         if batch_extender_kwargs is None:
-            # Doing this to avoid having batch_extender() take an optional kwargs dict
+            # Doing this to avoid having batch_extender() take an optional
+            # kwargs dict
             self.batch_extender = batch_extender()
         else:
             self.batch_extender = batch_extender(**batch_extender_kwargs)
 
-        self.loss_calculator = loss_calculator(self.device, **to_dict(loss_calculator_kwargs))
+        self.loss_calculator = loss_calculator(
+            self.device, **to_dict(loss_calculator_kwargs))
 
     def _prep_tensors(self, tensors_or_arrays):
         """
         Args:
-            tensors_or_arrays: A list of Torch tensors or numpy arrays (or None)
+            tensors_or_arrays: A list of Torch tensors or numpy arrays (or
+            None)
 
         Returns:
-            A torch tensor moved to the device associated with this learner, and converted to float dtype
+            A torch tensor moved to the device associated with this learner,
+            and converted to float dtype
         """
         if tensors_or_arrays is None:
             # sometimes we get passed optional arguments with default value
@@ -171,18 +176,20 @@ class RepresentationLearner(object):
         """
         Args:
             batch: A batch that may contain a numpy array of extra context,
-                but may also simply have an empty list as a placeholder value for
-                the `extra_context` key. If the latter, return None for
-                extra_context, rather than an empty list (Torch data loaders can
-                only work with lists and arrays, not None types)
+                but may also simply have an empty list as a placeholder value
+                for the `extra_context` key. If the latter, return None for
+                extra_context, rather than an empty list (Torch data loaders
+                can only work with lists and arrays, not None types)
 
         Returns:
             A tuple of context, target, traj_ts_ids, and extra context
         """
         if len(batch['extra_context']) == 0:
-            return batch['context'], batch['target'], batch['traj_ts_ids'], None
+            return batch['context'], batch['target'], batch['traj_ts_ids'], \
+                None
         else:
-            return batch['context'], batch['target'], batch['traj_ts_ids'], batch['extra_context']
+            return batch['context'], batch['target'], batch['traj_ts_ids'], \
+                batch['extra_context']
 
     def set_random_seed(self, seed):
         if seed is None:
@@ -192,7 +199,8 @@ class RepresentationLearner(object):
 
     def all_trainable_params(self):
         """
-        Returns the trainable encoder parameters and the trainable decoder parameters.
+        Returns the trainable encoder parameters and the trainable decoder
+        parameters.
         """
         trainable_encoder_params = [
             p for p in self.encoder.parameters() if p.requires_grad
@@ -208,11 +216,13 @@ class RepresentationLearner(object):
         a dictionary of detached tensors that are useful for debugging and
         sanity checks."""
         # Construct batch (currently just using Torch's default batch-creator)
-        raw_contexts, raw_targets, traj_ts_info, extra_context = self._unpack_batch(batch)
+        raw_contexts, raw_targets, traj_ts_info, extra_context \
+            = self._unpack_batch(batch)
 
         # Use an algorithm-specific augmentation strategy to augment either
         # just context, or both context and targets
-        raw_contexts, raw_targets = self._prep_tensors(raw_contexts), self._prep_tensors(raw_targets)
+        raw_contexts, raw_targets \
+            = self._prep_tensors(raw_contexts), self._prep_tensors(raw_targets)
         extra_context = self._prep_tensors(extra_context)
         traj_ts_info = self._prep_tensors(traj_ts_info)
         # Note: preprocessing might be better to do on CPU if, in future, we
@@ -232,22 +242,27 @@ class RepresentationLearner(object):
         encoded_contexts = self.encoder.encode_context(contexts, traj_ts_info)
         encoded_targets = self.encoder.encode_target(targets, traj_ts_info)
         # Typically the identity function
-        encoded_extra_context = self.encoder.encode_extra_context(extra_context, traj_ts_info)
+        encoded_extra_context = self.encoder.encode_extra_context(
+            extra_context, traj_ts_info)
 
         # Use an algorithm-specific decoder to "decode" the representations
         # into a loss-compatible tensor As with encode, these will typically
         # just use forward()
-        decoded_contexts = self.decoder.decode_context(encoded_contexts, traj_ts_info, encoded_extra_context)
-        decoded_targets = self.decoder.decode_target(encoded_targets, traj_ts_info, encoded_extra_context)
+        decoded_contexts = self.decoder.decode_context(
+            encoded_contexts, traj_ts_info, encoded_extra_context)
+        decoded_targets = self.decoder.decode_target(
+            encoded_targets, traj_ts_info, encoded_extra_context)
 
         # Optionally add to the batch before loss. By default, this is an
         # identity operation, but can also implement momentum queue logic
-        decoded_contexts, decoded_targets = self.batch_extender(decoded_contexts, decoded_targets)
+        decoded_contexts, decoded_targets = self.batch_extender(
+            decoded_contexts, decoded_targets)
 
         # Use an algorithm-specific loss function. Typically this only requires
         # decoded_contexts and decoded_targets, but VAE requires
         # encoded_contexts, so we pass it in here
-        loss, loss_stats = self.loss_calculator(decoded_contexts, decoded_targets, encoded_contexts)
+        loss, loss_stats = self.loss_calculator(
+            decoded_contexts, decoded_targets, encoded_contexts)
 
         # things that get returned to calling function for (optional)
         # saving/analysis (we shouldn't do much to them---this code needs to be
@@ -285,8 +300,22 @@ class RepresentationLearner(object):
             shuffle=self.shuffle_batches,
             preprocessors=(self.target_pair_constructor, ),
             **ds_to_loader_kwargs)
-        data_iter = repeat_chain_non_empty(dataloader)
-        return data_iter
+        data_iter = None
+        try:
+            while True:
+                num_yielded = 0
+                data_iter = iter(dataloader)
+                for batch in data_iter:
+                    yield batch
+                    num_yielded += 1
+                if num_yielded == 0:
+                    raise ValueError("empty iterator in make_data_iter")
+        finally:
+            if data_iter is not None:
+                # Explicit __del__ is a hack to close that Torch data loader's
+                # worker pool is shut down (there is no explicit method to do
+                # this). Same hack is used in BC.make_data_iter().
+                data_iter.__del__()
 
     def learn(self, datasets, batches_per_epoch, n_epochs, *, callbacks=(),
               end_callbacks=(), log_dir, log_interval=100,
@@ -328,135 +357,142 @@ class RepresentationLearner(object):
             `loss_record` is a list of average loss values encountered at each
             epoch. `most_recent_encoder_checkpoint_path` is self-explanatory.
         """
-        loss_record = []
+        with contextlib.ExitStack() as exit_stack:
+            loss_record = []
 
-        # dataset setup
-        data_iter = self.make_data_iter(
-            datasets=datasets, batches_per_epoch=batches_per_epoch,
-            n_epochs=n_epochs)
+            # dataset setup
+            data_iter = self.make_data_iter(
+                datasets=datasets, batches_per_epoch=batches_per_epoch,
+                n_epochs=n_epochs)
+            exit_stack.push(contextlib.closing(data_iter))
 
-        # optimizer and LR scheduler
-        optimizer = optimizer_cls(self.all_trainable_params(),
-                                  **to_dict(optimizer_kwargs))
-        if scheduler_cls is not None:
-            scheduler_kwargs = scheduler_kwargs or {}
-            if scheduler_cls in [CosineAnnealingLR, LinearWarmupCosine]:
-                scheduler = scheduler_cls(
-                    optimizer, n_epochs, **to_dict(scheduler_kwargs))
+            # optimizer and LR scheduler
+            optimizer = optimizer_cls(self.all_trainable_params(),
+                                      **to_dict(optimizer_kwargs))
+            if scheduler_cls is not None:
+                scheduler_kwargs = scheduler_kwargs or {}
+                if scheduler_cls in [CosineAnnealingLR, LinearWarmupCosine]:
+                    scheduler = scheduler_cls(
+                        optimizer, n_epochs, **to_dict(scheduler_kwargs))
+                else:
+                    scheduler = scheduler_cls(
+                        optimizer, **to_dict(scheduler_kwargs))
             else:
-                scheduler = scheduler_cls(
-                    optimizer, **to_dict(scheduler_kwargs))
-        else:
-            scheduler = None
+                scheduler = None
 
-        self.encoder.train(True)
-        self.decoder.train(True)
-        batches_trained = 0
-        logging.debug(
-            f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
-            f"batches (batch size {self.batch_size})")
-        should_dump = True
+            self.encoder.train(True)
+            self.decoder.train(True)
+            batches_trained = 0
+            logging.debug(
+                f"Training for {n_epochs} epochs, each of {batches_per_epoch} "
+                f"batches (batch size {self.batch_size})")
+            should_dump = True
 
-        for epoch_num in range(1, n_epochs + 1):
-            loss_meter = AverageMeter()
-            # Set encoder and decoder to be in training mode
+            for epoch_num in range(1, n_epochs + 1):
+                loss_meter = AverageMeter()
+                # Set encoder and decoder to be in training mode
 
-            samples_seen = 0
-            timers = Timers()
-            timers.start('batch')
-            for step in range(batches_per_epoch):
-                batch = next(data_iter)
-                # detached_debug_tensors isn't used directly in this function,
-                # but might be used by callbacks that exploit locals()
-                loss, detached_debug_tensors = self.batch_forward(batch)
-                if batches_trained % calc_log_interval == 0:
-                    # TODO(sam): I suspect we can get the same effect by just
-                    # detaching loss & waiting until after optimizer.step()
-                    # call to do .item(). Benchmark later & decide.
-                    loss_item = loss.item()
-                    assert not np.isnan(loss_item), "Loss is NaN"
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                del loss  # so we don't use again
-
-                for callback in callbacks:
-                    callback(locals())
-
-                # restart time-per-batch counter
-                timers.stop('batch')
+                samples_seen = 0
+                timers = Timers()
                 timers.start('batch')
+                for step in range(batches_per_epoch):
+                    batch = next(data_iter)
+                    # detached_debug_tensors isn't used directly in this
+                    # function, but might be used by callbacks that exploit
+                    # locals()
+                    loss, detached_debug_tensors = self.batch_forward(batch)
+                    if batches_trained % calc_log_interval == 0:
+                        # TODO(sam): I suspect we can get the same effect by
+                        # just detaching loss & waiting until after
+                        # optimizer.step() call to do .item(). Benchmark later
+                        # & decide.
+                        loss_item = loss.item()
+                        assert not np.isnan(loss_item), "Loss is NaN"
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                    del loss  # so we don't use again
 
-                if batches_trained % calc_log_interval == 0:
-                    gradient_norm, weight_norm = weight_grad_norms(
-                        self.all_trainable_params())
-                    loss_meter.update(loss_item)
-                    logger.record_mean('loss', loss_item)
-                    logger.record_mean(
-                        'gradient_norm', gradient_norm.item())
-                    logger.record_mean(
-                        'weight_norm', weight_norm.item())
-                    logger.record('epoch', epoch_num)
-                    logger.record('within_epoch_step', step)
-                    logger.record('batches_trained', batches_trained)
-                    timer_stats = timers.dump_stats(check_running=False)
-                    time_per_batch = timer_stats['batch']['mean']
-                    logger.record('time_per_batch', time_per_batch)
-                    logger.record(
-                        'time_per_ksample',
-                        1000 * time_per_batch / self.batch_size)
-                    for k, v in detached_debug_tensors['stats'].items():
-                        # these values have already been detached, but not
-                        # moved to GPU
-                        logger.record_mean(k, v.item())
-                    should_dump = True
+                    for callback in callbacks:
+                        callback(locals())
 
-                if batches_trained % log_interval == 0:
-                    logger.dump(step=batches_trained)
-                    should_dump = False
+                    # restart time-per-batch counter
+                    timers.stop('batch')
+                    timers.start('batch')
 
-                batches_trained += 1
-                samples_seen += len(batch['context'])
+                    if batches_trained % calc_log_interval == 0:
+                        gradient_norm, weight_norm = weight_grad_norms(
+                            self.all_trainable_params())
+                        loss_meter.update(loss_item)
+                        logger.record_mean('loss', loss_item)
+                        logger.record_mean(
+                            'gradient_norm', gradient_norm.item())
+                        logger.record_mean(
+                            'weight_norm', weight_norm.item())
+                        logger.record('epoch', epoch_num)
+                        logger.record('within_epoch_step', step)
+                        logger.record('batches_trained', batches_trained)
+                        timer_stats = timers.dump_stats(check_running=False)
+                        time_per_batch = timer_stats['batch']['mean']
+                        logger.record('time_per_batch', time_per_batch)
+                        logger.record(
+                            'time_per_ksample',
+                            1000 * time_per_batch / self.batch_size)
+                        for k, v in detached_debug_tensors['stats'].items():
+                            # these values have already been detached, but not
+                            # moved to GPU
+                            logger.record_mean(k, v.item())
+                        should_dump = True
 
-            assert batches_trained > 0, \
-                "went through training loop with no batches---empty dataset?"
-            if epoch_num == 0:
-                logging.debug(f"Epoch yielded {samples_seen} data points "
-                              f"({step + 1} batches)")
+                    if batches_trained % log_interval == 0:
+                        logger.dump(step=batches_trained)
+                        should_dump = False
 
-            if scheduler is not None:
-                scheduler.step()
-            loss_record.append(loss_meter.avg)
+                    batches_trained += 1
+                    samples_seen += len(batch['context'])
 
-            # save checkpoint on last epoch, or at regular interval
-            is_last_epoch = epoch_num == n_epochs
-            should_save_checkpoint = (is_last_epoch or
-                                      epoch_num % save_interval == 0)
-            if should_save_checkpoint:
-                # save encoder
-                encoder_checkpoints_path = os.path.join(
-                    log_dir, 'checkpoints', 'representation_encoder')
-                os.makedirs(encoder_checkpoints_path, exist_ok=True)
-                most_recent_encoder_checkpoint_path = os.path.join(
-                    encoder_checkpoints_path, f'{epoch_num}_epochs.ckpt')
-                torch.save(self.encoder, most_recent_encoder_checkpoint_path)
+                assert batches_trained > 0, \
+                    "went through training loop with no batches---empty " \
+                    "dataset?"
+                if epoch_num == 0:
+                    logging.debug(f"Epoch yielded {samples_seen} data points "
+                                  f"({step + 1} batches)")
 
-                # save decoder
-                decoder_checkpoints_path = os.path.join(
-                    log_dir, 'checkpoints', 'loss_decoder')
-                os.makedirs(decoder_checkpoints_path, exist_ok=True)
-                torch.save(self.decoder, os.path.join(
-                    decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
+                if scheduler is not None:
+                    scheduler.step()
+                loss_record.append(loss_meter.avg)
 
-        for callback in end_callbacks:
-            callback(locals())
+                # save checkpoint on last epoch, or at regular interval
+                is_last_epoch = epoch_num == n_epochs
+                should_save_checkpoint = (is_last_epoch or
+                                          epoch_num % save_interval == 0)
+                if should_save_checkpoint:
+                    # save encoder
+                    encoder_checkpoints_path = os.path.join(
+                        log_dir, 'checkpoints', 'representation_encoder')
+                    os.makedirs(encoder_checkpoints_path, exist_ok=True)
+                    most_recent_encoder_checkpoint_path = os.path.join(
+                        encoder_checkpoints_path, f'{epoch_num}_epochs.ckpt')
+                    torch.save(
+                        self.encoder, most_recent_encoder_checkpoint_path)
 
-        # if we were not scheduled to dump on the last batch we trained on,
-        # then do one last log dump to make sure everything is there
-        if should_dump:
-            logger.dump(step=batches_trained)
+                    # save decoder
+                    decoder_checkpoints_path = os.path.join(
+                        log_dir, 'checkpoints', 'loss_decoder')
+                    os.makedirs(decoder_checkpoints_path, exist_ok=True)
+                    torch.save(self.decoder, os.path.join(
+                        decoder_checkpoints_path, f'{epoch_num}_epochs.ckpt'))
 
-        assert is_last_epoch, "did not make it to last epoch"
-        assert should_save_checkpoint, "did not save checkpoint on last epoch"
+            for callback in end_callbacks:
+                callback(locals())
 
-        return loss_record, most_recent_encoder_checkpoint_path
+            # if we were not scheduled to dump on the last batch we trained on,
+            # then do one last log dump to make sure everything is there
+            if should_dump:
+                logger.dump(step=batches_trained)
+
+            assert is_last_epoch, "did not make it to last epoch"
+            assert should_save_checkpoint, "did not save checkpoint on last " \
+                "epoch"
+
+            return loss_record, most_recent_encoder_checkpoint_path
