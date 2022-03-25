@@ -73,6 +73,27 @@ def bc_defaults():
 gail_ingredient = Ingredient('gail')
 
 
+class _DecorrelateEnvsDefault:
+    """A smart default setting for `gail.decorrelate_envs`.
+
+    Evaluates as false-ish when procgen is selected, and true-ish otherwise.
+    procgen uses a gym3 interface, and so does not support our decorrelation
+    strategy of taking a random number of actions in each environment."""
+    @property
+    @env_cfg_ingredient.capture
+    def value(self, benchmark_name):
+        return benchmark_name != 'procgen'
+
+    def __bool__(self):
+        return bool(self.value)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.value})'
+
+    def __str__(self):
+        return f'{self.__class__.__name__}={self.value}'
+
+
 @gail_ingredient.config
 def gail_defaults():
     # These default settings are copied from
@@ -129,7 +150,7 @@ def gail_defaults():
     # if true, this takes a random number of actions in each environment at the
     # beginning of GAIL training to decorrelate episode completion times (not
     # supported by procgen)
-    decorrelate_envs = True
+    decorrelate_envs = _DecorrelateEnvsDefault()
 
     _ = locals()
     del _
@@ -511,7 +532,8 @@ def do_training_gail(
     # it is impossible to turn that off without changing
     # algorithm._setup_learn() somehow)
     if gail['decorrelate_envs']:
-        trainer.venv_train = KludgyResetVecEnv(trainer.venv_train, max_steps=500)
+        trainer.venv_train = KludgyResetVecEnv(trainer.venv_train,
+                                               max_steps=500)
     trainer.gen_algo.set_env(trainer.venv_train)
     trainer.train(
         total_timesteps=gail['total_timesteps'], callback=save_callback,
