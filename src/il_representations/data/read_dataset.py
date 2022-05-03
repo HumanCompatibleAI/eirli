@@ -3,12 +3,40 @@
 import logging
 import os
 import pickle
+import urllib.parse
 import warnings
 
 import numpy as np
 from torch.utils.data import DataLoader, IterableDataset
 import webdataset as wds
 from webdataset.dataset import group_by_keys
+from webdataset.gopen import reader
+import zstandard
+
+
+def _zst_open(path):
+    """Open zstd-compressed file at `path` using the `zstandard` library."""
+    decomp = zstandard.ZstdDecompressor()
+    fp = open(path, 'rb')
+    reader = decomp.stream_reader(fp, closefd=True, read_across_frames=True)
+    return reader
+
+
+def zst_reader(url, **kw):
+    """Custom reader for webdataset that reads zstd-compressed files, or defers
+    to built-in webdataset reader for files that are not local or not
+    zstd-compressed."""
+    parsed = urllib.parse.urlparse(url)
+    scheme = parsed.scheme
+    if scheme in ("file", ""):
+        if scheme == "file":
+            path = parsed.path
+        else:
+            path = url
+        lp = path.lower()
+        if lp.endswith(".zst") or lp.endswith(".zstd"):
+            return _zst_open(path)
+    return reader(url, **kw)
 
 
 class ILRDataset(wds.Dataset):
@@ -22,7 +50,8 @@ class ILRDataset(wds.Dataset):
     """
     _meta = None  # this will be set by __init__.meta_pipeline
 
-    def __init__(self, urls, *args, initial_pipeline=None, **kwargs):
+    def __init__(self, urls, *args, open_fn=zst_reader, initial_pipeline=None,
+                 **kwargs):
         def meta_pipeline(data_iter):
             """Pipeline that extracts the first element of the archive to use
             as metadata, then lets the remainder go through the rest of the
@@ -59,7 +88,8 @@ class ILRDataset(wds.Dataset):
             # group_by_keys, so we omit it in the analogous case here
             init_pipeline = [meta_pipeline, initial_pipeline]
 
-        super().__init__(urls, *args, initial_pipeline=init_pipeline, **kwargs)
+        super().__init__(urls, *args, initial_pipeline=init_pipeline,
+                         open_fn=open_fn, **kwargs)
 
     @property
     def meta(self):

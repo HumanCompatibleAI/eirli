@@ -9,7 +9,7 @@ dataset <https://berkeley.app.box.com/s/8yo3yyyh0h2e1ay5iehbnyg4g0cm0lpe>`_. You
 should unzip the split archive with 7zip, then place the ``data/`` directory in
 the root of our repository (so, for instance, there will be ``finger-spin``
 demos at
-``/path/to/our-repo.git/data/processed/demos/dm_control/finger-spin/demos.tgz``.
+``/path/to/our-repo.git/data/processed/demos/dm_control/finger-spin/demos.tar.zst``.
 
 MAGICAL 
 -------

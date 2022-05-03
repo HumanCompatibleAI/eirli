@@ -268,7 +268,7 @@ def load_wds_datasets(configs):
             benchmark_name=benchmark_name, task_key=task_key,
             data_type=data_type, data_root=env_data['data_root'])
 
-        tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tgz"))
+        tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tar.zst"))
         if len(tar_files) == 0:
             raise IOError(
                 f"did not find any files in '{data_dir_for_config}' (for "

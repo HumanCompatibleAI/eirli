@@ -5,9 +5,20 @@
 # The Conda bits are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
 FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04
 
+# nvidia broke their own containers by doing a key rotation in April 2022, so we
+# need to update keys manually, per this blog post:
+# https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
+RUN mv /etc/apt/sources.list.d /etc/apt/sources.list.d.bak \
+    && apt-get update -q \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y curl \
+    && apt-key del 7fa2af80 \
+    && curl -O https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-keyring_1.0-1_all.deb \
+    && dpkg -i cuda-keyring_1.0-1_all.deb \
+    && mv /etc/apt/sources.list.d.bak /etc/apt/sources.list.d
+
+# now install actual OS-level dependencies
 RUN apt-get update -q \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    curl \
     git \
     libgl1-mesa-dev \
     libgl1-mesa-glx \

@@ -86,7 +86,7 @@ def run(seed, env_data, env_cfg, shuffle_traj_order, n_traj_total):
     out_file_path = os.path.join(
         auto_env.get_data_dir(benchmark_name=env_cfg['benchmark_name'],
                               task_key=env_cfg['task_name'],
-                              data_type='demos'), 'demos.tgz')
+                              data_type='demos'), 'demos.tar.zst')
 
     # get metadata for the dataset
     meta_dict = get_meta_dict()

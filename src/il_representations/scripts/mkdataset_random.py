@@ -45,7 +45,7 @@ def run(seed, env_data, env_cfg, n_timesteps_min, *, _max_steps_to_write_at_once
     out_file_path = os.path.join(
         auto.get_data_dir(benchmark_name=env_cfg['benchmark_name'],
                           task_key=env_cfg['task_name'],
-                          data_type='random'), 'random.tgz')
+                          data_type='random'), 'random.tar.zst')
 
     venv = auto.load_vec_env()
     policy = policy_base.RandomPolicy(venv.observation_space,
@@ -71,7 +71,8 @@ def run(seed, env_data, env_cfg, n_timesteps_min, *, _max_steps_to_write_at_once
             new_trajs = rollout.generate_trajectories(
                 policy,
                 venv,
-                sample_until=rollout.min_timesteps(n_to_generate))
+                sample_until=rollout.make_sample_until(
+                    min_timesteps=n_to_generate, min_episodes=None))
             n_generated = sum(len(traj.acts) for traj in new_trajs)
             logging.info(f'Got {n_generated} steps, will write '
                          f'{len(new_trajs)} trajectories')
