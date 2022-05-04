@@ -38,7 +38,7 @@ gpu_config() {
     override="$gpu_default"
     for cfg_string in "$@"; do
         this_override="${gpu_overrides[$cfg_string]}"
-        if [ ! -z "$this_override" ]; then
+        if [ -n "$this_override" ]; then
             override="$this_override"
         fi
     done

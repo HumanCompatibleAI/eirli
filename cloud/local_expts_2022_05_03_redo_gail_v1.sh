@@ -12,13 +12,14 @@
 
 set -e
 
-# WARNING: 5 demos here!
+# WARNING: 5 demos here for MAGICAL!
 magical_base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
                    "cfg_data_il_5demos" "cfg_use_magical"
                    "cfg_data_repl_5demos_random" "gail_mr_config_2021_03_29")
 
 magical_envs=("MatchRegions-Demo-v0" "MoveToRegion-Demo-v0" "MoveToCorner-Demo-v0")
 
+# WARNING: unlimited demos here! (for DMC/Procgen)
 dmc_base_cfgs=("cfg_base_5seed_1cpu_pt25gpu" "tune_run_kwargs.num_samples=5"
                "env_cfg.benchmark_name=dm_control"
                "cfg_il_gail_dmc_500k_nofreeze")
@@ -86,7 +87,6 @@ done
 # --------------------------------
 # GAIL + Procgen
 # --------------------------------
-
 for procgen_env in "${procgen_envs[@]}"; do
     for repl_config in "${repl_configs[@]}"; do
         echo -e "\n *** TRAINING $repl_config ON $procgen_env *** \n "
@@ -104,7 +104,6 @@ done
 # --------------------------------
 # GAIL + DMC
 # --------------------------------
-
 for dmc_env in "${dmc_envs[@]}"; do
     for repl_config in "${repl_configs[@]}"; do
         echo -e "\n *** TRAINING $repl_config ON $dmc_env *** \n "
