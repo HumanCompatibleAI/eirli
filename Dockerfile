@@ -98,4 +98,3 @@ ENV DISPLAY=:0
 
 # Always run under tini (see explanation above)
 ENTRYPOINT [ "/usr/bin/tini", "--" ]
-
