@@ -311,7 +311,7 @@ class RepresentationLearner(object):
                 if num_yielded == 0:
                     raise ValueError("empty iterator in make_data_iter")
         finally:
-            if data_iter is not None:
+            if data_iter is not None and hasattr(data_iter, '__del__'):
                 # Explicit __del__ is a hack to close that Torch data loader's
                 # worker pool is shut down (there is no explicit method to do
                 # this). Same hack is used in BC.make_data_iter().

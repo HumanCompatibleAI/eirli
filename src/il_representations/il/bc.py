@@ -117,7 +117,7 @@ class BC:
                     dev = self.policy.device
                     yield batch['obs'].to(dev), batch['acts'].to(dev)
         finally:
-            if data_iter is not None:
+            if data_iter is not None and hasattr(data_iter, '__del__'):
                 # Explicit __del__ call is a hack to ensure that data_iter's
                 # worker pool gets shut down.
 
