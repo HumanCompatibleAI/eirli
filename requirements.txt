@@ -10,8 +10,8 @@
 numpy~=1.19.0
 gym[atari]~=0.17
 sacred~=0.8.2
-torch~=1.10.0
-torchvision~=0.11.1
+torch==1.10.*
+torchvision==0.11.*
 opencv-python~=4.3.0.36
 tensorboard~=2.2.0
 pytest~=6.2.5
