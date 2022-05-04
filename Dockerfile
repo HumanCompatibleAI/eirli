@@ -51,12 +51,12 @@ ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 RUN curl -o /usr/local/bin/patchelf https://s3-us-west-2.amazonaws.com/openai-sci-artifacts/manual-builds/patchelf_0.9_amd64.elf \
   && chmod +x /usr/local/bin/patchelf
 
+# install MuJoCo 2.0 and a license key
 RUN mkdir -p /root/.mujoco \
   && wget https://www.roboti.us/download/mujoco200_linux.zip -O mujoco.zip \
   && unzip mujoco.zip -d /root/.mujoco \
-  && rm mujoco.zip
-# fake MuJoCo key; we'll add a real one at run time
-RUN touch /root/.mujoco/mjkey.txt
+  && rm mujoco.zip \
+  && wget https://www.roboti.us/file/mjkey.txt -O /root/.mujoco/mjkey.txt
 ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
 
 # tini is a simple init which is used by the official Conda Dockerfile (among

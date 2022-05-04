@@ -6,15 +6,12 @@ jobs:
     docker:
       # this is also used in gcp_cluster_template.yaml (if you change this file,
       # remember to update all your cluster configs too)
-      - image: "humancompatibleai/il-representations:2022.05.03-r2"
+      - image: "humancompatibleai/il-representations:2022.05.04-r1"
     steps:
       - checkout
       - run:
           command: pip install -r requirements.txt
           name: Install dependencies
-      - run:
-          command: curl -so ~/.mujoco/mjkey.txt "https://roboti.us/file/mjkey.txt"
-          name: Set up MuJoCo
       - run:
           command: pip install -e .
           name: Install in dev mode
