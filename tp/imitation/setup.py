@@ -63,11 +63,11 @@ setup(
         "torch>=1.4.0",
         "tqdm",
         "scikit-learn>=0.21.2",
-        # temporary branch for improvements to il-representations
-        (
-            "stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
-            "/stable-baselines3.git@f287004a4f397006bb7cc3f8c476fe40b13080bf"
-        ),
+        # SB3 removed in favour of vendoered copy in il-representations
+        # (
+        #     "stable-baselines3 @ git+https://github.com/HumanCompatibleAI"
+        #     "/stable-baselines3.git@f287004a4f397006bb7cc3f8c476fe40b13080bf"
+        # ),
         "sacred~=0.8.1",
         "tensorboard>=1.14",
         "kornia~=0.6.1",

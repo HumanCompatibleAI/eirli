@@ -1,0 +1,19 @@
+image: stablebaselines/stable-baselines3-cpu:1.1.0a5
+
+type-check:
+  script:
+  - make type
+
+pytest:
+  script:
+  # MKL_THREADING_LAYER=GNU to avoid MKL_THREADING_LAYER=INTEL incompatibility error
+  - MKL_THREADING_LAYER=GNU make pytest
+
+doc-build:
+  script:
+  - make doc
+
+lint-check:
+  script:
+  - make check-codestyle
+  - make lint
