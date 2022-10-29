@@ -27,7 +27,8 @@ captum~=0.4.0
 zstandard==0.17.*
 
 # this fork of torchsummary can deal with layers that don't produce tensors
-git+https://github.com/HumanCompatibleAI/pytorch-summary@777d0bad8b40e5a46308dcd4b5c9196201d01cb7
+# git+https://github.com/HumanCompatibleAI/pytorch-summary@777d0bad8b40e5a46308dcd4b5c9196201d01cb7
+-e file:./tp/pytorch-summary
 
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
@@ -41,8 +42,10 @@ cryptography~=3.1
 google-api-python-client~=2.26.1
 
 # imitation needs special branch as of 2022-01-05. The custom imitation branch
-# in turn pulls in a custom version of Stable Baselines 3.
-git+https://github.com/HumanCompatibleAI/imitation@7903d7c0a8f047856c1543c2ba0cc7e02ce2e00c
+# in turn relies on a custom version of Stable Baselines 3.
+# git+https://github.com/HumanCompatibleAI/imitation@7903d7c0a8f047856c1543c2ba0cc7e02ce2e00c
+-e file:./tp/imitation
+-e file:./tp/stable-baselines3
 
 # environments
 magical-il~=0.0.1a4
@@ -53,4 +56,5 @@ dm_control==0.0.319497192
 # our fork of dmc2gym fixes env.seed() so that it actually seeds the underlying
 # DMC environment (previously the only way to correctly seed in dmc2gym was to
 # pass a seed to the constructor)
-git+https://github.com/HumanCompatibleAI/dmc2gym@a8b239cbd7c9ee82c542f841a90c7be4d0ef3b88
+# git+https://github.com/HumanCompatibleAI/dmc2gym@a8b239cbd7c9ee82c542f841a90c7be4d0ef3b88
+-e file:./tp/dmc2gym
