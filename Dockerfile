@@ -80,12 +80,17 @@ RUN conda update -n base -c defaults conda \
   && conda install -c anaconda python=3.7 \
   && conda clean -ay
 
-# MineRL installed separately because pip installs from Github don't work with submodules
-COPY minecraft_setup.sh /root/minecraft_setup.sh
-RUN bash /root/minecraft_setup.sh
+# FIXME(sam): MineRL deps disabled 2023-02-20 since we never had time to do
+# MineRL expts for the EIRLI paper. Should decide whether we want to remove
+# everything MineRL-related entirely.
+# # MineRL installed separately because pip installs from Github don't work with submodules
+# # COPY minecraft_setup.sh /root/minecraft_setup.sh
+# # RUN bash /root/minecraft_setup.sh
 
 # Install remaining dependencies
 COPY requirements.txt /root/requirements.txt
+COPY tp/ /root/tp/
+WORKDIR /root
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -U "pip>=21.3.1,<22.0.0"
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
 # also install CUDA 11.1 & Torch 1.10, since that seems to work with A100
