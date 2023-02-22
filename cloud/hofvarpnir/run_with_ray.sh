@@ -5,8 +5,13 @@
 # entire outer container dies.
 # However, the arguments you pass to the container will be executed in a
 # subshell after the Ray server starts.
-# This is a bit weird, but the point is that we can run multiple Python scripts
-# that all need a Ray server while having only one Ray instance.
+# This is a bit weird, but the point is that we can run multiple Python
+# experiment scripts that all need a Ray server while having only one Ray
+# instance.
+#
+# We really don't _need_ Ray on Hofvarpnir's infrastructure, but I don't want to
+# remove it because all of our configs depend on it, and removing Ray would
+# probably break something.
 
 set -euo pipefail
 ulimit -n 65536
@@ -64,6 +69,5 @@ launch_actual_command "$@" &
 disown
 
 # Start a blocking Ray head server; exits once ray stops
-# (command copied from old autoscaler code; I'm no longer using the autoscaler)
 echo "Starting Ray"
-exec ray start --head --port=6379 --object-manager-port=8076 --block
+exec ray start --head --port=42000 --block

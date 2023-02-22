@@ -1,9 +1,7 @@
-# Based on mujoco-py's Dockerfile, but with the following changes:
-# - Slightly changed nvidia stuff.
-# - Uses Conda Python 3.7 instead of Python 3.6.
-# - Adds nfs
+# Originally based on mujoco-py's dockerfile.
 # The Conda bits are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
-FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04 AS base
+# (obviously all the extra deps are for our code though)
+FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04
 
 # nvidia broke their own containers by doing a key rotation in April 2022, so we
 # need to update keys manually, per this blog post:
@@ -87,39 +85,36 @@ RUN conda update -n base -c defaults conda \
 # # COPY minecraft_setup.sh /root/minecraft_setup.sh
 # # RUN bash /root/minecraft_setup.sh
 
+# create a user with the right UID etc.
+ARG UID
+ARG USERNAME
+RUN groupadd -g "$UID" "$USERNAME"
+RUN useradd -r -d /homedir -u "$UID" -g "$USERNAME" "$USERNAME"
+RUN mkdir -p /homedir && chown -R "$USERNAME:$USERNAME" /homedir
+
 # Install remaining dependencies
-COPY requirements.txt /root/requirements.txt
-COPY tp/ /root/tp/
-WORKDIR /root
+COPY requirements.txt /homedir/requirements.txt
+COPY tp/ /homedir/tp/
+RUN chown -R "$USERNAME:$USERNAME" /homedir
+WORKDIR /homedir
+USER $USERNAME
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -U "pip>=21.3.1,<22.0.0"
-RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /root/requirements.txt
+RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /homedir/requirements.txt
 # also install CUDA 11.1 & Torch 1.10, since that seems to work with A100
 RUN conda install pytorch=1.10.0 torchvision cudatoolkit=11.1 -c pytorch -c nvidia -y \
   && conda clean -ay
+
+# copy in source
+ARG SRC_TARBALL
+COPY $SRC_TARBALL /homedir/eirli.tar.gz
+USER root
+RUN chown -R "$USERNAME:$USERNAME" /homedir/eirli.tar.gz
+USER $USERNAME
+RUN tar xf /homedir/eirli.tar.gz && rm /homedir/eirli.tar.gz
+RUN cd /homedir/eirli && pip install --no-cache-dir -e .
 
 # This is useful for making the X server work (but will break unless the X
 # server is on the right port)
 ENV DISPLAY=:0
 
-# Always run under tini (see explanation above)
-ENTRYPOINT [ "/usr/bin/tini", "--" ]
-
-# the code below is just for running on hofvarpnir
-FROM base AS hofvarpnir
-
-# copy in source
-ARG SRC_TARBALL
-COPY $SRC_TARBALL /root/eirli.tar.gz
-RUN tar xf /root/eirli.tar.gz && rm /root/eirli.tar.gz
-RUN cd /root/eirli && pip install --no-cache-dir -e .
-
-# create a user with the right UID etc.
-ARG UID
-ARG USERNAME
-RUN groupadd -g "$UID" "$USERNAME"
-RUN useradd -r -u "$UID" -g "$USERNAME" "$USERNAME"
-# change the user/group for /root to $USERNAME
-RUN chown -R "$USERNAME:$USERNAME" /root
-USER $USERNAME
-
-ENTRYPOINT ["/usr/bin/tini", "--", "bash", "/root/eirli/cloud/hofvarpnir/run_with_ray.sh", "--", "$@"]
+ENTRYPOINT ["/usr/bin/tini", "--", "bash", "/homedir/eirli/cloud/hofvarpnir/run_with_ray.sh", "--"]

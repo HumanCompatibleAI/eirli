@@ -58,11 +58,10 @@ IMAGE_NAME="humancompatibleai/eirli-hofvarpnir-$IMAGE_USERNAME"
 YYYY_MM_DD="$(date '+%Y.%m.%d')"
 NUM_DOCKER_TAGS="$(docker images --format '{{.Tag}}' "$IMAGE_NAME" | grep -c -E "^$YYYY_MM_DD-r[0-9]+$" || true)"
 NEW_TAG="$YYYY_MM_DD-r$((NUM_DOCKER_TAGS + 1))"
-# Build the Docker image in ../../ at stage `hofvarpnir`, with args
-# UID=$IMAGE_UID and USERNAME=$IMAGE_USERNAME. Name the image $IMAGE_NAME and
-# tag it with both $NEW_TAG and :latest.
-docker build \
-    --target hofvarpnir \
+# Build the Docker image in ../../, with args UID=$IMAGE_UID and
+# USERNAME=$IMAGE_USERNAME. Name the image $IMAGE_NAME and tag it with both
+# $NEW_TAG and :latest.
+DOCKER_BUILDKIT=1 docker build \
     --build-arg UID="$IMAGE_UID" \
     --build-arg USERNAME="$IMAGE_USERNAME" \
     --build-arg SRC_TARBALL="$SRC_TARBALL_DOCKER_RELATIVE" \
