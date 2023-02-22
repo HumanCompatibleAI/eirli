@@ -101,7 +101,7 @@ ENV LD_LIBRARY_PATH /homedir/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
 COPY requirements.txt /homedir/requirements.txt
 COPY tp/ /homedir/tp/
 USER root
-RUN chown -R "$USERNAME:$USERNAME" /homedir
+RUN chown -R "$USERNAME:$USERNAME" /homedir/tp /homedir/requirements.txt
 USER $USERNAME
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -U "pip>=21.3.1,<22.0.0"
 RUN CFLAGS="-I/opt/conda/include" pip install --no-cache-dir -r /homedir/requirements.txt
