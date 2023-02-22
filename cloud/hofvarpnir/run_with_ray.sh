@@ -22,9 +22,10 @@ export DISPLAY=:0
 
 # Start a loop to kill Ray once all the tasks finish
 ray_kill_loop() {
-    # wait 5 minutes before first check, since it might take a while to queue up
-    # jobs
-    sleep 300
+    # wait 2 minutes before first check, since it might take a while to queue up
+    # jobs (this means the container will take a while to actually die if the
+    # desired command fails)
+    sleep 120
     while true; do
         echo "Iterating through Ray kill loop"
         # test whether Ray is running any tasks

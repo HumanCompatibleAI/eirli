@@ -3,7 +3,7 @@
 # - Uses Conda Python 3.7 instead of Python 3.6.
 # - Adds nfs
 # The Conda bits are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
-FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04
+FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04 AS base
 
 # nvidia broke their own containers by doing a key rotation in April 2022, so we
 # need to update keys manually, per this blog post:
@@ -103,3 +103,23 @@ ENV DISPLAY=:0
 
 # Always run under tini (see explanation above)
 ENTRYPOINT [ "/usr/bin/tini", "--" ]
+
+# the code below is just for running on hofvarpnir
+FROM base AS hofvarpnir
+
+# copy in source
+ARG SRC_TARBALL
+COPY $SRC_TARBALL /root/eirli.tar.gz
+RUN tar xf /root/eirli.tar.gz && rm /root/eirli.tar.gz
+RUN cd /root/eirli && pip install --no-cache-dir -e .
+
+# create a user with the right UID etc.
+ARG UID
+ARG USERNAME
+RUN groupadd -g "$UID" "$USERNAME"
+RUN useradd -r -u "$UID" -g "$USERNAME" "$USERNAME"
+# change the user/group for /root to $USERNAME
+RUN chown -R "$USERNAME:$USERNAME" /root
+USER $USERNAME
+
+ENTRYPOINT ["/usr/bin/tini", "--", "bash", "/root/eirli/cloud/hofvarpnir/run_with_ray.sh", "--", "$@"]

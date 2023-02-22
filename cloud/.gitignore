@@ -5,3 +5,7 @@ _transfer_scratch
 # configs.
 *.yaml
 !gcp_cluster_template.yaml
+
+# Built for dockerfile
+eirli.tar.gz
+git_hash.txt
