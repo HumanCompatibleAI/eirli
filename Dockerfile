@@ -118,6 +118,9 @@ USER $USERNAME
 RUN tar xf /homedir/eirli.tar.gz && rm /homedir/eirli.tar.gz
 RUN cd /homedir/eirli && pip install --no-cache-dir -e .
 
+# add scripts in cloud/ to $PATH
+ENV PATH=/homedir/eirli/cloud:$PATH
+
 # This is useful for making the X server work (but will break unless the X
 # server is on the right port)
 ENV DISPLAY=:0
