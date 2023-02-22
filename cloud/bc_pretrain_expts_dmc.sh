@@ -49,6 +49,27 @@ gpu_config() {
     echo "tune_run_kwargs.resources_per_trial.gpu=$override"
 }
 
+set_dir() {
+    # assert that we receive two args: data_dir and run_dir
+    if [ "$#" -ne 2 ]; then
+        echo "USAGE: $0 data_dir run_dir"
+        exit 1
+    fi
+    data_dir="$1"
+    run_dir="$2"
+
+    # get dir containing this current script (bashism)
+    this_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+    # now make that data_link and runs_link are symlinks pointing to data_dir
+    # and run_dir, respectively
+    data_link="$(realpath "$this_dir/../data")"
+    runs_link="$(realpath "$this_dir/../runs")"
+    ln -snT "$data_dir" "$data_link"
+    ln -snT "$run_dir" "$runs_link"
+}
+set_dir "$@"
+
 submit_expt() {
     if [ "$local" == local ]; then
         # submit experiment to local ray server using given args
