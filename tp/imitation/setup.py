@@ -70,7 +70,7 @@ setup(
         # ),
         "sacred~=0.8.1",
         "tensorboard>=1.14",
-        "kornia~=0.6.1",
+        "kornia==0.6.1",
     ],
     tests_require=TESTS_REQUIRE,
     extras_require={
