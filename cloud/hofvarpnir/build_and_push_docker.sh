@@ -7,9 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd || pwd)"
 # dockerfile dir is two levels above this one
 DOCKERFILE_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# check that there are no modifications to the src dir of this repo (by applying
-# git diff-index just to $DOCKERFILE_DIR/src)
-if [[ -n "$(git diff-index --name-only HEAD -- "$DOCKERFILE_DIR"/{src,requirements.txt,setup.py})" ]]; then
+# check that there are no modifications to this repo
+if [[ -n "$(git diff-index --name-only HEAD --)" ]]; then
     echo "There are uncommitted changes in $DOCKERFILE_DIR/src; commit them before building the Docker image"
     exit 1
 fi
@@ -61,7 +60,7 @@ NEW_TAG="$YYYY_MM_DD-r$((NUM_DOCKER_TAGS + 1))"
 # Build the Docker image in ../../, with args UID=$IMAGE_UID and
 # USERNAME=$IMAGE_USERNAME. Name the image $IMAGE_NAME and tag it with both
 # $NEW_TAG and :latest.
-DOCKER_BUILDKIT=1 docker build \
+docker build \
     --build-arg UID="$IMAGE_UID" \
     --build-arg USERNAME="$IMAGE_USERNAME" \
     --build-arg SRC_TARBALL="$SRC_TARBALL_DOCKER_RELATIVE" \

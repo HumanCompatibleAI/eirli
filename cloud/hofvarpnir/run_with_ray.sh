@@ -20,8 +20,8 @@ ulimit -n 65536
 echo 'Starting Xvfb'
 for job in $(pgrep '^Xvfb\b'); do kill "$job"; done \
     && rm -f ~/.Xauthority \
-    && Xvfb -screen 0 640x480x16 -nolisten tcp -auth ~/.Xauthority \
-            -maxclients 2048 :0 &
+    && Xvfb -screen 0 640x480x16 -nolisten tcp -nolisten unix \
+        -auth ~/.Xauthority -maxclients 2048 :0 &
 disown
 export DISPLAY=:0
 
@@ -67,6 +67,20 @@ launch_actual_command() {
 }
 launch_actual_command "$@" &
 disown
+# get ID of last launched job
+actual_command_pid="$!"
+
+check_command_finished() {
+    # loop to check if actual command has finished (& warn when it does)
+    while true; do
+        if ! ps -p "$actual_command_pid" > /dev/null; then
+            echo "Actual command finished"
+            break
+        fi
+        sleep 2
+    done
+}
+check_command_finished &
 
 # Start a blocking Ray head server; exits once ray stops
 echo "Starting Ray"
