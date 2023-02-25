@@ -84,4 +84,7 @@ check_command_finished &
 
 # Start a blocking Ray head server; exits once ray stops
 echo "Starting Ray"
-exec ray start --head --port=42000 --block
+# use 10GB object store memory (arg is in bytes); if we don't do this then Ray
+# tries to use some insane amount of /dev/shm
+exec ray start --head --port=42000 --block \
+    --object-store-memory=10000000000
