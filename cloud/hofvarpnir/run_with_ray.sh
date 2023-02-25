@@ -13,7 +13,13 @@
 # remove it because all of our configs depend on it, and removing Ray would
 # probably break something.
 
+# I think the Kubernetes logger just isn't logging stdout for some reason, so
+# I'm going to use process substitution to send ALL stdout to stderr
+exec 1>&2
+
+# also safety options, ulimit options, etc.
 set -euo pipefail
+
 ulimit -n 65536
 
 # Start an X server
@@ -30,9 +36,9 @@ ray_kill_loop() {
     # wait 2 minutes before first check, since it might take a while to queue up
     # jobs (this means the container will take a while to actually die if the
     # desired command fails)
-    sleep 120
+    sleep 300
     while true; do
-        echo "Iterating through Ray kill loop"
+        echo "Checking whether we need to kill Ray"
         # test whether Ray is running any tasks
         resource_regex=' [0-9]+\.[0-9]+/[0-9]+\.[0-9]+ (CPU|GPU|accelerator_type).*'
         resources_used="$(ray status | grep -E "$resource_regex" | sed -E 's? ([0-9]+\.[0-9]+)/.*?\1?' || echo "command failed")"
@@ -47,7 +53,7 @@ ray_kill_loop() {
             ray stop || echo "Error $? shutting down Ray"
             # now kill any process starting with Ray, Xvfb or python
             # (I don't think this is necessary if Ray stops, since Ray should be at the root of the container)
-            for job in pgrep '^(ray|Xvfb|python)'; do kill -9 "$job" || echo "Error $? killing other process #$job"; done
+            for job in $(pgrep '^(ray|Xvfb|python)'); do kill -9 "$job" || echo "Error $? killing other process #$job"; done
             sleep 5
             exit 0
         fi
@@ -62,7 +68,7 @@ disown
 # this function executes "$@" in a subshell after waiting 10s
 # (meant to be executed in a disowned background job)
 launch_actual_command() {
-    sleep 10
+    sleep 30
     exec "$@"
 }
 launch_actual_command "$@" &
