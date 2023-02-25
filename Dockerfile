@@ -125,4 +125,4 @@ ENV PATH=/homedir/eirli/cloud:$PATH
 # server is on the right port)
 ENV DISPLAY=:0
 
-ENTRYPOINT ["/usr/bin/tini", "--", "bash", "/homedir/eirli/cloud/hofvarpnir/run_with_ray.sh", "--"]
+ENTRYPOINT ["/homedir/eirli/cloud/hofvarpnir/entrypoint"]
