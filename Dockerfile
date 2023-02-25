@@ -125,4 +125,4 @@ ENV PATH=/homedir/eirli/cloud:$PATH
 # server is on the right port)
 ENV DISPLAY=:0
 
-ENTRYPOINT ["/homedir/eirli/cloud/hofvarpnir/entrypoint"]
+ENTRYPOINT ["/homedir/eirli/cloud/entrypoint"]
