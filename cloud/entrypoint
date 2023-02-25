@@ -6,4 +6,4 @@
 
 set -euo pipefail
 
-exec /usr/bin/tini --- bash /homedir/eirli/cloud/hofvarpnir/run_with_ray.sh -- "$@"
+exec /usr/bin/tini -s -g bash -- /homedir/eirli/cloud/hofvarpnir/run_with_ray.sh "$@"
