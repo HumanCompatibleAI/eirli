@@ -1,15 +1,56 @@
 #!/bin/bash
 
-set -euxo pipefail
+set -euo pipefail
 
 # get dir containing this bash script (fall back to cwd)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd || pwd)"
-# dockerfile dir is two levels above this one
-DOCKERFILE_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
+# dockerfile dir is level above this one
+DOCKERFILE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Argument defaults:
+IMAGE_UID="$UID"
+IMAGE_USERNAME="$USER"
+DOCKER_HUB_USERNAME="humancompatibleai"
+SHOULD_PUSH_TO_DOCKER_HUB=""
+
+usage() {
+    echo "Usage: $0 [-d <dockerhub_username>] [-p] [-n <username>] [-u <uid>] [-g <gid>]" 1>&2
+    echo "  -d <username> Dockerhub username (default: $DOCKER_HUB_USERNAME)" 1>&2
+    echo "  -p push to Dockerhub under username given with -d (default: false)" 1>&2
+    echo "  -n <name> username in Docker image is <name> (default: $IMAGE_USERNAME)" 1>&2
+    echo "  -u <uid> set UID/GID of user in Docker image to <uid> (default: $IMAGE_UID)" 1>&2
+    echo "  -h print help" 1>&2
+    echo "Note that this script must be run from the git repo, and the git repo must" 1>&2
+    echo "be in a clean state (no uncommitted changes)." 1>&2
+    exit 1
+}
+
+while getopts ":d:pn:u:h" o; do
+    case "${o}" in
+        d)
+            DOCKER_HUB_USERNAME="${OPTARG}"
+            ;;
+        p)
+            SHOULD_PUSH_TO_DOCKER_HUB="true"
+            ;;
+        n)
+            IMAGE_USERNAME="${OPTARG}"
+            ;;
+        u)
+            IMAGE_UID="${OPTARG}"
+            ;;
+        h)
+            usage
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
 
 # check that there are no modifications to this repo
 if [[ -n "$(git diff-index --name-only HEAD --)" ]]; then
-    echo "There are uncommitted changes in $DOCKERFILE_DIR/src; commit them before building the Docker image"
+    echo "There are uncommitted changes in $DOCKERFILE_DIR/src; commit them before building the Docker image" 1>&2
     exit 1
 fi
 
@@ -36,6 +77,7 @@ append_to_tar_gz() {
     rm -rf "$tmp_dir"
 }
 
+echo "Compressing source code at HEAD to $SRC_TARBALL"
 # generate a tarball of the current git repo for export to the Docker image
 SRC_TARBALL="$SCRIPT_DIR/eirli.tar.gz" 
 rm "$SRC_TARBALL" || true  # make anew
@@ -48,10 +90,7 @@ git rev-parse --short HEAD > "$SCRIPT_DIR/git_hash.txt"
 # append git_hash.txt to the tarball; path of the appended member should be eirli/git_hash.txt
 append_to_tar_gz "$SRC_TARBALL" "$SCRIPT_DIR/git_hash.txt" "eirli/git_hash.txt"
 
-# image name is always the same
-IMAGE_UID=10002
-IMAGE_USERNAME=sam
-IMAGE_NAME="humancompatibleai/eirli-hofvarpnir-$IMAGE_USERNAME"
+IMAGE_NAME="$DOCKER_HUB_USERNAME/eirli-$IMAGE_USERNAME"
 # tag is YYYY.MM.DD-rN, where N is the number of images with name $IMAGE_NAME
 # that start with YYYY.MM.DD
 YYYY_MM_DD="$(date '+%Y.%m.%d')"
@@ -60,6 +99,7 @@ NEW_TAG="$YYYY_MM_DD-r$((NUM_DOCKER_TAGS + 1))"
 # Build the Docker image in ../../, with args UID=$IMAGE_UID and
 # USERNAME=$IMAGE_USERNAME. Name the image $IMAGE_NAME and tag it with both
 # $NEW_TAG and :latest.
+echo "Building Docker image $IMAGE_NAME:$NEW_TAG and $IMAGE_NAME:latest" 1>&2
 docker build \
     --build-arg UID="$IMAGE_UID" \
     --build-arg USERNAME="$IMAGE_USERNAME" \
@@ -67,12 +107,20 @@ docker build \
     -t "$IMAGE_NAME:$NEW_TAG" \
     -t "$IMAGE_NAME:latest" \
     "$DOCKERFILE_DIR"
-# push both tags
-docker push "$IMAGE_NAME:$NEW_TAG"
-docker push "$IMAGE_NAME:latest"
 
 # remove git_hash and eirli.tar.gz
 rm "$SCRIPT_DIR/git_hash.txt" "$SRC_TARBALL" || true
 
-set +x
-echo "Successfully built and pushed Docker image $IMAGE_NAME:$NEW_TAG and $IMAGE_NAME:latest"
+if [[ -z "$SHOULD_PUSH_TO_DOCKER_HUB" ]]; then
+    echo "Not pushing to Dockerhub (re-run with -p to push)" 1>&2
+else
+    # push both tags
+    echo "Pushing Docker image $IMAGE_NAME:$NEW_TAG and $IMAGE_NAME:latest" 1>&2
+    docker push "$IMAGE_NAME:$NEW_TAG"
+    docker push "$IMAGE_NAME:latest"
+fi
+
+echo "Successfully built and pushed Docker image." 1>&2
+echo "You can run it with either of the following tags:" 1>&2
+echo "  $IMAGE_NAME:$NEW_TAG" 1>&2
+echo "  $IMAGE_NAME:latest" 1>&2

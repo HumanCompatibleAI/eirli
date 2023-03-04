@@ -60,4 +60,4 @@ In addition to machinery for constructing algorithms, the repo contains a set of
 .. |Documentation status| image:: https://readthedocs.org/projects/il-representations/badge/?version=latest
    :target: https://il-representations.readthedocs.io/en/latest/?badge=latest
 .. |Dataset download link| image:: https://img.shields.io/badge/data-download-blue
-   :target: https://berkeley.app.box.com/s/8yo3yyyh0h2e1ay5iehbnyg4g0cm0lpe
+   :target: https://drive.google.com/drive/folders/1TtadELS449ciefeyCoohYS4bOX3PrS1O?usp=share_link
