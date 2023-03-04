@@ -1,10 +1,6 @@
 # This dockerfile was originally based on mujoco-py's dockerfile.
 # The Conda install parts are based on https://hub.docker.com/r/continuumio/miniconda3/dockerfile
-
-# (2023-03-03: nvidia removed the 11.1-cudnn8-runtime-ubuntu18.04 image, so
-# I reuploaded it to humancompatibleai)
-# FROM nvidia/cuda:11.1-cudnn8-runtime-ubuntu18.04
-FROM humancompatibleai/nvidia-cuda:11.1-cudnn8-runtime-ubuntu18.04
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu18.04
 
 # nvidia broke their own containers by doing a key rotation in April 2022, so we
 # need to update keys manually, per this blog post:
