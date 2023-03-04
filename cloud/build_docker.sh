@@ -48,6 +48,11 @@ while getopts ":d:pn:u:h" o; do
     esac
 done
 
+# make sure there are no extra args
+if [[ $# -gt $OPTIND ]]; then
+    usage
+fi
+
 # check that there are no modifications to this repo
 if [[ -n "$(git diff-index --name-only HEAD --)" ]]; then
     echo "There are uncommitted changes in $DOCKERFILE_DIR/src; commit them before building the Docker image" 1>&2

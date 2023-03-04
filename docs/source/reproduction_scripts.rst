@@ -34,9 +34,10 @@ host machine. To run the script, use the following command:
 
     cd /path/to/eirli-git-repository  # change the path
     # -u and -n control the UID and the username inside the container, respectively.
-    # You can change docker-hub-user if you want to push to your own Docker Hub
-    # account later on.
-    ./cloud/build_docker.sh -u $UID -n $USER -p docker-hub-user
+    # -d controls the start of the image name (e.g. -d foobar results in an
+    # image calleed "foobar/<something>"). You can change this to your Docker
+    # Hub username if you want to push to Docker Hub later on.
+    ./cloud/build_docker.sh -u $UID -n $USER -d docker-hub-user
 
 This may take a few minutes because it needs to install all the system-level and
 Python-level dependencies in the Docker image. The final Docker image will be
