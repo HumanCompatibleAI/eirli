@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Launches Ray server etc. under tini & then runs args. This is used as an
+# ENTRYPOINT in ../Dockerfile, and can also be used to as a command in
+# Kubernetes.
+
+set -euo pipefail
+
+exec /usr/bin/tini -s -g bash -- /homedir/eirli/cloud/hofvarpnir/run_with_ray.sh "$@"

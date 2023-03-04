@@ -217,7 +217,7 @@ class SB3EvaluationProtocol(EvaluationProtocol):
         trajectories = il_rollout.generate_trajectories(
             self.policy,
             vec_env_chans_last,
-            sample_until=il_rollout.min_episodes(self.n_rollouts),
+            sample_until=il_rollout.make_min_episodes(self.n_rollouts),
             rng=rng,
             deterministic_policy=self.deterministic_policy)
         scores = []

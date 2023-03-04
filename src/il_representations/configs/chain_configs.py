@@ -1,4 +1,6 @@
-from il_representations.script_utils import StagesToRun
+from il_representations.algos import encoders, decoders, losses, \
+    batch_extenders
+from il_representations.script_utils import StagesToRun, ReuseRepl
 from ray import tune
 
 
@@ -97,7 +99,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_base_skopt_1cpu_pt25gpu_no_retry():
@@ -265,8 +266,8 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'dm_control',
                     'task_name': dm_control_env_name
                 } for dm_control_env_name in [
-                'finger-spin', 'cheetah-run', 'reacher-easy'
-            ]
+                    'finger-spin', 'cheetah-run', 'reacher-easy'
+                ]
             ]))
 
         _ = locals()
@@ -275,15 +276,30 @@ def make_chain_configs(experiment_obj):
     @experiment_obj.named_config
     def cfg_bench_micro_sweep_procgen():
         """Tiny sweep over three procgen configs."""
-        spec = dict(env_cfg=tune.grid_search(
-            [
-                {
-                    'benchmark_name': 'procgen',
-                    'task_name': procgen_env_name
-                } for procgen_env_name in [
+        spec = dict(env_cfg=tune.grid_search([
+            {
+                'benchmark_name': 'procgen',
+                'task_name': procgen_env_name
+            } for procgen_env_name in [
                 'coinrun', 'miner', 'fruitbot'
             ]
-            ]))
+        ]))
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_bench_procgen_cmfn():
+        """Procgen CoinRun/Miner/Fruitbot/Ninja sweep (we used this for NeurIPS
+        benchmarks track)."""
+        spec = dict(env_cfg=tune.grid_search([
+            {
+                'benchmark_name': 'procgen',
+                'task_name': procgen_env_name
+            } for procgen_env_name in [
+                'coinrun', 'miner', 'fruitbot', 'jumper',
+            ]
+        ]))
 
         _ = locals()
         del _
@@ -297,8 +313,8 @@ def make_chain_configs(experiment_obj):
                     'benchmark_name': 'procgen',
                     'task_name': procgen_env_name
                 } for procgen_env_name in [
-                'coinrun', 'miner', 'fruitbot', 'jumper', 'ninja'
-            ]
+                    'coinrun', 'miner', 'fruitbot', 'jumper', 'ninja'
+                ]
             ]))
 
         _ = locals()
@@ -413,9 +429,9 @@ def make_chain_configs(experiment_obj):
     def cfg_repl_jigsaw():
         repl = {
             'algo': 'Jigsaw',
-            'algo_params': {'batch_size': 64,
-                           }
+            'algo_params': {'batch_size': 64}
         }
+        locals()
 
     @experiment_obj.named_config
     def cfg_repl_simclr():
@@ -423,7 +439,63 @@ def make_chain_configs(experiment_obj):
         repl = {
             'algo': 'SimCLR',
         }
+        _ = locals()
+        del _
 
+    @experiment_obj.named_config
+    def cfg_repl_simclr_asymm_proj():
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {'decoder': decoders.AsymmetricProjectionHead}
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_no_proj():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {'decoder': decoders.NoOp}
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_ceb_loss():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {'loss_calculator': losses.CEBLoss},
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_momentum():
+        # This doesn't even use the SimCLR loss, so it barely counts as
+        # 'SimCLR'. Still, it's the closest thing that uses momentum.
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {
+                'batch_extender': batch_extenders.QueueBatchExtender,
+                'encoder': encoders.MomentumEncoder,
+                'loss_calculator': losses.QueueAsymmetricContrastiveLoss
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_simclr_192():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'SimCLR',
+            'algo_params': {
+                'batch_size': 192,
+            }
+        }
         _ = locals()
         del _
 
@@ -443,7 +515,6 @@ def make_chain_configs(experiment_obj):
         repl = {
             'algo': 'TemporalCPC',
         }
-
         _ = locals()
         del _
 
@@ -458,7 +529,21 @@ def make_chain_configs(experiment_obj):
                 }
             }
         }
+        _ = locals()
+        del _
 
+    @experiment_obj.named_config
+    def cfg_repl_tcpc8_192():
+        stages_to_run = StagesToRun.REPL_AND_IL
+        repl = {
+            'algo': 'TemporalCPC',
+            'algo_params': {
+                'target_pair_constructor_kwargs': {
+                    'temporal_offset': 8
+                },
+                'batch_size': 192,
+            }
+        }
         _ = locals()
         del _
 
@@ -498,6 +583,30 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_data_repl_5demos_random():
+        """Like cfg_data_repl_demos_random, but only includes the first five
+        demo trajectories."""
+        repl = {
+            'dataset_configs': [
+                {'type': 'demos', 'env_data': {'wds_n_trajs': 5}},
+                {'type': 'random'}
+            ],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_data_il_5demos():
+        il_train = {
+            'dataset_configs': [{
+                'type': 'demos',
+                'env_data': {'wds_n_trajs': 5},
+            }],
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_data_repl_random():
         """Training on both demos and random rollouts for the current
         environment."""
@@ -516,7 +625,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_data_repl_demos_magical_mt():
@@ -732,6 +840,52 @@ def make_chain_configs(experiment_obj):
         del _
 
     @experiment_obj.named_config
+    def cfg_repl_dyn():
+        repl = {
+            'algo': 'DynamicsPrediction',
+            'algo_params': {'batch_size': 32},
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_noaugs():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'augs': None,
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_augs():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'augs': 'translate,rotate,gaussian_blur,color_jitter_mid',
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_augs():
+        # a standard set of augmentations for repL, should work okay for any
+        # environment
+        repl = {
+            'algo_params': {
+                'augmenter_kwargs': {
+                    'augmenter_spec':
+                    'translate,rotate,gaussian_blur,color_jitter_mid',
+                },
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
     def cfg_il_bc_nofreeze():
         il_train = {
             'algo': 'bc',
@@ -743,7 +897,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def cfg_dqn_nofreeze():
@@ -774,6 +927,19 @@ def make_chain_configs(experiment_obj):
             'algo': 'bc',
             'bc': {
                 'n_batches': 200000,
+            },
+            'freeze_encoder': False,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_bc_50k_nofreeze():
+        il_train = {
+            'algo': 'bc',
+            'bc': {
+                'n_batches': 50000,
             },
             'freeze_encoder': False,
         }
@@ -821,7 +987,6 @@ def make_chain_configs(experiment_obj):
         venv_opts = {
             'n_envs': 32,
             'venv_parallel': True,
-            'parallel_workers': 8,
         }
 
         _ = locals()
@@ -873,7 +1038,6 @@ def make_chain_configs(experiment_obj):
         venv_opts = {
             'n_envs': 32,
             'venv_parallel': True,
-            'parallel_workers': 8,
         }
 
         _ = locals()
@@ -920,7 +1084,6 @@ def make_chain_configs(experiment_obj):
         venv_opts = {
             'n_envs': 32,
             'venv_parallel': True,
-            'parallel_workers': 8,
         }
 
         _ = locals()
@@ -964,7 +1127,48 @@ def make_chain_configs(experiment_obj):
         venv_opts = {
             'n_envs': 32,
             'venv_parallel': True,
-            'parallel_workers': 8,
+        }
+
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_il_gail_procgen_1m_nofreeze():
+        """GAIL config tailored to procgen tasks. This was specifically
+        tuned for CoinRun at 1m steps, but may work for others too."""
+        il_train = {
+            'algo': 'gail',
+            'gail': {
+                'total_timesteps': int(1e6),
+                'ppo_n_steps': 7,
+                'ppo_n_epochs': 4,
+                'ppo_batch_size': 32,
+                'ppo_init_learning_rate': 5e-5,
+                'ppo_gamma': 0.8,
+                'ppo_gae_lambda': 0.67,
+                'ppo_ent': 0.01,
+                'ppo_adv_clip': 0.01,
+                'disc_n_updates_per_round': 5,
+                'disc_batch_size': 48,
+                'disc_lr': 3e-4,
+                'disc_augs': {
+                    'translate': True,
+                    'rotate': True,
+                    'noise': True,
+                    'erase': True,
+                    'gaussian_blur': True,
+                    'color_jitter_mid': False,
+                    'flip_lr': False,
+                }
+            },
+            'freeze_encoder': False,
+        }
+        il_test = {
+            'deterministic_policy': True,
+        }
+        venv_opts = {
+            'n_envs': 64,
+            'venv_parallel': True,
         }
 
         _ = locals()
@@ -1013,7 +1217,6 @@ def make_chain_configs(experiment_obj):
 
         _ = locals()
         del _
-
 
     @experiment_obj.named_config
     def gail_mr_config_2021_03_29():
@@ -1065,11 +1268,111 @@ def make_chain_configs(experiment_obj):
             "task_name": "MatchRegions-Demo-v0"
         }
         venv_opts = {
-            # FIXME(sam): figure out whether having only 8 procs (instead of
-            # 32) crashes perf---might be a bug in my env stuff
             "n_envs": 32,
             "venv_parallel": True
         }
+        locals()
 
+    @experiment_obj.named_config
+    def gail_procgen_500k_config_2021_11_05():
+        """500k-step GAIL config tuned (and tested) for Fruitbot, although most
+        of the config values work okay for CoinRun/Jumper. Should get 4-5
+        return on Fruibot (which is not good, but GAIL shouldn't be able to
+        solve tasks like this with early termination anyway).
+
+        Refer to this doc for details on tuning:
+
+        https://docs.google.com/document/d/1dUptmsFoJ_Y8hE6uKpBHXZBPVdRxq2UBFY47qf0K74c/edit#bookmark=id.at1dh4hz8dc1
+        """
+        il_train = {
+            "algo": "gail",
+            "dataset_configs": [{"type": "demos"}],
+            "freeze_encoder": False,
+            "gail": {
+                "disc_augs": {
+                    "color_jitter_mid": True,
+                    "erase": False,
+                    "flip_lr": True,
+                    "gaussian_blur": True,
+                    "noise": True,
+                    "rotate": True,
+                    "translate": True
+                },
+                "disc_batch_size": 48,
+                "disc_lr": 2.5e-3,
+                "disc_n_updates_per_round": 2,
+                "log_interval_steps": 10000,
+                "ppo_adv_clip": 0.01,
+                "ppo_batch_size": 48,
+                "ppo_clip_reward": float('inf'),
+                "ppo_ent": 5e-6,
+                "ppo_final_learning_rate": 0.0,
+                "ppo_gae_lambda": 0.6,
+                "ppo_gamma": 0.6,
+                "ppo_init_learning_rate": 1e-4,
+                "ppo_max_grad_norm": 1.0,
+                "ppo_n_epochs": 9,
+                "ppo_n_steps": 10,
+                "ppo_norm_reward": True,
+                "ppo_reward_std": 0.01,
+                "save_every_n_steps": 10000000000,
+                "total_timesteps": 500000
+            },
+            "log_std_init": 0.0,
+            "ortho_init": False,
+            "postproc_arch": [],
+            "print_policy_summary": True,
+            "shuffle_buffer_size": 1024,
+            "torch_num_threads": 1
+        }
+        env_cfg = {
+            "benchmark_name": "procgen",
+            "task_name": "fruitbot"
+        }
+        venv_opts = {
+            "n_envs": 32,
+            "venv_parallel": True
+        }
+        locals()
+
+    @experiment_obj.named_config
+    def gail_disc_augs():
+        """Turn on discriminator augs for GAIL, using same config as
+        gail_mr_config_2021_03_29."""
+        il_train = {
+            "algo": "gail",
+            "gail": {
+                "disc_augs": {
+                    "color_jitter_mid": True,
+                    "erase": True,
+                    "flip_lr": True,
+                    "gaussian_blur": True,
+                    "noise": True,
+                    "rotate": True,
+                    "translate_ex": False
+                },
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def gail_disc_noaugs():
+        """Turn off discriminator augs for GAIL."""
+        il_train = {
+            "algo": "gail",
+            "gail": {
+                "disc_augs": None,
+            },
+        }
+        _ = locals()
+        del _
+
+    @experiment_obj.named_config
+    def cfg_repl_5k_il():
+        repl = {'batches_per_epoch': 500,
+                'n_epochs': 10}
+        stages_to_run = StagesToRun.REPL_AND_IL
+        reuse_repl = ReuseRepl.NO
         _ = locals()
         del _

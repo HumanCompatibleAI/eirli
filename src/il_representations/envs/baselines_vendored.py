@@ -4,14 +4,15 @@ requires some minimal modifications of the original function. This is a more
 lightweight solution than some others, e.g., installing a full package just
 for one supporting function, or submitting PRs to change the original package.
 """
-import time
-import numpy as np
+from abc import ABC, abstractmethod
 from collections import deque
-from abc import abstractmethod
+import time
+
+import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvWrapper
 
 
-class VecEnvObservationWrapper(VecEnvWrapper):
+class VecEnvObservationWrapper(VecEnvWrapper, ABC):
     """ Copied from openai/baselines/common/vec_env/vec_env.py. """
     @abstractmethod
     def process(self, obs):

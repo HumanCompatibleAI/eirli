@@ -14,6 +14,7 @@ demos
 progress.csv
 params.json
 *.tgz
+*.tar.zst
 
 # editor and devlopment tool cruft
 .pytype
@@ -27,3 +28,5 @@ params.json
 .ipynb_checkpoints
 .DS_Store
 venv
+results*.png
+junk

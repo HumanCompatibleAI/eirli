@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 
-import imitation.util.logger as imitation_logger
+import imitation.util.logger as im_logger_module
 import sacred
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
@@ -63,7 +63,6 @@ def run(policy_path, env_cfg, venv_opts, seed, n_rollouts, device_name, run_id,
     # FIXME(sam): this is not idiomatic way to do logging (as in il_train.py)
     logging.basicConfig(level=logging.INFO)
     log_dir = il_test_ex.observers[0].dir
-    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
 

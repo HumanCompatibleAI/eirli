@@ -9,10 +9,10 @@ from imitation.util.util import make_vec_env
 from procgen import ProcgenEnv
 from stable_baselines3.common.atari_wrappers import AtariWrapper
 from stable_baselines3.common.vec_env import (VecFrameStack,
-                                              VecTransposeImage,
-                                              SubprocVecEnv)
+                                              VecTransposeImage)
 from il_representations.algos.augmenters import ColorSpace
-from il_representations.data.read_dataset import load_ilr_datasets
+from il_representations.data.read_dataset import (load_ilr_datasets,
+                                                  SubdatasetExtractor)
 from il_representations.envs.atari_envs import load_dataset_atari
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
@@ -26,7 +26,7 @@ from il_representations.envs.minecraft_envs import (MinecraftVectorWrapper,
 from il_representations.envs.procgen_envs import load_dataset_procgen
 from il_representations.envs.baselines_vendored import (VecExtractDictObs,
                                                         VecMonitor)
-from il_representations.script_utils import update as dict_update
+from il_representations.utils import NUM_CHANS, update as dict_update
 
 ERROR_MESSAGE = "no support for benchmark_name={benchmark_name!r}"
 
@@ -117,20 +117,18 @@ def get_gym_env_name(benchmark_name, dm_control_full_env_names, task_name):
         return get_env_name_magical()
     elif benchmark_name == 'dm_control':
         return dm_control_full_env_names[task_name]
-    elif benchmark_name == 'atari':
-        return task_name
     elif benchmark_name == 'minecraft':
         return get_env_name_minecraft()  # uses task_name implicitly through config param
-    elif benchmark_name == 'procgen':
+    elif benchmark_name in ('atari', 'procgen'):
         return task_name
     raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
 
 
 @venv_opts_ingredient.capture
-def _get_venv_opts(n_envs, venv_parallel, parallel_workers):
+def _get_venv_opts(n_envs, venv_parallel):
     # helper to extract options from venv_opts, since we can't have two
     # captures on one function (see Sacred issue #206)
-    return n_envs, venv_parallel, parallel_workers
+    return n_envs, venv_parallel
 
 
 @env_cfg_ingredient.capture
@@ -139,13 +137,12 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                  procgen_frame_stack, procgen_start_level=0):
     """Create a vec env for the selected benchmark task and wrap it with any
     necessary wrappers."""
-    n_envs, venv_parallel, parallel_workers = _get_venv_opts()
+    n_envs, venv_parallel = _get_venv_opts()
     gym_env_name = get_gym_env_name()
     if benchmark_name == 'magical':
         return make_vec_env(gym_env_name,
                             n_envs=n_envs,
-                            parallel=venv_parallel,
-                            parallel_workers=parallel_workers)
+                            parallel=venv_parallel)
     elif benchmark_name == 'dm_control':
         raw_dmc_env = make_vec_env(gym_env_name,
                                    n_envs=n_envs,
@@ -171,7 +168,6 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
         raw_atari_env = make_vec_env(gym_env_name,
                                      n_envs=n_envs,
                                      parallel=venv_parallel,
-                                     parallel_workers=parallel_workers,
                                      wrapper_class=AtariWrapper)
         final_env = VecFrameStack(VecTransposeImage(raw_atari_env), 4)
         assert final_env.observation_space.shape == (4, 84, 84), \
@@ -188,16 +184,14 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
                             wrapper_class=MinecraftVectorWrapper,
                             max_episode_steps=minecraft_max_env_steps)
     elif benchmark_name == 'procgen':
-        # mode = 'easy' if procgen_start_level == 0 else 'hard'
-        mode = 'easy'
-        raw_procgen_env = ProcgenEnv(num_envs=1,
+        raw_procgen_env = ProcgenEnv(num_envs=n_envs,
                                      env_name=gym_env_name,
                                      num_levels=100,
                                      start_level=procgen_start_level,
-                                     distribution_mode=mode)
+                                     distribution_mode='easy')
         raw_procgen_env = VecExtractDictObs(raw_procgen_env, "rgb")
         raw_procgen_env = VecMonitor(venv=raw_procgen_env, filename=None,
-                                            keep_buf=100)
+                                     keep_buf=100)
         final_env = VecFrameStack(VecTransposeImage(raw_procgen_env),
                                   procgen_frame_stack)
         assert final_env.observation_space.shape == (12, 64, 64), \
@@ -208,6 +202,11 @@ def load_vec_env(benchmark_name, dm_control_full_env_names,
 
 @env_cfg_ingredient.capture
 def _get_default_env_cfg(_config):
+    return _config
+
+
+@env_data_ingredient.capture
+def _get_default_env_data(_config):
     return _config
 
 
@@ -225,25 +224,28 @@ def load_wds_datasets(configs):
 
     Args:
         configs ([dict]): list of dicts with the following keys:
-
           - `type`: "random" or "demos", as appropriate.
           - `env_cfg`: subset of keys from `env_cfg_ingredient` specifying a
-            particular environment name, etc.
+             particular environment name, etc.
+          - `env_data`: subset of keys from `env_data_ingredient` specifying
+            a set of
 
           If any of the above keys are missing, they will be filled in with
-          defaults: `type` defaults to "demos", and `env_cfg` keys are taken
-          from `env_cfg_ingredient` by default. Only keys that differ from
-          those defaults need to be overridden. For instance, if
-          `env_cfg_ingredient` was configured with
-          `benchmark_name="dm_control"`, then you could set `configs =
-          [{"type": "random", "env_cfg": {"task_name": "finger_spin"}}]` to use
-          only rollouts from the `finger-spin` dm_control environment.
+          defaults: `type` defaults to "demos", while `env_cfg` keys are taken
+          from `env_cfg_ingredient` and `env_data` keys are taken from
+          `env_data_ingredient` by default. Only keys that differ from those
+          defaults need to be overridden. For instance, if `env_cfg_ingredient`
+          was configured with `benchmark_name="dm_control"`, then you could set
+          `configs = [{"type": "random", "env_cfg": {"task_name":
+          "finger_spin"}}]` to use only rollouts from the `finger-spin`
+          dm_control environment.
 
           (all other args are taken from env_data_ingredient)"""
     # by default we load demos for the configured base environment
     defaults = {
         'type': 'demos',
         'env_cfg': _get_default_env_cfg(),
+        'env_data': _get_default_env_data(),
     }
     all_datasets = []
 
@@ -253,24 +255,33 @@ def load_wds_datasets(configs):
     for config in configs:
         # generate config dict, including defaults
         assert isinstance(config, dict) and config.keys() <= {
-            'type', 'env_cfg'
+            'type', 'env_cfg', 'env_data',
         }, config
         orig_config = config
         config = dict_update(defaults, config)
         data_type = config['type']
         env_cfg = config['env_cfg']
-        benchmark_name = env_cfg["benchmark_name"]
+        env_data = config['env_data']
+        benchmark_name = env_cfg['benchmark_name']
         task_key = env_cfg['task_name']
         data_dir_for_config = get_data_dir(
             benchmark_name=benchmark_name, task_key=task_key,
-            data_type=data_type)
+            data_type=data_type, data_root=env_data['data_root'])
 
-        tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tgz"))
+        tar_files = glob.glob(os.path.join(data_dir_for_config, "*.tar.zst"))
         if len(tar_files) == 0:
             raise IOError(
                 f"did not find any files in '{data_dir_for_config}' (for "
                 f"dataset config '{orig_config}')")
-        all_datasets.append(load_ilr_datasets(tar_files))
+        loaded_ds = load_ilr_datasets(tar_files)
+        n_trajs = env_data['wds_n_trajs']
+        n_trans = env_data['wds_n_trans']
+        if n_trajs is not None or n_trans is not None:
+            subds_extractor = SubdatasetExtractor(
+                n_trajs=env_data['wds_n_trajs'],
+                n_trans=env_data['wds_n_trans'])
+            loaded_ds = loaded_ds.pipe(subds_extractor)
+        all_datasets.append(loaded_ds)
 
     # get combined metadata for all datasets
     color_space = all_datasets[0].meta['color_space']
@@ -309,9 +320,13 @@ def load_color_space(benchmark_name):
         'dm_control': ColorSpace.RGB,
         'atari': ColorSpace.GRAY,
         'minecraft': ColorSpace.RGB,
-        'procgen': ColorSpace.RGB
+        'procgen': ColorSpace.RGB,
     }
     try:
         return color_spaces[benchmark_name]
     except KeyError:
         raise NotImplementedError(ERROR_MESSAGE.format(**locals()))
+
+
+def get_n_chans() -> int:
+    return NUM_CHANS[load_color_space()]

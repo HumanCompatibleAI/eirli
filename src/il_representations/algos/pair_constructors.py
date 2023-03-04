@@ -122,7 +122,8 @@ class _CircularBuffer:
 
 class TemporalOffsetPairConstructor(TargetPairConstructor):
     def __init__(self, mode=None, temporal_offset=1):
-        assert mode in (None, 'dynamics', 'inverse_dynamics')
+        assert mode in (None, 'dynamics', 'inverse_dynamics',
+                        'action_prediction'), mode
         self.mode = mode
         self.k = temporal_offset
 
@@ -158,6 +159,13 @@ class TemporalOffsetPairConstructor(TargetPairConstructor):
                         'context': obs_queue.get_oldest(),
                         'target': act_queue.concat_all(),
                         'extra_context': step_dict['obs'],
+                        'traj_ts_ids': [trajectory_ind, timestep]
+                    }
+                elif self.mode == 'action_prediction':
+                    yield {
+                        'context': obs_queue.get_oldest(),
+                        'target': act_queue.concat_all(),
+                        'extra_context': [],
                         'traj_ts_ids': [trajectory_ind, timestep]
                     }
                 else:
@@ -251,7 +259,7 @@ class JigsawPairConstructor(TargetPairConstructor):
             pos_w = int(pos % self.unit_size) * w_unit
 
             tile = TF.crop(image, top=pos_h, left=pos_w, height=tile_h,
-                            width=tile_w)
+                           width=tile_w)
             tiles.append(tile)
 
         # Concat tiles.

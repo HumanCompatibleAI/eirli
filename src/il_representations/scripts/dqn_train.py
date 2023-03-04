@@ -9,6 +9,7 @@ import os
 import readline  # noqa: F401
 import signal
 import torch as th
+import imitation.util.logger as im_logger_module
 import numpy as np
 import pandas as pd
 from torch.optim.adam import Adam
@@ -56,12 +57,6 @@ def default_config():
     batch_size = 256
     # augs = 'translate,erase,color_jitter_ex'
     augs = None
-    # The number of trajectories to sample.
-    n_trajs = None
-    # The number of transitions to sample.
-    n_trans = None
-    assert sum([n_config is None for n_config in [n_trajs, n_trans]]) != 0, \
-    'Specify one or none of n_trajs and n_trans, not both.'
     torch_num_threads = None
     # the number of 'epochs' is used by the LR scheduler
     # (we still do `n_batches` total training, the scheduler just gets a chance
@@ -77,16 +72,20 @@ def default_config():
     optimize_memory = True
     memory_buffer_size = 50000
 
+    locals()
+
 
 @dqn_train_ex.capture
-def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
+def do_training_dqn(*, venv_chans_first, out_dir, augs, n_batches,
                     device_name, freeze_encoder, postproc_arch, encoder_path,
                     encoder_kwargs, nominal_num_epochs, save_every_n_batches,
                     optimizer_class, optimizer_kwargs, learning_rate,
-                    batch_size, n_trajs, n_trans, dataset_configs,
-                    memory_buffer_size):
+                    batch_size, dataset_configs,
+                    memory_buffer_size, logger):
     observation_space = venv_chans_first.observation_space
-    lr_schedule = lambda _: learning_rate
+
+    def lr_schedule(_):
+        return learning_rate
     device = get_device("auto" if device_name is None else device_name)
     policy_kwargs = {'optimizer_class': optimizer_class,
                      'optimizer_kwargs': optimizer_kwargs}
@@ -103,8 +102,8 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
     color_space = auto_env.load_color_space()
     progress_df = pd.DataFrame()
 
-    assert venv_chans_first.num_envs == 1, "SB3's DQN implementation does \
-        not support multiple parallel environments."
+    assert venv_chans_first.num_envs == 1, "SB3's DQN implementation does " \
+        "not support multiple parallel environments."
     trainer = DQN(
         policy='CnnPolicy',
         env=venv_chans_first,
@@ -114,17 +113,15 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
         optimize_memory_usage=True,
         return_train_info=True
     )
+    trainer.set_logger(logger)
     trainer.policy = policy
 
     # Push data into DQN agent's memory.
     print('Loading data...')
     datasets, _ = auto_env.load_wds_datasets(configs=dataset_configs)
-    subdataset_extractor = SubdatasetExtractor(n_trajs=n_trajs,
-                                               n_trans=n_trans)
     dataloader = datasets_to_loader(
                 datasets, batch_size=1,
-                nominal_length=memory_buffer_size,
-                preprocessors=[subdataset_extractor])
+                nominal_length=memory_buffer_size)
     data_iter = repeat_chain_non_empty(dataloader)
 
     for idx in range(memory_buffer_size):
@@ -140,7 +137,7 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
         # Note that this will change the image dtype from int to float (4X GPU
         # memory).
         if augs is not None:
-            augmenter = augmenter_from_spec(augs, color_space)
+            augmenter = augmenter_from_spec(augs, color_space, device)
             obs = preprocess_obs(th.tensor(obs),
                                 observation_space,
                                 normalize_images=True)
@@ -157,7 +154,8 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
                                   next_obs=next_obs,
                                   action=action,
                                   reward=reward,
-                                  done=done)
+                                  done=done,
+                                  infos=[{}] * len(obs))
 
     # Call DQN training.
     n_update_per_epoch = int(n_batches / nominal_num_epochs)
@@ -184,12 +182,14 @@ def do_training_dqn(venv_chans_first, out_dir, augs, n_batches,
 
 
 @dqn_train_ex.main
-def train(seed, torch_num_threads, n_trajs, _config):
+def train(seed, torch_num_threads, _config):
     faulthandler.register(signal.SIGUSR1)
     set_global_seeds(seed)
     # python built-in logging
     logging.basicConfig(level=logging.INFO)
     log_dir = os.path.abspath(dqn_train_ex.observers[0].dir)
+    logger = im_logger_module.configure(
+        log_dir, ["stdout", "csv", "tensorboard"])
 
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
@@ -197,7 +197,8 @@ def train(seed, torch_num_threads, n_trajs, _config):
     with contextlib.closing(auto_env.load_vec_env()) as venv:
         final_path = do_training_dqn(
             venv_chans_first=venv,
-            out_dir=log_dir)
+            out_dir=log_dir,
+            logger=logger)
 
     return {'model_path': os.path.abspath(final_path)}
 

@@ -1,5 +1,6 @@
 """Miscellaneous tools that don't fit elsewhere."""
 import collections
+import copy
 from collections.abc import Iterable, Mapping, Sequence
 import contextlib
 import functools
@@ -19,12 +20,15 @@ from imitation.augment.color import ColorSpace
 from imitation.augment.convenience import StandardAugmentations
 import numpy as np
 from skvideo.io import FFmpegWriter
+import stable_baselines3.common.distributions as sb3_dists
+import torch
 import torch as th
 from torchsummary import summary
 import torchvision.utils as vutils
 import webdataset as wds
 
 WEBDATASET_SAVE_KEY = "obs.pyd"
+
 
 class ForkedPdb(pdb.Pdb):
     """A Pdb subclass that may be used
@@ -180,7 +184,7 @@ def image_tensor_to_rgb_grid(image_tensor, color_space):
                             nrow=nrow,
                             normalize=False,
                             scale_each=False,
-                            range=(0, 1))
+                            value_range=(0, 1))
     assert grid.ndim == 3 and grid.shape[0] == 3, grid.shape
 
     return grid
@@ -209,7 +213,7 @@ class TensorFrameWriter:
         self.color_space = color_space
         ffmpeg_out_config = {
             '-r': str(fps),
-            '-vcodec': 'libx264',
+            '-vcodec': 'h264',
             '-pix_fmt': 'yuv420p',
         }
         if config is not None:
@@ -391,16 +395,30 @@ def up(p):
     return os.path.normpath(os.path.join(p, ".."))
 
 
-def augmenter_from_spec(spec, color_space):
+class IdentityModule(th.nn.Module):
+    """Parameter-free Torch module which passes through input unchanged."""
+    def forward(self, x):
+        return x
+
+
+def augmenter_from_spec(spec, color_space, device, *,
+                        temporally_consistent=False):
     """Construct an image augmentation module from an augmenter spec, expressed
     as either a string of comma-separated augmenter names, or a dict of kwargs
     for StandardAugmentations."""
     if isinstance(spec, str):
-        return StandardAugmentations.from_string_spec(spec, color_space)
+        return StandardAugmentations.from_string_spec(
+                spec, color_space,
+                temporally_consistent=temporally_consistent).to(device)
     elif isinstance(spec, dict):
-        return StandardAugmentations(**spec, stack_color_space=color_space)
+        return StandardAugmentations(
+                **spec, stack_color_space=color_space,
+                temporally_consistent=temporally_consistent).to(device)
     elif spec is None:
-        return None
+        # FIXME(sam): really this should return None, and I should fix callers
+        # to reflect that. Right now the repL code does not handle the case
+        # where this returns None.
+        return IdentityModule().to(device)
     raise TypeError(
         f"don't know how to handle spec of type '{type(spec)}': '{spec}'")
 
@@ -446,7 +464,7 @@ def print_policy_info(policy, obs_space):
     device = th.device("cuda" if th.cuda.is_available() else "cpu")
     policy = policy.to(device)
     obs_shape = (obs_space.shape[0], obs_space.shape[1], obs_space.shape[2])
-    summary(policy, obs_shape)
+    summary(policy, obs_shape, input_range=(0, 255.0))
 
 
 @functools.total_ordering
@@ -603,6 +621,82 @@ def repeat_chain_non_empty(iterable):
 def get_policy_nupdate(policy_path):
     match_result = re.match(r".*policy_(?P<n_update>\d+)_batches.pt",
                             policy_path)
-    assert match_result is not None, 'policy_path does not fit pattern' \
-                                     '.*policy_(?P<n_update>\d+)_batches.pt'
+    assert match_result is not None, r'policy_path does not fit pattern' \
+                                     r'.*policy_(?P<n_update>\d+)_batches.pt'
     return match_result.group('n_update')
+
+
+def recursive_detach(nest):
+    """Recursively detach a nest of torch.Tensor and
+    torch.distributions.Distribution objects. Useful for saving debugging
+    data."""
+    detached_nest = {}
+    for key, value in nest.items():
+        if value is None:
+            # skip things that we don't have access to
+            continue
+        elif isinstance(value, dict):
+            detached_nest[key] = recursive_detach(value)
+        elif isinstance(value, (torch.distributions.Distribution,
+                                sb3_dists.Distribution)):
+            # TODO(sam): profile this. If it's slow, then make it lazy so
+            # that .sample() is only called when we actually want to save a
+            # sample (I don't know how to make it lazy without keeping the
+            # graph alive though ugh).
+            det_sample = value.sample().detach()
+            detached_nest[key + '_sample'] = det_sample
+        elif torch.is_tensor(value):
+            detached_nest[key] = value.detach()
+        else:
+            raise TypeError(f"Do not know how to detach {key}={value!r}")
+    return detached_nest
+
+
+def update(d, *updates):
+    """Recursive dictionary update (pure)."""
+    d = copy.copy(d)  # to make this pure
+    for u in updates:
+        for k, v in u.items():
+            if isinstance(d.get(k), collections.Mapping):
+                # recursive insert into a mapping
+                d[k] = update(d[k], v)
+            else:
+                # if the existing value is not a mapping, then overwrite it
+                d[k] = v
+    return d
+
+
+def expand_dict_keys(config_dict):
+    """Some Ray Tune hyperparameter search options do not supported nested
+    dictionaries for configuration. To emulate nested dictionaries, we use a
+    plain dictionary with keys of the form "level1:level2:…". . The colons are
+    then separated out by this function into a nested dict (e.g. {'level1':
+    {'level2': …}}).
+
+    Example:
+
+    ```
+    >>> expand_dict_keys({'x:y': 42, 'z': 4, 'x:u:v': 5, 'w': {'s:t': 99}})
+    {'x': {'y': 42, 'u': {'v': 5}}, 'z': 4, 'w': {'s': {'t': 99}}}
+    ```
+    """
+    dict_type = type(config_dict)
+    new_dict = dict_type()
+
+    for key, value in config_dict.items():
+        dest_dict = new_dict
+
+        parts = key.split(':')
+        for part in parts[:-1]:
+            if part not in dest_dict:
+                # create a new sub-dict if necessary
+                dest_dict[part] = dict_type()
+            else:
+                assert isinstance(dest_dict[part], dict)
+            dest_dict = dest_dict[part]
+        if isinstance(value, dict):
+            # recursively expand nested dicts
+            value = expand_dict_keys(value)
+        dest_dict[parts[-1]] = value
+
+    return new_dict

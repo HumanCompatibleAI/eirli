@@ -11,6 +11,8 @@ from il_representations.envs.config import (ALL_BENCHMARK_NAMES,
 from il_representations.envs.utils import serialize_gym_space
 from il_representations.script_utils import sacred_copy
 
+import zstandard
+
 
 @env_data_ingredient.capture
 def _get_env_data(_config):
@@ -49,6 +51,22 @@ def get_meta_dict(benchmark_name: str, _config: dict) -> dict:
     return meta_dict
 
 
+def _zst_open_write(file_path):
+    """Open a file for writing with zstd."""
+    ncpus = os.cpu_count()
+    assert ncpus is not None
+    # Options: level 19 (max) compression, threads = ncpus (capped at 10), and
+    # use long mode with blocks of size 64MB (2^26 bytes). Equivalent to `zstd
+    # -19 --long=26 -TN`, where N is `min(10, ncpus)`. I found this gave really
+    # good compression rates with reasonably low extraction overhead (~68MB per
+    # reader).
+    comp_params = zstandard.ZstdCompressionParameters.from_level(
+        19, enable_ldm=True, threads=min(ncpus, 10), window_log=26)
+    comp = zstandard.ZstdCompressor(compression_params=comp_params)
+    writer = comp.stream_writer(open(file_path, 'wb'), closefd=True)
+    return writer
+
+
 def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None):
     """Write a series of frames to a webdataset shard. This function also makes
     sure to write the metadata dictionary `meta_dict` at the beginning of the
@@ -56,8 +74,9 @@ def write_frames(out_file_path, meta_dict, frame_dicts, n_traj=None):
     out_dir = os.path.dirname(out_file_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
-    with wds.TarWriter(out_file_path, keep_meta=True, compress=True) \
-          as writer:  # noqa: E207
+    with _zst_open_write(out_file_path) as fp, \
+        wds.TarWriter(fp, keep_meta=True, compress=False) \
+            as writer:  # noqa: E127
         # first write _metadata.meta.pickle containing the benchmark config
         writer.dwrite(key='_metadata', meta_pickle=meta_dict)
         # now write each frame in each trajectory

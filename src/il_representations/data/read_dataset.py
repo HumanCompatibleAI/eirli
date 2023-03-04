@@ -1,14 +1,42 @@
 """Tools for reading datasets stored in the webdataset format."""
 
+import logging
 import os
 import pickle
+import urllib.parse
 import warnings
-import logging
 
 import numpy as np
 from torch.utils.data import DataLoader, IterableDataset
 import webdataset as wds
 from webdataset.dataset import group_by_keys
+from webdataset.gopen import reader
+import zstandard
+
+
+def _zst_open(path):
+    """Open zstd-compressed file at `path` using the `zstandard` library."""
+    decomp = zstandard.ZstdDecompressor()
+    fp = open(path, 'rb')
+    reader = decomp.stream_reader(fp, closefd=True, read_across_frames=True)
+    return reader
+
+
+def zst_reader(url, **kw):
+    """Custom reader for webdataset that reads zstd-compressed files, or defers
+    to built-in webdataset reader for files that are not local or not
+    zstd-compressed."""
+    parsed = urllib.parse.urlparse(url)
+    scheme = parsed.scheme
+    if scheme in ("file", ""):
+        if scheme == "file":
+            path = parsed.path
+        else:
+            path = url
+        lp = path.lower()
+        if lp.endswith(".zst") or lp.endswith(".zstd"):
+            return _zst_open(path)
+    return reader(url, **kw)
 
 
 class ILRDataset(wds.Dataset):
@@ -22,7 +50,8 @@ class ILRDataset(wds.Dataset):
     """
     _meta = None  # this will be set by __init__.meta_pipeline
 
-    def __init__(self, urls, *args, initial_pipeline=None, **kwargs):
+    def __init__(self, urls, *args, open_fn=zst_reader, initial_pipeline=None,
+                 **kwargs):
         def meta_pipeline(data_iter):
             """Pipeline that extracts the first element of the archive to use
             as metadata, then lets the remainder go through the rest of the
@@ -59,7 +88,8 @@ class ILRDataset(wds.Dataset):
             # group_by_keys, so we omit it in the analogous case here
             init_pipeline = [meta_pipeline, initial_pipeline]
 
-        super().__init__(urls, *args, initial_pipeline=init_pipeline, **kwargs)
+        super().__init__(urls, *args, initial_pipeline=init_pipeline,
+                         open_fn=open_fn, **kwargs)
 
     @property
     def meta(self):
@@ -106,8 +136,8 @@ class InterleavedDataset(IterableDataset):
 
 class SubdatasetExtractor:
     def __init__(self, n_trajs=None, n_trans=None):
-        assert sum([n_config is None for n_config in [n_trajs, n_trans]]) != 0, \
-        'Specify one or none of n_traj and n_trans, not both.'
+        assert n_trajs is None or n_trans is None, \
+            'Specify one or none of n_traj and n_trans, not both.'
         self.n_trajs = n_trajs
         self.n_trans = n_trans
 
@@ -116,8 +146,7 @@ class SubdatasetExtractor:
         elif self.n_trans is not None:
             logging.info(f"Training with {self.n_trans} transitions.")
         else:
-            logging.info(f"Training with full data.")
-
+            logging.info("Training with full data.")
 
     def __call__(self, data_iter):
         trajectory_ind = 0
@@ -142,7 +171,8 @@ class SubdatasetExtractor:
                 if trajectory_ind == self.n_trajs:
                     break
 
-            assert self.n_trajs is None or trajectory_ind == self.n_trajs, (self.n_trajs, trajectory_ind)
+            assert self.n_trajs is None or trajectory_ind == self.n_trajs, \
+                (self.n_trajs, trajectory_ind)
 
 
 def strip_extensions(dataset):
@@ -152,9 +182,7 @@ def strip_extensions(dataset):
         # (this is applied by default, but can disappear if you override
         # initial_pipeline)
         assert isinstance(item, dict), type(item)
-        new_item = {
-            k.split('.', 1)[0]: v for k, v in item.items()
-        }
+        new_item = {k.split('.', 1)[0]: v for k, v in item.items()}
         yield new_item
 
 
@@ -171,7 +199,7 @@ def load_ilr_datasets(file_paths):
 
 
 def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
-                       shuffle=True, shuffle_buffer_size=1024, max_workers=0,
+                       shuffle=True, shuffle_buffer_size=1024, max_workers=1,
                        preprocessors=(), drop_last=True, collate_fn=None):
     """Turn a sequence of webdataset datasets into a single Torch data
     loader that mixes the datasets equally.
@@ -189,7 +217,6 @@ def datasets_to_loader(datasets, *, batch_size, nominal_length=None,
             samples, after applying preprocessors but before forming batches?
         shuffle_buffer_size (int): size of the intermediate buffer to use for
             shuffling.
-        max_workers (int): number of workers to use for data loader.
         preprocessors ([fn]): a list of preprocessors which will be applied to
             each dataset using `.pipe()`. Note that these preprocessors get to
             see samples in the order they were written to disk, which can be

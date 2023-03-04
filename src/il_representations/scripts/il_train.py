@@ -1,42 +1,42 @@
 #!/usr/bin/env python3
 """Run an IL algorithm in some selected domain."""
-import faulthandler
 import contextlib
+import faulthandler
 import logging
 import os
 # readline import is black magic to stop PDB from segfaulting; do not remove it
 import readline  # noqa: F401
 import signal
 
-from imitation.algorithms.adversarial import AIRL, GAIL
+from imitation.algorithms.adversarial.airl import AIRL
+from imitation.algorithms.adversarial.gail import GAIL
 from imitation.algorithms.bc import BC
 import imitation.data.types as il_types
-import imitation.util.logger as imitation_logger
+import imitation.util.logger as im_logger_module
 import numpy as np
 import sacred
 from sacred import Experiment, Ingredient
 from sacred.observers import FileStorageObserver
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.ppo import PPO
+from stable_baselines3.common.vec_env import VecEnvWrapper
 import torch as th
 from torch.optim.adam import Adam
 
 from il_representations.algos.utils import set_global_seeds
-from il_representations.data.read_dataset import (datasets_to_loader,
-                                                  SubdatasetExtractor)
+from il_representations.data.read_dataset import datasets_to_loader
 import il_representations.envs.auto as auto_env
 from il_representations.envs.config import (env_cfg_ingredient,
                                             env_data_ingredient,
                                             venv_opts_ingredient)
-from il_representations.il.disc_rew_nets import ImageDiscrimNet, ImageRewardNet
+from il_representations.il.disc_rew_nets import ImageRewardNet
 from il_representations.il.gail_pol_save import GAILSavePolicyCallback
 from il_representations.il.score_logging import SB3ScoreLoggingCallback
 from il_representations.il.utils import add_infos, streaming_extract_keys
+from il_representations.scripts.policy_utils import (ModelSaver,
+                                                     load_encoder_or_policy,
+                                                     make_policy)
 from il_representations.utils import augmenter_from_spec, freeze_params
-from il_representations.scripts.policy_utils import (load_encoder_or_policy,
-                                                     make_policy,
-                                                     ModelSaver)
-
 
 bc_ingredient = Ingredient('bc')
 
@@ -65,13 +65,33 @@ def bc_defaults():
     # regularisation
     ent_weight = 1e-3
     l2_weight = 1e-5
-    n_trajs = None
 
     _ = locals()
     del _
 
 
 gail_ingredient = Ingredient('gail')
+
+
+class _DecorrelateEnvsDefault:
+    """A smart default setting for `gail.decorrelate_envs`.
+
+    Evaluates as false-ish when procgen is selected, and true-ish otherwise.
+    procgen uses a gym3 interface, and so does not support our decorrelation
+    strategy of taking a random number of actions in each environment."""
+    @property
+    @env_cfg_ingredient.capture
+    def value(self, benchmark_name):
+        return benchmark_name != 'procgen'
+
+    def __bool__(self):
+        return bool(self.value)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.value})'
+
+    def __str__(self):
+        return f'{self.__class__.__name__}={self.value}'
 
 
 @gail_ingredient.config
@@ -110,6 +130,8 @@ def gail_defaults():
     disc_batch_size = 48
     disc_lr = 0.0006
     disc_augs = "color_jitter_mid,erase,flip_lr,gaussian_blur,noise,rotate"
+    # should discriminator augs be temporally consistent?
+    disc_augs_consistent = False
 
     # number of env time steps to perform during reinforcement learning
     total_timesteps = 500000
@@ -125,8 +147,10 @@ def gail_defaults():
     # `gail_ingredient` to `adv_il_ingredient` or similar
     use_airl = False
 
-    # trajectory subsampling
-    n_trajs = None
+    # if true, this takes a random number of actions in each environment at the
+    # beginning of GAIL training to decorrelate episode completion times (not
+    # supported by procgen)
+    decorrelate_envs = _DecorrelateEnvsDefault()
 
     _ = locals()
     del _
@@ -240,10 +264,10 @@ def default_config():
 
 @il_train_ex.capture
 def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
-                   device_name, shuffle_buffer_size, log_start_batch,
-                   freeze_encoder, ortho_init, log_std_init, postproc_arch,
-                   encoder_path, policy_continue_path, algo, encoder_kwargs,
-                   print_policy_summary):
+                   device_name, final_pol_name, logger, shuffle_buffer_size,
+                   log_start_batch, freeze_encoder, ortho_init, log_std_init,
+                   postproc_arch, encoder_path, policy_continue_path, algo,
+                   encoder_kwargs, print_policy_summary):
     policy = make_policy(observation_space=venv_chans_first.observation_space,
                          action_space=venv_chans_first.action_space,
                          ortho_init=ortho_init,
@@ -256,12 +280,12 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                          encoder_kwargs=encoder_kwargs,
                          print_policy_summary=print_policy_summary)
     color_space = auto_env.load_color_space()
-    augmenter = augmenter_from_spec(bc['augs'], color_space)
+    device = get_device(device_name)
+    augmenter = augmenter_from_spec(bc['augs'], color_space, device)
 
     # build dataset in the format required by imitation
     nom_num_epochs = bc['nominal_num_epochs']
     nom_num_batches = max(1, int(np.ceil(bc['n_batches'] / nom_num_epochs)))
-    subdataset_extractor = SubdatasetExtractor(n_trajs=bc['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=bc['batch_size'],
@@ -272,26 +296,22 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
         nominal_length=bc['batch_size'] * nom_num_batches,
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[
-            subdataset_extractor,
-            streaming_extract_keys("obs", "acts")
-        ],
+        preprocessors=(streaming_extract_keys("obs", "acts"), ),
         drop_last=True)
 
     trainer = BC(
         observation_space=venv_chans_first.observation_space,
         action_space=venv_chans_first.action_space,
-        policy_class=lambda **kwargs: policy,
-        policy_kwargs=None,
-        expert_data=data_loader,
-        device=device_name,
+        policy=policy,
+        demonstrations=data_loader,
+        device=device,
         augmentation_fn=augmenter,
         optimizer_cls=bc['optimizer_cls'],
         optimizer_kwargs=bc['optimizer_kwargs'],
-        lr_scheduler_cls=bc['lr_scheduler_cls'],
-        lr_scheduler_kwargs=bc['lr_scheduler_kwargs'],
         ent_weight=bc['ent_weight'],
         l2_weight=bc['l2_weight'],
+        custom_logger=logger,
+        batch_size=bc['batch_size'],
     )
 
     save_interval = bc['save_every_n_batches']
@@ -302,7 +322,7 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
                              save_interval,
                              start_nupdate=log_start_batch)
 
-    epoch_end_callbacks = [model_saver] if save_interval else []
+    on_epoch_end = model_saver if save_interval else None
 
     bc_batches = bc['n_batches']
 
@@ -310,10 +330,11 @@ def do_training_bc(venv_chans_first, demo_webdatasets, out_dir, bc,
     trainer.train(n_epochs=None,
                   n_batches=bc_batches,
                   log_interval=bc['log_interval'],
-                  epoch_end_callbacks=epoch_end_callbacks)
+                  on_epoch_end=on_epoch_end)
 
     model_saver.save(bc_batches)
     final_path = model_saver.last_save_path
+    model_saver.save_by_name(final_pol_name)
     return final_path
 
 
@@ -333,6 +354,43 @@ def _gail_should_freeze(pol_or_disc, *, freeze_encoder, gail):
     return freeze_encoder
 
 
+class KludgyResetVecEnv(VecEnvWrapper):
+    """Kludgy vecenv that takes a random number of steps in each
+    sub-environment when reset() is called. This desynchronises the
+    environments. This is a good idea to do at the beginning of RL training
+    with actor-critic methods."""
+    def __init__(self, *args, max_steps, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_steps = max_steps
+        self.has_reset = False
+
+    def reset(self):
+        self.has_reset = True
+        for i in range(self.num_envs):
+            num_steps = np.random.randint(self.max_steps)
+            for _ in range(num_steps):
+                action = self.action_space.sample()
+                (_, _, d, _),  = self.env_method(
+                    'step', action, indices=[i])
+                if d:
+                    self.env_method('reset', indices=[i])
+        final_actions = [
+            self.action_space.sample() for _ in range(self.num_envs)
+        ]
+        # Here we take one final step to get observations for all environments.
+        # We cannot store observations using the env_method('step') calls
+        # above, since they do not pass through any of the veceenv's wrappers
+        # (e.g. for stacking).
+        obses, _, _, _ = self.venv.step(final_actions)
+        return obses
+
+    def step_wait(self):
+        assert self.has_reset, \
+            ".reset() was never called on this function, so sub-envs have " \
+            "not been randomly advanced"
+        return self.venv.step_wait()
+
+
 @il_train_ex.capture
 def do_training_gail(
     *,
@@ -341,6 +399,7 @@ def do_training_gail(
     device_name,
     out_dir,
     final_pol_name,
+    logger,
     gail,
     shuffle_buffer_size,
     encoder_path,
@@ -351,7 +410,7 @@ def do_training_gail(
     freeze_encoder,
     policy_continue_path,
     algo,
-    print_policy_summary
+    print_policy_summary,
 ):
     device = get_device(device_name)
 
@@ -403,10 +462,14 @@ def do_training_gail(
         learning_rate=linear_lr_schedule,
         max_grad_norm=gail['ppo_max_grad_norm'],
     )
+    ppo_algo.set_logger(logger)
     color_space = auto_env.load_color_space()
-    augmenter = augmenter_from_spec(gail['disc_augs'], color_space)
+    augmenter = augmenter_from_spec(
+        gail['disc_augs'],
+        color_space,
+        device,
+        temporally_consistent=gail['disc_augs_consistent'])
 
-    subdataset_extractor = SubdatasetExtractor(n_trajs=gail['n_trajs'])
     data_loader = datasets_to_loader(
         demo_webdatasets,
         batch_size=gail['disc_batch_size'],
@@ -418,41 +481,12 @@ def do_training_gail(
         nominal_length=int(1e6),
         shuffle=True,
         shuffle_buffer_size=shuffle_buffer_size,
-        preprocessors=[subdataset_extractor,
-                       streaming_extract_keys(
+        preprocessors=[streaming_extract_keys(
                            "obs", "acts", "next_obs", "dones"), add_infos],
         drop_last=True,
         collate_fn=il_types.transitions_collate_fn)
 
-    common_adv_il_kwargs = dict(
-            venv=venv_chans_first,
-            expert_data=data_loader,
-            gen_algo=ppo_algo,
-            n_disc_updates_per_round=gail['disc_n_updates_per_round'],
-            expert_batch_size=gail['disc_batch_size'],
-            normalize_obs=False,
-            normalize_reward=gail['ppo_norm_reward'],
-            normalize_reward_std=gail['ppo_reward_std'],
-            clip_reward=gail['ppo_clip_reward'],
-            disc_opt_kwargs=dict(lr=gail['disc_lr']),
-            disc_augmentation_fn=augmenter,
-            gen_callbacks=[SB3ScoreLoggingCallback()],
-    )
-    if gail['use_airl']:
-        trainer = AIRL(
-            **common_adv_il_kwargs,
-            reward_net_cls=ImageRewardNet,
-            reward_net_kwargs=dict(
-                encoder=load_encoder_or_policy(
-                    encoder_path=encoder_path,
-                    algo=algo,
-                    encoder_kwargs=encoder_kwargs,
-                    observation_space=venv_chans_first.observation_space,
-                    freeze=_gail_should_freeze('disc'))
-            )
-        )
-    else:
-        discrim_net = ImageDiscrimNet(
+    reward_net = ImageRewardNet(
             observation_space=venv_chans_first.observation_space,
             action_space=venv_chans_first.action_space,
             encoder=load_encoder_or_policy(
@@ -461,14 +495,46 @@ def do_training_gail(
                 encoder_kwargs=encoder_kwargs,
                 observation_space=venv_chans_first.observation_space,
                 freeze=_gail_should_freeze('disc')))
-        trainer = GAIL(
-            discrim_kwargs=dict(discrim_net=discrim_net,
-                                normalize_images=True),
-            **common_adv_il_kwargs,
-        )
+    common_adv_il_kwargs = dict(
+        venv=venv_chans_first,
+        demonstrations=data_loader,
+        gen_algo=ppo_algo,
+        n_disc_updates_per_round=gail['disc_n_updates_per_round'],
+        demo_batch_size=gail['disc_batch_size'],
+        normalize_obs=False,
+        normalize_reward=gail['ppo_norm_reward'],
+        normalize_reward_kwargs=dict(
+            norm_reward_std=gail['ppo_reward_std'],
+            clip_reward=gail['ppo_clip_reward'],
+        ),
+        disc_opt_kwargs=dict(lr=gail['disc_lr']),
+        disc_augmentation_fn=augmenter,
+        gen_callbacks=[SB3ScoreLoggingCallback()],
+        custom_logger=logger,
+        reward_net=reward_net,
+        # The heuristics in imitation yield a false positive for variable
+        # horizons if we do the reset hack below. This setting prevents that
+        # from happening.
+        allow_variable_horizon=True,
+    )
+    if gail['use_airl']:
+        trainer = AIRL(**common_adv_il_kwargs)
+    else:
+        trainer = GAIL(**common_adv_il_kwargs)
+
     save_callback = GAILSavePolicyCallback(
         ppo_algo=ppo_algo, save_every_n_steps=gail['save_every_n_steps'],
         save_dir=out_dir)
+
+    # apply a wrapper which advances each sub-environment by some random number
+    # of steps on reset in order to decorrelate them (we cannot do this
+    # beforehand; SB3 internals call reset() at the beginning of training, and
+    # it is impossible to turn that off without changing
+    # algorithm._setup_learn() somehow)
+    if gail['decorrelate_envs']:
+        trainer.venv_train = KludgyResetVecEnv(trainer.venv_train,
+                                               max_steps=500)
+    trainer.gen_algo.set_env(trainer.venv_train)
     trainer.train(
         total_timesteps=gail['total_timesteps'], callback=save_callback,
         log_interval_timesteps=gail['log_interval_steps'])
@@ -490,7 +556,7 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
     # FIXME(sam): I used this hack from run_rep_learner.py, but I don't
     # actually know the right way to write log files continuously in Sacred.
     log_dir = os.path.abspath(il_train_ex.observers[0].dir)
-    imitation_logger.configure(log_dir, ["stdout", "csv", "tensorboard"])
+    logger = im_logger_module.configure(log_dir, ["stdout", "csv", "tensorboard"])
     if torch_num_threads is not None:
         th.set_num_threads(torch_num_threads)
 
@@ -514,13 +580,15 @@ def train(seed, algo, encoder_path, freeze_encoder, torch_num_threads,
             final_path = do_training_bc(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir)
+                out_dir=log_dir,
+                logger=logger)
 
         elif algo == 'gail':
             final_path = do_training_gail(
                 demo_webdatasets=demo_webdatasets,
                 venv_chans_first=venv,
-                out_dir=log_dir)
+                out_dir=log_dir,
+                logger=logger)
 
         else:
             raise NotImplementedError(f"Can't handle algorithm '{algo}'")

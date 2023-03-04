@@ -4,12 +4,19 @@
 import argparse
 import faulthandler
 import logging
+import os
+import random
 import signal
+import time
 
 from docopt import docopt
 import ray
 from sacred.arg_parser import get_config_updates
 from sacred.utils import ensure_wellformed_argv
+
+# Maximum amount of (randomly sampled) time to sleep for when launching an
+# experiment in order to decorrelate start times. Specified in seconds.
+MAX_SLEEP_DECORRELATE = 30
 
 
 class ArgumentParseFailed(Exception):
@@ -45,15 +52,20 @@ def hacky_run_commandline(exp, argv):
     )
 
 
-def run_joint_training_remote(extra_args):
+def run_joint_training_remote(this_dir, extra_args):
     """This function executes the experiment. It is intended to be wrapped with
     ray.remote and run as a Ray task."""
+    os.chdir(this_dir)
     from il_representations.scripts.joint_training import add_fso, train_ex
     add_fso()
     argv = ['placeholder arg because only argv[1:] is used', 'train']
     if extra_args:
         argv.append('with')
         argv.extend(extra_args)
+    # we try to decorrelate start times for parallel runs because Sacred's
+    # FileStorageObserver has a directory creation race that sometimes causes
+    # it to fail
+    time.sleep(random.random() * MAX_SLEEP_DECORRELATE)
     hacky_run_commandline(train_ex, argv)
 
 
@@ -82,8 +94,13 @@ def main(args, sacred_args):
         # function directly instead (weird but whatever)
         remote_decorator = ray.remote
     remote_handle = remote_decorator(run_joint_training_remote)
-    remote_run = remote_handle.remote(sacred_args)
-    return ray.get(remote_run)
+    remote_runs = []
+    assert args.nseeds >= 1, args.nseeds
+    this_dir = os.getcwd()
+    for _ in range(args.nseeds):
+        remote_run = remote_handle.remote(this_dir, sacred_args)
+        remote_runs.append(remote_run)
+    return ray.get(remote_runs)
 
 
 # allow_abbrev stops argparse from swallowing genuine Sacred arguments that
@@ -101,6 +118,10 @@ parser.add_argument('--ray-ngpus',
                     default=None,
                     type=float,
                     help='number of GPUs for task')
+parser.add_argument('--nseeds',
+                    default=1,
+                    type=int,
+                    help='number of seeds to run')
 
 if __name__ == '__main__':
     main(*parser.parse_known_args())

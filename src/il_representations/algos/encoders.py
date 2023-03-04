@@ -13,17 +13,17 @@ BatchExtender module
 import copy
 import functools
 import inspect
+import itertools as it
 import os
 import math
 import traceback
 import warnings
-import inspect
 import torch
-import functools
 import numpy as np
 import torchvision.models as tvm
 
 from torch import nn
+import torch.nn.functional as F
 from stable_baselines3.common.preprocessing import preprocess_obs
 from torchvision.models.resnet import BasicBlock as BasicResidualBlock
 from torchvision.transforms import functional as TF
@@ -32,11 +32,17 @@ from pyro.distributions import Delta
 from il_representations.algos.utils import independent_multivariate_normal
 
 
-def compute_output_shape(observation_space, layers):
+def compute_output_shape(observation_space, layers, device=None):
     """Compute the size of the output after passing an observation from
     `observation_space` through the given `layers`."""
     # [None] adds a batch dimension to the random observation
     torch_obs = torch.tensor(observation_space.sample()[None])
+    if device is None:
+        # get a param to infer device that layers are on
+        p_iter = it.chain.from_iterable(l.parameters() for l in layers)
+        param = next(p_iter)
+        device = param.device
+    torch_obs = torch_obs.to(param.device)
     with torch.no_grad():
         sample = preprocess_obs(torch_obs, observation_space,
                                 normalize_images=True)
@@ -105,7 +111,11 @@ def warn_on_non_image_tensor(x):
             "not expected range [0, 1]")
 
     std = torch.std(x).item()
-    if std < 0.05:
+    if std < 0.003:
+        # Note that a tensor in range [0,1/255.0] will have stddev at most
+        # 1/510 ~= 0.002. This test aims to detect that situation.
+        # (note that the 0.002 bound comes from Popoviciu's inequality on
+        # variances)
         do_warning(
             f"Input image tensor values have low stddev {std} (range "
             f"[{v_min}, {v_max}])")
@@ -500,7 +510,7 @@ class BaseEncoder(Encoder):
     def forward_with_stddev(self, x, traj_info):
         shared_repr = self.network(x)
         mean = self.mean_layer(shared_repr)
-        scale = torch.exp(self.scale_layer(shared_repr))
+        scale = F.softplus(self.scale_layer(shared_repr))
         if not torch.all(torch.isfinite(scale)):
             raise ValueError("Standard deviation has exploded to np.inf")
         return independent_multivariate_normal(mean=mean,
@@ -711,14 +721,16 @@ class TargetStoringActionEncoder(ActionEncodingEncoder):
         return Delta(x)
 
 
-class InverseDynamicsEncoder(BaseEncoder):
-    def encode_extra_context(self, x, traj_info):
-        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
-        return self.encode_context(x, traj_info)
-
+class PolicyEncoder(BaseEncoder):
     def encode_target(self, x, traj_info):
         # X here consists of the true actions, which is the "target" and thus doesn't get encoded
         return Delta(x)
+
+
+class InverseDynamicsEncoder(PolicyEncoder):
+    def encode_extra_context(self, x, traj_info):
+        # Extra context here consists of the future frame, and should be be encoded in the same way as the context is
+        return self.encode_context(x, traj_info)
 
 
 class MomentumEncoder(Encoder):

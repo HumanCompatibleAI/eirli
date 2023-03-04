@@ -9,9 +9,11 @@ from il_representations.utils import augmenter_from_spec
 
 class Augmenter(ABC):
     """Abstract base class for all augmenters."""
-    def __init__(self, augmenter_spec=None, color_space=None):
+    def __init__(self, augmenter_spec=None, color_space=None, device=None):
         if augmenter_spec is not None:
-            self.augment_op = augmenter_from_spec(augmenter_spec, color_space)
+            assert device is not None
+            self.augment_op = augmenter_from_spec(augmenter_spec, color_space,
+                                                  device)
 
     @abstractmethod
     def __call__(self, contexts, targets):

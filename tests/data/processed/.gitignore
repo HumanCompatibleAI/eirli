@@ -1,2 +1,2 @@
-# don't ignore .tgz files in this directory; they are used for test fixtures
+# don't ignore data files in this directory; they are used for test fixtures
 !*

@@ -109,6 +109,8 @@ CHAIN_CONFIG = {
             'algo': tune.grid_search(['bc']),
             'freeze_encoder': tune.grid_search([False])
         },
+        # MAGICAL lacks reward information, so we can't use it to test RL
+        # (DQN). We thus default to procgen (EVN_CFG_TEST_CONFIGS[2])
         'env_cfg': tune.grid_search([ENV_CFG_TEST_CONFIGS[2]]),
     },
     'tune_run_kwargs': {

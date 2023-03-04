@@ -6,7 +6,8 @@ import os
 
 from sacred import Ingredient
 
-ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft", "procgen"}
+ALL_BENCHMARK_NAMES = {"atari", "magical", "dm_control", "minecraft",
+                       "procgen"}
 
 # see env_cfg_defaults docstring for description of this ingredient
 env_cfg_ingredient = Ingredient('env_cfg')
@@ -76,8 +77,7 @@ def env_cfg_defaults():
     # ###############################
     procgen_frame_stack = 4
 
-    _ = locals()
-    del _
+    locals()
 
 
 # see venv_opts_defaults docstring for description of this ingredient
@@ -99,12 +99,8 @@ def venv_opts_defaults():
     venv_parallel = True
     # how many envs constitute a batch step (regardless of parallelisation)
     n_envs = 2
-    # if venv_parallel is True, then this is used to determine the number of
-    # workers (parallel_workers defaults to n_envs if it is None)
-    parallel_workers = None
 
-    _ = locals()
-    del _
+    locals()
 
 
 # see env_data_ingredient docstring for description of this ingredient
@@ -123,6 +119,15 @@ def env_data_defaults():
     _this_file_dir = os.path.dirname(os.path.abspath(__file__))
     data_root = os.path.abspath(os.path.join(_this_file_dir, '../../../'))
     del _this_file_dir
+
+    # Maximum number of trajectories to load from webdatasets when using
+    # `auto.load_wds_datasets`. Set to None to have no limit. Code will error
+    # if a numerical limit is supplied but there are fewer trajectories in the
+    # dataset.
+    wds_n_trajs = None
+    # Similar, but limits maximum number of transitions. User should not supply
+    # both wds_n_trajs and wds_n_trans.
+    wds_n_trans = None
 
     # ########################
     # MAGICAL config variables

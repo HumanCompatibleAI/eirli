@@ -31,13 +31,13 @@ import logging
 DEFAULT_PROJECTION_ARCHITECTURE = [{'output_dim': 127}]
 
 
-class ExpSequential(nn.Module):
+class SoftPlusSequential(nn.Module):
     def __init__(self, sequential):
         super().__init__()
         self.sequential = sequential
 
     def forward(self, x):
-        return torch.exp(self.sequential(x))
+        return F.softplus(self.sequential(x))
 
 
 def get_projection_modules(representation_dim, projection_dim, architecture=None, learn_scale=False):
@@ -52,7 +52,7 @@ def get_projection_modules(representation_dim, projection_dim, architecture=None
         stddev_net = get_sequential_from_architecture(architecture,
                                                       representation_dim,
                                                       projection_dim)
-        stddev_func = ExpSequential(stddev_net)
+        stddev_func = SoftPlusSequential(stddev_net)
     else:
         stddev_func = None
 
@@ -357,15 +357,17 @@ class ContrastiveInverseDynamicsConcatenationHead(SymmetricProjectionHead):
 class ActionPredictionHead(LossDecoder):
     """
     A decoder that takes in two vector representations of frames
-    (one in context, one in extra_context), and produces a prediction
-    of the action taken in between the frames
+    (one in context, optionally one in extra_context), and produces a
+    prediction of the action taken in between the frames
     """
-    def __init__(self, representation_dim, projection_shape, action_space, *, sample=False, learn_scale=False):
+    def __init__(self, representation_dim, projection_shape, action_space, *, sample=False, learn_scale=False, use_extra_context=True):
         super().__init__(representation_dim, projection_shape, sample, learn_scale)
 
         # Use Stable Baseline's logic for constructing a SB action_dist from an action space
         self.action_dist = make_proba_distribution(action_space)
-        latents_to_dist_params = self.action_dist.proba_distribution_net(2*representation_dim)
+        self.use_extra_context = use_extra_context
+        latents_to_dist_params = self.action_dist.proba_distribution_net(
+            2*representation_dim if use_extra_context else representation_dim)
         self.param_mappings = dict()
 
         # Logic to cover both the Gaussian case of mean/stddev and the Categorical case of logits
@@ -382,10 +384,14 @@ class ActionPredictionHead(LossDecoder):
     def forward(self, z_dist, traj_info, extra_context=None):
         # vector representations of current and future frames
         z = self.get_vector(z_dist)
-        z_future = self.get_vector(extra_context)
+        if self.use_extra_context:
+            z_future = self.get_vector(extra_context)
+            # concatenate current and future frames together
+            z_merged = torch.cat([z, z_future], dim=1)
+        else:
+            # use just current frame
+            z_merged = z
 
-        # concatenate current and future frames together
-        z_merged = torch.cat([z, z_future], dim=1)
         if 'action_logits' in self.param_mappings:
             action_logits = self.param_mappings['action_logits'](z_merged)
             self.action_dist.proba_distribution(action_logits)
@@ -518,7 +524,7 @@ class PixelDecoder(LossDecoder):
         # Calculate final mean and std dev of decoded pixels
         mean_pixels = self.mean_layer(decoded_latents)
         if self.learn_scale:
-            std_pixels = torch.exp(self.std_layer(decoded_latents))
+            std_pixels = F.softplus(self.std_layer(decoded_latents))
         else:
             std_pixels = torch.full(size=mean_pixels.shape, fill_value=self.constant_stddev)
             if torch.cuda.is_available():

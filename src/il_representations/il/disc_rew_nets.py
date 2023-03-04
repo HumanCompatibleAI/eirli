@@ -9,7 +9,7 @@ from il_representations.algos.encoders import (BaseEncoder,
                                                compute_rep_shape_encoder)
 
 
-class ImageDiscrimNet(nn.Module):
+class ImageRewardNet(RewardNet):
     """Image-based discriminator network. This is intended to be passed as a
     `discrim_net` argument to `DiscrimNetGAIL` in
     `imitation.rewards.discrim_net`."""
@@ -20,26 +20,29 @@ class ImageDiscrimNet(nn.Module):
                  encoder_cls=None,
                  encoder_kwargs=None,
                  fc_dim=256):
-        super().__init__()
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            normalize_images=True)
 
         if encoder is not None:
             assert encoder_cls is None, \
                 "cannot supply both encoder and encoder_cls"
             self.obs_encoder = encoder
-            obs_out_dim, = compute_rep_shape_encoder(observation_space,
+            obs_out_dim, = compute_rep_shape_encoder(self.observation_space,
                                                      self.obs_encoder)
         else:
             if encoder_cls is None:
                 encoder_cls = BaseEncoder
             if encoder_kwargs is None:
                 encoder_kwargs = {}
-            self.obs_encoder = encoder_cls(obs_space=observation_space,
+            self.obs_encoder = encoder_cls(obs_space=self.observation_space,
                                            representation_dim=fc_dim,
                                            **encoder_kwargs)
             obs_out_dim = fc_dim
 
         # postprocess_mlp takes both the raw action and the image features
-        action_dim = get_flattened_obs_dim(action_space)
+        action_dim = get_flattened_obs_dim(self.action_space)
         mlp_in = obs_out_dim + action_dim
         self.postprocess_mlp = nn.Sequential(
             nn.Linear(mlp_in, fc_dim),
@@ -49,7 +52,11 @@ class ImageDiscrimNet(nn.Module):
             nn.Linear(fc_dim, 1),
         )
 
-    def forward(self, observation, action, traj_info=None):
+    def forward(self, state, action, next_state, done, traj_info=None):
+        # some renaming
+        observation = state
+        del state, next_state, done
+
         obs_dist = self.obs_encoder(observation, traj_info=traj_info)
         assert isinstance(obs_dist, th.distributions.Distribution)
         obs_feats = obs_dist.mean
@@ -62,35 +69,3 @@ class ImageDiscrimNet(nn.Module):
         assert final_result.shape == (observation.size(0), )
 
         return final_result
-
-
-class _IDNWithoutNextStateOrAction(ImageDiscrimNet):
-    def forward(self, state, action, next_state, done, traj_info=None):
-        return super().forward(state, action, traj_info=traj_info)
-
-
-class ImageRewardNet(RewardNet):
-    """Reward net for AIRL that wraps ImageDiscrimNet (which basically does the
-    thing we want anyway)."""
-    def __init__(self, observation_space, action_space, **idn_kwargs):
-        super().__init__(observation_space=observation_space,
-                         action_space=action_space,
-                         use_state=True,
-                         use_action=True,
-                         use_next_state=False,
-                         use_done=False,
-                         normalize_images=True)
-        self._base_reward_net = _IDNWithoutNextStateOrAction(
-            observation_space=observation_space,
-            action_space=action_space,
-            **idn_kwargs)
-
-    @property
-    def base_reward_net(self):
-        return self._base_reward_net
-
-    def reward_train(self, state, action, next_state, done):
-        # no shaping network (what does that even achieve?)
-        rew = self.base_reward_net(state, action, next_state, done)
-        assert rew.shape == state.shape[:1]
-        return rew

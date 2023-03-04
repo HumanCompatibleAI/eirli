@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 
 import imitation.util.logger as logger
 from pyro.distributions import Delta
-import stable_baselines3.common.logger as sb_logger
 import torch
 import torch.nn.functional as F
 # losses can be accessed through torch.nn, but I'm doing this to appease PyType
@@ -18,7 +17,7 @@ class RepresentationLoss(ABC):
 
     @abstractmethod
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist):
-        pass
+        raise NotImplementedError()
 
     def get_vector_forms(self, *args):
         return [el.rsample() if self.sample else el.mean for el in args]
@@ -64,7 +63,7 @@ class AsymmetricContrastiveLoss(RepresentationLoss):
 
         logits, labels = self.calculate_logits_and_labels(z_i, z_j, mask)
         logits /= self.temp
-        return self.criterion(logits, labels)
+        return self.criterion(logits, labels), {}
 
 
 class QueueAsymmetricContrastiveLoss(AsymmetricContrastiveLoss):
@@ -208,13 +207,15 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         logits_ab = torch.matmul(z_i, z_j.T)  # NxN
         logits_ba = torch.matmul(z_j, z_i.T)  # NxN
 
-        avg_self_similarity = logits_ab.diag().mean().item()
+        avg_self_similarity = logits_ab.diag().mean()
         logits_other_sim_mask = ~torch.eye(batch_size, dtype=bool, device=logits_ab.device)
-        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean().item()
+        avg_other_similarity = logits_ab.masked_select(logits_other_sim_mask).mean()
 
-        sb_logger.record('avg_self_similarity', avg_self_similarity)
-        sb_logger.record('avg_other_similarity', avg_other_similarity)
-        sb_logger.record('self_other_sim_delta', avg_self_similarity - avg_other_similarity)
+        stats = {
+            'avg_self_similarity': avg_self_similarity,
+            'avg_other_similarity': avg_other_similarity,
+            'self_other_sim_delta': avg_self_similarity - avg_other_similarity,
+        }
 
         # Each row now contains an image's similarity with the batch's augmented images & original images. This applies
         # to both original and augmented images (hence "symmetric").
@@ -228,7 +229,7 @@ class SymmetricContrastiveLoss(RepresentationLoss):
         label = torch.arange(batch_size, dtype=torch.long).to(self.device)
         labels = torch.cat((label, label), axis=0)
 
-        return self.criterion(logits, labels)
+        return self.criterion(logits, labels), stats
 
 
 class NegativeLogLikelihood(RepresentationLoss):
@@ -250,7 +251,7 @@ class NegativeLogLikelihood(RepresentationLoss):
         # with Torch distribution objects
         ground_truth = torch.squeeze(target_dist.mean)
         log_probas = decoded_context_dist.log_prob(ground_truth)
-        return torch.mean(-1*log_probas)
+        return torch.mean(-1*log_probas), {}
 
 
 class MSELoss(RepresentationLoss):
@@ -264,16 +265,16 @@ class MSELoss(RepresentationLoss):
 
     def __call__(self, decoded_context_dist, target_dist, encoded_context_dist=None):
         decoded_contexts, targets = self.get_vector_forms(decoded_context_dist, target_dist)
-        return self.criterion(decoded_contexts, targets)
+        return self.criterion(decoded_contexts, targets), {}
 
 
 class CrossEntropyLoss(RepresentationLoss):
     def __init__(self, device, sample=False):
         super().__init__(device, sample)
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch_losses.CrossEntropyLoss()
 
     def __call__(self, decoded_contexts, targets, encoded_context_dist=None):
-        return self.criterion(decoded_contexts, torch.squeeze(targets))
+        return self.criterion(decoded_contexts, torch.squeeze(targets)), {}
 
 
 class VAELoss(RepresentationLoss):
@@ -304,11 +305,13 @@ class VAELoss(RepresentationLoss):
                                                             len(encoded_context_dist.event_shape))
         kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
 
-        logger.record('loss_recon', recon_loss.item())
-        logger.record('loss_kld', torch.mean(kld).item())
+        stats = {
+            'loss_recon': recon_loss,
+            'loss_kld': torch.mean(kld),
+        }
 
         loss = recon_loss + self.beta * torch.mean(kld)
-        return loss
+        return loss, stats
 
 
 class AELoss(RepresentationLoss):
@@ -323,7 +326,7 @@ class AELoss(RepresentationLoss):
         predicted_pixels = decoded_context_dist.mean
 
         loss = F.mse_loss(predicted_pixels, ground_truth_pixels)
-        return loss
+        return loss, {}
 
 
 class CEBLoss(RepresentationLoss):
@@ -350,7 +353,7 @@ class CEBLoss(RepresentationLoss):
         inds = (torch.arange(start=0, end=len(z))).to(self.device)
         i_yz = catgen.log_prob(inds) # The probability of the kth target under the kth Categorical distribution (probability of true y)
         loss = torch.mean(self.beta*(log_ezx - log_bzy) - i_yz)
-        return loss
+        return loss, {}
 
 
 class GaussianPriorLoss(RepresentationLoss):
@@ -371,4 +374,4 @@ class GaussianPriorLoss(RepresentationLoss):
         kld = torch.distributions.kl.kl_divergence(encoded_context_dist, independent_prior)
 
         loss = torch.mean(kld)
-        return loss
+        return loss, {}

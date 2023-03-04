@@ -192,12 +192,12 @@ def generate_jigsaw_permutations(n_tiles=9, n_perms=1000):
                                                      n_tiles)))
 
     perms = []
+    j = np.random.randint(len(all_perms))
     for i in range(n_perms):
         if i == 0:
-            j = np.random.randint(len(all_perms))
-            perms = np.array(all_perms[j]).reshape([1,-1])
+            perms = np.array(all_perms[j]).reshape([1, -1])
         else:
-            perms = np.concatenate([perms, all_perms[j].reshape([1,-1])], axis=0)
+            perms = np.concatenate([perms, all_perms[j].reshape([1, -1])], axis=0)
 
         all_perms = np.delete(all_perms, j, axis=0)
 

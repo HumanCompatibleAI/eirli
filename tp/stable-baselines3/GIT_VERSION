@@ -1,0 +1,2 @@
+This version vendored from upstream:
+stable-baselines3 @ git+https://github.com/HumanCompatibleAI/stable-baselines3.git@f287004a4f397006bb7cc3f8c476fe40b13080bf

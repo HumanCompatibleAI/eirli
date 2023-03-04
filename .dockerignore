@@ -12,6 +12,7 @@ data
 progress.csv
 params.json
 *.tgz
+*.tar.zst
 
 # editor and devlopment tool cruft
 .pytype

@@ -143,17 +143,19 @@ class ModelSaver:
         """It is assumed that this is called on epoch end."""
         batch_num = batch_num + self.start_nupdate
         if batch_num >= self.last_save_batches + self.save_interval_batches:
-            self.save(batch_num, **kwargs)
+            self.save(batch_num)
 
-    def save(self, batch_num, policy=None, **kwargs):
+    def save(self, batch_num, policy=None):
         """Save policy."""
         save_fn = f'policy_{batch_num:08d}_batches.pt'
-        save_path = os.path.join(self.save_dir, save_fn)
-        if policy is None:
-            th.save(self.policy, save_path)
-        else:
-            th.save(policy, save_path)
-        print(f"Saved policy to {save_path}!")
+        self.save_by_name(save_fn, policy=policy)
+        print(f"Saved policy to {self.last_save_path}!")
         self.last_save_batches = batch_num
-        self.last_save_path = save_path
         assert os.path.isfile(self.last_save_path)
+
+    def save_by_name(self, save_fn, policy=None):
+        if policy is None:
+            policy = self.policy
+        save_path = os.path.join(self.save_dir, save_fn)
+        th.save(policy, save_path)
+        self.last_save_path = save_path

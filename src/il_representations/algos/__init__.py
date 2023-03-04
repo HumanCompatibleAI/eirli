@@ -6,20 +6,20 @@ import os
 
 from il_representations.algos.augmenters import (AugmentContextAndExtraContext,
                                                  AugmentContextAndTarget,
-                                                 AugmentContextOnly,
                                                  NoAugmentation)
 from il_representations.algos.batch_extenders import (IdentityBatchExtender,
                                                       QueueBatchExtender)
 from il_representations.algos.decoders import (
     ActionConditionedVectorDecoder, ActionPredictionHead,
     AsymmetricProjectionHead, BYOLProjectionHead,
-    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead,
-    MomentumProjectionHead, NoOp, PixelDecoder, SymmetricProjectionHead)
+    ContrastiveInverseDynamicsConcatenationHead, JigsawProjectionHead, NoOp,
+    PixelDecoder, SymmetricProjectionHead)
 from il_representations.algos.encoders import (
     ActionEncodingEncoder, ActionEncodingInverseDynamicsEncoder, BaseEncoder,
-    InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder, RecurrentEncoder,
-    TargetStoringActionEncoder, VAEEncoder, infer_action_shape_info)
-from il_representations.algos.losses import (AELoss, AsymmetricContrastiveLoss,
+    InverseDynamicsEncoder, JigsawEncoder, MomentumEncoder, PolicyEncoder,
+    RecurrentEncoder, TargetStoringActionEncoder, VAEEncoder,
+    infer_action_shape_info)
+from il_representations.algos.losses import (AELoss,
                                              BatchAsymmetricContrastiveLoss,
                                              CEBLoss, CrossEntropyLoss,
                                              GaussianPriorLoss, MSELoss,
@@ -373,6 +373,29 @@ class InverseDynamicsPrediction(RepresentationLearner):
                                      target_pair_constructor=TemporalOffsetPairConstructor,
                                      target_pair_constructor_kwargs=dict(mode='inverse_dynamics'),
                                      decoder_kwargs=dict(action_space=kwargs['action_space']),
+                                     preprocess_target=False)
+        kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class ActionPrediction(RepresentationLearner):
+    """
+    Predicts action for current state. Essentially just a BC auxiliary loss.
+    """
+    def __init__(self, **kwargs):
+        algo_hardcoded_kwargs = dict(encoder=PolicyEncoder,
+                                     decoder=ActionPredictionHead,
+                                     batch_extender=IdentityBatchExtender,
+                                     augmenter=NoAugmentation,
+                                     loss_calculator=NegativeLogLikelihood,
+                                     target_pair_constructor=TemporalOffsetPairConstructor,
+                                     target_pair_constructor_kwargs=dict(
+                                         mode='action_prediction',
+                                         temporal_offset=1),
+                                     decoder_kwargs=dict(
+                                         action_space=kwargs['action_space'],
+                                         use_extra_context=False),
                                      preprocess_target=False)
         kwargs = validate_and_update_kwargs(kwargs, algo_hardcoded_kwargs=algo_hardcoded_kwargs)
 

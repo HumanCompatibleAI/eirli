@@ -5,6 +5,7 @@ from gym import spaces
 import pytest
 import torch as th
 from torch.utils.data import Dataset
+import imitation.util.logger as im_logger_module
 
 from il_representations import algos
 from il_representations.data import read_dataset
@@ -37,7 +38,8 @@ def test_pytorch_dataset():
                             action_space=None,
                             augmenter=algos.NoAugmentation)
         algo.learn(datasets=[tptd_wds], batches_per_epoch=10, n_epochs=1,
-                   log_dir=tmpdir, log_interval=1, calc_log_interval=1)
+                   log_dir=tmpdir, log_interval=1, calc_log_interval=1,
+                   logger=im_logger_module.configure(tmpdir, ["stdout"]))
 
 
 @pytest.mark.parametrize("algo", [
@@ -76,7 +78,7 @@ def test_algo(algo, env_cfg, represent_ex):
         # observations. We can then optionally apply a shuffler that retains a
         nominal_length=2 * model.batch_size,
         # small pool of constructed targets in memory and yields
-        max_workers=model.dataset_max_workers,
+        max_workers=1,
         # randomly-selected items from that pool (this approximates
         shuffle_buffer_size=model.shuffle_buffer_size,
         preprocessors=(model.target_pair_constructor,),
@@ -84,8 +86,8 @@ def test_algo(algo, env_cfg, represent_ex):
     batch = next(iter(data_loader))
     # TODO(shwang): I had to copy over some preprocessing calls to get the data
     # into the right format for passing into the model.
-    # Maybe it would be worth doing some more refactoring to `_make_data_loader` so that
-    # the preprocessing calls are unnecessary.
+    # Maybe it would be worth doing some more refactoring to
+    # `_make_data_loader` so that the preprocessing calls are unnecessary.
     obs = model._prep_tensors(batch["context"])
     obs = model._preprocess(obs)
     traj_info = model._prep_tensors(batch["traj_ts_ids"])

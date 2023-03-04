@@ -48,19 +48,23 @@ def test_all_benchmarks(chain_ex, file_observer, env_cfg):
 @pytest.mark.parametrize("stages", list(StagesToRun))
 def test_individual_stages(chain_ex, file_observer, stages):
     # test just doing IL, just doing REPL, etc.
-    chain_config = copy.deepcopy(CHAIN_CONFIG)
+    chain_config: dict = copy.deepcopy(CHAIN_CONFIG)
     # again, don't search over representation learner
     # pytype: disable=unsupported-operands
     chain_config['spec']['repl']['algo'] \
         = tune.grid_search([algos.SimCLR])
     # pytype: enable=unsupported-operands
     chain_config['stages_to_run'] = stages
-    if 'RL' not in chain_config['stages_to_run']:
-        return
-    # MAGICAL demos don't currently have reward information - unsuitable for RL.
-    if 'RL' in chain_config['stages_to_run'] and \
-        chain_config['spec']['env_cfg']['grid_search'][0]['benchmark_name'] == 'magical':
-        return
+
+    grid_search_spec = chain_config['spec']['env_cfg']['grid_search']
+    bench_name = grid_search_spec[0]['benchmark_name']
+    if 'RL' in chain_config['stages_to_run'] and bench_name == 'magical':
+        pytest.skip("MAGICAL demos don't have reward information, so we must "
+                    "skip RL tests on MAGICAL")
+
+    if 'RL' in chain_config['stages_to_run']:
+        chain_config.setdefault('venv_opts', {})['n_envs'] = 1
+
     try:
         chain_ex.run(config_updates=chain_config)
     finally:
@@ -130,8 +134,10 @@ def test_repl_reuse(chain_ex):
     chain_config['repl']['batches_per_epoch'] = 15
     chain_config['stages_to_run'] = StagesToRun.REPL_AND_IL
 
-    first_encoder_path, first_was_reused = _do_chain_run(chain_ex, chain_config)
-    second_encoder_path, second_was_reused = _do_chain_run(chain_ex, chain_config)
+    first_encoder_path, first_was_reused = _do_chain_run(
+        chain_ex, chain_config)
+    second_encoder_path, second_was_reused = _do_chain_run(
+        chain_ex, chain_config)
 
     assert files_are_identical(first_encoder_path, second_encoder_path)
     assert second_was_reused and not first_was_reused
@@ -140,7 +146,8 @@ def test_repl_reuse(chain_ex):
     # pytype: disable=unsupported-operands
     modified_config['spec']['repl']['seed'] = tune.grid_search([42])
     # pytype: enable=unsupported-operands
-    third_encoder_path, third_was_reused = _do_chain_run(chain_ex, modified_config)
+    third_encoder_path, third_was_reused = _do_chain_run(
+        chain_ex, modified_config)
 
     assert not files_are_identical(third_encoder_path, first_encoder_path)
     assert not third_was_reused
@@ -161,10 +168,12 @@ def test_hash_config():
     config_hash_2 = hash_configs(repl_config)
     repl_config['algo'] = algos.SimCLR
     diff_config_hash = hash_configs(repl_config)
-    assert config_hash_1 == config_hash_2, "Sequential hashes from hash_config for " \
-                                           "identical config dict do not match"
-    assert diff_config_hash != config_hash_1, "Hashes for different config dicts from " \
-                                              "hash_config result in identical hashes"
-    assert config_hash_1 == 'f6537d94138b8ede0f442cc596648d42', "Hash differs from that on canonical testing machine; " \
-                                                                "either base config has been updated, or consistency" \
-                                                                "has broken"
+    assert config_hash_1 == config_hash_2, \
+        "Sequential hashes from hash_config for identical config dict do " \
+        "not match"
+    assert diff_config_hash != config_hash_1, \
+        "Hashes for different config dicts from hash_config result in " \
+        "identical hashes"
+    assert config_hash_1 == 'f6537d94138b8ede0f442cc596648d42', \
+        "Hash differs from that on canonical testing machine; either base " \
+        "config has been updated, or consistency has broken"

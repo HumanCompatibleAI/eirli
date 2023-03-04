@@ -7,14 +7,11 @@ import os
 import os.path as osp
 import signal
 from time import time
-from pathlib import Path
-import weakref
 
 import numpy as np
 import ray
 from ray import tune
 from ray.tune.integration.docker import DockerSyncer
-from ray.tune.schedulers import FIFOScheduler
 from ray.tune.suggest.skopt import SkOptSearch
 import sacred
 from sacred import Experiment
@@ -32,9 +29,10 @@ from il_representations.scripts.il_test import il_test_ex
 from il_representations.scripts.il_train import il_train_ex
 from il_representations.scripts.dqn_train import dqn_train_ex
 from il_representations.scripts.run_rep_learner import represent_ex
-from il_representations.script_utils import detect_ec2, sacred_copy, update, StagesToRun, ReuseRepl
-from il_representations.utils import hash_configs, up, WrappedConfig
-
+from il_representations.script_utils import detect_ec2, sacred_copy, \
+    StagesToRun, ReuseRepl, CheckpointFIFOScheduler, relative_symlink
+from il_representations.utils import hash_configs, up, WrappedConfig, update, \
+    expand_dict_keys
 
 sacred.SETTINGS['CAPTURE_MODE'] = 'no'  # workaround for sacred issue#740
 chain_ex = Experiment(
@@ -76,64 +74,6 @@ def get_stages_to_run(stages_to_run):
             f"Could not convert '{stages_to_run}' to StagesToRun ({ex}). "
             f"Available options are {', '.join(options)}")
     return stage
-
-
-class CheckpointFIFOScheduler(FIFOScheduler):
-    """Variant of FIFOScheduler that periodically saves the given search
-    algorithm. Useful for, e.g., SkOptSearch, where it is helpful to be able to
-    re-instantiate the search object later on."""
-
-    # FIXME: this is a stupid hack, inherited from another project. There
-    # should be a better way of saving skopt internals as part of Ray Tune.
-    # Perhaps defining a custom trainable would do the trick?
-    def __init__(self, search_alg):
-        self.search_alg = weakref.proxy(search_alg)
-
-    def on_trial_complete(self, trial_runner, trial, result):
-        rv = super().on_trial_complete(trial_runner, trial, result)
-        # references to _local_checkpoint_dir and _session_dir are a bit hacky
-        checkpoint_path = os.path.join(
-            trial_runner._local_checkpoint_dir,
-            f'search-alg-{trial_runner._session_str}.pkl')
-        self.search_alg.save(checkpoint_path + '.tmp')
-        os.rename(checkpoint_path + '.tmp', checkpoint_path)
-        return rv
-
-
-def expand_dict_keys(config_dict):
-    """Some Ray Tune hyperparameter search options do not supported nested
-    dictionaries for configuration. To emulate nested dictionaries, we use a
-    plain dictionary with keys of the form "level1:level2:…". . The colons are
-    then separated out by this function into a nested dict (e.g. {'level1':
-    {'level2': …}}).
-
-    Example:
-
-    ```
-    >>> expand_dict_keys({'x:y': 42, 'z': 4, 'x:u:v': 5, 'w': {'s:t': 99}})
-    {'x': {'y': 42, 'u': {'v': 5}}, 'z': 4, 'w': {'s': {'t': 99}}}
-    ```
-    """
-    dict_type = type(config_dict)
-    new_dict = dict_type()
-
-    for key, value in config_dict.items():
-        dest_dict = new_dict
-
-        parts = key.split(':')
-        for part in parts[:-1]:
-            if part not in dest_dict:
-                # create a new sub-dict if necessary
-                dest_dict[part] = dict_type()
-            else:
-                assert isinstance(dest_dict[part], dict)
-            dest_dict = dest_dict[part]
-        if isinstance(value, dict):
-            # recursively expand nested dicts
-            value = expand_dict_keys(value)
-        dest_dict[parts[-1]] = value
-
-    return new_dict
 
 
 def run_single_exp(merged_config, log_dir, exp_name):
@@ -185,24 +125,6 @@ def report_final_experiment_results(results_dict):
     logging.info(
         f"Got experiment result with keys {', '.join(results_dict.keys())}")
     tune.report(**results_dict)
-
-
-def relative_symlink(src, dst):
-    link_dir_abs, link_fn = os.path.split(os.path.abspath(dst))
-    if not link_fn:
-        raise ValueError(f"path dst='{dst}' has empty basename")
-    # absolute path to src, and path relative to link_dir
-    src_abspath = os.path.abspath(src)
-    src_relpath = os.path.relpath(src_abspath, start=link_dir_abs)
-
-    os.makedirs(link_dir_abs, exist_ok=True)
-    link_dir_fd = os.open(link_dir_abs, os.O_RDONLY)
-    try:
-        # both src_relpath and link_fn are relative to link_dir, which is
-        # represented by the file descriptor link_dir_fd
-        os.symlink(src_relpath, link_fn, dir_fd=link_dir_fd)
-    finally:
-        os.close(link_dir_fd)
 
 
 def cache_repl_encoder(repl_encoder_path, repl_directory_dir,
@@ -857,10 +779,16 @@ def run(exp_name, metric, spec, repl, il_train, il_test, dqn_train, env_cfg,
     return rep_run.results
 
 
+_has_fso = False  # have we added FileStorageObserver yet?
+
+
 def main(argv=None):
     # This function is here because it gets called from other scripts. Please
     # don't delete!
-    chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
+    global _has_fso
+    if not _has_fso:
+        chain_ex.observers.append(FileStorageObserver('runs/chain_runs'))
+        _has_fso = True
     chain_ex.run_commandline(argv)
 
 

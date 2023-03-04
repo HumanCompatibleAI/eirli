@@ -7,27 +7,28 @@
 # and so can't be installed via pip. It is currently being installed in Docker
 # To get an environment set up that works for Minecraft, run minecraft_setup.sh
 
-numpy~=1.19.5
+numpy~=1.19.0
 gym[atari]~=0.17
-sacred~=0.8.1
-torch~=1.7.1
+sacred~=0.8.2
+torch==1.10.*
+torchvision==0.11.*
 opencv-python~=4.3.0.36
-torchvision~=0.9.1
-pyyaml~=5.4.0
-sacred~=0.8.1
 tensorboard~=2.2.0
-pytest~=5.4.3
-ray[tune]~=1.0.1
-PyYAML~=5.3.1
+pytest~=6.2.5
+ray[tune]~=1.9.0
+PyYAML~=5.4.1
 scikit-video~=1.1.11
-Pillow~=9.2.0
+Pillow~=8.4.0
 # webdataset introduces breaking changes in 0.1.49, so setting this to an exact equality
 webdataset==0.1.40
 tqdm~=4.48.0
 procgen==0.10.4
+captum~=0.4.0
+zstandard==0.17.*
 
 # this fork of torchsummary can deal with layers that don't produce tensors
-git+git://github.com/HumanCompatibleAI/pytorch-summary@1b69eadb901357bd19011e64f04964abc48845d2#egg=torchsummary
+# git+https://github.com/HumanCompatibleAI/pytorch-summary@777d0bad8b40e5a46308dcd4b5c9196201d01cb7
+-e file:./tp/pytorch-summary
 
 # Jupyter Lab is used for our experiment analysis notebook
 jupyterlab~=2.2.6
@@ -37,22 +38,23 @@ scikit-learn~=0.24.2
 seaborn~=0.11.0
 pyro-ppl~=1.4.0
 # deps for Ray + GCP (see Ray issue #10724)
-cryptography~=3.1
-# my version of google-api-python-client fixes issue #873 in that repo (which
-# has been known since at least 2017, and seems unlikely to ever get fixed)
-# google-api-python-client~1.11.0
-git+git://github.com/qxcv/google-api-python-client@8bc088828ef4d9fccfb27a4807257635805b84f2#egg=google-api-python-client
+cryptography>=39.0.1,<40.0.0
+google-api-python-client~=2.26.1
 
-# imitation needs special branch as of 2021-01-04
-# (also this is only installable with pip~=19.0 and earlier; new resolver breaks it)
-git+git://github.com/HumanCompatibleAI/imitation@08585bc90108fbad02359ae2e32c40352c369df8#egg=imitation
-# this branch has fixes to VecEnvTranspose, some new features for SubprocVecEnv, and support for DQN.
-git+git://github.com/HumanCompatibleAI/stable-baselines3@953c1afbf71b505fa6a285c0fe5856b6a982de9e#egg=stable_baselines3
+# imitation needs special branch as of 2022-01-05. The custom imitation branch
+# in turn relies on a custom version of Stable Baselines 3.
+# git+https://github.com/HumanCompatibleAI/imitation@7903d7c0a8f047856c1543c2ba0cc7e02ce2e00c
+-e file:./tp/imitation
+-e file:./tp/stable-baselines3
 
 # environments
 magical-il~=0.0.1a4
-# 0.0.319497192 was the original version of dm_control that we used. New
-# versions require MuJoCo 200 rather than MuJoCo 210 (which probably introduces
+# DMC 0.0.319497192 was the original version of dm_control that we used. New
+# versions require MuJoCo 210 rather than MuJoCo 200 (which probably introduces
 # incompatibilities with our saved demonstration files).
 dm_control==0.0.319497192
-git+git://github.com/denisyarats/dmc2gym@6e34d8acf18e92f0ea0a38ecee9564bdf2549076#egg=dmc2gym
+# our fork of dmc2gym fixes env.seed() so that it actually seeds the underlying
+# DMC environment (previously the only way to correctly seed in dmc2gym was to
+# pass a seed to the constructor)
+# git+https://github.com/HumanCompatibleAI/dmc2gym@a8b239cbd7c9ee82c542f841a90c7be4d0ef3b88
+-e file:./tp/dmc2gym
