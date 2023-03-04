@@ -50,11 +50,13 @@ following command:
 
 ::
 
-    docker run -it --rm docker-hub-user/eirli:latest \
-        bash -c 'echo "Hello, world!" && ray stop'
+    docker run -it --rm docker-hub-user/eirli-$USER:latest \
+        bash -c 'echo "Hello, world!" && pkill -9 ray'
 
-This will start up Ray and an X server inside the contaier, print "Hello,
-world!", then shut down Ray and stop the container.
+This will start up an instance of  Ray (a distributed computing framework) and
+an X server (for environment rendering) inside the container. This will produce
+some messages and warnings.  About 30 seconds after that, it will print "Hello,
+world!" and then exit.
 
 Running the code
 ----------------
@@ -70,7 +72,7 @@ containers:
     # (CHANGE PATHS!)
     path_to_extracted_data=/path/to/extracted/data
     path_to_store_runs=/path/to/runs/dir
-    image_name=docker-hub-user/eirli:latest
+    image_name=docker-hub-user/eirli-$USER:latest
     cpus=24
     memory=100g
     # can also use, e.g., device=1,2 or device=3 or device=0,3,4 etc.
@@ -80,10 +82,10 @@ containers:
 
     run_in_docker() {
         docker run -it --rm \
-            --cpus=24 --memory=100g --gpus="device=0" --shm-size=15g \
-            --volume "$path_to_extracted_data:/data:ro" \
-            --volume "$path_to_store_runs:/runs:rw" \
-            "$IMAGE_NAME" "$@"
+            --cpus="$cpus" --memory="$memory" --gpus="$gpus" --shm-size=15g \
+            --volume "$(realpath "$path_to_extracted_data"):/data:ro" \
+            --volume "$(realpath "$path_to_store_runs"):/runs:rw" \
+            "$image_name" "$@"
     }
 
     # Joint training experiments (dm_control, MAGICAL, Procgen)
