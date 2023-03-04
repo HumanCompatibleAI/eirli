@@ -77,9 +77,9 @@ append_to_tar_gz() {
     rm -rf "$tmp_dir"
 }
 
-echo "Compressing source code at HEAD to $SRC_TARBALL"
 # generate a tarball of the current git repo for export to the Docker image
 SRC_TARBALL="$SCRIPT_DIR/eirli.tar.gz" 
+echo "Compressing source code at HEAD to $SRC_TARBALL" 1>&2
 rm "$SRC_TARBALL" || true  # make anew
 git archive --format=tar.gz --prefix=eirli/ -o "$SRC_TARBALL" HEAD
 # compute path of tarball relative to DOCKERFILE_DIR

@@ -28,12 +28,15 @@ inside the container to match the user's UID and GID on the host machine, so
 that files written from inside the container will be owned by the user on the
 host machine. To run the script, use the following command:
 
-.. code-block:: bash
+.. highlight:: bash
+
+::
+
     cd /path/to/eirli-git-repository  # change the path
     # -u and -n control the UID and the username inside the container, respectively.
     # You can change docker-hub-user if you want to push to your own Docker Hub
     # account later on.
-    ./cloud/build_and_push_docker.sh -u $UID -n $USER -p docker-hub-user
+    ./cloud/build_docker.sh -u $UID -n $USER -p docker-hub-user
 
 This may take a few minutes because it needs to install all the system-level and
 Python-level dependencies in the Docker image. The final Docker image will be
@@ -42,7 +45,10 @@ about 17GiB.
 You can verify that the Docker image was built correctly by running the
 following command:
 
-.. code-block:: bash
+.. highlight:: bash
+
+::
+
     docker run -it --rm docker-hub-user/eirli:latest \
         bash -c 'echo "Hello, world!" && ray stop'
 
@@ -55,7 +61,10 @@ Running the code
 Once you've built a Docker image, you launch experiments in new Docker
 containers:
 
-.. code-block:: bash
+.. highlight:: bash
+
+::
+
     # configuration variables
     # (CHANGE PATHS!)
     path_to_extracted_data=/path/to/extracted/data
@@ -101,10 +110,13 @@ Read this if you have less than 40GiB of VRAM
 These scripts were tuned to run on GPUs with 40GiB+ of memory, such as the A6000
 or the 40G A100. If you have a GPU with less VRAM then you might run out of
 memory, since each script runs 10+ jobs in parallel on each GPU. To run fewer
-experiments per GPU, you can edit the job launch scripts in `cloud/` (e.g.
-`bc_jt_expts_dmc.sh`). The specific section you need to edit looks like this:
+experiments per GPU, you can edit the job launch scripts in ``cloud/`` (e.g.
+``bc_jt_expts_dmc.sh``). The specific section you need to edit looks like this:
 
-.. code-block:: bash
+.. highlight:: bash
+
+::
+
     gpu_default=0.11
     declare -A gpu_overrides=(
         ["repl_tcpc8_192"]="0.16"
