@@ -17,6 +17,7 @@ RUN apt-get update -q \
     virtualenv \
     wget \
     xpra \
+    curl \
     xserver-xorg-dev \
     libxrandr2 \
     libxss1 \
